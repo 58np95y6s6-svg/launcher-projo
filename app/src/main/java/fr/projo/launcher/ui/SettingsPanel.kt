@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
@@ -96,6 +97,10 @@ fun SettingsPanel(
                 .width(372.u)
                 .clip(RoundedCornerShape(topStart = 26.u, bottomStart = 26.u))
                 .background(FondPanneau)
+                // ◀ ferme le panneau (sauf pendant le réglage du volume, qui consomme la touche avant)
+                .onKeyEvent {
+                    if (it.key == Key.DirectionLeft && it.type == KeyEventType.KeyDown) { actions.close(); true } else false
+                }
                 .padding(top = 30.u)
         ) {
             Text(
@@ -243,12 +248,14 @@ private fun Tuile(
     accent: Boolean = false,
     droite: (@Composable () -> Unit)? = null,
     bas: (@Composable () -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     var focus by remember { mutableStateOf(false) }
     val forme = RoundedCornerShape(16.u)
     Surface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier.fillMaxWidth().onFocusChanged { focus = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
@@ -297,23 +304,36 @@ private fun Tuile(
     }
 }
 
-/** Volume : ◀ ▶ pour régler quand la tuile est sélectionnée, OK pour couper le son. */
+/**
+ * Volume : OK active le réglage (◀ ▶ règlent, OK / Retour valident) ;
+ * hors réglage, ◀ ferme le panneau comme ailleurs. Appui long OK : couper le son.
+ */
 @Composable
 private fun Volume(s: DeviceSnapshot?, actions: SettingsActions, modifier: Modifier) {
     val niveau = if (s == null) 0f else s.volume.toFloat() / s.volumeMax
     val muet = s?.muet == true
+    var reglage by remember { mutableStateOf(false) }
     Tuile(
         icone = if (muet || niveau == 0f) ProjoIcons.Muet else ProjoIcons.Volume,
-        titre = "Volume",
-        sousTitre = if (muet) "Son coupé · OK pour le remettre" else "◀ ▶ pour régler · OK pour couper",
-        modifier = modifier.onPreviewKeyEvent {
-            if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-            when (it.key) {
-                Key.DirectionLeft -> { actions.volume(-1); true }
-                Key.DirectionRight -> { actions.volume(1); true }
-                else -> false
-            }
+        titre = if (reglage) "Volume · ◀ ▶" else "Volume",
+        sousTitre = when {
+            reglage -> "OK ou Retour pour valider"
+            muet -> "Son coupé · OK pour régler"
+            else -> "OK pour régler · appui long : couper"
         },
+        accent = reglage,
+        modifier = modifier
+            .onFocusChanged { if (!it.isFocused) reglage = false }
+            .onPreviewKeyEvent {
+                if (!reglage) return@onPreviewKeyEvent false
+                when (it.key) {
+                    Key.DirectionLeft -> { if (it.type == KeyEventType.KeyDown) actions.volume(-1); true }
+                    Key.DirectionRight -> { if (it.type == KeyEventType.KeyDown) actions.volume(1); true }
+                    // Retour quitte le réglage sans fermer le panneau
+                    Key.Back -> { if (it.type == KeyEventType.KeyUp) reglage = false; true }
+                    else -> false
+                }
+            },
         droite = {
             Text(
                 if (muet) "—" else "${(niveau * 100).toInt()} %",
@@ -321,7 +341,11 @@ private fun Volume(s: DeviceSnapshot?, actions: SettingsActions, modifier: Modif
             )
         },
         bas = { Jauge(if (muet) 0f else niveau) },
-        onClick = actions.mute,
+        onClick = {
+            if (muet && !reglage) actions.mute()
+            reglage = !reglage
+        },
+        onLongClick = actions.mute,
     )
 }
 

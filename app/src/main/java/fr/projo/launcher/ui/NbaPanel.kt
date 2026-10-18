@@ -93,9 +93,15 @@ fun NbaPanel(
                 letterSpacing = 2.us, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 6.u, end = 8.u),
             )
-            Onglet(libelleNuit, onglet == 0) { onglet = 0 }
+            // ◀ sur le premier onglet : on sort aussi du bandeau
+            Onglet(
+                libelleNuit, onglet == 0,
+                Modifier.onPreviewKeyEvent {
+                    if (it.key == Key.DirectionLeft && it.type == KeyEventType.KeyDown) { onExit(); true } else false
+                },
+            ) { onglet = 0 }
             Spacer(Modifier.width(4.u))
-            Onglet("RÉSULTATS", onglet == 1) { onglet = 1 }
+            Onglet("RÉSULTATS", onglet == 1, Modifier) { onglet = 1 }
         }
         Spacer(Modifier.height(5.u))
 
@@ -139,10 +145,10 @@ fun NbaPanel(
 
 /** Onglet : se sélectionne dès qu'on passe dessus (comme les onglets d'Android TV). */
 @Composable
-private fun Onglet(texte: String, actif: Boolean, onSelect: () -> Unit) {
+private fun Onglet(texte: String, actif: Boolean, modifier: Modifier, onSelect: () -> Unit) {
     Surface(
         onClick = onSelect,
-        modifier = Modifier.height(20.u).onFocusChanged { if (it.isFocused) onSelect() },
+        modifier = modifier.height(20.u).onFocusChanged { if (it.isFocused) onSelect() },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.u)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (actif) Color.White.copy(alpha = 0.16f) else Color.Transparent,
