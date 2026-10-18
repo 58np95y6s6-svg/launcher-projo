@@ -6,7 +6,7 @@ plugins {
 
 // Numéro de version : incrémenté automatiquement par GitHub Actions (numéro du build).
 val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-val nomVersion = System.getenv("VERSION_NAME") ?: "0.1-dev"
+val nomVersion = System.getenv("VERSION_NAME")?.removePrefix("v") ?: "0.1-dev"
 
 android {
     namespace = "fr.projo.launcher"
@@ -21,6 +21,16 @@ android {
     }
 
     signingConfigs {
+        // Clé de PUBLICATION : fournie par GitHub Actions (secrets), jamais dans le dépôt.
+        val ks = System.getenv("KEYSTORE_PATH")
+        if (ks != null) {
+            create("publication") {
+                storeFile = file(ks)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
         // Clé de TEST (publique, dans le dépôt) : permet d'installer les versions de test
         // les unes par-dessus les autres. La vraie clé de publication arrive à l'étape 6.
         create("test") {
@@ -39,7 +49,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            signingConfig = signingConfigs.getByName("test")
+            // Clé de publication si disponible (GitHub Actions), sinon clé de test (essais locaux)
+            signingConfig = signingConfigs.findByName("publication") ?: signingConfigs.getByName("test")
         }
     }
 
@@ -62,5 +73,8 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.tv.material)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.palette)
 }

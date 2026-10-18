@@ -1,5 +1,6 @@
 package fr.projo.launcher.data
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,6 +15,9 @@ data class AppInfo(
     val isTvApp: Boolean,
 )
 
+/** Une activité candidate pour « Sources » (app ou écran d'une app). */
+data class SourceCandidate(val label: String, val component: ComponentName)
+
 /** Lit la liste des apps installées via le PackageManager. */
 class AppRepository(private val context: Context) {
 
@@ -21,8 +25,8 @@ class AppRepository(private val context: Context) {
 
     /**
      * Toutes les apps lançables, triées par nom, sans le launcher lui-même.
-     * On prend les apps TV (LEANBACK_LAUNCHER) puis on complète avec les apps classiques
-     * (LAUNCHER) : sur un projecteur Android « non TV », la plupart sont classiques.
+     * Apps TV (LEANBACK_LAUNCHER) d'abord, complétées par les apps classiques (LAUNCHER) :
+     * sur un projecteur Android « non TV », la plupart sont classiques.
      * À appeler hors du thread principal.
      */
     fun loadApps(): List<AppInfo> {
@@ -57,20 +61,22 @@ class AppRepository(private val context: Context) {
     }
 
     /** Ouvre une app : version TV si elle existe, sinon version classique. */
-    fun launch(app: AppInfo): Boolean {
-        val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName)
-            ?: pm.getLaunchIntentForPackage(app.packageName)
+    fun launch(packageName: String): Boolean {
+        val intent = pm.getLeanbackLaunchIntentForPackage(packageName)
+            ?: pm.getLaunchIntentForPackage(packageName)
             ?: return false
-        return try {
-            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            true
-        } catch (e: Exception) {
-            Log.w(TAG, "Impossible d'ouvrir ${app.packageName}", e)
-            false
-        }
+        return start(intent)
     }
 
-    /** Paquet de l'écran d'accueil actuellement utilisé par le bouton Maison (null si aucun choix). */
+    fun start(intent: Intent): Boolean = try {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (e: Exception) {
+        Log.w(TAG, "Impossible d'ouvrir $intent", e)
+        false
+    }
+
+    /** Paquet de l'écran d'accueil utilisé par le bouton Maison (null si aucun choix). */
     fun currentHomePackage(): String? {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val ri = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) ?: return null
@@ -79,10 +85,55 @@ class AppRepository(private val context: Context) {
         return if (pkg == "android") null else pkg
     }
 
-    /** Liste de tous les écrans d'accueil disponibles sur l'appareil. */
+    /** Tous les écrans d'accueil disponibles sur l'appareil. */
     fun homeCandidates(): List<String> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         return pm.queryIntentActivities(intent, 0).mapNotNull { it.activityInfo?.packageName }.distinct()
+    }
+
+    /**
+     * Cherche ce qui pourrait ouvrir l'entrée HDMI : apps dont le nom évoque une source,
+     * et écrans exportés des autres launchers (ex. accueil du fabricant) dont le nom de classe
+     * contient « hdmi », « source » ou « input ». Tout est affiché dans les logs.
+     */
+    fun sourceCandidates(apps: List<AppInfo>): List<SourceCandidate> {
+        val motCle = Regex("hdmi|source|input|entr[ée]e|signal|av ?in", RegexOption.IGNORE_CASE)
+        val res = mutableListOf<SourceCandidate>()
+
+        for (app in apps) {
+            if (motCle.containsMatchIn(app.label) || motCle.containsMatchIn(app.packageName)) {
+                val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName)
+                    ?: pm.getLaunchIntentForPackage(app.packageName)
+                intent?.component?.let { res += SourceCandidate(app.label, it) }
+            }
+        }
+        // Écrans exportés des autres écrans d'accueil (ex. COOLiD) et des apps système
+        val paquets = (homeCandidates() + apps.map { it.packageName }).distinct()
+            .filter { it != context.packageName && it != "android" }
+        for (pkg in paquets) {
+            val activites = try {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(pkg, PackageManager.GET_ACTIVITIES).activities.orEmpty()
+            } catch (e: Exception) {
+                emptyArray()
+            }
+            for (a in activites) {
+                if (!a.exported) continue
+                val court = a.name.substringAfterLast('.')
+                if (motCle.containsMatchIn(court)) {
+                    val cn = ComponentName(a.packageName, a.name)
+                    if (res.none { it.component == cn }) {
+                        val appLabel = try {
+                            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                        } catch (e: Exception) { pkg }
+                        res += SourceCandidate("$appLabel · $court", cn)
+                    }
+                }
+            }
+        }
+        Log.i(TAG, "Candidats « Sources » : ${res.size}")
+        res.forEach { Log.i(TAG, "  ${it.label} → ${it.component.flattenToShortString()}") }
+        return res
     }
 
     companion object {
