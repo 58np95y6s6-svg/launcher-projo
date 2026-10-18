@@ -124,6 +124,7 @@ fun HomeScreen(
                 // --- Rangée « Favoris »
                 LazyRow(
                     state = rangeeFavoris,
+                    modifier = Modifier.fadingEdges(rangeeFavoris, 52.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
                     horizontalArrangement = Arrangement.spacedBy(26.u),
                 ) {
@@ -158,6 +159,7 @@ fun HomeScreen(
                 )
                 LazyRow(
                     state = rangeeApps,
+                    modifier = Modifier.fadingEdges(rangeeApps, 52.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 12.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
                 ) {
