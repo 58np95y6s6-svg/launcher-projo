@@ -18,6 +18,9 @@ data class PrefsState(
     /** Paquets favoris, dans l'ordre d'affichage. */
     val favorites: List<String> = emptyList(),
     val hidden: Set<String> = emptySet(),
+    /** Apps de la rangée « Mes apps », dans l'ordre d'affichage. */
+    val homeApps: List<String> = emptyList(),
+    val homeDefaultsApplied: Boolean = false,
     val defaultsApplied: Boolean = false,
     /** Action de « Sources » : null = automatique, sinon composant « paquet/classe ». */
     val sourcesComponent: String? = null,
@@ -34,6 +37,8 @@ class LauncherPrefs(private val context: Context) {
         val DEFAUTS = booleanPreferencesKey("favoris_par_defaut_appliques")
         val SOURCES = stringPreferencesKey("sources_composant")
         val LOGOS = stringSetPreferencesKey("logos_remplaces")
+        val ACCUEIL = stringPreferencesKey("apps_accueil")
+        val ACCUEIL_DEFAUTS = booleanPreferencesKey("apps_accueil_par_defaut_appliquees")
     }
 
     val state: Flow<PrefsState> = context.dataStore.data.map { p ->
@@ -42,6 +47,8 @@ class LauncherPrefs(private val context: Context) {
             hidden = p[Cles.MASQUEES].orEmpty(),
             defaultsApplied = p[Cles.DEFAUTS] ?: false,
             sourcesComponent = p[Cles.SOURCES],
+            homeApps = p[Cles.ACCUEIL]?.split('\n')?.filter { it.isNotBlank() }.orEmpty(),
+            homeDefaultsApplied = p[Cles.ACCUEIL_DEFAUTS] ?: false,
             iconOverrides = p[Cles.LOGOS].orEmpty().mapNotNull { ligne ->
                 ligne.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] }
             }.toMap(),
@@ -56,6 +63,17 @@ class LauncherPrefs(private val context: Context) {
         context.dataStore.edit {
             it[Cles.FAVORIS] = list.distinct().joinToString("\n")
             it[Cles.DEFAUTS] = true
+        }
+    }
+
+    suspend fun setHomeApps(list: List<String>) {
+        context.dataStore.edit { it[Cles.ACCUEIL] = list.distinct().joinToString("\n") }
+    }
+
+    suspend fun applyDefaultHomeApps(list: List<String>) {
+        context.dataStore.edit {
+            it[Cles.ACCUEIL] = list.distinct().joinToString("\n")
+            it[Cles.ACCUEIL_DEFAUTS] = true
         }
     }
 

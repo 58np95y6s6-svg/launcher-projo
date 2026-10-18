@@ -91,32 +91,6 @@ fun MenuDialog(
     }
 }
 
-/** Menu de l'appui long sur une app. */
-@Composable
-fun AppMenuDialog(
-    app: AppInfo,
-    isFavorite: Boolean,
-    favoriteIndex: Int,
-    favoriteCount: Int,
-    onToggleFavorite: () -> Unit,
-    onMove: (Int) -> Unit,
-    onHide: () -> Unit,
-    onInfo: () -> Unit,
-    onChangeIcon: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val actions = buildList {
-        add(MenuAction(if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris", onToggleFavorite))
-        if (isFavorite && favoriteIndex > 0) add(MenuAction("Déplacer à gauche") { onMove(-1) })
-        if (isFavorite && favoriteIndex in 0 until favoriteCount - 1) add(MenuAction("Déplacer à droite") { onMove(1) })
-        add(MenuAction("Changer le logo…", onChangeIcon))
-        add(MenuAction("Masquer l'app", onHide))
-        add(MenuAction("Infos de l'app", onInfo))
-        add(MenuAction("Annuler") {})
-    }
-    MenuDialog(app.label, app.packageName, actions, onDismiss)
-}
-
 /** Liste des apps masquées : un clic les ré-affiche. */
 @Composable
 fun HiddenAppsDialog(apps: List<AppInfo>, onUnhide: (AppInfo) -> Unit, onDismiss: () -> Unit) {

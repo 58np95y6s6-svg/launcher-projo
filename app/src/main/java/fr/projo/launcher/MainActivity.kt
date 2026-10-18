@@ -27,13 +27,15 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.system.NetworkInfo
-import fr.projo.launcher.ui.AppMenuDialog
 import fr.projo.launcher.ui.DiagnosticDialog
 import fr.projo.launcher.ui.HiddenAppsDialog
 import fr.projo.launcher.ui.IconChoiceDialog
 import fr.projo.launcher.ui.HomeActions
 import fr.projo.launcher.ui.HomeScreen
+import fr.projo.launcher.ui.LibraryScreen
 import fr.projo.launcher.ui.LocalScale
+import fr.projo.launcher.ui.MenuAction
+import fr.projo.launcher.ui.MenuDialog
 import fr.projo.launcher.ui.SourcesDialog
 import kotlinx.coroutines.delay
 
@@ -87,6 +89,15 @@ class MainActivity : ComponentActivity() {
         var montrerSources by remember { mutableStateOf(false) }
         var montrerDiagnostic by remember { mutableStateOf(false) }
         var logoApp by remember { mutableStateOf<AppInfo?>(null) }
+        var montrerBibliotheque by remember { mutableStateOf(false) }
+        // Bouton Maison : ferme la bibliothèque et revient à l'accueil
+        LaunchedEffect(homePresses) { montrerBibliotheque = false }
+
+        // Ouvre une app, ou la source HDMI pour la tuile spéciale
+        val lancer: (AppInfo) -> Unit = { app ->
+            if (app.packageName == AppInfo.HDMI_ID) vm.openSources()
+            else if (!vm.repo.launch(app.packageName)) toast("Impossible d'ouvrir ${app.label}")
+        }
 
         // Nom du Wi-Fi : relu au retour sur l'accueil puis toutes les 30 s
         var wifi by remember { mutableStateOf("Wi-Fi") }
@@ -106,11 +117,9 @@ class MainActivity : ComponentActivity() {
             wifiLabel = wifi,
             homePressCount = homePresses,
             actions = HomeActions(
-                launch = { app ->
-                    if (!vm.repo.launch(app.packageName)) toast("Impossible d'ouvrir ${app.label}")
-                },
+                launch = lancer,
                 openMenu = { menuApp = it },
-                openHidden = { montrerMasquees = true },
+                openLibrary = { montrerBibliotheque = true },
                 sources = { vm.openSources() },
                 sourcesLong = { vm.loadSourceCandidates(); montrerSources = true },
                 wifi = { vm.actions.openWifi() },
@@ -120,18 +129,44 @@ class MainActivity : ComponentActivity() {
             ),
         )
 
+        if (montrerBibliotheque) {
+            LibraryScreen(
+                ui = ui,
+                icons = vm.icons,
+                onLaunch = lancer,
+                onMenu = { menuApp = it },
+                onOpenHidden = { montrerMasquees = true },
+                onClose = { montrerBibliotheque = false },
+            )
+        }
+
         menuApp?.let { app ->
-            val index = ui.favorites.indexOfFirst { it.packageName == app.packageName }
-            AppMenuDialog(
-                app = app,
-                isFavorite = vm.isFavorite(app.packageName),
-                favoriteIndex = index,
-                favoriteCount = ui.favorites.size,
-                onToggleFavorite = { vm.toggleFavorite(app.packageName) },
-                onMove = { vm.moveFavorite(app.packageName, it) },
-                onHide = { vm.hide(app.packageName); toast("${app.label} masquée") },
-                onInfo = { vm.actions.openAppInfo(app.packageName) },
-                onChangeIcon = { logoApp = app },
+            val pkg = app.packageName
+            val favori = vm.isFavorite(pkg)
+            val accueil = vm.isOnHome(pkg)
+            // Position dans sa rangée, pour proposer « déplacer » seulement si possible
+            val rangee = if (favori) ui.favorites else ui.homeApps
+            val index = rangee.indexOfFirst { it.packageName == pkg }
+            val actions = buildList {
+                add(MenuAction(if (favori) "Retirer des favoris" else "Ajouter aux favoris") { vm.toggleFavorite(pkg) })
+                if (!favori) {
+                    add(MenuAction(if (accueil) "Retirer de l'accueil" else "Ajouter à l'accueil") { vm.toggleHome(pkg) })
+                }
+                if (index > 0) add(MenuAction("Déplacer à gauche") { vm.move(pkg, -1) })
+                if (index >= 0 && index < rangee.size - 1) add(MenuAction("Déplacer à droite") { vm.move(pkg, 1) })
+                if (!app.isSpecial) {
+                    add(MenuAction("Changer le logo…") { logoApp = app })
+                    add(MenuAction("Masquer partout") { vm.hide(pkg); toast("${app.label} masquée") })
+                    add(MenuAction("Infos de l'app") { vm.actions.openAppInfo(pkg) })
+                } else {
+                    add(MenuAction("Choisir l'entrée à ouvrir…") { vm.loadSourceCandidates(); montrerSources = true })
+                }
+                add(MenuAction("Annuler") {})
+            }
+            MenuDialog(
+                title = app.label,
+                subtitle = if (app.isSpecial) null else pkg,
+                actions = actions,
                 onDismiss = { menuApp = null },
             )
         }
