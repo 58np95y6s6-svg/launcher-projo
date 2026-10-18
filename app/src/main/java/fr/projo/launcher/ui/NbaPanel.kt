@@ -106,7 +106,7 @@ fun NbaPanel(data: NbaData?, erreur: Boolean, repo: NbaRepository, modifier: Mod
                 }
                 LazyColumn(
                     state = etat,
-                    modifier = Modifier.height((37 * minOf(LIGNES_VISIBLES, jeux.size)).u),
+                    modifier = Modifier.height((34 * minOf(LIGNES_VISIBLES, jeux.size)).u),
                 ) {
                     items(jeux, key = { it.id }) { g -> LigneMatch(g, repo) }
                 }
@@ -142,7 +142,7 @@ private fun LigneMatch(g: NbaGame, repo: NbaRepository) {
     // Ligne focalisable : c'est ce qui permet de faire défiler la liste à la télécommande
     Surface(
         onClick = {},
-        modifier = Modifier.fillMaxWidth().height(37.u),
+        modifier = Modifier.fillMaxWidth().height(34.u),
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -153,7 +153,7 @@ private fun LigneMatch(g: NbaGame, repo: NbaRepository) {
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
     ) {
         Row(
-            Modifier.padding(horizontal = 7.u).fillMaxWidth().height(37.u),
+            Modifier.padding(horizontal = 7.u).fillMaxWidth().height(34.u),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Equipe(g.away, repo)
@@ -228,32 +228,4 @@ private fun tempsDeJeu(s: String): String = when {
     s.startsWith("End of", ignoreCase = true) -> "Fin " + s.substringAfter("of ").replace("1st", "QT1")
         .replace("2nd", "QT2").replace("3rd", "QT3").replace("4th", "QT4")
     else -> s.replace(Regex("^(\\d)(st|nd|rd|th) Quarter"), "QT$1").replace(Regex("^Q(\\d)"), "QT$1").replace("OT", "Prol.")
-}
-
-/**
- * Résumé NBA sur une ligne pour l'en-tête compact : le match en cours, sinon le prochain,
- * sinon le dernier terminé.
- */
-@Composable
-fun NbaMini(data: NbaData?) {
-    val jeux = data?.tonight?.games.orEmpty()
-    val g = jeux.firstOrNull { it.state == "in" } ?: jeux.firstOrNull { it.state == "pre" } ?: jeux.lastOrNull() ?: return
-    val forme = RoundedCornerShape(15.u)
-    Row(
-        Modifier
-            .height(30.u)
-            .clip(forme)
-            .background(Color.White.copy(alpha = 0.07f))
-            .border(BorderStroke(1.u, Color.White.copy(alpha = 0.11f)), forme)
-            .padding(horizontal = 12.u),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("NBA", color = Color.White.copy(alpha = 0.55f), fontSize = 9.us, letterSpacing = 2.us, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(10.u))
-        val texte = if (g.state == "pre") "${g.away.abbr} – ${g.home.abbr}"
-        else "${g.away.abbr} ${g.away.score ?: ""} – ${g.home.score ?: ""} ${g.home.abbr}"
-        Text(texte, color = Color.White, fontSize = 11.us, fontWeight = FontWeight.Bold, maxLines = 1)
-        Spacer(Modifier.width(10.u))
-        Etat(g)
-    }
 }

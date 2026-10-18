@@ -1,10 +1,6 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +19,7 @@ import java.util.Locale
 
 /** Salutation + grande horloge + date, mises à jour chaque minute pile. */
 @Composable
-fun ClockHeader(modifier: Modifier = Modifier, compact: Boolean = false) {
+fun ClockHeader(modifier: Modifier = Modifier) {
     var maintenant by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -42,18 +38,6 @@ fun ClockHeader(modifier: Modifier = Modifier, compact: Boolean = false) {
     val fr = Locale.FRENCH
     val heureTexte = SimpleDateFormat("HH:mm", fr).format(date)
     val dateTexte = SimpleDateFormat("EEEE d MMMM", fr).format(date).uppercase(fr)
-    if (compact) {
-        // Barre fine : heure et date sur une seule ligne
-        Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-            Text(heureTexte, color = Color.White, fontSize = 26.us, fontWeight = FontWeight.Light)
-            Spacer(Modifier.width(14.u))
-            Text(
-                dateTexte, color = Color.White.copy(alpha = 0.7f),
-                fontSize = 11.us, letterSpacing = 2.us, fontWeight = FontWeight.Medium,
-            )
-        }
-        return
-    }
     Column(modifier) {
         Text(
             salutation, color = Color.White.copy(alpha = 0.7f),

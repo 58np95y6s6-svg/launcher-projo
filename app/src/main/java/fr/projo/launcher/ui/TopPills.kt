@@ -43,11 +43,10 @@ fun TopPills(
     onBluetooth: () -> Unit,
     onSettings: () -> Unit,
     onSettingsLong: () -> Unit,
-    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.u), verticalAlignment = Alignment.CenterVertically) {
-        val h = if (compact) 30 else 38
+        val h = 38
         Pill(ProjoIcons.Sources, "Sources", h, onSources, onSourcesLong)
         Pill(ProjoIcons.Wifi, wifiLabel, h, onWifi)
         Pill(ProjoIcons.Bluetooth, "Bluetooth", h, onBluetooth)

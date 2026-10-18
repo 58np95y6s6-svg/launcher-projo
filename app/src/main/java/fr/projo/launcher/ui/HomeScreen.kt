@@ -1,11 +1,6 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -88,9 +83,6 @@ fun HomeScreen(
     val rangeeApps = rememberLazyListState()
     val premierFocus = remember { FocusRequester() }
 
-    // En-tête compact (barre fine) dès que le focus est dans la rangée « Mes apps »
-    var compact by remember { mutableStateOf(false) }
-    val ecart by animateDpAsState(if (compact) 6.u else 64.u, tween(320), label = "ecart")
 
     // Focus initial (et retour en haut à chaque appui sur Maison)
     LaunchedEffect(ui.loaded, ui.prefs.defaultsApplied, homePressCount) {
@@ -105,8 +97,8 @@ fun HomeScreen(
         GlowBackground(couleur)
 
         Column(Modifier.fillMaxSize()) {
-            // --- En-tête fixe : grand (horloge + pastilles) ou barre fine compacte
-            EnTete(compact, wifiLabel, actions, nbaData)
+            // --- En-tête fixe : horloge à gauche, pastilles à droite
+            EnTete(wifiLabel, actions)
 
             Column(
                 Modifier
@@ -114,7 +106,7 @@ fun HomeScreen(
                     .weight(1f)
                     .verticalScroll(defilement)
             ) {
-                Spacer(Modifier.height(ecart))
+                Spacer(Modifier.height(40.u))
 
                 // --- Nom de l'app sélectionnée, en grand (fondu enchaîné)
                 AnimatedContent(
@@ -166,14 +158,14 @@ fun HomeScreen(
                 )
                 LazyRow(
                     state = rangeeApps,
-                    contentPadding = PaddingValues(horizontal = 56.u, vertical = 14.u),
-                    horizontalArrangement = Arrangement.spacedBy(20.u),
-                    modifier = Modifier.onFocusChanged { compact = it.hasFocus },
+                    contentPadding = PaddingValues(horizontal = 56.u, vertical = 12.u),
+                    horizontalArrangement = Arrangement.spacedBy(18.u),
                 ) {
                     itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
                         AppCard(
                             app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
-                            width = 160.u, height = 90.u, showLabel = true,
+                            // Pas de nom dessous : il s'affiche déjà en grand au-dessus des favoris
+                            width = 136.u, height = 77.u, showLabel = false,
                             onFocused = surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
@@ -183,49 +175,39 @@ fun HomeScreen(
                     item(key = "bibliotheque") {
                         TextCard(
                             text = "Toutes les apps\n(${ui.allApps.size})",
-                            width = 160.u, height = 90.u,
+                            width = 136.u, height = 77.u,
                             onClick = actions.openLibrary,
                             onFocused = { selection = null },
                         )
                     }
                 }
-                Spacer(Modifier.height(40.u))
+                Spacer(Modifier.height(16.u))
             }
         }
 
-        // --- Bandeau NBA complet sous les pastilles (masqué quand l'en-tête est compact)
-        AnimatedVisibility(
-            visible = !compact,
-            enter = fadeIn(tween(300)),
-            exit = fadeOut(tween(200)),
+        // --- Bandeau NBA sous les pastilles
+        NbaPanel(
+            data = nbaData,
+            erreur = nbaErreur,
+            repo = nbaRepo,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 94.u, end = 52.u),
-        ) {
-            NbaPanel(data = nbaData, erreur = nbaErreur, repo = nbaRepo)
-        }
+                .padding(top = 90.u, end = 52.u),
+        )
     }
 }
 
-/**
- * En-tête : grand (salutation, grande horloge, date ; pastilles à droite) ou compact
- * (barre fine : heure + date sur une ligne, résumé NBA, petites pastilles).
- */
+/** En-tête : salutation, grande horloge et date à gauche ; pastilles à droite. */
 @Composable
-private fun EnTete(compact: Boolean, wifiLabel: String, actions: HomeActions, nbaData: NbaData?) {
+private fun EnTete(wifiLabel: String, actions: HomeActions) {
     Row(
         Modifier
             .fillMaxWidth()
-            .animateContentSize(tween(320))
-            .padding(start = 56.u, end = 52.u, top = if (compact) 20.u else 40.u),
-        verticalAlignment = if (compact) Alignment.CenterVertically else Alignment.Top,
+            .padding(start = 56.u, end = 52.u, top = 40.u),
+        verticalAlignment = Alignment.Top,
     ) {
-        ClockHeader(compact = compact)
+        ClockHeader()
         Spacer(Modifier.weight(1f))
-        if (compact) {
-            NbaMini(nbaData)
-            Spacer(Modifier.width(16.u))
-        }
         TopPills(
             wifiLabel = wifiLabel,
             onSources = actions.sources,
@@ -234,8 +216,7 @@ private fun EnTete(compact: Boolean, wifiLabel: String, actions: HomeActions, nb
             onBluetooth = actions.bluetooth,
             onSettings = actions.settings,
             onSettingsLong = actions.settingsLong,
-            compact = compact,
-            modifier = Modifier.padding(top = if (compact) 0.u else 6.u),
+            modifier = Modifier.padding(top = 6.u),
         )
     }
 }
