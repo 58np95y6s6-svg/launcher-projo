@@ -28,10 +28,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Compilation (APK de test)
+      - name: Compilation (APK de test + vérification de la version release)
         env:
           VERSION_NAME: test-${{ github.run_number }}
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleDebug assembleRelease
 
       - name: Publication de l'APK de test
         # Seule la branche de test publie l'APK ; les autres branches compilent seulement
