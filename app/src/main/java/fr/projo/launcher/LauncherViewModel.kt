@@ -8,7 +8,7 @@ import fr.projo.launcher.data.AppRepository
 import fr.projo.launcher.data.DefaultFavorites
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.LauncherPrefs
-import fr.projo.launcher.data.NbaNight
+import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.data.PrefsState
 import fr.projo.launcher.data.SourceCandidate
@@ -53,8 +53,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val nba = NbaRepository(app)
 
     /** null = pas encore chargé ; NbaNight vide = aucun match ; erreur = réseau indisponible. */
-    private val _nbaNight = MutableStateFlow<NbaNight?>(null)
-    val nbaNight: StateFlow<NbaNight?> = _nbaNight
+    private val _nbaData = MutableStateFlow<NbaData?>(null)
+    val nbaData: StateFlow<NbaData?> = _nbaData
     private val _nbaErreur = MutableStateFlow(false)
     val nbaErreur: StateFlow<Boolean> = _nbaErreur
 
@@ -66,17 +66,17 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun nbaLoop() {
         while (true) {
             val nuit = try {
-                withContext(Dispatchers.IO) { nba.fetchNight() }
+                withContext(Dispatchers.IO) { nba.fetchAll() }
             } catch (e: Exception) {
                 null
             }
             if (nuit != null) {
-                _nbaNight.value = nuit
+                _nbaData.value = nuit
                 _nbaErreur.value = false
             } else {
                 _nbaErreur.value = true
             }
-            val enDirect = nuit?.games?.any { it.state == "in" } == true
+            val enDirect = nuit?.tonight?.games?.any { it.state == "in" } == true
             delay(if (enDirect) 60_000L else if (nuit == null) 120_000L else 600_000L)
         }
     }

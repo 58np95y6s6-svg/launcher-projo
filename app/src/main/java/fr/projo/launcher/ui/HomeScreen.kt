@@ -37,7 +37,7 @@ import androidx.tv.material3.Text
 import fr.projo.launcher.HomeUi
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.IconLoader
-import fr.projo.launcher.data.NbaNight
+import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaRepository
 
 /** Toutes les actions déclenchables depuis l'écran d'accueil. */
@@ -70,7 +70,7 @@ fun HomeScreen(
     /** Incrémenté quand on appuie sur Maison alors que le launcher est déjà affiché. */
     homePressCount: Int,
     actions: HomeActions,
-    nbaNight: NbaNight?,
+    nbaData: NbaData?,
     nbaErreur: Boolean,
     nbaRepo: NbaRepository,
 ) {
@@ -140,7 +140,7 @@ fun HomeScreen(
             }
            }
             NbaPanel(
-                night = nbaNight,
+                data = nbaData,
                 erreur = nbaErreur,
                 repo = nbaRepo,
                 modifier = Modifier

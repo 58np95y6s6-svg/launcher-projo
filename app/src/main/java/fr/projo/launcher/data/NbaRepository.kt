@@ -39,6 +39,9 @@ data class NbaNight(
     val games: List<NbaGame>,
 )
 
+/** Les deux onglets du bandeau : matchs de la nuit à venir et résultats de la nuit passée. */
+data class NbaData(val tonight: NbaNight, val results: NbaNight?)
+
 /**
  * Calendrier NBA depuis le tableau des scores public d'ESPN (sans clé, quelques Ko par appel).
  * Une « nuit » = la journée NBA en cours à New York : les matchs se jouent la nuit en France.
@@ -49,23 +52,42 @@ class NbaRepository(private val context: Context) {
     private val ny = TimeZone.getTimeZone("America/New_York")
 
     /** À appeler hors du thread principal. Lève une exception si le réseau est indisponible. */
-    fun fetchNight(): NbaNight {
+    fun fetchAll(): NbaData {
         val cal = Calendar.getInstance(ny)
         // Avant 6 h à New York, on est encore dans la journée NBA de la veille
         if (cal.get(Calendar.HOUR_OF_DAY) < 6) cal.add(Calendar.DAY_OF_MONTH, -1)
         val aujourdHui = jour(cal)
+        val jeuxDuJour = fetchDay(aujourdHui)
+        val journeeFinie = jeuxDuJour.isNotEmpty() && jeuxDuJour.all { it.state == "post" }
 
-        // Journée en cours, puis jusqu'à 7 jours plus loin si elle est finie ou vide
-        for (i in 0..7) {
-            val day = jour(cal)
-            val games = fetchDay(day)
-            val toutFini = games.isNotEmpty() && games.all { it.state == "post" }
-            if (games.isNotEmpty() && !(toutFini && i == 0)) {
-                return NbaNight(day, day == aujourdHui, games)
+        // « Cette nuit » : la journée en cours, ou la prochaine qui a des matchs si elle est finie/vide
+        var cetteNuit = NbaNight(aujourdHui, true, emptyList())
+        if (jeuxDuJour.isNotEmpty() && !journeeFinie) {
+            cetteNuit = NbaNight(aujourdHui, true, jeuxDuJour)
+        } else {
+            val c = cal.clone() as Calendar
+            for (i in 1..7) {
+                c.add(Calendar.DAY_OF_MONTH, 1)
+                val day = jour(c)
+                val jeux = fetchDay(day)
+                if (jeux.isNotEmpty()) { cetteNuit = NbaNight(day, false, jeux); break }
             }
-            cal.add(Calendar.DAY_OF_MONTH, 1)
         }
-        return NbaNight(aujourdHui, true, emptyList())
+
+        // « Résultats » : la dernière journée terminée (celle du jour si elle est finie, sinon la veille…)
+        var resultats: NbaNight? = null
+        if (journeeFinie) {
+            resultats = NbaNight(aujourdHui, true, jeuxDuJour)
+        } else {
+            val c = cal.clone() as Calendar
+            for (i in 1..7) {
+                c.add(Calendar.DAY_OF_MONTH, -1)
+                val day = jour(c)
+                val finis = fetchDay(day).filter { it.state == "post" }
+                if (finis.isNotEmpty()) { resultats = NbaNight(day, i == 1, finis); break }
+            }
+        }
+        return NbaData(cetteNuit, resultats)
     }
 
     private fun jour(cal: Calendar): String =

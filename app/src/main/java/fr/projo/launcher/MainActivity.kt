@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
         }
 
         // Matchs NBA : mis à jour seulement pendant que l'accueil est affiché
-        val nbaNuit by vm.nbaNight.collectAsStateWithLifecycle()
+        val nbaDonnees by vm.nbaData.collectAsStateWithLifecycle()
         val nbaErreur by vm.nbaErreur.collectAsStateWithLifecycle()
         LaunchedEffect(lifecycle) {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.nbaLoop() }
@@ -134,7 +134,7 @@ class MainActivity : ComponentActivity() {
                 settings = { vm.actions.openSettings() },
                 settingsLong = { montrerDiagnostic = true },
             ),
-            nbaNight = nbaNuit,
+            nbaData = nbaDonnees,
             nbaErreur = nbaErreur,
             nbaRepo = vm.nba,
         )
