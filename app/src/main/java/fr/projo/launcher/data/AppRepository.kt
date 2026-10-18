@@ -13,6 +13,10 @@ data class AppInfo(
     val label: String,
     /** true si l'app déclare une version TV (catégorie LEANBACK_LAUNCHER). */
     val isTvApp: Boolean,
+    /** Catégorie déclarée par l'app (ApplicationInfo.category, Android 8+), -1 si aucune. */
+    val categorieSysteme: Int = -1,
+    /** App préinstallée par le fabricant (et pas mise à jour depuis le Play Store). */
+    val systeme: Boolean = false,
 ) {
     /** Tuile propre à Projo (ex. « Source HDMI »), pas une vraie app. */
     val isSpecial: Boolean get() = packageName.startsWith("projo:")
@@ -75,7 +79,11 @@ class AppRepository(private val context: Context) {
         val pkg = ri.activityInfo?.packageName ?: return
         if (pkg == context.packageName || map.containsKey(pkg)) return
         val label = ri.loadLabel(pm)?.toString()?.trim().orEmpty().ifEmpty { pkg }
-        map[pkg] = AppInfo(pkg, label, isTv)
+        val info = ri.activityInfo?.applicationInfo
+        val cat = if (info != null && android.os.Build.VERSION.SDK_INT >= 26) info.category else -1
+        val sys = info != null && (info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 &&
+            (info.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
+        map[pkg] = AppInfo(pkg, label, isTv, cat, sys)
     }
 
     /**
