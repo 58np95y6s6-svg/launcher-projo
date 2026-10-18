@@ -39,4 +39,26 @@ object DefaultFavorites {
         val sansAccents = Normalizer.normalize(s, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
         return sansAccents.lowercase().replace("+", "plus").replace(Regex("[^a-z0-9]"), "")
     }
+
+    /**
+     * Rangée « Mes apps » au premier lancement : la Source HDMI puis les apps de vidéo et
+     * de musique connues qui sont installées. Tout le reste reste dans « Toutes les apps ».
+     */
+    private val accueilConnues = listOf(
+        "youtube", "disneyplus", "primevideo", "amazonprimevideo", "canalplus", "mycanal", "netflix",
+        "smarttube", "twitch", "spotify", "deezer", "plex", "vlc", "kodi", "molotov", "francetv",
+        "arte", "tf1plus", "m6plus", "appletv", "max", "paramountplus", "crunchyroll", "rakutentv",
+        "playstore", "googleplaystore",
+    )
+
+    fun findHomeApps(apps: List<AppInfo>): List<String> {
+        val res = mutableListOf(AppInfo.HDMI_ID)
+        for (nom in accueilConnues) {
+            apps.firstOrNull { !it.isSpecial && normaliser(it.label) == nom }?.let {
+                if (it.packageName !in res) res += it.packageName
+            }
+        }
+        Log.i(AppRepository.TAG, "Rangée « Mes apps » par défaut : $res")
+        return res
+    }
 }

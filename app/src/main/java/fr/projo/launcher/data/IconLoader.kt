@@ -30,6 +30,8 @@ class IconLoader(private val context: Context) {
     /** À appeler hors du thread principal. */
     fun load(packageName: String): AppVisual {
         cache.get(packageName)?.let { return it }
+        // Tuiles propres à Projo : pas de logo d'app, une couleur fixe
+        if (packageName.startsWith("projo:")) return AppVisual(null, COULEUR_HDMI)
         val visual = try {
             val drawable = context.packageManager.getApplicationIcon(packageName)
             val bmp = drawable.toBitmap(TAILLE_PX)
@@ -62,5 +64,6 @@ class IconLoader(private val context: Context) {
         /** Taille des logos décodés (suffisant pour des cartes de ~80 dp). */
         const val TAILLE_PX = 128
         val COULEUR_PAR_DEFAUT = Color(0xFF4A5A78)
+        val COULEUR_HDMI = Color(0xFF2A9D8F)
     }
 }

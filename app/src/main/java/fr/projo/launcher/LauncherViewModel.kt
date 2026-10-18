@@ -25,7 +25,9 @@ import kotlinx.coroutines.withContext
 data class HomeUi(
     val loaded: Boolean = false,
     val favorites: List<AppInfo> = emptyList(),
-    /** Toutes les apps visibles (favoris compris), par ordre alphabétique. */
+    /** Rangée « Mes apps » : seulement les apps choisies (hors favoris). */
+    val homeApps: List<AppInfo> = emptyList(),
+    /** Bibliothèque : toutes les apps visibles (et la tuile HDMI), par ordre alphabétique. */
     val allApps: List<AppInfo> = emptyList(),
     val hiddenApps: List<AppInfo> = emptyList(),
     val prefs: PrefsState = PrefsState(),
@@ -50,9 +52,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (liste == null) return@combine HomeUi(prefs = p)
         val parPaquet = liste.associateBy { it.packageName }
         val visibles = liste.filter { it.packageName !in p.hidden }
+        val favoris = p.favorites.mapNotNull { parPaquet[it] }.filter { it.packageName !in p.hidden }
         HomeUi(
             loaded = true,
-            favorites = p.favorites.mapNotNull { parPaquet[it] }.filter { it.packageName !in p.hidden },
+            favorites = favoris,
+            homeApps = p.homeApps.mapNotNull { parPaquet[it] }
+                .filter { it.packageName !in p.hidden && it !in favoris },
             allApps = visibles,
             hiddenApps = liste.filter { it.packageName in p.hidden },
             prefs = p,
@@ -91,11 +96,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Relit les apps installées (au démarrage et quand une app est installée/supprimée). */
     fun reload() {
         viewModelScope.launch {
-            val liste = withContext(Dispatchers.IO) { repo.loadApps() }
+            // Les vraies apps + la tuile « Source HDMI » propre à Projo
+            val liste = (withContext(Dispatchers.IO) { repo.loadApps() } + AppInfo.HDMI)
+                .sortedBy { it.label.lowercase() }
             apps.value = liste
             val p = prefs.state.first()
             if (!p.defaultsApplied) {
                 prefs.applyDefaultFavorites(DefaultFavorites.find(liste))
+            }
+            if (!p.homeDefaultsApplied) {
+                prefs.applyDefaultHomeApps(DefaultFavorites.findHomeApps(liste))
             }
         }
     }
@@ -107,16 +117,28 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         prefs.setFavorites(if (pkg in fav) fav - pkg else fav + pkg)
     }
 
-    /** Déplace un favori d'une case (-1 = gauche, +1 = droite). */
-    fun moveFavorite(pkg: String, delta: Int) = viewModelScope.launch {
-        // On ne déplace que parmi les favoris visibles, pour que le mouvement se voie
-        val visibles = ui.value.favorites.map { it.packageName }.toMutableList()
+    fun isOnHome(pkg: String) = pkg in ui.value.prefs.homeApps
+
+    fun toggleHome(pkg: String) = viewModelScope.launch {
+        val liste = ui.value.prefs.homeApps
+        prefs.setHomeApps(if (pkg in liste) liste - pkg else liste + pkg)
+    }
+
+    /** Déplace une app d'une case (-1 = gauche, +1 = droite) dans sa rangée. */
+    fun move(pkg: String, delta: Int) = viewModelScope.launch {
+        val u = ui.value
+        val dansFavoris = u.favorites.any { it.packageName == pkg }
+        // On ne déplace que parmi les cartes visibles, pour que le mouvement se voie
+        val visibles = (if (dansFavoris) u.favorites else u.homeApps).map { it.packageName }.toMutableList()
         val i = visibles.indexOf(pkg)
         val j = i + delta
         if (i < 0 || j !in visibles.indices) return@launch
         visibles[i] = visibles[j].also { visibles[j] = visibles[i] }
-        val autres = ui.value.prefs.favorites.filter { it !in visibles }
-        prefs.setFavorites(visibles + autres)
+        if (dansFavoris) {
+            prefs.setFavorites(visibles + u.prefs.favorites.filter { it !in visibles })
+        } else {
+            prefs.setHomeApps(visibles + u.prefs.homeApps.filter { it !in visibles })
+        }
     }
 
     fun hide(pkg: String) = viewModelScope.launch {

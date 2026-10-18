@@ -109,7 +109,13 @@ fun AppCard(
                 contentAlignment = Alignment.Center,
             ) {
                 val icone = visual?.icon
-                if (icone != null) {
+                if (app.isSpecial) {
+                    // Tuile « Source HDMI » : icône vectorielle de Projo
+                    androidx.tv.material3.Icon(
+                        ProjoIcons.Sources, contentDescription = app.label, tint = Color.White,
+                        modifier = Modifier.size(height * 0.42f),
+                    )
+                } else if (icone != null) {
                     Image(
                         bitmap = icone,
                         contentDescription = app.label,

@@ -42,7 +42,7 @@ import fr.projo.launcher.data.IconLoader
 class HomeActions(
     val launch: (AppInfo) -> Unit,
     val openMenu: (AppInfo) -> Unit,
-    val openHidden: () -> Unit,
+    val openLibrary: () -> Unit,
     val sources: () -> Unit,
     val sourcesLong: () -> Unit,
     val wifi: () -> Unit,
@@ -56,7 +56,8 @@ class HomeActions(
  *  - fond sombre + lueur de la couleur de l'app sélectionnée ;
  *  - en haut : salutation, horloge, date (gauche) et pastilles (droite) ;
  *  - nom de l'app sélectionnée, rangée « Favoris » (grandes cartes) ;
- *  - rangée « Toutes les apps » (petites cartes) qui dépasse en bas de l'écran.
+ *  - rangée « Mes apps » (petites cartes, apps choisies) qui dépasse en bas de l'écran,
+ *    terminée par la carte « Toutes les apps » qui ouvre la bibliothèque.
  * Tout se pilote au D-pad : la colonne défile toute seule vers l'élément qui a le focus.
  */
 @Composable
@@ -157,9 +158,9 @@ fun HomeScreen(
                 }
             }
 
-            // --- Rangée « Toutes les apps » (dépasse en bas pour inviter à descendre)
+            // --- Rangée « Mes apps » : seulement les apps choisies (dépasse en bas de l'écran)
             Text(
-                "TOUTES LES APPS",
+                "MES APPS",
                 color = Color.White.copy(alpha = 0.55f),
                 fontSize = 11.us, letterSpacing = 3.us, fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 48.u, top = 4.u),
@@ -169,23 +170,23 @@ fun HomeScreen(
                 contentPadding = PaddingValues(horizontal = 48.u, vertical = 12.u),
                 horizontalArrangement = Arrangement.spacedBy(16.u),
             ) {
-                itemsIndexed(ui.allApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
+                itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
                     AppCard(
-                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName), width = 150.u, height = 84.u, showLabel = true,
+                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
+                        width = 150.u, height = 84.u, showLabel = true,
                         onFocused = surFocus,
                         onClick = { actions.launch(app) },
                         onMenu = { actions.openMenu(app) },
                     )
                 }
-                if (ui.hiddenApps.isNotEmpty()) {
-                    item(key = "masquees") {
-                        TextCard(
-                            text = "Apps masquées (${ui.hiddenApps.size})",
-                            width = 150.u, height = 84.u,
-                            onClick = actions.openHidden,
-                            onFocused = { selection = null },
-                        )
-                    }
+                // Bibliothèque : toutes les apps installées (comme sur Apple TV)
+                item(key = "bibliotheque") {
+                    TextCard(
+                        text = "Toutes les apps\n(${ui.allApps.size})",
+                        width = 150.u, height = 84.u,
+                        onClick = actions.openLibrary,
+                        onFocused = { selection = null },
+                    )
                 }
             }
             Spacer(Modifier.height(40.u))

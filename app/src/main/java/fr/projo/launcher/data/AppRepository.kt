@@ -13,7 +13,15 @@ data class AppInfo(
     val label: String,
     /** true si l'app déclare une version TV (catégorie LEANBACK_LAUNCHER). */
     val isTvApp: Boolean,
-)
+) {
+    /** Tuile propre à Projo (ex. « Source HDMI »), pas une vraie app. */
+    val isSpecial: Boolean get() = packageName.startsWith("projo:")
+
+    companion object {
+        const val HDMI_ID = "projo:hdmi"
+        val HDMI = AppInfo(HDMI_ID, "Source HDMI", isTvApp = true)
+    }
+}
 
 /** Une activité candidate pour « Sources » (app ou écran d'une app). */
 data class SourceCandidate(val label: String, val component: ComponentName)
@@ -104,6 +112,7 @@ class AppRepository(private val context: Context) {
         val res = mutableListOf<SourceCandidate>()
 
         for (app in apps) {
+            if (app.isSpecial) continue
             if (pertinent(app.label) || pertinent(app.packageName)) {
                 val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName)
                     ?: pm.getLaunchIntentForPackage(app.packageName)
@@ -111,7 +120,7 @@ class AppRepository(private val context: Context) {
             }
         }
         // Écrans exportés des autres écrans d'accueil (ex. COOLiD) et des apps système
-        val paquets = (homeCandidates() + apps.map { it.packageName }).distinct()
+        val paquets = (homeCandidates() + apps.filterNot { it.isSpecial }.map { it.packageName }).distinct()
             .filter { it != context.packageName && it != "android" }
         for (pkg in paquets) {
             val activites = try {
