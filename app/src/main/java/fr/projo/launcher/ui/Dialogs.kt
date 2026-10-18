@@ -115,7 +115,7 @@ fun SourcesDialog(
     val actions = buildList {
         add(MenuAction(coche(null) + "Automatique (recommandé)") { onChoose(null) })
         candidates.forEach { c ->
-            val id = c.component.flattenToString()
+            val id = c.id
             add(MenuAction(coche(id) + "★ " + c.label) { onChoose(id) })
         }
         // N'importe quelle app peut aussi servir (ex. app HDMI du fabricant mal nommée)

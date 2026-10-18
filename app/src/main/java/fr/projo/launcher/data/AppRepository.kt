@@ -23,8 +23,18 @@ data class AppInfo(
     }
 }
 
-/** Une activité candidate pour « Sources » (app ou écran d'une app). */
-data class SourceCandidate(val label: String, val component: ComponentName)
+/**
+ * Ce que peut ouvrir la tuile « Source HDMI » : un écran d'app (component) ou une entrée
+ * du système TV d'Android (tvInputId, ex. HDMI 2).
+ */
+data class SourceCandidate(
+    val label: String,
+    val component: ComponentName? = null,
+    val tvInputId: String? = null,
+) {
+    /** Identifiant mémorisé : « tv:<entrée> » ou « paquet/classe ». */
+    val id: String get() = tvInputId?.let { "tv:$it" } ?: component?.flattenToString().orEmpty()
+}
 
 /** Lit la liste des apps installées via le PackageManager. */
 class AppRepository(private val context: Context) {
@@ -118,19 +128,38 @@ class AppRepository(private val context: Context) {
         val pertinent = { texte: String -> motCle.containsMatchIn(texte) && !exclus.containsMatchIn(texte) }
         val res = mutableListOf<SourceCandidate>()
 
+        // Entrées déclarées au système TV d'Android (HDMI 1, HDMI 2…) : ouvertes directement
+        try {
+            val tim = context.getSystemService(Context.TV_INPUT_SERVICE) as? android.media.tv.TvInputManager
+            tim?.tvInputList?.forEach { entree ->
+                val nom = entree.loadLabel(context)?.toString()?.ifBlank { null } ?: entree.id
+                val type = when (entree.type) {
+                    android.media.tv.TvInputInfo.TYPE_HDMI -> "HDMI"
+                    android.media.tv.TvInputInfo.TYPE_COMPONENT -> "Composante"
+                    android.media.tv.TvInputInfo.TYPE_COMPOSITE -> "AV"
+                    android.media.tv.TvInputInfo.TYPE_VGA -> "VGA"
+                    android.media.tv.TvInputInfo.TYPE_TUNER -> "TNT"
+                    else -> "Entrée"
+                }
+                res += SourceCandidate("Entrée TV · $nom ($type)", tvInputId = entree.id)
+            }
+        } catch (e: Exception) {
+            Log.i(TAG, "Pas de système d'entrées TV : ${e.message}")
+        }
+
         for (app in apps) {
             if (app.isSpecial) continue
             if (pertinent(app.label) || pertinent(app.packageName)) {
                 val intent = pm.getLaunchIntentForPackage(app.packageName)
                     ?: pm.getLeanbackLaunchIntentForPackage(app.packageName)
-                intent?.component?.let { res += SourceCandidate(app.label, it) }
+                intent?.component?.let { res += SourceCandidate(app.label, component = it) }
             }
         }
         // Écrans exportés de TOUTES les apps installées, y compris les apps système cachées
         // (sur ces projecteurs, l'écran HDMI est souvent une app système sans icône).
         // On regarde le nom de l'app ET le nom de chaque écran.
         val motCleSysteme = Regex(
-            "hdmi|source|signal|tvinput|passthrough|tvd|tvcenter|tvplayer|livetv|inputsource|avin|avinput|externalinput",
+            "hdmi|source|signal|tvinput|passthrough|tvd|tvcenter|tvplayer|livetv|inputsource|avin|avinput|externalinput|awsource",
             RegexOption.IGNORE_CASE,
         )
         val pertinentSysteme = { t: String -> motCleSysteme.containsMatchIn(t) && !exclus.containsMatchIn(t) }
@@ -155,13 +184,13 @@ class AppRepository(private val context: Context) {
                 val court = a.name.substringAfterLast('.')
                 if (paquetPertinent || pertinentSysteme(court)) {
                     val cn = ComponentName(a.packageName, a.name)
-                    if (res.none { it.component == cn }) res += SourceCandidate("$appLabel · $court", cn)
+                    if (res.none { it.component == cn }) res += SourceCandidate("$appLabel · $court", component = cn)
                 }
             }
         }
         // Ce qui contient « hdmi » passe en premier, puis « source » / « signal »
         res.sortBy {
-            val t = it.label + " " + it.component.flattenToString()
+            val t = it.label + " " + it.id
             when {
                 t.contains("hdmi", true) -> 0
                 t.contains("source", true) || t.contains("signal", true) -> 1
@@ -169,7 +198,7 @@ class AppRepository(private val context: Context) {
             }
         }
         Log.i(TAG, "Candidats « Sources » : ${res.size}")
-        res.forEach { Log.i(TAG, "  ${it.label} → ${it.component.flattenToShortString()}") }
+        res.forEach { Log.i(TAG, "  ${it.label} → ${it.id}") }
         return res
     }
 

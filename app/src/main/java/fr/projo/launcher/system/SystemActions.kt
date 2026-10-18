@@ -30,6 +30,18 @@ class SystemActions(private val context: Context, private val repo: AppRepositor
 
     fun openSettings() = ouvrirPremier(Intent(Settings.ACTION_SETTINGS))
 
+    fun openLanguage() = ouvrirPremier(Intent(Settings.ACTION_LOCALE_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+
+    fun openDate() = ouvrirPremier(Intent(Settings.ACTION_DATE_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+
+    fun openSound() = ouvrirPremier(Intent(Settings.ACTION_SOUND_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+
+    fun openStorage() = ouvrirPremier(
+        Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
+        Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS),
+        Intent(Settings.ACTION_SETTINGS),
+    )
+
     fun openHomeSettings() = ouvrirPremier(
         Intent(Settings.ACTION_HOME_SETTINGS),
         Intent(Settings.ACTION_SETTINGS),
@@ -51,7 +63,9 @@ class SystemActions(private val context: Context, private val repo: AppRepositor
      */
     fun openSources(choisi: String?, candidats: List<SourceCandidate>) {
         if (choisi != null) {
-            if (choisi.startsWith("app:")) {
+            if (choisi.startsWith("tv:")) {
+                if (ouvrirEntreeTv(choisi.removePrefix("tv:"))) return
+            } else if (choisi.startsWith("app:")) {
                 if (repo.launch(choisi.removePrefix("app:"))) return
             } else {
                 val cn = ComponentName.unflattenFromString(choisi)
@@ -60,7 +74,10 @@ class SystemActions(private val context: Context, private val repo: AppRepositor
         }
         if (ouvrirEntreeHdmiTv()) return
         for (c in candidats) {
-            if (repo.start(Intent(Intent.ACTION_MAIN).setComponent(c.component))) return
+            val ok = c.tvInputId?.let { ouvrirEntreeTv(it) }
+                ?: c.component?.let { repo.start(Intent(Intent.ACTION_MAIN).setComponent(it)) }
+                ?: false
+            if (ok) return
         }
         Toast.makeText(
             context,
@@ -68,6 +85,12 @@ class SystemActions(private val context: Context, private val repo: AppRepositor
             Toast.LENGTH_LONG,
         ).show()
         openSettings()
+    }
+
+    /** Ouvre une entrée précise du système TV d'Android (ex. HDMI 2). */
+    private fun ouvrirEntreeTv(inputId: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(inputId))
+        return intent.resolveActivity(pm) != null && repo.start(intent)
     }
 
     private fun ouvrirEntreeHdmiTv(): Boolean {

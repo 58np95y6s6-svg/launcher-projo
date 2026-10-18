@@ -43,10 +43,14 @@ fun TopPills(
     onBluetooth: () -> Unit,
     onSettings: () -> Unit,
     onSettingsLong: () -> Unit,
+    /** Une nouvelle version de Projo est disponible : pastille mise en avant. */
+    majDisponible: Boolean = false,
+    onMaj: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.u), verticalAlignment = Alignment.CenterVertically) {
         val h = 38
+        if (majDisponible) PillMaj(h, onMaj)
         Pill(ProjoIcons.Sources, "Sources", h, onSources, onSourcesLong)
         Pill(ProjoIcons.Wifi, wifiLabel, h, onWifi)
         Pill(ProjoIcons.Bluetooth, "Bluetooth", h, onBluetooth)
@@ -90,6 +94,31 @@ private fun Pill(icon: ImageVector, label: String, hauteur: Int, onClick: () -> 
                     modifier = Modifier.padding(start = 8.u, end = 2.u),
                 )
             }
+        }
+    }
+}
+
+/** Pastille « Mise à jour » : bleue, libellé toujours visible. */
+@Composable
+private fun PillMaj(hauteur: Int, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.height(hauteur.u),
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color(0xFF5AB0FF).copy(alpha = 0.28f),
+            contentColor = Color.White,
+            focusedContainerColor = Color(0xFF5AB0FF),
+            focusedContentColor = Color(0xFF04172B),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.u).height(hauteur.u),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(ProjoIcons.MiseAJour, contentDescription = null, modifier = Modifier.size(16.u))
+            Text("Mise à jour", fontSize = 13.us, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 7.u))
         }
     }
 }

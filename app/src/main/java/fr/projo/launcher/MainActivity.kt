@@ -36,6 +36,8 @@ import fr.projo.launcher.ui.LibraryScreen
 import fr.projo.launcher.ui.LocalScale
 import fr.projo.launcher.ui.MenuAction
 import fr.projo.launcher.ui.MenuDialog
+import fr.projo.launcher.ui.SettingsActions
+import fr.projo.launcher.ui.SettingsPanel
 import fr.projo.launcher.ui.SourcesDialog
 import kotlinx.coroutines.delay
 
@@ -90,8 +92,21 @@ class MainActivity : ComponentActivity() {
         var montrerDiagnostic by remember { mutableStateOf(false) }
         var logoApp by remember { mutableStateOf<AppInfo?>(null) }
         var montrerBibliotheque by remember { mutableStateOf(false) }
+        var montrerReglages by remember { mutableStateOf(false) }
+        val maj by vm.maj.collectAsStateWithLifecycle()
+        val etatAppareil by vm.snapshot.collectAsStateWithLifecycle()
+
+        // Mise à jour : vérifiée au retour sur l'accueil (au plus toutes les 6 h)
+        val cycleMaj = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(cycleMaj) {
+            cycleMaj.repeatOnLifecycle(Lifecycle.State.RESUMED) { vm.checkUpdate() }
+        }
+        // Panneau Réglages ouvert : état de l'appareil rafraîchi toutes les 3 s
+        LaunchedEffect(montrerReglages) {
+            while (montrerReglages) { vm.refreshDevice(); delay(3_000) }
+        }
         // Bouton Maison : ferme la bibliothèque et revient à l'accueil
-        LaunchedEffect(homePresses) { montrerBibliotheque = false }
+        LaunchedEffect(homePresses) { montrerBibliotheque = false; montrerReglages = false }
 
         // Ouvre une app, ou la source HDMI pour la tuile spéciale
         val lancer: (AppInfo) -> Unit = { app ->
@@ -131,13 +146,42 @@ class MainActivity : ComponentActivity() {
                 sourcesLong = { vm.loadSourceCandidates(); montrerSources = true },
                 wifi = { vm.actions.openWifi() },
                 bluetooth = { vm.actions.openBluetooth() },
-                settings = { vm.actions.openSettings() },
-                settingsLong = { montrerDiagnostic = true },
+                settings = { vm.refreshDevice(); montrerReglages = true },
+                settingsLong = { vm.actions.openSettings() },
+                update = { vm.installUpdate(); vm.refreshDevice(); montrerReglages = true },
             ),
             nbaData = nbaDonnees,
             nbaErreur = nbaErreur,
             nbaRepo = vm.nba,
+            majDisponible = maj.info?.available == true,
         )
+
+        if (montrerReglages) {
+            SettingsPanel(
+                snapshot = etatAppareil,
+                maj = maj,
+                version = vm.updates.versionAffichee,
+                hiddenCount = ui.hiddenApps.size,
+                isDefaultHome = vm.repo.currentHomePackage() == packageName,
+                actions = SettingsActions(
+                    volume = { vm.changeVolume(it) },
+                    mute = { vm.toggleMute() },
+                    wifi = { vm.actions.openWifi() },
+                    bluetooth = { vm.actions.openBluetooth() },
+                    storage = { vm.actions.openStorage() },
+                    update = { vm.installUpdate() },
+                    checkUpdate = { vm.checkUpdate(force = true) },
+                    hiddenApps = { montrerMasquees = true },
+                    sources = { vm.loadSourceCandidates(); montrerSources = true },
+                    homeApp = { montrerDiagnostic = true },
+                    language = { vm.actions.openLanguage() },
+                    date = { vm.actions.openDate() },
+                    sound = { vm.actions.openSound() },
+                    allSettings = { vm.actions.openSettings() },
+                    close = { montrerReglages = false },
+                ),
+            )
+        }
 
         if (montrerBibliotheque) {
             LibraryScreen(

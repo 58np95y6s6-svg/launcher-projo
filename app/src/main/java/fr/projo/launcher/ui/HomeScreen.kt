@@ -51,6 +51,7 @@ class HomeActions(
     val bluetooth: () -> Unit,
     val settings: () -> Unit,
     val settingsLong: () -> Unit,
+    val update: () -> Unit,
 )
 
 /**
@@ -73,6 +74,7 @@ fun HomeScreen(
     nbaData: NbaData?,
     nbaErreur: Boolean,
     nbaRepo: NbaRepository,
+    majDisponible: Boolean = false,
 ) {
     var selection by remember { mutableStateOf<AppInfo?>(null) }
     var couleur by remember { mutableStateOf(IconLoader.COULEUR_PAR_DEFAUT) }
@@ -98,7 +100,7 @@ fun HomeScreen(
 
         Column(Modifier.fillMaxSize()) {
             // --- En-tête fixe : horloge à gauche, pastilles à droite
-            EnTete(wifiLabel, actions)
+            EnTete(wifiLabel, actions, majDisponible)
 
             Column(
                 Modifier
@@ -195,13 +197,14 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 90.u, end = 52.u),
+            onExit = { runCatching { premierFocus.requestFocus() } },
         )
     }
 }
 
 /** En-tête : salutation, grande horloge et date à gauche ; pastilles à droite. */
 @Composable
-private fun EnTete(wifiLabel: String, actions: HomeActions) {
+private fun EnTete(wifiLabel: String, actions: HomeActions, majDisponible: Boolean) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -218,6 +221,8 @@ private fun EnTete(wifiLabel: String, actions: HomeActions) {
             onBluetooth = actions.bluetooth,
             onSettings = actions.settings,
             onSettingsLong = actions.settingsLong,
+            majDisponible = majDisponible,
+            onMaj = actions.update,
             modifier = Modifier.padding(top = 6.u),
         )
     }
