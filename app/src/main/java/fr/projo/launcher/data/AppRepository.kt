@@ -126,32 +126,48 @@ class AppRepository(private val context: Context) {
                 intent?.component?.let { res += SourceCandidate(app.label, it) }
             }
         }
-        // Écrans exportés des autres écrans d'accueil (ex. COOLiD) et des apps système
-        val paquets = (homeCandidates() + apps.filterNot { it.isSpecial }.map { it.packageName }).distinct()
-            .filter { it != context.packageName && it != "android" }
+        // Écrans exportés de TOUTES les apps installées, y compris les apps système cachées
+        // (sur ces projecteurs, l'écran HDMI est souvent une app système sans icône).
+        // On regarde le nom de l'app ET le nom de chaque écran.
+        val motCleSysteme = Regex(
+            "hdmi|source|signal|tvinput|passthrough|tvd|tvcenter|tvplayer|livetv|inputsource|avin|avinput|externalinput",
+            RegexOption.IGNORE_CASE,
+        )
+        val pertinentSysteme = { t: String -> motCleSysteme.containsMatchIn(t) && !exclus.containsMatchIn(t) }
+        val paquets = try {
+            pm.getInstalledApplications(0).map { it.packageName }
+        } catch (e: Exception) {
+            homeCandidates()
+        }.filter { it != context.packageName && it != "android" }
         for (pkg in paquets) {
+            val paquetPertinent = pertinentSysteme(pkg)
             val activites = try {
                 @Suppress("DEPRECATION")
                 pm.getPackageInfo(pkg, PackageManager.GET_ACTIVITIES).activities.orEmpty()
             } catch (e: Exception) {
                 emptyArray()
             }
+            val appLabel by lazy {
+                try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (e: Exception) { pkg }
+            }
             for (a in activites) {
-                if (!a.exported) continue
+                if (!a.exported || !a.enabled) continue
                 val court = a.name.substringAfterLast('.')
-                if (pertinent(court)) {
+                if (paquetPertinent || pertinentSysteme(court)) {
                     val cn = ComponentName(a.packageName, a.name)
-                    if (res.none { it.component == cn }) {
-                        val appLabel = try {
-                            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-                        } catch (e: Exception) { pkg }
-                        res += SourceCandidate("$appLabel · $court", cn)
-                    }
+                    if (res.none { it.component == cn }) res += SourceCandidate("$appLabel · $court", cn)
                 }
             }
         }
-        // Ce qui contient « hdmi » passe en premier
-        res.sortBy { if (it.label.contains("hdmi", true) || it.component.className.contains("hdmi", true)) 0 else 1 }
+        // Ce qui contient « hdmi » passe en premier, puis « source » / « signal »
+        res.sortBy {
+            val t = it.label + " " + it.component.flattenToString()
+            when {
+                t.contains("hdmi", true) -> 0
+                t.contains("source", true) || t.contains("signal", true) -> 1
+                else -> 2
+            }
+        }
         Log.i(TAG, "Candidats « Sources » : ${res.size}")
         res.forEach { Log.i(TAG, "  ${it.label} → ${it.component.flattenToShortString()}") }
         return res
