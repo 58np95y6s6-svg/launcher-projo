@@ -36,13 +36,12 @@ fun Modifier.fadingEdges(state: LazyListState, largeur: Dp): Modifier = composed
             val l = largeur.toPx()
             if (size.width <= 2 * l) return@drawWithContent
             val g = l / size.width
+            // Courbe douce (ease) : le fondu se remarque sans couper la carte d'un coup
+            val stops = listOf(0f to 0f, 0.3f to 0.18f, 0.6f to 0.55f, 0.85f to 0.88f, 1f to 1f)
+            val gaucheStops = stops.map { (x, a) -> x * g to Color.Black.copy(alpha = 1f - gauche * (1f - a)) }
+            val droiteStops = stops.reversed().map { (x, a) -> 1f - x * g to Color.Black.copy(alpha = a) }
             drawRect(
-                brush = Brush.horizontalGradient(
-                    0f to Color.Black.copy(alpha = 1f - gauche),
-                    g to Color.Black,
-                    1f - g to Color.Black,
-                    1f to Color.Transparent,
-                ),
+                brush = Brush.horizontalGradient(*(gaucheStops + droiteStops).toTypedArray()),
                 blendMode = BlendMode.DstIn,
             )
         }
