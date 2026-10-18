@@ -35,7 +35,7 @@ object AppCategories {
         ),
         Rubrique.JEUX to Regex("game|jeux|jeu |gaming|xbox|steam|geforce|retroarch|emulat"),
         Rubrique.STORE to Regex(
-            "vending|play store|aptoide|downloader|aurora|appstore|app store|apkpure|fdroid|f-droid|apkmirror|" +
+            "vending|play store|aptoide|aurora|appstore|app store|apkpure|fdroid|f-droid|apkmirror|" +
                 "market|galaxystore|uptodown",
         ),
         Rubrique.OUTILS to Regex(
@@ -44,7 +44,7 @@ object AppCategories {
                 "photo|gallery|galerie|image|calcul|calendar|clock|horloge|weather|météo",
         ),
         Rubrique.SYSTEME to Regex(
-            "settings|réglages|reglages|paramètres|parametres|setup|update|\\bota\\b|system|système|launcher|" +
+            "settings|downloader|réglages|reglages|paramètres|parametres|setup|update|\\bota\\b|system|système|launcher|" +
                 "diagnostic|factory|bluetooth|wifi|keystone|focus|projector|projecteur",
         ),
     )
