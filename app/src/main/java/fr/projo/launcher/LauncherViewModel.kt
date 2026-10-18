@@ -29,7 +29,11 @@ data class HomeUi(
     val allApps: List<AppInfo> = emptyList(),
     val hiddenApps: List<AppInfo> = emptyList(),
     val prefs: PrefsState = PrefsState(),
-)
+    /** Paquet dont on affiche le logo, pour les apps dont le logo est remplacé. */
+    val iconSources: Map<String, String> = emptyMap(),
+) {
+    fun iconSourceOf(pkg: String): String = iconSources[pkg] ?: pkg
+}
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -52,11 +56,36 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             allApps = visibles,
             hiddenApps = liste.filter { it.packageName in p.hidden },
             prefs = p,
+            iconSources = logosRemplaces(liste, p),
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUi())
 
     init {
         reload()
+    }
+
+    /**
+     * Logos remplacés : choix de l'utilisateur, plus une règle automatique :
+     * SmartTube prend le logo de l'app YouTube si elle est installée.
+     */
+    private fun logosRemplaces(liste: List<AppInfo>, p: PrefsState): Map<String, String> {
+        val res = mutableMapOf<String, String>()
+        val youtube = liste.firstOrNull { DefaultFavorites.normaliser(it.label) == "youtube" }
+        if (youtube != null) {
+            liste.filter { DefaultFavorites.normaliser(it.label).startsWith("smarttube") }
+                .forEach { res[it.packageName] = youtube.packageName }
+        }
+        val installes = liste.map { it.packageName }.toSet()
+        p.iconOverrides.forEach { (pkg, source) ->
+            if (source == pkg) res.remove(pkg) // « logo d'origine » choisi explicitement
+            else if (source in installes) res[pkg] = source
+        }
+        return res
+    }
+
+    /** source = paquet dont on veut le logo ; source = pkg lui-même = logo d'origine. */
+    fun setIconOverride(pkg: String, source: String) = viewModelScope.launch {
+        prefs.setIconOverride(pkg, source)
     }
 
     /** Relit les apps installées (au démarrage et quand une app est installée/supprimée). */

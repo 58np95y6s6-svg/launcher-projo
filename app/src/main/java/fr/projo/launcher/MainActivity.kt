@@ -30,6 +30,7 @@ import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.AppMenuDialog
 import fr.projo.launcher.ui.DiagnosticDialog
 import fr.projo.launcher.ui.HiddenAppsDialog
+import fr.projo.launcher.ui.IconChoiceDialog
 import fr.projo.launcher.ui.HomeActions
 import fr.projo.launcher.ui.HomeScreen
 import fr.projo.launcher.ui.LocalScale
@@ -85,6 +86,7 @@ class MainActivity : ComponentActivity() {
         var montrerMasquees by remember { mutableStateOf(false) }
         var montrerSources by remember { mutableStateOf(false) }
         var montrerDiagnostic by remember { mutableStateOf(false) }
+        var logoApp by remember { mutableStateOf<AppInfo?>(null) }
 
         // Nom du Wi-Fi : relu au retour sur l'accueil puis toutes les 30 s
         var wifi by remember { mutableStateOf("Wi-Fi") }
@@ -129,7 +131,16 @@ class MainActivity : ComponentActivity() {
                 onMove = { vm.moveFavorite(app.packageName, it) },
                 onHide = { vm.hide(app.packageName); toast("${app.label} masquée") },
                 onInfo = { vm.actions.openAppInfo(app.packageName) },
+                onChangeIcon = { logoApp = app },
                 onDismiss = { menuApp = null },
+            )
+        }
+        logoApp?.let { app ->
+            IconChoiceDialog(
+                app = app,
+                allApps = ui.allApps,
+                onChoose = { vm.setIconOverride(app.packageName, it) },
+                onDismiss = { logoApp = null },
             )
         }
         if (montrerMasquees) {

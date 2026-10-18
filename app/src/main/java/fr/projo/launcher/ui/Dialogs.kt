@@ -80,12 +80,14 @@ fun AppMenuDialog(
     onMove: (Int) -> Unit,
     onHide: () -> Unit,
     onInfo: () -> Unit,
+    onChangeIcon: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val actions = buildList {
         add(MenuAction(if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris", onToggleFavorite))
         if (isFavorite && favoriteIndex > 0) add(MenuAction("Déplacer à gauche") { onMove(-1) })
         if (isFavorite && favoriteIndex in 0 until favoriteCount - 1) add(MenuAction("Déplacer à droite") { onMove(1) })
+        add(MenuAction("Changer le logo…", onChangeIcon))
         add(MenuAction("Masquer l'app", onHide))
         add(MenuAction("Infos de l'app", onInfo))
         add(MenuAction("Annuler") {})
@@ -155,6 +157,24 @@ fun DiagnosticDialog(
             MenuAction("Choisir l'écran d'accueil", onChooseHome),
             MenuAction("Fermer") {},
         ),
+        onDismiss = onDismiss,
+    )
+}
+
+/** Choix du logo affiché pour une app : celui d'une autre app installée, ou l'original. */
+@Composable
+fun IconChoiceDialog(
+    app: AppInfo,
+    allApps: List<AppInfo>,
+    onChoose: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    MenuDialog(
+        title = "Logo de ${app.label}",
+        subtitle = "Choisis l'app dont le logo sera affiché",
+        actions = listOf(MenuAction("Logo d'origine") { onChoose(app.packageName) }) +
+            allApps.filter { it.packageName != app.packageName }
+                .map { autre -> MenuAction(autre.label) { onChoose(autre.packageName) } },
         onDismiss = onDismiss,
     )
 }

@@ -148,7 +148,7 @@ fun HomeScreen(
                 }
                 itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
                     AppCard(
-                        app = app, icons = icons, width = 220.u, height = 124.u, showLabel = false,
+                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName), width = 220.u, height = 124.u, showLabel = false,
                         onFocused = surFocus,
                         onClick = { actions.launch(app) },
                         onMenu = { actions.openMenu(app) },
@@ -171,7 +171,7 @@ fun HomeScreen(
             ) {
                 itemsIndexed(ui.allApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
                     AppCard(
-                        app = app, icons = icons, width = 150.u, height = 84.u, showLabel = true,
+                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName), width = 150.u, height = 84.u, showLabel = true,
                         onFocused = surFocus,
                         onClick = { actions.launch(app) },
                         onMenu = { actions.openMenu(app) },

@@ -58,6 +58,8 @@ fun rememberAppVisual(packageName: String, icons: IconLoader): AppVisual? {
 fun AppCard(
     app: AppInfo,
     icons: IconLoader,
+    /** Paquet dont on affiche le logo (le même que l'app, sauf logo remplacé). */
+    iconPackage: String,
     width: Dp,
     height: Dp,
     showLabel: Boolean,
@@ -66,7 +68,7 @@ fun AppCard(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visual = rememberAppVisual(app.packageName, icons)
+    val visual = rememberAppVisual(iconPackage, icons)
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val forme = RoundedCornerShape(14.u)
 
