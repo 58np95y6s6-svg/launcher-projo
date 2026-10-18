@@ -1,6 +1,10 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,7 +23,7 @@ import java.util.Locale
 
 /** Salutation + grande horloge + date, mises à jour chaque minute pile. */
 @Composable
-fun ClockHeader(modifier: Modifier = Modifier) {
+fun ClockHeader(modifier: Modifier = Modifier, compact: Boolean = false) {
     var maintenant by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -36,18 +40,31 @@ fun ClockHeader(modifier: Modifier = Modifier) {
         else -> "BONSOIR"
     }
     val fr = Locale.FRENCH
+    val heureTexte = SimpleDateFormat("HH:mm", fr).format(date)
+    val dateTexte = SimpleDateFormat("EEEE d MMMM", fr).format(date).uppercase(fr)
+    if (compact) {
+        // Barre fine : heure et date sur une seule ligne
+        Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+            Text(heureTexte, color = Color.White, fontSize = 26.us, fontWeight = FontWeight.Light)
+            Spacer(Modifier.width(14.u))
+            Text(
+                dateTexte, color = Color.White.copy(alpha = 0.7f),
+                fontSize = 11.us, letterSpacing = 2.us, fontWeight = FontWeight.Medium,
+            )
+        }
+        return
+    }
     Column(modifier) {
         Text(
             salutation, color = Color.White.copy(alpha = 0.7f),
             fontSize = 12.us, letterSpacing = 4.us, fontWeight = FontWeight.Medium,
         )
         Text(
-            SimpleDateFormat("HH:mm", fr).format(date), color = Color.White,
+            heureTexte, color = Color.White,
             fontSize = 72.us, fontWeight = FontWeight.Thin, letterSpacing = (-1).us,
         )
         Text(
-            SimpleDateFormat("EEEE d MMMM", fr).format(date).uppercase(fr),
-            color = Color.White.copy(alpha = 0.75f),
+            dateTexte, color = Color.White.copy(alpha = 0.75f),
             fontSize = 13.us, letterSpacing = 3.us, fontWeight = FontWeight.Medium,
         )
     }

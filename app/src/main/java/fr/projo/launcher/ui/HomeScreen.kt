@@ -1,6 +1,11 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -83,6 +88,10 @@ fun HomeScreen(
     val rangeeApps = rememberLazyListState()
     val premierFocus = remember { FocusRequester() }
 
+    // En-tête compact (barre fine) dès que le focus est dans la rangée « Mes apps »
+    var compact by remember { mutableStateOf(false) }
+    val ecart by animateDpAsState(if (compact) 6.u else 64.u, tween(320), label = "ecart")
+
     // Focus initial (et retour en haut à chaque appui sur Maison)
     LaunchedEffect(ui.loaded, ui.prefs.defaultsApplied, homePressCount) {
         if (!ui.loaded) return@LaunchedEffect
@@ -95,119 +104,138 @@ fun HomeScreen(
     Box(Modifier.fillMaxSize()) {
         GlowBackground(couleur)
 
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(defilement)
-        ) {
-          // En-tête + nom de l'app, avec le bandeau NBA posé en haut à droite sous les pastilles
-          Box(Modifier.fillMaxWidth()) {
-           Column {
-            // --- En-tête : horloge à gauche, pastilles à droite
-            Row(
+        Column(Modifier.fillMaxSize()) {
+            // --- En-tête fixe : grand (horloge + pastilles) ou barre fine compacte
+            EnTete(compact, wifiLabel, actions, nbaData)
+
+            Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 56.u, end = 52.u, top = 40.u),
-                verticalAlignment = Alignment.Top,
+                    .weight(1f)
+                    .verticalScroll(defilement)
             ) {
-                ClockHeader()
-                Spacer(Modifier.weight(1f))
-                TopPills(
-                    wifiLabel = wifiLabel,
-                    onSources = actions.sources,
-                    onSourcesLong = actions.sourcesLong,
-                    onWifi = actions.wifi,
-                    onBluetooth = actions.bluetooth,
-                    onSettings = actions.settings,
-                    onSettingsLong = actions.settingsLong,
-                    modifier = Modifier.padding(top = 6.u),
-                )
-            }
+                Spacer(Modifier.height(ecart))
 
-            Spacer(Modifier.height(64.u))
+                // --- Nom de l'app sélectionnée, en grand (fondu enchaîné)
+                AnimatedContent(
+                    targetState = selection?.label.orEmpty(),
+                    transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                    label = "nom",
+                    modifier = Modifier.padding(start = 56.u),
+                ) { nom ->
+                    Text(
+                        nom, color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Light,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
 
-            // --- Nom de l'app sélectionnée, en grand (fondu enchaîné)
-            AnimatedContent(
-                targetState = selection?.label.orEmpty(),
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
-                label = "nom",
-                modifier = Modifier.padding(start = 56.u),
-            ) { nom ->
-                Text(
-                    nom, color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Light,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-            }
-           }
-            NbaPanel(
-                data = nbaData,
-                erreur = nbaErreur,
-                repo = nbaRepo,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 94.u, end = 52.u),
-            )
-          }
-
-            // --- Rangée « Favoris »
-            LazyRow(
-                state = rangeeFavoris,
-                contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
-                horizontalArrangement = Arrangement.spacedBy(26.u),
-            ) {
-                if (ui.loaded && ui.favorites.isEmpty()) {
-                    item(key = "aide") {
-                        TextCard(
-                            text = "Aucun favori.\nMaintiens OK sur une app pour l'ajouter.",
-                            width = 240.u, height = 135.u,
-                            onClick = {},
-                            modifier = Modifier.focusRequester(premierFocus),
+                // --- Rangée « Favoris »
+                LazyRow(
+                    state = rangeeFavoris,
+                    contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
+                    horizontalArrangement = Arrangement.spacedBy(26.u),
+                ) {
+                    if (ui.loaded && ui.favorites.isEmpty()) {
+                        item(key = "aide") {
+                            TextCard(
+                                text = "Aucun favori.\nMaintiens OK sur une app pour l'ajouter.",
+                                width = 240.u, height = 135.u,
+                                onClick = {},
+                                modifier = Modifier.focusRequester(premierFocus),
+                            )
+                        }
+                    }
+                    itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
+                        AppCard(
+                            app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
+                            width = 240.u, height = 135.u, showLabel = false,
+                            onFocused = surFocus,
+                            onClick = { actions.launch(app) },
+                            onMenu = { actions.openMenu(app) },
+                            modifier = if (i == 0) Modifier.focusRequester(premierFocus) else Modifier,
                         )
                     }
                 }
-                itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
-                    AppCard(
-                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName), width = 240.u, height = 135.u, showLabel = false,
-                        onFocused = surFocus,
-                        onClick = { actions.launch(app) },
-                        onMenu = { actions.openMenu(app) },
-                        modifier = if (i == 0) Modifier.focusRequester(premierFocus) else Modifier,
-                    )
-                }
-            }
 
-            // --- Rangée « Mes apps » : seulement les apps choisies (dépasse en bas de l'écran)
-            Text(
-                "MES APPS",
-                color = Color.White.copy(alpha = 0.55f),
-                fontSize = 11.us, letterSpacing = 3.us, fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(start = 56.u, top = 2.u),
-            )
-            LazyRow(
-                state = rangeeApps,
-                contentPadding = PaddingValues(horizontal = 56.u, vertical = 14.u),
-                horizontalArrangement = Arrangement.spacedBy(20.u),
-            ) {
-                itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
-                    AppCard(
-                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
-                        width = 160.u, height = 90.u, showLabel = true,
-                        onFocused = surFocus,
-                        onClick = { actions.launch(app) },
-                        onMenu = { actions.openMenu(app) },
-                    )
+                // --- Rangée « Mes apps » : seulement les apps choisies
+                Text(
+                    "MES APPS",
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 11.us, letterSpacing = 3.us, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(start = 56.u, top = 2.u),
+                )
+                LazyRow(
+                    state = rangeeApps,
+                    contentPadding = PaddingValues(horizontal = 56.u, vertical = 14.u),
+                    horizontalArrangement = Arrangement.spacedBy(20.u),
+                    modifier = Modifier.onFocusChanged { compact = it.hasFocus },
+                ) {
+                    itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
+                        AppCard(
+                            app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
+                            width = 160.u, height = 90.u, showLabel = true,
+                            onFocused = surFocus,
+                            onClick = { actions.launch(app) },
+                            onMenu = { actions.openMenu(app) },
+                        )
+                    }
+                    // Bibliothèque : toutes les apps installées (comme sur Apple TV)
+                    item(key = "bibliotheque") {
+                        TextCard(
+                            text = "Toutes les apps\n(${ui.allApps.size})",
+                            width = 160.u, height = 90.u,
+                            onClick = actions.openLibrary,
+                            onFocused = { selection = null },
+                        )
+                    }
                 }
-                // Bibliothèque : toutes les apps installées (comme sur Apple TV)
-                item(key = "bibliotheque") {
-                    TextCard(
-                        text = "Toutes les apps\n(${ui.allApps.size})",
-                        width = 160.u, height = 90.u,
-                        onClick = actions.openLibrary,
-                        onFocused = { selection = null },
-                    )
-                }
+                Spacer(Modifier.height(40.u))
             }
-            Spacer(Modifier.height(40.u))
         }
+
+        // --- Bandeau NBA complet sous les pastilles (masqué quand l'en-tête est compact)
+        AnimatedVisibility(
+            visible = !compact,
+            enter = fadeIn(tween(300)),
+            exit = fadeOut(tween(200)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 94.u, end = 52.u),
+        ) {
+            NbaPanel(data = nbaData, erreur = nbaErreur, repo = nbaRepo)
+        }
+    }
+}
+
+/**
+ * En-tête : grand (salutation, grande horloge, date ; pastilles à droite) ou compact
+ * (barre fine : heure + date sur une ligne, résumé NBA, petites pastilles).
+ */
+@Composable
+private fun EnTete(compact: Boolean, wifiLabel: String, actions: HomeActions, nbaData: NbaData?) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .animateContentSize(tween(320))
+            .padding(start = 56.u, end = 52.u, top = if (compact) 20.u else 40.u),
+        verticalAlignment = if (compact) Alignment.CenterVertically else Alignment.Top,
+    ) {
+        ClockHeader(compact = compact)
+        Spacer(Modifier.weight(1f))
+        if (compact) {
+            NbaMini(nbaData)
+            Spacer(Modifier.width(16.u))
+        }
+        TopPills(
+            wifiLabel = wifiLabel,
+            onSources = actions.sources,
+            onSourcesLong = actions.sourcesLong,
+            onWifi = actions.wifi,
+            onBluetooth = actions.bluetooth,
+            onSettings = actions.settings,
+            onSettingsLong = actions.settingsLong,
+            compact = compact,
+            modifier = Modifier.padding(top = if (compact) 0.u else 6.u),
+        )
     }
 }
