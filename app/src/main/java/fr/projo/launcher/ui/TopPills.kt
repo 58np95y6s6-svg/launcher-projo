@@ -46,20 +46,21 @@ fun TopPills(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.u), verticalAlignment = Alignment.CenterVertically) {
-        Pill(ProjoIcons.Sources, "Sources", onSources, onSourcesLong)
-        Pill(ProjoIcons.Wifi, wifiLabel, onWifi)
-        Pill(ProjoIcons.Bluetooth, "Bluetooth", onBluetooth)
-        Pill(ProjoIcons.Reglages, "Réglages", onSettings, onSettingsLong)
+        val h = 38
+        Pill(ProjoIcons.Sources, "Sources", h, onSources, onSourcesLong)
+        Pill(ProjoIcons.Wifi, wifiLabel, h, onWifi)
+        Pill(ProjoIcons.Bluetooth, "Bluetooth", h, onBluetooth)
+        Pill(ProjoIcons.Reglages, "Réglages", h, onSettings, onSettingsLong)
     }
 }
 
 @Composable
-private fun Pill(icon: ImageVector, label: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+private fun Pill(icon: ImageVector, label: String, hauteur: Int, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     var focus by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = Modifier.height(38.u).onFocusChanged { focus = it.isFocused },
+        modifier = Modifier.height(hauteur.u).onFocusChanged { focus = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.09f),
@@ -75,10 +76,10 @@ private fun Pill(icon: ImageVector, label: String, onClick: () -> Unit, onLongCl
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
     ) {
         Row(
-            Modifier.padding(horizontal = 11.u).height(38.u),
+            Modifier.padding(horizontal = (hauteur * 0.29f).toInt().u).height(hauteur.u),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = label, modifier = Modifier.size(16.u))
+            Icon(icon, contentDescription = label, modifier = Modifier.size((hauteur * 0.42f).toInt().u))
             AnimatedVisibility(
                 visible = focus,
                 enter = expandHorizontally(tween(220)) + fadeIn(tween(220)),

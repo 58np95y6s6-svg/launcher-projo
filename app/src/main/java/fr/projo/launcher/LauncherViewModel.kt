@@ -8,10 +8,13 @@ import fr.projo.launcher.data.AppRepository
 import fr.projo.launcher.data.DefaultFavorites
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.LauncherPrefs
+import fr.projo.launcher.data.NbaData
+import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.data.PrefsState
 import fr.projo.launcher.data.SourceCandidate
 import fr.projo.launcher.system.SystemActions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +48,38 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = LauncherPrefs(app)
 
     private val apps = MutableStateFlow<List<AppInfo>?>(null)
+
+    // ------------------------------------------------------------------ NBA
+    val nba = NbaRepository(app)
+
+    /** null = pas encore chargé ; NbaNight vide = aucun match ; erreur = réseau indisponible. */
+    private val _nbaData = MutableStateFlow<NbaData?>(null)
+    val nbaData: StateFlow<NbaData?> = _nbaData
+    private val _nbaErreur = MutableStateFlow(false)
+    val nbaErreur: StateFlow<Boolean> = _nbaErreur
+
+    /**
+     * Met à jour les matchs tant que l'accueil est affiché (appelée depuis l'interface,
+     * annulée quand on quitte l'accueil) : toutes les minutes s'il y a un match en cours,
+     * toutes les 10 minutes sinon.
+     */
+    suspend fun nbaLoop() {
+        while (true) {
+            val nuit = try {
+                withContext(Dispatchers.IO) { nba.fetchAll() }
+            } catch (e: Exception) {
+                null
+            }
+            if (nuit != null) {
+                _nbaData.value = nuit
+                _nbaErreur.value = false
+            } else {
+                _nbaErreur.value = true
+            }
+            val enDirect = nuit?.tonight?.games?.any { it.state == "in" } == true
+            delay(if (enDirect) 60_000L else if (nuit == null) 120_000L else 600_000L)
+        }
+    }
     private val _sources = MutableStateFlow<List<SourceCandidate>>(emptyList())
     val sources: StateFlow<List<SourceCandidate>> = _sources
 

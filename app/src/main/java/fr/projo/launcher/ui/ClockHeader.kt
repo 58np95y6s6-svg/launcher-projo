@@ -36,18 +36,19 @@ fun ClockHeader(modifier: Modifier = Modifier) {
         else -> "BONSOIR"
     }
     val fr = Locale.FRENCH
+    val heureTexte = SimpleDateFormat("HH:mm", fr).format(date)
+    val dateTexte = SimpleDateFormat("EEEE d MMMM", fr).format(date).uppercase(fr)
     Column(modifier) {
         Text(
             salutation, color = Color.White.copy(alpha = 0.7f),
             fontSize = 12.us, letterSpacing = 4.us, fontWeight = FontWeight.Medium,
         )
         Text(
-            SimpleDateFormat("HH:mm", fr).format(date), color = Color.White,
+            heureTexte, color = Color.White,
             fontSize = 72.us, fontWeight = FontWeight.Thin, letterSpacing = (-1).us,
         )
         Text(
-            SimpleDateFormat("EEEE d MMMM", fr).format(date).uppercase(fr),
-            color = Color.White.copy(alpha = 0.75f),
+            dateTexte, color = Color.White.copy(alpha = 0.75f),
             fontSize = 13.us, letterSpacing = 3.us, fontWeight = FontWeight.Medium,
         )
     }
