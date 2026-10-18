@@ -30,6 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,11 +62,23 @@ private const val LIGNES_VISIBLES = 3
  * 3 matchs visibles, les autres en faisant défiler avec les flèches.
  */
 @Composable
-fun NbaPanel(data: NbaData?, erreur: Boolean, repo: NbaRepository, modifier: Modifier = Modifier) {
+fun NbaPanel(
+    data: NbaData?,
+    erreur: Boolean,
+    repo: NbaRepository,
+    modifier: Modifier = Modifier,
+    /** Sortie rapide du bandeau (flèche gauche sur un match, ou Retour) : retour aux favoris. */
+    onExit: () -> Unit = {},
+) {
     val forme = RoundedCornerShape(14.u)
     var onglet by remember { mutableIntStateOf(0) }
     Column(
         modifier
+            // Retour : on quitte le bandeau
+            .onPreviewKeyEvent {
+                if (it.key == Key.Back && it.type == KeyEventType.KeyUp) { onExit(); true }
+                else it.key == Key.Back
+            }
             .width(340.u)
             .clip(forme)
             .background(Color.White.copy(alpha = 0.07f))
@@ -106,7 +123,12 @@ fun NbaPanel(data: NbaData?, erreur: Boolean, repo: NbaRepository, modifier: Mod
                 }
                 LazyColumn(
                     state = etat,
-                    modifier = Modifier.height((34 * minOf(LIGNES_VISIBLES, jeux.size)).u),
+                    modifier = Modifier
+                        .height((34 * minOf(LIGNES_VISIBLES, jeux.size)).u)
+                        // Flèche gauche sur un match : on sort du bandeau (vers les favoris)
+                        .onPreviewKeyEvent {
+                            if (it.key == Key.DirectionLeft && it.type == KeyEventType.KeyDown) { onExit(); true } else false
+                        },
                 ) {
                     items(jeux, key = { it.id }) { g -> LigneMatch(g, repo) }
                 }

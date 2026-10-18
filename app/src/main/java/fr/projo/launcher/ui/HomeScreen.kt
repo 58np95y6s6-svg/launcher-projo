@@ -197,6 +197,7 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 90.u, end = 52.u),
+            onExit = { runCatching { premierFocus.requestFocus() } },
         )
     }
 }

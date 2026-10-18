@@ -66,7 +66,7 @@ class SettingsActions(
     val close: () -> Unit,
 )
 
-private val FondPanneau = Color(0xF5101318)
+private val FondPanneau = Color(0xFB101318)
 private val Carte = Color.White.copy(alpha = 0.06f)
 private val Accent = Color(0xFF5AB0FF)
 
