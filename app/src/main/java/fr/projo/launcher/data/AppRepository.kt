@@ -97,11 +97,14 @@ class AppRepository(private val context: Context) {
      * contient « hdmi », « source » ou « input ». Tout est affiché dans les logs.
      */
     fun sourceCandidates(apps: List<AppInfo>): List<SourceCandidate> {
-        val motCle = Regex("hdmi|source|input|entr[ée]e|signal|av ?in", RegexOption.IGNORE_CASE)
+        // Mots qui évoquent une entrée vidéo… mais pas les claviers (« input method ») ni les langues
+        val motCle = Regex("hdmi|source|signal|entr[ée]e|passthrough|tvinput|av ?in", RegexOption.IGNORE_CASE)
+        val exclus = Regex("method|keyboard|clavier|lang|locale|saisie|setting|password|voice", RegexOption.IGNORE_CASE)
+        val pertinent = { texte: String -> motCle.containsMatchIn(texte) && !exclus.containsMatchIn(texte) }
         val res = mutableListOf<SourceCandidate>()
 
         for (app in apps) {
-            if (motCle.containsMatchIn(app.label) || motCle.containsMatchIn(app.packageName)) {
+            if (pertinent(app.label) || pertinent(app.packageName)) {
                 val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName)
                     ?: pm.getLaunchIntentForPackage(app.packageName)
                 intent?.component?.let { res += SourceCandidate(app.label, it) }
@@ -120,7 +123,7 @@ class AppRepository(private val context: Context) {
             for (a in activites) {
                 if (!a.exported) continue
                 val court = a.name.substringAfterLast('.')
-                if (motCle.containsMatchIn(court)) {
+                if (pertinent(court)) {
                     val cn = ComponentName(a.packageName, a.name)
                     if (res.none { it.component == cn }) {
                         val appLabel = try {
@@ -131,6 +134,8 @@ class AppRepository(private val context: Context) {
                 }
             }
         }
+        // Ce qui contient « hdmi » passe en premier
+        res.sortBy { if (it.label.contains("hdmi", true) || it.component.className.contains("hdmi", true)) 0 else 1 }
         Log.i(TAG, "Candidats « Sources » : ${res.size}")
         res.forEach { Log.i(TAG, "  ${it.label} → ${it.component.flattenToShortString()}") }
         return res

@@ -13,7 +13,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -38,8 +46,22 @@ fun MenuDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         val premier = remember { FocusRequester() }
+        // Le menu s'ouvre souvent par un appui long sur OK : tant que ce bouton n'a pas été
+        // relâché puis ré-appuyé, on ignore ses événements (sinon le relâchement « cliquerait »
+        // sur la première ligne et fermerait le menu aussitôt).
+        var arme by remember { mutableStateOf(false) }
         Column(
             Modifier
+                .onPreviewKeyEvent { e ->
+                    val valider = e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter
+                    if (!valider || arme) return@onPreviewKeyEvent false
+                    if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0) {
+                        arme = true
+                        false // nouvel appui franc : on le laisse passer
+                    } else {
+                        true // répétitions et relâchement de l'appui long : ignorés
+                    }
+                }
                 .width(420.u)
                 .background(Color(0xF2161A22), RoundedCornerShape(20.u))
                 .padding(22.u)
