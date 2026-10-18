@@ -20,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,6 +48,7 @@ fun TopPills(
     /** Une nouvelle version de Projo est disponible : pastille mise en avant. */
     majDisponible: Boolean = false,
     onMaj: () -> Unit = {},
+    focusReglages: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.u), verticalAlignment = Alignment.CenterVertically) {
@@ -54,17 +57,23 @@ fun TopPills(
         Pill(ProjoIcons.Sources, "Sources", h, onSources, onSourcesLong)
         Pill(ProjoIcons.Wifi, wifiLabel, h, onWifi)
         Pill(ProjoIcons.Bluetooth, "Bluetooth", h, onBluetooth)
-        Pill(ProjoIcons.Reglages, "Réglages", h, onSettings, onSettingsLong)
+        Pill(
+            ProjoIcons.Reglages, "Réglages", h, onSettings, onSettingsLong,
+            if (focusReglages != null) Modifier.focusRequester(focusReglages) else Modifier,
+        )
     }
 }
 
 @Composable
-private fun Pill(icon: ImageVector, label: String, hauteur: Int, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+private fun Pill(
+    icon: ImageVector, label: String, hauteur: Int, onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null, modifier: Modifier = Modifier,
+) {
     var focus by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = Modifier.height(hauteur.u).onFocusChanged { focus = it.isFocused },
+        modifier = modifier.height(hauteur.u).onFocusChanged { focus = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.09f),

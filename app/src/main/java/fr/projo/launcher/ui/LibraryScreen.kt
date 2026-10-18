@@ -15,7 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +32,7 @@ import fr.projo.launcher.data.IconLoader
  * Bibliothèque « Toutes les apps » (comme sur Apple TV) : grille de toutes les apps installées.
  * Appui long sur une app → l'ajouter à l'accueil ou aux favoris. Retour → accueil.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun LibraryScreen(
     ui: HomeUi,
@@ -39,12 +44,20 @@ fun LibraryScreen(
 ) {
     BackHandler(onBack = onClose)
     val premier = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { premier.requestFocus() } }
+    LaunchedEffect(Unit) {
+        for (essai in 1..4) {
+            withFrameNanos {}
+            if (runCatching { premier.requestFocus() }.isSuccess) break
+        }
+    }
 
     Box(
         Modifier
             .fillMaxSize()
             .background(Color(0xFA07080B))
+            // Le focus reste dans la bibliothèque (pas de saut vers l'accueil caché derrière)
+            .focusProperties { exit = { FocusRequester.Cancel } }
+            .focusGroup()
     ) {
         Column(Modifier.fillMaxSize()) {
             Text(

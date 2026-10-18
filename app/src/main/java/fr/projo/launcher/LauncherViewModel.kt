@@ -131,12 +131,21 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val snapshot: StateFlow<DeviceSnapshot?> = _snapshot
 
     fun refreshDevice() {
-        viewModelScope.launch { _snapshot.value = withContext(Dispatchers.IO) { device.snapshot() } }
+        viewModelScope.launch {
+            _snapshot.value = withContext(Dispatchers.IO) { device.snapshot() }
+            volumeCible = null
+        }
     }
+
+    /** Volume visé : chaque appui (ou répétition) compte, même avant la relecture de l'état. */
+    private var volumeCible: Int? = null
 
     fun changeVolume(delta: Int) {
         val s = _snapshot.value ?: return
-        device.setVolume(s.volume + delta)
+        val cible = ((volumeCible ?: s.volume) + delta).coerceIn(0, s.volumeMax)
+        volumeCible = cible
+        device.setVolume(cible)
+        _snapshot.value = s.copy(volume = cible, muet = false)
         refreshDevice()
     }
 

@@ -27,7 +27,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.focusGroup
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -76,6 +80,7 @@ private val Accent = Color(0xFF5AB0FF)
  * l'Apple TV). Volume, Wi-Fi, Bluetooth, stockage et réglages de Projo dans le même style ;
  * ce qu'Android ne permet pas de régler depuis une app ouvre la page système.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SettingsPanel(
     snapshot: DeviceSnapshot?,
@@ -87,7 +92,13 @@ fun SettingsPanel(
 ) {
     BackHandler(onBack = actions.close)
     val premier = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { premier.requestFocus() } }
+    // Premier focus : la tuile est dans une liste « lazy », elle peut n'être prête qu'après une image
+    LaunchedEffect(Unit) {
+        for (essai in 1..4) {
+            withFrameNanos {}
+            if (runCatching { premier.requestFocus() }.isSuccess) break
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
         Column(
@@ -97,6 +108,9 @@ fun SettingsPanel(
                 .width(372.u)
                 .clip(RoundedCornerShape(topStart = 26.u, bottomStart = 26.u))
                 .background(FondPanneau)
+                // Le focus ne peut pas s'échapper vers l'accueil caché derrière
+                .focusProperties { exit = { FocusRequester.Cancel } }
+                .focusGroup()
                 // ◀ ferme le panneau (sauf pendant le réglage du volume, qui consomme la touche avant)
                 .onKeyEvent {
                     if (it.key == Key.DirectionLeft && it.type == KeyEventType.KeyDown) { actions.close(); true } else false
@@ -118,12 +132,12 @@ fun SettingsPanel(
                 verticalArrangement = Arrangement.spacedBy(8.u),
             ) {
                 // ---------------- Volume
-                item {
+                item(key = "volume") {
                     Volume(snapshot, actions, Modifier.focusRequester(premier))
                 }
                 // ---------------- Mise à jour (mise en avant si disponible)
                 if (maj.info?.available == true || maj.telechargement != null) {
-                    item {
+                    item(key = "maj") {
                         val prog = maj.telechargement
                         Tuile(
                             icone = ProjoIcons.MiseAJour,
@@ -134,8 +148,8 @@ fun SettingsPanel(
                         )
                     }
                 }
-                item { Section("CONNEXIONS") }
-                item {
+                item(key = "s-connexions") { Section("CONNEXIONS") }
+                item(key = "wifi") {
                     val s = snapshot
                     Tuile(
                         icone = ProjoIcons.Wifi,
@@ -150,7 +164,7 @@ fun SettingsPanel(
                         onClick = actions.wifi,
                     )
                 }
-                item {
+                item(key = "bluetooth") {
                     val s = snapshot
                     Tuile(
                         icone = ProjoIcons.Bluetooth,
@@ -165,7 +179,7 @@ fun SettingsPanel(
                         onClick = actions.bluetooth,
                     )
                 }
-                item {
+                item(key = "stockage") {
                     val s = snapshot
                     val total = s?.stockageTotal ?: 0L
                     val libre = s?.stockageLibre ?: 0L
@@ -178,8 +192,8 @@ fun SettingsPanel(
                     )
                 }
 
-                item { Section("PROJO") }
-                item {
+                item(key = "s-projo") { Section("PROJO") }
+                item(key = "accueil") {
                     Tuile(
                         icone = ProjoIcons.Accueil,
                         titre = "Écran d'accueil",
@@ -187,7 +201,7 @@ fun SettingsPanel(
                         onClick = actions.homeApp,
                     )
                 }
-                item {
+                item(key = "hdmi") {
                     Tuile(
                         icone = ProjoIcons.Sources,
                         titre = "Entrée HDMI",
@@ -195,7 +209,7 @@ fun SettingsPanel(
                         onClick = actions.sources,
                     )
                 }
-                item {
+                item(key = "masquees") {
                     Tuile(
                         icone = ProjoIcons.Apps,
                         titre = "Apps masquées",
@@ -204,7 +218,7 @@ fun SettingsPanel(
                     )
                 }
                 if (maj.info?.available != true && maj.telechargement == null) {
-                    item {
+                    item(key = "maj") {
                         Tuile(
                             icone = ProjoIcons.MiseAJour,
                             titre = "Mises à jour",
@@ -217,14 +231,14 @@ fun SettingsPanel(
                         )
                     }
                 } else if (maj.message != null) {
-                    item { Text(maj.message, color = Color(0xFFFFB86B), fontSize = 11.us, modifier = Modifier.padding(4.u)) }
+                    item(key = "maj-message") { Text(maj.message, color = Color(0xFFFFB86B), fontSize = 11.us, modifier = Modifier.padding(4.u)) }
                 }
 
-                item { Section("SYSTÈME") }
-                item { Tuile(ProjoIcons.Langue, "Langue et clavier", "Page système", onClick = actions.language) }
-                item { Tuile(ProjoIcons.Horloge, "Date et heure", "Page système", onClick = actions.date) }
-                item { Tuile(ProjoIcons.Volume, "Son", "Page système", onClick = actions.sound) }
-                item { Tuile(ProjoIcons.Reglages, "Tous les réglages", "Réglages du projecteur", onClick = actions.allSettings) }
+                item(key = "s-systeme") { Section("SYSTÈME") }
+                item(key = "langue") { Tuile(ProjoIcons.Langue, "Langue et clavier", "Page système", onClick = actions.language) }
+                item(key = "date") { Tuile(ProjoIcons.Horloge, "Date et heure", "Page système", onClick = actions.date) }
+                item(key = "son") { Tuile(ProjoIcons.Volume, "Son", "Page système", onClick = actions.sound) }
+                item(key = "tous") { Tuile(ProjoIcons.Reglages, "Tous les réglages", "Réglages du projecteur", onClick = actions.allSettings) }
             }
         }
     }
@@ -331,6 +345,7 @@ private fun Volume(s: DeviceSnapshot?, actions: SettingsActions, modifier: Modif
                     Key.DirectionRight -> { if (it.type == KeyEventType.KeyDown) actions.volume(1); true }
                     // Retour quitte le réglage sans fermer le panneau
                     Key.Back -> { if (it.type == KeyEventType.KeyUp) reglage = false; true }
+                    Key.DirectionUp, Key.DirectionDown -> { reglage = false; false }
                     else -> false
                 }
             },

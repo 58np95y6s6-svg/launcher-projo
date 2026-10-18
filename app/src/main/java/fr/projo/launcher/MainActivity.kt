@@ -17,6 +17,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -93,6 +95,21 @@ class MainActivity : ComponentActivity() {
         var logoApp by remember { mutableStateOf<AppInfo?>(null) }
         var montrerBibliotheque by remember { mutableStateOf(false) }
         var montrerReglages by remember { mutableStateOf(false) }
+        // Focus rendu à l'accueil quand un panneau se ferme (sinon plus rien n'est sélectionné)
+        val focusReglages = remember { FocusRequester() }
+        val focusBiblio = remember { FocusRequester() }
+        var focusApres by remember { mutableStateOf<FocusRequester?>(null) }
+        var retourFocus by remember { mutableIntStateOf(0) }
+        var refocusApresMenu by remember { mutableStateOf(false) }
+        LaunchedEffect(focusApres) {
+            val cible = focusApres ?: return@LaunchedEffect
+            // On attend que le panneau ait disparu avant de redonner le focus
+            for (essai in 1..3) {
+                withFrameNanos {}
+                if (runCatching { cible.requestFocus() }.isSuccess) break
+            }
+            focusApres = null
+        }
         val maj by vm.maj.collectAsStateWithLifecycle()
         val etatAppareil by vm.snapshot.collectAsStateWithLifecycle()
 
@@ -138,6 +155,9 @@ class MainActivity : ComponentActivity() {
             icons = vm.icons,
             wifiLabel = wifi,
             homePressCount = homePresses,
+            retourFocus = retourFocus,
+            focusReglages = focusReglages,
+            focusBiblio = focusBiblio,
             actions = HomeActions(
                 launch = lancer,
                 openMenu = { menuApp = it },
@@ -178,7 +198,7 @@ class MainActivity : ComponentActivity() {
                     date = { vm.actions.openDate() },
                     sound = { vm.actions.openSound() },
                     allSettings = { vm.actions.openSettings() },
-                    close = { montrerReglages = false },
+                    close = { montrerReglages = false; focusApres = focusReglages },
                 ),
             )
         }
@@ -190,7 +210,7 @@ class MainActivity : ComponentActivity() {
                 onLaunch = lancer,
                 onMenu = { menuApp = it },
                 onOpenHidden = { montrerMasquees = true },
-                onClose = { montrerBibliotheque = false },
+                onClose = { montrerBibliotheque = false; focusApres = focusBiblio },
             )
         }
 
@@ -202,15 +222,15 @@ class MainActivity : ComponentActivity() {
             val rangee = if (favori) ui.favorites else ui.homeApps
             val index = rangee.indexOfFirst { it.packageName == pkg }
             val actions = buildList {
-                add(MenuAction(if (favori) "Retirer des favoris" else "Ajouter aux favoris") { vm.toggleFavorite(pkg) })
+                add(MenuAction(if (favori) "Retirer des favoris" else "Ajouter aux favoris") { if (favori) refocusApresMenu = true; vm.toggleFavorite(pkg) })
                 if (!favori) {
-                    add(MenuAction(if (accueil) "Retirer de l'accueil" else "Ajouter à l'accueil") { vm.toggleHome(pkg) })
+                    add(MenuAction(if (accueil) "Retirer de l'accueil" else "Ajouter à l'accueil") { if (accueil) refocusApresMenu = true; vm.toggleHome(pkg) })
                 }
                 if (index > 0) add(MenuAction("Déplacer à gauche") { vm.move(pkg, -1) })
                 if (index >= 0 && index < rangee.size - 1) add(MenuAction("Déplacer à droite") { vm.move(pkg, 1) })
                 if (!app.isSpecial) {
                     add(MenuAction("Changer le logo…") { logoApp = app })
-                    add(MenuAction("Masquer partout") { vm.hide(pkg); toast("${app.label} masquée") })
+                    add(MenuAction("Masquer partout") { refocusApresMenu = true; vm.hide(pkg); toast("${app.label} masquée") })
                     add(MenuAction("Infos de l'app") { vm.actions.openAppInfo(pkg) })
                 } else {
                     add(MenuAction("Choisir l'entrée à ouvrir…") { vm.loadSourceCandidates(); montrerSources = true })
@@ -221,7 +241,12 @@ class MainActivity : ComponentActivity() {
                 title = app.label,
                 subtitle = if (app.isSpecial) null else pkg,
                 actions = actions,
-                onDismiss = { menuApp = null },
+                onDismiss = {
+                    menuApp = null
+                    // La carte a disparu de l'accueil : on remet le focus sur le premier favori
+                    if (refocusApresMenu && !montrerBibliotheque) retourFocus++
+                    refocusApresMenu = false
+                },
             )
         }
         logoApp?.let { app ->
