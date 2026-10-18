@@ -30,6 +30,18 @@ class SystemActions(private val context: Context, private val repo: AppRepositor
 
     fun openSettings() = ouvrirPremier(Intent(Settings.ACTION_SETTINGS))
 
+    fun openLanguage() = ouvrirPremier(Intent(Settings.ACTION_LOCALE_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+
+    fun openDate() = ouvrirPremier(Intent(Settings.ACTION_DATE_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+
+    fun openSound() = ouvrirPremier(Intent(Settings.ACTION_SOUND_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+
+    fun openStorage() = ouvrirPremier(
+        Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
+        Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS),
+        Intent(Settings.ACTION_SETTINGS),
+    )
+
     fun openHomeSettings() = ouvrirPremier(
         Intent(Settings.ACTION_HOME_SETTINGS),
         Intent(Settings.ACTION_SETTINGS),

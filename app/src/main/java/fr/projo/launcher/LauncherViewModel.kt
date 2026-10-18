@@ -12,7 +12,11 @@ import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.data.PrefsState
 import fr.projo.launcher.data.SourceCandidate
+import fr.projo.launcher.system.DeviceSnapshot
+import fr.projo.launcher.system.DeviceStatus
 import fr.projo.launcher.system.SystemActions
+import fr.projo.launcher.system.UpdateInfo
+import fr.projo.launcher.system.UpdateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +52,89 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = LauncherPrefs(app)
 
     private val apps = MutableStateFlow<List<AppInfo>?>(null)
+
+    // ------------------------------------------------------------------ mise à jour de Projo
+    val updates = UpdateManager(app)
+
+    /** État de la mise à jour affiché dans l'interface. */
+    data class MajEtat(
+        val info: UpdateInfo? = null,
+        val verification: Boolean = false,
+        /** Progression du téléchargement (0..1), null si aucun téléchargement. */
+        val telechargement: Float? = null,
+        val message: String? = null,
+    )
+
+    private val _maj = MutableStateFlow(MajEtat())
+    val maj: StateFlow<MajEtat> = _maj
+    private var derniereVerification = 0L
+
+    /** Vérifie s'il existe une version plus récente (au plus une fois toutes les 6 h, sauf si forcé). */
+    fun checkUpdate(force: Boolean = false) {
+        val maintenant = System.currentTimeMillis()
+        if (!force && maintenant - derniereVerification < 6 * 3600_000L) return
+        derniereVerification = maintenant
+        viewModelScope.launch {
+            _maj.value = _maj.value.copy(verification = true, message = null)
+            val info = try {
+                withContext(Dispatchers.IO) { updates.check() }
+            } catch (e: Exception) {
+                null
+            }
+            _maj.value = _maj.value.copy(
+                info = info ?: _maj.value.info,
+                verification = false,
+                message = when {
+                    info == null -> "Vérification impossible (connexion ?)"
+                    !info.available && force -> "Projo est à jour"
+                    else -> null
+                },
+            )
+        }
+    }
+
+    /** Télécharge puis lance l'installation de la nouvelle version. */
+    fun installUpdate() {
+        val info = _maj.value.info ?: return
+        if (_maj.value.telechargement != null) return
+        if (!updates.peutInstaller()) {
+            _maj.value = _maj.value.copy(message = "Autorise Projo à installer des apps, puis réessaie")
+            updates.ouvrirAutorisation()
+            return
+        }
+        viewModelScope.launch {
+            _maj.value = _maj.value.copy(telechargement = 0f, message = null)
+            try {
+                val fichier = withContext(Dispatchers.IO) {
+                    updates.download(info.downloadUrl) { p -> _maj.value = _maj.value.copy(telechargement = p) }
+                }
+                _maj.value = _maj.value.copy(telechargement = null)
+                updates.installer(fichier)
+            } catch (e: Exception) {
+                _maj.value = _maj.value.copy(telechargement = null, message = "Téléchargement impossible")
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ état de l'appareil
+    val device = DeviceStatus(app)
+    private val _snapshot = MutableStateFlow<DeviceSnapshot?>(null)
+    val snapshot: StateFlow<DeviceSnapshot?> = _snapshot
+
+    fun refreshDevice() {
+        viewModelScope.launch { _snapshot.value = withContext(Dispatchers.IO) { device.snapshot() } }
+    }
+
+    fun changeVolume(delta: Int) {
+        val s = _snapshot.value ?: return
+        device.setVolume(s.volume + delta)
+        refreshDevice()
+    }
+
+    fun toggleMute() {
+        device.toggleMute()
+        refreshDevice()
+    }
 
     // ------------------------------------------------------------------ NBA
     val nba = NbaRepository(app)
