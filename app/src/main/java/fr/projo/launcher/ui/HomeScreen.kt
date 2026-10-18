@@ -29,6 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +73,11 @@ fun HomeScreen(
     wifiLabel: String,
     /** Incrémenté quand on appuie sur Maison alors que le launcher est déjà affiché. */
     homePressCount: Int,
+    /** Incrémenté pour remettre le focus sur le premier favori (après « Retirer… »). */
+    retourFocus: Int = 0,
+    /** Pastille Réglages et carte « Toutes les apps » : le focus y revient à la fermeture. */
+    focusReglages: FocusRequester = remember { FocusRequester() },
+    focusBiblio: FocusRequester = remember { FocusRequester() },
     actions: HomeActions,
     nbaData: NbaData?,
     nbaErreur: Boolean,
@@ -94,13 +102,21 @@ fun HomeScreen(
         rangeeApps.scrollToItem(0)
         runCatching { premierFocus.requestFocus() }
     }
+    LaunchedEffect(retourFocus) {
+        if (retourFocus == 0) return@LaunchedEffect
+        withFrameNanos {}
+        rangeeFavoris.scrollToItem(0)
+        withFrameNanos {}
+        runCatching { premierFocus.requestFocus() }
+    }
+    val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
         GlowBackground(couleur)
 
         Column(Modifier.fillMaxSize()) {
             // --- En-tête fixe : horloge à gauche, pastilles à droite
-            EnTete(wifiLabel, actions, majDisponible)
+            EnTete(wifiLabel, actions, majDisponible, focusReglages)
 
             Column(
                 Modifier
@@ -182,6 +198,7 @@ fun HomeScreen(
                             width = 136.u, height = 77.u,
                             onClick = actions.openLibrary,
                             onFocused = { selection = null },
+                            modifier = Modifier.focusRequester(focusBiblio),
                         )
                     }
                 }
@@ -197,14 +214,21 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 90.u, end = 52.u),
-            onExit = { runCatching { premierFocus.requestFocus() } },
+            // Le premier favori n'existe peut-être plus à l'écran si la rangée a défilé
+            onExit = {
+                scope.launch {
+                    rangeeFavoris.scrollToItem(0)
+                    withFrameNanos {}
+                    runCatching { premierFocus.requestFocus() }
+                }
+            },
         )
     }
 }
 
 /** En-tête : salutation, grande horloge et date à gauche ; pastilles à droite. */
 @Composable
-private fun EnTete(wifiLabel: String, actions: HomeActions, majDisponible: Boolean) {
+private fun EnTete(wifiLabel: String, actions: HomeActions, majDisponible: Boolean, focusReglages: FocusRequester) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -223,6 +247,7 @@ private fun EnTete(wifiLabel: String, actions: HomeActions, majDisponible: Boole
             onSettingsLong = actions.settingsLong,
             majDisponible = majDisponible,
             onMaj = actions.update,
+            focusReglages = focusReglages,
             modifier = Modifier.padding(top = 6.u),
         )
     }

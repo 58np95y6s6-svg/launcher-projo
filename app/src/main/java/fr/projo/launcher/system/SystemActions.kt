@@ -62,16 +62,17 @@ class SystemActions(private val context: Context, private val repo: AppRepositor
      *  4. les réglages, avec un message.
      */
     fun openSources(choisi: String?, candidats: List<SourceCandidate>) {
-        if (choisi != null) {
-            if (choisi.startsWith("tv:")) {
-                if (ouvrirEntreeTv(choisi.removePrefix("tv:"))) return
-            } else if (choisi.startsWith("app:")) {
+        // Les anciens choix « Entrée TV » (tv:…) ouvraient le mauvais écran : on les ignore
+        if (choisi != null && !choisi.startsWith("tv:")) {
+            if (choisi.startsWith("app:")) {
                 if (repo.launch(choisi.removePrefix("app:"))) return
             } else {
                 val cn = ComponentName.unflattenFromString(choisi)
                 if (cn != null && repo.start(Intent(Intent.ACTION_MAIN).setComponent(cn))) return
             }
         }
+        // Par défaut : AwSource (projecteurs Allwinner)
+        repo.awSourcePackage()?.let { if (repo.launch(it)) return }
         if (ouvrirEntreeHdmiTv()) return
         for (c in candidats) {
             val ok = c.tvInputId?.let { ouvrirEntreeTv(it) }

@@ -29,6 +29,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -72,12 +75,22 @@ fun NbaPanel(
 ) {
     val forme = RoundedCornerShape(14.u)
     var onglet by remember { mutableIntStateOf(0) }
+    val focusNuit = remember { FocusRequester() }
+    var resultatsFocus by remember { mutableStateOf(false) }
     Column(
         modifier
             // Retour : on quitte le bandeau
             .onPreviewKeyEvent {
                 if (it.key == Key.Back && it.type == KeyEventType.KeyUp) { onExit(); true }
                 else it.key == Key.Back
+            }
+            // ◀ n'importe où dans le bandeau : on en sort (seul « RÉSULTATS » → « CETTE NUIT » reste interne)
+            .onPreviewKeyEvent {
+                if (it.key != Key.DirectionLeft) return@onPreviewKeyEvent false
+                if (it.type == KeyEventType.KeyDown) {
+                    if (resultatsFocus) runCatching { focusNuit.requestFocus() } else onExit()
+                }
+                true
             }
             .width(340.u)
             .clip(forme)
@@ -93,9 +106,9 @@ fun NbaPanel(
                 letterSpacing = 2.us, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 6.u, end = 8.u),
             )
-            Onglet(libelleNuit, onglet == 0) { onglet = 0 }
+            Onglet(libelleNuit, onglet == 0, Modifier.focusRequester(focusNuit)) { onglet = 0 }
             Spacer(Modifier.width(4.u))
-            Onglet("RÉSULTATS", onglet == 1) { onglet = 1 }
+            Onglet("RÉSULTATS", onglet == 1, Modifier.onFocusChanged { resultatsFocus = it.isFocused }) { onglet = 1 }
         }
         Spacer(Modifier.height(5.u))
 
@@ -124,11 +137,7 @@ fun NbaPanel(
                 LazyColumn(
                     state = etat,
                     modifier = Modifier
-                        .height((34 * minOf(LIGNES_VISIBLES, jeux.size)).u)
-                        // Flèche gauche sur un match : on sort du bandeau (vers les favoris)
-                        .onPreviewKeyEvent {
-                            if (it.key == Key.DirectionLeft && it.type == KeyEventType.KeyDown) { onExit(); true } else false
-                        },
+                        .height((34 * minOf(LIGNES_VISIBLES, jeux.size)).u),
                 ) {
                     items(jeux, key = { it.id }) { g -> LigneMatch(g, repo) }
                 }
@@ -139,10 +148,10 @@ fun NbaPanel(
 
 /** Onglet : se sélectionne dès qu'on passe dessus (comme les onglets d'Android TV). */
 @Composable
-private fun Onglet(texte: String, actif: Boolean, onSelect: () -> Unit) {
+private fun Onglet(texte: String, actif: Boolean, modifier: Modifier, onSelect: () -> Unit) {
     Surface(
         onClick = onSelect,
-        modifier = Modifier.height(20.u).onFocusChanged { if (it.isFocused) onSelect() },
+        modifier = modifier.height(20.u).onFocusChanged { if (it.isFocused) onSelect() },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.u)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (actif) Color.White.copy(alpha = 0.16f) else Color.Transparent,
