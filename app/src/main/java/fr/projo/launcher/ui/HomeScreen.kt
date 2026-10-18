@@ -99,7 +99,7 @@ fun HomeScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 48.u, end = 40.u, top = 34.u),
+                    .padding(start = 56.u, end = 52.u, top = 40.u),
                 verticalAlignment = Alignment.Top,
             ) {
                 ClockHeader()
@@ -116,14 +116,14 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(Modifier.height(78.u))
+            Spacer(Modifier.height(64.u))
 
             // --- Nom de l'app sélectionnée, en grand (fondu enchaîné)
             AnimatedContent(
                 targetState = selection?.label.orEmpty(),
                 transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
                 label = "nom",
-                modifier = Modifier.padding(start = 48.u),
+                modifier = Modifier.padding(start = 56.u),
             ) { nom ->
                 Text(
                     nom, color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Light,
@@ -134,14 +134,14 @@ fun HomeScreen(
             // --- Rangée « Favoris »
             LazyRow(
                 state = rangeeFavoris,
-                contentPadding = PaddingValues(horizontal = 48.u, vertical = 16.u),
-                horizontalArrangement = Arrangement.spacedBy(22.u),
+                contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
+                horizontalArrangement = Arrangement.spacedBy(26.u),
             ) {
                 if (ui.loaded && ui.favorites.isEmpty()) {
                     item(key = "aide") {
                         TextCard(
                             text = "Aucun favori.\nMaintiens OK sur une app pour l'ajouter.",
-                            width = 220.u, height = 124.u,
+                            width = 240.u, height = 135.u,
                             onClick = {},
                             modifier = Modifier.focusRequester(premierFocus),
                         )
@@ -149,7 +149,7 @@ fun HomeScreen(
                 }
                 itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
                     AppCard(
-                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName), width = 220.u, height = 124.u, showLabel = false,
+                        app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName), width = 240.u, height = 135.u, showLabel = false,
                         onFocused = surFocus,
                         onClick = { actions.launch(app) },
                         onMenu = { actions.openMenu(app) },
@@ -163,17 +163,17 @@ fun HomeScreen(
                 "MES APPS",
                 color = Color.White.copy(alpha = 0.55f),
                 fontSize = 11.us, letterSpacing = 3.us, fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(start = 48.u, top = 4.u),
+                modifier = Modifier.padding(start = 56.u, top = 2.u),
             )
             LazyRow(
                 state = rangeeApps,
-                contentPadding = PaddingValues(horizontal = 48.u, vertical = 12.u),
-                horizontalArrangement = Arrangement.spacedBy(16.u),
+                contentPadding = PaddingValues(horizontal = 56.u, vertical = 14.u),
+                horizontalArrangement = Arrangement.spacedBy(20.u),
             ) {
                 itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
                     AppCard(
                         app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
-                        width = 150.u, height = 84.u, showLabel = true,
+                        width = 160.u, height = 90.u, showLabel = true,
                         onFocused = surFocus,
                         onClick = { actions.launch(app) },
                         onMenu = { actions.openMenu(app) },
@@ -183,7 +183,7 @@ fun HomeScreen(
                 item(key = "bibliotheque") {
                     TextCard(
                         text = "Toutes les apps\n(${ui.allApps.size})",
-                        width = 150.u, height = 84.u,
+                        width = 160.u, height = 90.u,
                         onClick = actions.openLibrary,
                         onFocused = { selection = null },
                     )

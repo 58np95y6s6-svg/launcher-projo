@@ -68,12 +68,19 @@ class AppRepository(private val context: Context) {
         map[pkg] = AppInfo(pkg, label, isTv)
     }
 
-    /** Ouvre une app : version TV si elle existe, sinon version classique. */
+    /**
+     * Vrai Android TV / Google TV ? Sur les projecteurs « Android classique » (ex. COOLiD),
+     * l'écran TV de certaines apps ne démarre pas : on préfère alors la version classique,
+     * comme le fait l'accueil du fabricant.
+     */
+    private val estAndroidTv: Boolean = pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+
+    /** Ouvre une app (version TV d'abord sur un vrai Android TV, classique sinon). */
     fun launch(packageName: String): Boolean {
-        val intent = pm.getLeanbackLaunchIntentForPackage(packageName)
-            ?: pm.getLaunchIntentForPackage(packageName)
-            ?: return false
-        return start(intent)
+        val tv = pm.getLeanbackLaunchIntentForPackage(packageName)
+        val classique = pm.getLaunchIntentForPackage(packageName)
+        val essais = if (estAndroidTv) listOfNotNull(tv, classique) else listOfNotNull(classique, tv)
+        return essais.any { start(it) }
     }
 
     fun start(intent: Intent): Boolean = try {
@@ -114,8 +121,8 @@ class AppRepository(private val context: Context) {
         for (app in apps) {
             if (app.isSpecial) continue
             if (pertinent(app.label) || pertinent(app.packageName)) {
-                val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName)
-                    ?: pm.getLaunchIntentForPackage(app.packageName)
+                val intent = pm.getLaunchIntentForPackage(app.packageName)
+                    ?: pm.getLeanbackLaunchIntentForPackage(app.packageName)
                 intent?.component?.let { res += SourceCandidate(app.label, it) }
             }
         }
