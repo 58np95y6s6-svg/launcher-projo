@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-test
+  group: build-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -34,6 +34,8 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug
 
       - name: Publication de l'APK de test
+        # Seule la branche de test publie l'APK ; les autres branches compilent seulement
+        if: github.ref_name == 'claude/launcher-projo'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
