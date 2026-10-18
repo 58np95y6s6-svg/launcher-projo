@@ -70,7 +70,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private var derniereVerification = 0L
 
     /** Vérifie s'il existe une version plus récente (au plus une fois toutes les 6 h, sauf si forcé). */
+    /** L'utilisateur est parti autoriser l'installation : on reprend dès son retour. */
+    private var reprendreMaj = false
+
     fun checkUpdate(force: Boolean = false) {
+        if (reprendreMaj && updates.peutInstaller()) {
+            reprendreMaj = false
+            installUpdate()
+            return
+        }
         val maintenant = System.currentTimeMillis()
         if (!force && maintenant - derniereVerification < 6 * 3600_000L) return
         derniereVerification = maintenant
@@ -98,7 +106,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val info = _maj.value.info ?: return
         if (_maj.value.telechargement != null) return
         if (!updates.peutInstaller()) {
-            _maj.value = _maj.value.copy(message = "Autorise Projo à installer des apps, puis réessaie")
+            _maj.value = _maj.value.copy(message = "Autorise Projo à installer des apps, puis reviens : la mise à jour reprendra")
+            reprendreMaj = true
             updates.ouvrirAutorisation()
             return
         }
