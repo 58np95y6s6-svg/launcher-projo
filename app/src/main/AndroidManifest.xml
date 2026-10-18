@@ -8,6 +8,9 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
+    <!-- Internet : calendrier NBA et logos des équipes -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- État du réseau, pour afficher le nom du Wi-Fi quand c'est possible -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />

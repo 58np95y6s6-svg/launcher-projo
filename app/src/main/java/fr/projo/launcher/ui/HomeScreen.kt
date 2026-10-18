@@ -37,6 +37,8 @@ import androidx.tv.material3.Text
 import fr.projo.launcher.HomeUi
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.IconLoader
+import fr.projo.launcher.data.NbaNight
+import fr.projo.launcher.data.NbaRepository
 
 /** Toutes les actions déclenchables depuis l'écran d'accueil. */
 class HomeActions(
@@ -68,6 +70,9 @@ fun HomeScreen(
     /** Incrémenté quand on appuie sur Maison alors que le launcher est déjà affiché. */
     homePressCount: Int,
     actions: HomeActions,
+    nbaNight: NbaNight?,
+    nbaErreur: Boolean,
+    nbaRepo: NbaRepository,
 ) {
     var selection by remember { mutableStateOf<AppInfo?>(null) }
     var couleur by remember { mutableStateOf(IconLoader.COULEUR_PAR_DEFAUT) }
@@ -95,6 +100,9 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(defilement)
         ) {
+          // En-tête + nom de l'app, avec le bandeau NBA posé en haut à droite sous les pastilles
+          Box(Modifier.fillMaxWidth()) {
+           Column {
             // --- En-tête : horloge à gauche, pastilles à droite
             Row(
                 Modifier
@@ -130,6 +138,16 @@ fun HomeScreen(
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
+           }
+            NbaPanel(
+                night = nbaNight,
+                erreur = nbaErreur,
+                repo = nbaRepo,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 94.u, end = 52.u),
+            )
+          }
 
             // --- Rangée « Favoris »
             LazyRow(
