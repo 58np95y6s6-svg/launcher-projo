@@ -111,21 +111,19 @@ fun SourcesDialog(
     onChoose: (String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val coche = { c: String? -> if (c == current) "✓ " else "" }
+    // Anciens choix « Entrée TV » (tv:…) abandonnés : comptent comme « par défaut »
+    val actuel = current?.takeUnless { it.startsWith("tv:") }
+    val coche = { c: String? -> if (c == actuel) "✓ " else "" }
     val actions = buildList {
-        add(MenuAction(coche(null) + "Automatique (recommandé)") { onChoose(null) })
-        candidates.forEach { c ->
+        add(MenuAction(coche(null) + "Par défaut : AwSource") { onChoose(null) })
+        candidates.filter { it.label != "AwSource" }.forEach { c ->
             val id = c.id
-            add(MenuAction(coche(id) + "★ " + c.label) { onChoose(id) })
-        }
-        // N'importe quelle app peut aussi servir (ex. app HDMI du fabricant mal nommée)
-        allApps.forEach { app ->
-            add(MenuAction(app.label) { onChoose("app:" + app.packageName) })
+            add(MenuAction(coche(id) + c.label) { onChoose(id) })
         }
     }
     MenuDialog(
         title = "Pastille « Sources »",
-        subtitle = "★ = semble ouvrir l'entrée HDMI. Choisis ce qui doit s'ouvrir.",
+        subtitle = "Écran ouvert par la tuile « Source HDMI » et la pastille Sources",
         actions = actions,
         onDismiss = onDismiss,
     )

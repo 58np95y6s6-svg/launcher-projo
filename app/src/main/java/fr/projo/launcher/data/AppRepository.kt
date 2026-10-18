@@ -121,80 +121,50 @@ class AppRepository(private val context: Context) {
      * et écrans exportés des autres launchers (ex. accueil du fabricant) dont le nom de classe
      * contient « hdmi », « source » ou « input ». Tout est affiché dans les logs.
      */
+    /**
+     * Paquet d'AwSource, l'app d'entrées (HDMI…) des projecteurs Allwinner, ou null.
+     * Repéré par son nom de paquet ou son nom affiché.
+     */
+    fun awSourcePackage(): String? {
+        val est = { t: String -> t.replace(" ", "").contains("awsource", ignoreCase = true) }
+        return try {
+            pm.getInstalledApplications(0).firstOrNull { info ->
+                est(info.packageName) || est(pm.getApplicationLabel(info).toString())
+            }?.packageName
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Choix proposés pour « Sources » : uniquement AwSource (son écran principal, puis ses
+     * autres écrans). Sans AwSource : les apps dont le nom contient « HDMI ».
+     */
     fun sourceCandidates(apps: List<AppInfo>): List<SourceCandidate> {
-        // Mots qui évoquent une entrée vidéo… mais pas les claviers (« input method ») ni les langues
-        val motCle = Regex("hdmi|source|signal|entr[ée]e|passthrough|tvinput|av ?in", RegexOption.IGNORE_CASE)
-        val exclus = Regex("method|keyboard|clavier|lang|locale|saisie|setting|password|voice", RegexOption.IGNORE_CASE)
-        val pertinent = { texte: String -> motCle.containsMatchIn(texte) && !exclus.containsMatchIn(texte) }
         val res = mutableListOf<SourceCandidate>()
-
-        // Entrées déclarées au système TV d'Android (HDMI 1, HDMI 2…) : ouvertes directement
-        try {
-            val tim = context.getSystemService(Context.TV_INPUT_SERVICE) as? android.media.tv.TvInputManager
-            tim?.tvInputList?.forEach { entree ->
-                val nom = entree.loadLabel(context)?.toString()?.ifBlank { null } ?: entree.id
-                val type = when (entree.type) {
-                    android.media.tv.TvInputInfo.TYPE_HDMI -> "HDMI"
-                    android.media.tv.TvInputInfo.TYPE_COMPONENT -> "Composante"
-                    android.media.tv.TvInputInfo.TYPE_COMPOSITE -> "AV"
-                    android.media.tv.TvInputInfo.TYPE_VGA -> "VGA"
-                    android.media.tv.TvInputInfo.TYPE_TUNER -> "TNT"
-                    else -> "Entrée"
-                }
-                res += SourceCandidate("Entrée TV · $nom ($type)", tvInputId = entree.id)
-            }
-        } catch (e: Exception) {
-            Log.i(TAG, "Pas de système d'entrées TV : ${e.message}")
-        }
-
-        for (app in apps) {
-            if (app.isSpecial) continue
-            if (pertinent(app.label) || pertinent(app.packageName)) {
-                val intent = pm.getLaunchIntentForPackage(app.packageName)
-                    ?: pm.getLeanbackLaunchIntentForPackage(app.packageName)
-                intent?.component?.let { res += SourceCandidate(app.label, component = it) }
-            }
-        }
-        // Écrans exportés de TOUTES les apps installées, y compris les apps système cachées
-        // (sur ces projecteurs, l'écran HDMI est souvent une app système sans icône).
-        // On regarde le nom de l'app ET le nom de chaque écran.
-        val motCleSysteme = Regex(
-            "hdmi|source|signal|tvinput|passthrough|tvd|tvcenter|tvplayer|livetv|inputsource|avin|avinput|externalinput|awsource",
-            RegexOption.IGNORE_CASE,
-        )
-        val pertinentSysteme = { t: String -> motCleSysteme.containsMatchIn(t) && !exclus.containsMatchIn(t) }
-        val paquets = try {
-            pm.getInstalledApplications(0).map { it.packageName }
-        } catch (e: Exception) {
-            homeCandidates()
-        }.filter { it != context.packageName && it != "android" }
-        for (pkg in paquets) {
-            val paquetPertinent = pertinentSysteme(pkg)
+        val aw = awSourcePackage()
+        if (aw != null) {
+            val principal = (pm.getLaunchIntentForPackage(aw) ?: pm.getLeanbackLaunchIntentForPackage(aw))?.component
+            principal?.let { res += SourceCandidate("AwSource", component = it) }
             val activites = try {
                 @Suppress("DEPRECATION")
-                pm.getPackageInfo(pkg, PackageManager.GET_ACTIVITIES).activities.orEmpty()
+                pm.getPackageInfo(aw, PackageManager.GET_ACTIVITIES).activities.orEmpty()
             } catch (e: Exception) {
                 emptyArray()
             }
-            val appLabel by lazy {
-                try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (e: Exception) { pkg }
-            }
-            for (a in activites) {
-                if (!a.exported || !a.enabled) continue
-                val court = a.name.substringAfterLast('.')
-                if (paquetPertinent || pertinentSysteme(court)) {
-                    val cn = ComponentName(a.packageName, a.name)
-                    if (res.none { it.component == cn }) res += SourceCandidate("$appLabel · $court", component = cn)
+            for (act in activites) {
+                if (!act.exported || !act.enabled) continue
+                val cn = ComponentName(act.packageName, act.name)
+                if (res.none { it.component == cn }) {
+                    res += SourceCandidate("AwSource · ${act.name.substringAfterLast('.')}", component = cn)
                 }
             }
-        }
-        // Ce qui contient « hdmi » passe en premier, puis « source » / « signal »
-        res.sortBy {
-            val t = it.label + " " + it.id
-            when {
-                t.contains("hdmi", true) -> 0
-                t.contains("source", true) || t.contains("signal", true) -> 1
-                else -> 2
+        } else {
+            for (app in apps) {
+                if (app.isSpecial || !app.label.contains("hdmi", ignoreCase = true)) continue
+                val intent = pm.getLaunchIntentForPackage(app.packageName)
+                    ?: pm.getLeanbackLaunchIntentForPackage(app.packageName)
+                intent?.component?.let { res += SourceCandidate(app.label, component = it) }
             }
         }
         Log.i(TAG, "Candidats « Sources » : ${res.size}")
