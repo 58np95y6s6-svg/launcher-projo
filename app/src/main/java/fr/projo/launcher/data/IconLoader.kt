@@ -80,9 +80,10 @@ class IconLoader(private val context: Context) {
         // Tuiles propres à Projo : dessinées par l'interface, couleur fixe
         if (packageName.startsWith("projo:")) return AppVisual(null, COULEUR_HDMI)
         val visual = try {
-            val drawable = context.packageManager.getApplicationIcon(packageName)
             val art = Bitmap.createBitmap(LARGEUR, HAUTEUR, Bitmap.Config.ARGB_8888)
-            val couleur = dessinerCarte(drawable, Canvas(art))
+            // Bannière TV officielle de l'app si elle en a une, sinon carte fabriquée depuis l'icône
+            val couleur = banniereTv(packageName)?.let { dessinerBanniere(it, Canvas(art)) }
+                ?: dessinerCarte(context.packageManager.getApplicationIcon(packageName), Canvas(art))
             // 32 bits par pixel : les dégradés restent lisses (le 16 bits faisait des bandes)
             AppVisual(art.asImageBitmap(), couleur)
         } catch (e: Exception) {
@@ -90,6 +91,47 @@ class IconLoader(private val context: Context) {
         }
         cache.put(packageName, visual)
         return visual
+    }
+
+    /**
+     * Bannière 16:9 que l'app fournit pour les écrans d'accueil TV (android:banner) :
+     * celle de l'activité TV d'abord, puis celle de l'app. Null si l'app n'en a pas.
+     */
+    private fun banniereTv(packageName: String): Drawable? = try {
+        val pm = context.packageManager
+        pm.getLeanbackLaunchIntentForPackage(packageName)?.let { pm.getActivityBanner(it) }
+            ?: pm.getApplicationBanner(packageName)
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Bannière TV recadrée pour remplir la carte ; renvoie sa couleur pour la lueur. */
+    private fun dessinerBanniere(banniere: Drawable, canvas: Canvas): Color {
+        val couleur = couleurVive(banniere) ?: couleurDominante(banniere, avecVive = false)
+        // Fond sombre de sa couleur, au cas où la bannière a des zones transparentes
+        canvas.drawColor(
+            assombrir(
+                android.graphics.Color.rgb(
+                    (couleur.red * 255).toInt(), (couleur.green * 255).toInt(), (couleur.blue * 255).toInt(),
+                ),
+                0.6f,
+            ),
+        )
+        val w = banniere.intrinsicWidth
+        val h = banniere.intrinsicHeight
+        if (w <= 0 || h <= 0) {
+            banniere.setBounds(0, 0, LARGEUR, HAUTEUR)
+        } else {
+            // Remplit toute la carte en gardant les proportions (recadrage au centre)
+            val echelle = max(LARGEUR / w.toFloat(), HAUTEUR / h.toFloat())
+            val dw = (w * echelle).toInt()
+            val dh = (h * echelle).toInt()
+            val x = (LARGEUR - dw) / 2
+            val y = (HAUTEUR - dh) / 2
+            banniere.setBounds(x, y, x + dw, y + dh)
+        }
+        banniere.draw(canvas)
+        return couleur
     }
 
     /** Dessine la carte et renvoie la couleur dominante. */
