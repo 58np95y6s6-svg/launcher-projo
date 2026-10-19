@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -37,6 +38,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.ScaleFactor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,26 +51,57 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
+import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Charge (une fois, hors du thread principal) la carte et la couleur d'une app. */
+/**
+ * Charge (une fois, hors du thread principal) le visuel d'une app au format voulu et sa couleur.
+ * Choisir le format selon la forme de l'endroit : FormatVisuel.pour(largeur, hauteur).
+ */
 @Composable
-fun rememberAppVisual(packageName: String, icons: IconLoader): AppVisual? {
-    val visual by produceState(initialValue = icons.cached(packageName), packageName) {
-        if (value == null) value = withContext(Dispatchers.IO) { icons.load(packageName) }
+fun rememberAppVisual(
+    packageName: String,
+    icons: IconLoader,
+    format: FormatVisuel = FormatVisuel.BANNIERE,
+): AppVisual? {
+    val visual by produceState(initialValue = icons.cached(packageName, format), packageName, format) {
+        // Relu à chaque changement de paquet ou de format (ex. logo remplacé) : pas d'ancien visuel figé
+        value = icons.cached(packageName, format) ?: withContext(Dispatchers.IO) { icons.load(packageName, format) }
     }
     return visual
 }
 
-/** Icône carrée de l'app (null pour la tuile HDMI ou en cas d'échec). */
+/** Icône carrée de l'app : son visuel CARRE (null pour la tuile HDMI ou en cas d'échec). */
 @Composable
-fun rememberAppIcon(packageName: String, icons: IconLoader): ImageBitmap? {
-    val icone by produceState(initialValue = icons.cachedIcon(packageName), packageName) {
-        if (value == null) value = withContext(Dispatchers.IO) { icons.loadIcon(packageName) }
+fun rememberAppIcon(packageName: String, icons: IconLoader): ImageBitmap? =
+    rememberAppVisual(packageName, icons, FormatVisuel.CARRE)?.art
+
+/**
+ * Cadrage d'un visuel d'app dans un cadre de n'importe quelle forme : il remplit le cadre en
+ * ne rognant jamais plus de 8 % de sa largeur ou de sa hauteur (IconLoader.ROGNAGE_MAX) ;
+ * au-delà, il est réduit et le reste du cadre montre la couleur de ses bords. Le logo n'est
+ * donc jamais coupé, même si l'endroit n'a pas tout à fait la forme du visuel.
+ */
+object CadrageVisuel : ContentScale {
+    override fun computeScaleFactor(srcSize: Size, dstSize: Size): ScaleFactor {
+        val s = IconLoader.echelleCadrage(srcSize.width, srcSize.height, dstSize.width, dstSize.height)
+        return ScaleFactor(s, s)
     }
-    return icone
+}
+
+/** Image d'une app (rien tant qu'elle n'est pas chargée), cadrée sans couper le logo. */
+@Composable
+fun ImageApp(visual: AppVisual?, description: String?, modifier: Modifier = Modifier) {
+    val art = visual?.art ?: return
+    Image(
+        bitmap = art,
+        contentDescription = description,
+        contentScale = CadrageVisuel,
+        filterQuality = FilterQuality.Medium,
+        modifier = modifier.background(visual.fond),
+    )
 }
 
 /**
@@ -90,7 +123,8 @@ fun AppCard(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visual = rememberAppVisual(iconPackage, icons)
+    // Format le plus proche de la forme de la carte (16:9 partout aujourd'hui)
+    val visual = rememberAppVisual(iconPackage, icons, FormatVisuel.pour(width.value, height.value))
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val forme = RoundedCornerShape(height * 0.16f)
     var focus by remember { mutableStateOf(false) }
@@ -175,13 +209,7 @@ fun AppCard(
                             modifier = Modifier.size(height * 0.40f),
                         )
                     }
-                    art != null -> Image(
-                        bitmap = art,
-                        contentDescription = app.label,
-                        contentScale = ContentScale.Crop,
-                        filterQuality = FilterQuality.Medium,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    art != null -> ImageApp(visual, app.label, Modifier.fillMaxSize())
                     else -> {
                         Box(Modifier.fillMaxSize().background(lerp(couleur, Color.Black, 0.5f)))
                         Text(
