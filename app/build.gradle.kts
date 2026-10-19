@@ -64,6 +64,21 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Tests d'interface sur la JVM (Robolectric) : ressources Android disponibles
+            isIncludeAndroidResources = true
+            all {
+                // Roborazzi : enregistre les captures d'écran (pas de comparaison)
+                it.systemProperty("roborazzi.test.record", "true")
+                it.maxHeapSize = "3g"
+                it.testLogging {
+                    events("passed", "skipped", "failed")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -79,4 +94,11 @@ dependencies {
     implementation(libs.androidx.palette)
     // ADB local (Fire TV) : activation de l'ouverture automatique sans ordinateur
     implementation("dev.mobile:dadb:1.2.10")
+
+    // Tests d'interface (navigation à la télécommande, captures des designs)
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 }

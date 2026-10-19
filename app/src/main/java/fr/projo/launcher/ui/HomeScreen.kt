@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.focus.FocusRequester
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -178,7 +179,7 @@ fun HomeAurore(ctx: HomeContext) {
                 // --- Rangée « Favoris »
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.fadingEdges(ctx.rangeeFavoris, 150.u),
+                    modifier = Modifier.testTag("rangee:favoris").fadingEdges(ctx.rangeeFavoris, 150.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
                     horizontalArrangement = Arrangement.spacedBy(26.u),
                 ) {
@@ -199,7 +200,8 @@ fun HomeAurore(ctx: HomeContext) {
                             onFocused = ctx.surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
-                            modifier = if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier,
+                            modifier = Modifier.testTag("favori:" + app.packageName)
+                                .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier),
                         )
                     }
                 }
@@ -213,7 +215,7 @@ fun HomeAurore(ctx: HomeContext) {
                 )
                 LazyRow(
                     state = ctx.rangeeApps,
-                    modifier = Modifier.fadingEdges(ctx.rangeeApps, 150.u),
+                    modifier = Modifier.testTag("rangee:apps").fadingEdges(ctx.rangeeApps, 150.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 12.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
                 ) {
@@ -225,6 +227,7 @@ fun HomeAurore(ctx: HomeContext) {
                             onFocused = ctx.surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
+                            modifier = Modifier.testTag("app:" + app.packageName),
                         )
                     }
                     // Bibliothèque : toutes les apps installées (comme sur Apple TV)
@@ -234,7 +237,7 @@ fun HomeAurore(ctx: HomeContext) {
                             width = 136.u, height = 77.u,
                             onClick = actions.openLibrary,
                             onFocused = ctx.sansSelection,
-                            modifier = Modifier.focusRequester(ctx.focusBiblio),
+                            modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio"),
                         )
                     }
                 }

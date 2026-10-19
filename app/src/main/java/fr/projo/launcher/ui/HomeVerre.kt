@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
@@ -215,7 +216,7 @@ fun HomeVerre(ctx: HomeContext) {
                 }
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.weight(1f).fillMaxHeight().fadingEdges(ctx.rangeeFavoris, 48.u),
+                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight().fadingEdges(ctx.rangeeFavoris, 48.u),
                     // Marges hautes/basses : place pour la levée, le halo et l'ombre (la rangée découpe)
                     contentPadding = PaddingValues(start = 24.u, end = 40.u, top = 24.u, bottom = 24.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
@@ -236,7 +237,8 @@ fun HomeVerre(ctx: HomeContext) {
                             onFocused = ctx.surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
-                            modifier = if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier,
+                            modifier = Modifier.testTag("favori:" + app.packageName)
+                                .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier),
                         )
                     }
                 }
@@ -383,7 +385,7 @@ private fun VerreBouton(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier.size(40.u).onFocusChanged { surFocus(it.isFocused) },
+        modifier = modifier.testTag("rapide:$libelle").size(40.u).onFocusChanged { surFocus(it.isFocused) },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = fond,
@@ -550,7 +552,7 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
         // Hauteur = celle des icônes + noms (pas de poids : rien n'est rogné)
         LazyRow(
             state = ctx.rangeeApps,
-            modifier = Modifier.fillMaxWidth().fadingEdges(ctx.rangeeApps, 40.u),
+            modifier = Modifier.testTag("rangee:apps").fillMaxWidth().fadingEdges(ctx.rangeeApps, 40.u),
             // Marge haute : place pour la levée et le halo de l'icône sélectionnée
             contentPadding = PaddingValues(start = 12.u, end = 24.u, top = 16.u, bottom = 8.u),
             horizontalArrangement = Arrangement.spacedBy(12.u),
@@ -563,6 +565,7 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
                     onFocused = ctx.surFocus,
                     onClick = { actions.launch(app) },
                     onMenu = { actions.openMenu(app) },
+                    modifier = Modifier.testTag("app:" + app.packageName),
                 )
             }
             // Bibliothèque : toutes les apps installées
@@ -571,7 +574,7 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
                     nombre = ui.allApps.size,
                     onClick = actions.openLibrary,
                     onFocused = ctx.sansSelection,
-                    modifier = Modifier.focusRequester(ctx.focusBiblio),
+                    modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio"),
                 )
             }
         }
@@ -587,6 +590,7 @@ private fun VerreIcone(
     onFocused: (AppInfo, Color) -> Unit,
     onClick: () -> Unit,
     onMenu: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Icône ronde : visuel carré de l'app (logo dans le cercle central) et sa couleur dominante
     val visual = rememberAppVisual(iconPackage, icons, FormatVisuel.CARRE)
@@ -596,7 +600,7 @@ private fun VerreIcone(
     val pleine = remember(icone) { icone != null && verrePleinCadre(icone) }
     var focus by remember { mutableStateOf(false) }
 
-    Column(Modifier.width(80.u), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.width(80.u), horizontalAlignment = Alignment.CenterHorizontally) {
         VerreRond(
             onClick = onClick,
             onLongClick = onMenu,

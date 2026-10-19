@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -74,7 +75,7 @@ private fun Pill(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier.height(hauteur.u).onFocusChanged { focus = it.isFocused },
+        modifier = modifier.testTag("rapide:$label").height(hauteur.u).onFocusChanged { focus = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.09f),
