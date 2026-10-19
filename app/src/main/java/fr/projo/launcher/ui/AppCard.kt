@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Glow
@@ -99,7 +100,11 @@ fun AppCard(
     val lueur = LocalDesign.current.avecLueur
     val zoom by animateFloatAsState(if (focus) 1f else 0f, tween(220), label = "zoom")
 
-    Column(modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
+    // Carte sélectionnée dessinée sous ses voisines : leur bord n'est jamais voilé par le halo
+    Column(
+        modifier.width(width).then(if (lueur && focus) Modifier.zIndex(-1f) else Modifier),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Surface(
             onClick = onClick,
             onLongClick = onMenu,
@@ -130,11 +135,14 @@ fun AppCard(
             border = ClickableSurfaceDefaults.border(
                 // Fin liseré permanent (relief des cartes sombres), contour clair au focus
                 border = Border(BorderStroke(1.u, Color.White.copy(alpha = 0.10f)), shape = forme),
-                focusedBorder = if (lueur) Border(BorderStroke(1.u, Color.White.copy(alpha = 0.25f)), shape = forme)
+                // Designs à lueur : pas de contour sur la carte, l'anneau suffit
+                focusedBorder = if (lueur) Border(BorderStroke(1.u, Color.Transparent), shape = forme)
                 else Border(BorderStroke(2.u, Color.White.copy(alpha = 0.9f)), shape = forme),
             ),
+            // Ombre noire seulement sans lueur : elle salirait le halo (liseré sombre, brume grise)
             glow = ClickableSurfaceDefaults.glow(
-                focusedGlow = Glow(elevationColor = Color.Black.copy(alpha = 0.7f), elevation = 14.u),
+                focusedGlow = if (lueur) Glow(elevationColor = Color.Transparent, elevation = 0.u)
+                else Glow(elevationColor = Color.Black.copy(alpha = 0.7f), elevation = 14.u),
             ),
         ) {
             Box(
@@ -226,6 +234,8 @@ fun TextCard(
     Surface(
         onClick = onClick,
         modifier = modifier
+            // Sélectionnée : dessinée sous ses voisines (le halo ne voile pas leur bord)
+            .then(if (lueur && focus) Modifier.zIndex(-1f) else Modifier)
             .then(
                 if (lueur) Modifier
                     .graphicsLayer { val s = 1f + 0.08f * zoom; scaleX = s; scaleY = s }

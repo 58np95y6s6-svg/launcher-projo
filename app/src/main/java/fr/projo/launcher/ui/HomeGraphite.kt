@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
@@ -461,7 +462,8 @@ private fun GraphiteRaccourci(
             .testTag("rapide:$libelle")
             // Agrandissement géré ici pour que la lueur suive la ligne
             .graphicsLayer { val s = 1f + 0.02f * zoom; scaleX = s; scaleY = s }
-            .lueurFocus(zoom, rayon, tourne = focus)
+            // Ligne fine : anneau entier, halo court et plus léger (pas de débord sur les voisines)
+            .lueurFocus(zoom, rayon, tourne = focus, portee = 10.u, halo = 0.7f)
             .fillMaxWidth()
             .height(32.u)
             .onFocusChanged {
@@ -659,6 +661,8 @@ private fun GraphiteTuile(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
+            // Sélectionnée : dessinée sous ses voisines (le halo ne voile pas leur bord)
+            .then(if (focus) Modifier.zIndex(-1f) else Modifier)
             .graphicsLayer { val s = 1f + 0.08f * zoom; scaleX = s; scaleY = s }
             .lueurFocus(zoom, rayon, tourne = focus)
             .size(largeur, GRAPHITE_DOCK_H.u)
@@ -687,7 +691,8 @@ private fun GraphiteTuile(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
         border = ClickableSurfaceDefaults.border(
             border = Border(BorderStroke(trait, GraphiteFilet), shape = forme),
-            focusedBorder = Border(BorderStroke(trait, Color.White.copy(alpha = 0.25f)), shape = forme),
+            // Pas de contour clair au focus : l'anneau suffit
+            focusedBorder = Border(BorderStroke(trait, Color.Transparent), shape = forme),
         ),
     ) {
         Column(

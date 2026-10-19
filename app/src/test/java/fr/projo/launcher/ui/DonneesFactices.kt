@@ -43,11 +43,12 @@ object DonneesFactices {
     )
 
     val favoris = listOf(
-        Faux("com.netflix.ninja", "Netflix", pleine(0xFFE50914, "N", BLANC)),
+        // Bannière blanche comme la vraie (carte blanche sur fond teinté de rouge en Aurore)
+        Faux("com.netflix.ninja", "Netflix", pleine(0xFFE50914, "N", BLANC), banniere = banniereTexte("NETFLIX", 0xFFE50914.toInt())),
         Faux("com.amazon.amazonvideo.livingroom", "Prime Video", pleine(0xFF00A8E1, "prime", BLANC)),
         Faux("com.canal.android.canal", "Canal+", pleine(0xFF000000, "CANAL+", BLANC)),
         Faux("com.teamsmart.videomanager.tv", "SmartTube", detouree(0xFFE53935)),
-        Faux("tv.twitch.android.app", "Twitch", pleine(0xFF9146FF, "T", BLANC)),
+        Faux("tv.twitch.android.app", "Twitch", pleine(0xFF9146FF, "T", BLANC), banniere = banniereTexte("twitch", 0xFF9146FF.toInt())),
         Faux("com.google.android.youtube.tv", "YouTube", lecture(0xFFFF0000), banniere = banniereYoutube()),
     )
 
@@ -235,6 +236,15 @@ object DonneesFactices {
         c.drawRoundRect(RectF(40f, 62f, 112f, 118f), 16f, 16f, peinture(0xFFFF0000.toInt()))
         triangle(c, 77f, 90f, 18f, BLANC)
         texte(c, "YouTube", 0xFF212121.toInt(), 204f, 90f, 170f, taille = 44f)
+        BitmapDrawable(res, b)
+    }
+
+    /** Bannière TV 16:9 sur fond blanc avec le nom de l'app en couleur (Netflix, Twitch). */
+    private fun banniereTexte(t: String, encre: Int): (Resources) -> Drawable = { res ->
+        val b = Bitmap.createBitmap(320, 180, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        c.drawColor(BLANC)
+        texte(c, t, encre, 160f, 90f, 240f, taille = 64f)
         BitmapDrawable(res, b)
     }
 

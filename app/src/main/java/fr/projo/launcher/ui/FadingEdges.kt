@@ -14,7 +14,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 
 /**
  * Fondu des bords d'une rangée horizontale : les cartes s'effacent dans la marge au lieu
@@ -22,13 +25,22 @@ import androidx.compose.ui.unit.Dp
  *  - à droite : toujours ;
  *  - à gauche : seulement quand la rangée a défilé (apparition animée).
  * Simple masque de transparence (pas de flou) : très léger pour le processeur graphique.
+ *
+ * Le calque du masque déborde de [debord] en haut et en bas : la lueur et l'agrandissement
+ * de la carte sélectionnée ne sont pas coupés net au bord de la rangée.
  */
-fun Modifier.fadingEdges(state: LazyListState, largeur: Dp): Modifier = composed {
+fun Modifier.fadingEdges(state: LazyListState, largeur: Dp, debord: Dp = 24.dp): Modifier = composed {
     val aDefile by remember(state) {
         derivedStateOf { state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0 }
     }
     val gauche by animateFloatAsState(if (aDefile) 1f else 0f, tween(250), label = "fonduGauche")
     this
+        // La rangée garde sa taille ; seul le calque ci-dessous est agrandi de « debord »
+        .layout { mesurable, contraintes ->
+            val d = debord.roundToPx()
+            val p = mesurable.measure(contraintes.offset(vertical = 2 * d))
+            layout(p.width, p.height - 2 * d) { p.place(0, -d) }
+        }
         // Calque séparé : le masque n'agit que sur la rangée, pas sur le fond derrière
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
@@ -44,5 +56,10 @@ fun Modifier.fadingEdges(state: LazyListState, largeur: Dp): Modifier = composed
                 brush = Brush.horizontalGradient(*(gaucheStops + droiteStops).toTypedArray()),
                 blendMode = BlendMode.DstIn,
             )
+        }
+        .layout { mesurable, contraintes ->
+            val d = debord.roundToPx()
+            val p = mesurable.measure(contraintes.offset(vertical = -2 * d))
+            layout(p.width, p.height + 2 * d) { p.place(0, d) }
         }
 }
