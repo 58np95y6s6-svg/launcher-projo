@@ -39,7 +39,10 @@ data class HomeUi(
     val allApps: List<AppInfo> = emptyList(),
     val hiddenApps: List<AppInfo> = emptyList(),
     val prefs: PrefsState = PrefsState(),
-    /** Paquet dont on affiche le logo, pour les apps dont le logo est remplacé. */
+    /**
+     * Paquet dont on affiche le logo, pour les apps dont le logo est remplacé
+     * (préfixé par IconLoader.LOGO_ORIGINAL quand l'utilisateur veut l'icône d'origine).
+     */
     val iconSources: Map<String, String> = emptyMap(),
 ) {
     fun iconSourceOf(pkg: String): String = iconSources[pkg] ?: pkg
@@ -223,7 +226,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         val installes = liste.map { it.packageName }.toSet()
         p.iconOverrides.forEach { (pkg, source) ->
-            if (source == pkg) res.remove(pkg) // « logo d'origine » choisi explicitement
+            // « Logo d'origine » choisi explicitement : la vraie icône de l'app, sans illustration
+            if (source == pkg) res[pkg] = IconLoader.LOGO_ORIGINAL + pkg
             else if (source in installes) res[pkg] = source
         }
         return res
