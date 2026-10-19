@@ -56,7 +56,7 @@ fun LibraryScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0xFA07080B))
+            .background(LocalDesign.current.colors().fondBibliotheque)
             // Le focus reste dans la bibliothèque (pas de saut vers l'accueil caché derrière)
             .focusProperties { exit = { FocusRequester.Cancel } }
             .focusGroup()
@@ -64,12 +64,12 @@ fun LibraryScreen(
         Column(Modifier.fillMaxSize()) {
             Text(
                 "Toutes les apps",
-                color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Light,
+                color = LocalDesign.current.colors().texte, fontSize = 30.us, fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(start = 48.u, top = 34.u),
             )
             Text(
                 "Maintiens OK sur une app pour l'ajouter à l'accueil ou aux favoris",
-                color = Color.White.copy(alpha = 0.55f), fontSize = 12.us,
+                color = LocalDesign.current.colors().texteDiscret, fontSize = 12.us,
                 modifier = Modifier.padding(start = 48.u, top = 4.u),
             )
             val rubriques = remember(ui.allApps) { AppCategories.grouper(ui.allApps) }
@@ -85,7 +85,7 @@ fun LibraryScreen(
                     item(key = "rubrique-${rubrique.name}", span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             rubrique.titre.uppercase() + "  ·  ${apps.size}",
-                            color = Color.White.copy(alpha = 0.6f), fontSize = 11.us,
+                            color = LocalDesign.current.colors().texteDiscret, fontSize = 11.us,
                             fontWeight = FontWeight.SemiBold, letterSpacing = 2.us,
                             modifier = Modifier.padding(top = if (r == 0) 0.u else 10.u),
                         )

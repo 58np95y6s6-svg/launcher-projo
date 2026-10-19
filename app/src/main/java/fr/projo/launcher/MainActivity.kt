@@ -30,6 +30,9 @@ import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
+import fr.projo.launcher.ui.Design
+import fr.projo.launcher.ui.DesignDialog
+import fr.projo.launcher.ui.LocalDesign
 import fr.projo.launcher.ui.HiddenAppsDialog
 import fr.projo.launcher.ui.IconChoiceDialog
 import fr.projo.launcher.ui.HomeActions
@@ -75,7 +78,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Échelle : interface dessinée pour 960 dp de large
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
-            CompositionLocalProvider(LocalScale provides echelle) {
+            val etat by vm.ui.collectAsStateWithLifecycle()
+            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides Design.from(etat.prefs.design)) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Contenu()
                 }
@@ -95,6 +99,7 @@ class MainActivity : ComponentActivity() {
         var logoApp by remember { mutableStateOf<AppInfo?>(null) }
         var montrerBibliotheque by remember { mutableStateOf(false) }
         var montrerReglages by remember { mutableStateOf(false) }
+        var montrerDesign by remember { mutableStateOf(false) }
         // Focus rendu à l'accueil quand un panneau se ferme (sinon plus rien n'est sélectionné)
         val focusReglages = remember { FocusRequester() }
         val focusBiblio = remember { FocusRequester() }
@@ -174,6 +179,7 @@ class MainActivity : ComponentActivity() {
             nbaErreur = nbaErreur,
             nbaRepo = vm.nba,
             majDisponible = maj.info?.available == true,
+            design = Design.from(ui.prefs.design),
         )
 
         if (montrerReglages) {
@@ -199,6 +205,7 @@ class MainActivity : ComponentActivity() {
                     sound = { vm.actions.openSound() },
                     allSettings = { vm.actions.openSettings() },
                     close = { montrerReglages = false; focusApres = focusReglages },
+                    design = { montrerDesign = true },
                 ),
             )
         }
@@ -255,6 +262,13 @@ class MainActivity : ComponentActivity() {
                 allApps = ui.allApps,
                 onChoose = { vm.setIconOverride(app.packageName, it) },
                 onDismiss = { logoApp = null },
+            )
+        }
+        if (montrerDesign) {
+            DesignDialog(
+                current = Design.from(ui.prefs.design),
+                onChoose = { vm.setDesign(it.id) },
+                onDismiss = { montrerDesign = false },
             )
         }
         if (montrerMasquees) {

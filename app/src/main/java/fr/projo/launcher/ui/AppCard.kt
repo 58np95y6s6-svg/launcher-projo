@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -58,6 +59,15 @@ fun rememberAppVisual(packageName: String, icons: IconLoader): AppVisual? {
         if (value == null) value = withContext(Dispatchers.IO) { icons.load(packageName) }
     }
     return visual
+}
+
+/** Icône carrée de l'app (null pour la tuile HDMI ou en cas d'échec). */
+@Composable
+fun rememberAppIcon(packageName: String, icons: IconLoader): ImageBitmap? {
+    val icone by produceState(initialValue = icons.cachedIcon(packageName), packageName) {
+        if (value == null) value = withContext(Dispatchers.IO) { icons.loadIcon(packageName) }
+    }
+    return icone
 }
 
 /**
@@ -174,7 +184,7 @@ fun AppCard(
             val opacite by animateFloatAsState(if (focus) 1f else 0f, tween(200), label = "nom")
             Text(
                 app.label,
-                color = Color.White,
+                color = LocalDesign.current.colors().texte,
                 fontSize = 12.us,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -197,19 +207,20 @@ fun TextCard(
     modifier: Modifier = Modifier,
 ) {
     val forme = RoundedCornerShape(height * 0.16f)
+    val c = LocalDesign.current.colors()
     Surface(
         onClick = onClick,
         modifier = modifier.size(width, height).onFocusChanged { if (it.isFocused) onFocused() },
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.07f),
-            contentColor = Color.White.copy(alpha = 0.75f),
-            focusedContainerColor = Color.White.copy(alpha = 0.92f),
-            focusedContentColor = Color.Black,
+            containerColor = c.texte.copy(alpha = 0.07f),
+            contentColor = c.texte.copy(alpha = 0.75f),
+            focusedContainerColor = c.focusFond,
+            focusedContentColor = c.focusTexte,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
         border = ClickableSurfaceDefaults.border(
-            border = Border(BorderStroke(1.u, Color.White.copy(alpha = 0.12f)), shape = forme),
+            border = Border(BorderStroke(1.u, c.texte.copy(alpha = 0.12f)), shape = forme),
         ),
     ) {
         Box(Modifier.fillMaxSize().padding(12.u), contentAlignment = Alignment.Center) {

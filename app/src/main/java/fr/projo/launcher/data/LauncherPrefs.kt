@@ -26,6 +26,8 @@ data class PrefsState(
     val sourcesComponent: String? = null,
     /** Logo remplacé : paquet de l'app → paquet dont on affiche le logo. */
     val iconOverrides: Map<String, String> = emptyMap(),
+    /** Design de l'écran d'accueil (identifiant, voir ui.Design). */
+    val design: String? = null,
 )
 
 /** Sauvegarde des préférences avec DataStore (conservées après redémarrage). */
@@ -39,6 +41,7 @@ class LauncherPrefs(private val context: Context) {
         val LOGOS = stringSetPreferencesKey("logos_remplaces")
         val ACCUEIL = stringPreferencesKey("apps_accueil")
         val ACCUEIL_DEFAUTS = booleanPreferencesKey("apps_accueil_par_defaut_appliquees")
+        val DESIGN = stringPreferencesKey("design")
     }
 
     val state: Flow<PrefsState> = context.dataStore.data.map { p ->
@@ -52,7 +55,12 @@ class LauncherPrefs(private val context: Context) {
             iconOverrides = p[Cles.LOGOS].orEmpty().mapNotNull { ligne ->
                 ligne.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] }
             }.toMap(),
+            design = p[Cles.DESIGN],
         )
+    }
+
+    suspend fun setDesign(id: String) {
+        context.dataStore.edit { it[Cles.DESIGN] = id }
     }
 
     suspend fun setFavorites(list: List<String>) {
