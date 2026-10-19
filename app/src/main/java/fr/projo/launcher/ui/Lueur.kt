@@ -213,5 +213,5 @@ private object MasquesLueur {
     }
 }
 
-/** Designs qui utilisent la lueur comme effet de sélection des cartes d'apps. */
-val Design.avecLueur: Boolean get() = this == Design.AURORE || this == Design.GRAPHITE
+/** Designs qui utilisent la lueur comme effet de sélection des cartes d'apps (Graphite seulement). */
+val Design.avecLueur: Boolean get() = this == Design.GRAPHITE

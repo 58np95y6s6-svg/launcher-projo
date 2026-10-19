@@ -133,7 +133,8 @@ fun AppCard(
                 focusedBorder = if (lueur) Border(BorderStroke(1.u, Color.White.copy(alpha = 0.25f)), shape = forme)
                 else Border(BorderStroke(2.u, Color.White.copy(alpha = 0.9f)), shape = forme),
             ),
-            glow = ClickableSurfaceDefaults.glow(
+            // Ombre noire seulement sans lueur : sous la lueur, elle salissait le halo (liseré sombre)
+            glow = if (lueur) ClickableSurfaceDefaults.glow() else ClickableSurfaceDefaults.glow(
                 focusedGlow = Glow(elevationColor = Color.Black.copy(alpha = 0.7f), elevation = 14.u),
             ),
         ) {
