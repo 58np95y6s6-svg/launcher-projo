@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.layout.findRootCoordinates
@@ -68,10 +69,20 @@ abstract class BancAccueil(nomDesign: String) {
     @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    /** Données affichées : celles de DonneesFactices, sauf si un test en donne d'autres à [afficher]. */
+    /** Données affichées : celles de DonneesFactices (passées par [preparer]), sauf si un test en donne d'autres à [afficher]. */
     private var uiTest: HomeUi? = null
     protected val ui: HomeUi
-        get() = uiTest ?: DonneesFactices.ui(design).also { uiTest = it }
+        get() = uiTest ?: preparer(DonneesFactices.ui(design)).also { uiTest = it }
+
+    /** Variante des données (sans favori, « Mes apps » vide…) : à redéfinir dans une classe de test. */
+    protected open fun preparer(u: HomeUi): HomeUi = u
+
+    /** Comme MainActivity : le focus revient sur Réglages / « Toutes les apps » à la fermeture des panneaux. */
+    protected val focusReglages = FocusRequester()
+    protected val focusBiblio = FocusRequester()
+
+    /** Paquets dont le menu a été demandé (appui long ou touche Menu). */
+    protected val menus = mutableListOf<String>()
 
     /** Pixels par unité d'interface (.u). */
     protected val pxParU: Float
@@ -102,7 +113,7 @@ abstract class BancAccueil(nomDesign: String) {
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
         val actions = HomeActions(
-            launch = {}, openMenu = {}, openLibrary = {}, sources = {}, sourcesLong = {},
+            launch = {}, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
             wifi = {}, bluetooth = {}, settings = {}, settingsLong = {}, update = {},
         )
         compose.mainClock.autoAdvance = false
@@ -116,6 +127,8 @@ abstract class BancAccueil(nomDesign: String) {
                         icons = icons,
                         wifiLabel = wifiLabel,
                         homePressCount = 0,
+                        focusReglages = focusReglages,
+                        focusBiblio = focusBiblio,
                         actions = actions,
                         nbaData = nbaData,
                         nbaErreur = false,
@@ -130,8 +143,9 @@ abstract class BancAccueil(nomDesign: String) {
         val racine = compose.onRoot().fetchSemanticsNode().size
         println("[${design.name}] écran ${racine.width} × ${racine.height} px, ${pxParU} px par unité")
         val f = focus()
-        if (ui.favorites.isNotEmpty() && f?.etiquette != favori(0)) {
-            fail("[${design.name}] OUTILLAGE : focus initial attendu sur ${favori(0)}, obtenu ${decrire(f)} (écran ${racine.width}×${racine.height} px)")
+        val attendu = if (ui.favorites.isEmpty()) "aide" else favori(0)
+        if (f?.etiquette != attendu) {
+            fail("[${design.name}] OUTILLAGE : focus initial attendu sur $attendu, obtenu ${decrire(f)} (écran ${racine.width}×${racine.height} px)")
         }
     }
 
@@ -149,6 +163,12 @@ abstract class BancAccueil(nomDesign: String) {
 
     /** Donne le focus directement à un élément (préparation d'un test, pas une navigation). */
     protected fun donnerFocus(etiquette: String) {
+        // « Toutes les apps » pas encore composée (hors écran) : on y va avec ▶ depuis la 1re app
+        // (performScrollToNode attendrait sans fin : la lueur anime en continu)
+        if (etiquette == "biblio" && compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+            donnerFocus(app(0))
+            repeat(ui.homeApps.size + 2) { if (focus()?.etiquette != "biblio") appuyer(Key.DirectionRight) }
+        }
         compose.onAllNodes(
             (hasTestTag(etiquette) or hasAnyAncestor(hasTestTag(etiquette))) and
                 SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus),
@@ -176,7 +196,7 @@ abstract class BancAccueil(nomDesign: String) {
             p = p.parent
         }
         val principale = tags.firstOrNull {
-            it.startsWith("favori:") || it.startsWith("app:") || it == "biblio" || it.startsWith("rapide:")
+            it.startsWith("favori:") || it.startsWith("app:") || it == "biblio" || it == "aide" || it.startsWith("rapide:")
         } ?: tags.firstOrNull() ?: "(élément sans étiquette)"
         return Cible(principale, tags, n.bornes())
     }
@@ -187,7 +207,7 @@ abstract class BancAccueil(nomDesign: String) {
         return c.findRootCoordinates().localBoundingBoxOf(c, clipBounds = false)
     }
 
-    private fun bornesDe(etiquette: String): Rect? =
+    protected fun bornesDe(etiquette: String): Rect? =
         compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()?.bornes()
 
     /** « x 108…254 · y 330…418 u » */
@@ -204,8 +224,80 @@ abstract class BancAccueil(nomDesign: String) {
     protected fun rangees(): String =
         "rangée favoris ${bornesDe("rangee:favoris")?.enU() ?: "?"} ; rangée Mes apps ${bornesDe("rangee:apps")?.enU() ?: "?"}"
 
-    protected fun estDansMesApps(c: Cible?) = c != null && (c.etiquette.startsWith("app:") || c.etiquette == "biblio")
-    protected fun estFavori(c: Cible?) = c != null && c.etiquette.startsWith("favori:")
+    protected fun estDansMesApps(c: Cible?) = c != null && estEtiquetteMesApps(c.etiquette)
+    protected fun estFavori(c: Cible?) = c != null && estEtiquetteFavori(c.etiquette)
+    private fun estEtiquetteMesApps(e: String) = e.startsWith("app:") || e == "biblio"
+    private fun estEtiquetteFavori(e: String) = e.startsWith("favori:") || e == "aide"
+
+    // ------------------------------------------------------------------ éléments visibles
+
+    /** Largeur de l'écran (px). */
+    protected fun largeurEcran(): Float = compose.onRoot().fetchSemanticsNode().size.width.toFloat()
+
+    /** Partie visible d'une rangée : ses bords gauche et droit, limités à l'écran (px). */
+    private fun zoneVisible(rangee: String): Pair<Float, Float> {
+        val r = bornesDe(rangee) ?: return 0f to largeurEcran()
+        return maxOf(r.left, 0f) to minOf(r.right, largeurEcran())
+    }
+
+    /** Éléments d'une rangée ENTIÈREMENT visibles à l'écran, de gauche à droite (étiquette, position). */
+    protected fun elementsVisibles(mesApps: Boolean): List<Pair<String, Rect>> {
+        val (g, d) = zoneVisible(if (mesApps) "rangee:apps" else "rangee:favoris")
+        val tolerance = 1.5f
+        val matcher = SemanticsMatcher("élément de rangée") { n ->
+            val t = n.config.getOrNull(SemanticsProperties.TestTag)
+            t != null && (if (mesApps) estEtiquetteMesApps(t) else estEtiquetteFavori(t))
+        }
+        return compose.onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes()
+            .map { it.config[SemanticsProperties.TestTag] to it.bornes() }
+            .filter { (_, b) -> b.left >= g - tolerance && b.right <= d + tolerance }
+            .distinctBy { it.first }
+            .sortedBy { it.second.left }
+    }
+
+    /** L'élément [etiquette] est-il visible à l'écran (au moins 85 % de sa largeur, agrandissement compris) ? */
+    protected fun estVisible(etiquette: String, mesApps: Boolean): Boolean {
+        val b = bornesDe(etiquette) ?: return false
+        val (g, d) = zoneVisible(if (mesApps) "rangee:apps" else "rangee:favoris")
+        val visible = minOf(b.right, d) - maxOf(b.left, g)
+        return visible >= 0.85f * b.width
+    }
+
+    /**
+     * Vérifie un saut vertical : [apres] doit être dans l'autre rangée, être l'élément visible
+     * (avant l'appui, liste [candidats]) le plus aligné avec [source], et rester visible.
+     */
+    protected fun verifierSaut(
+        nom: String,
+        avant: Cible?,
+        apres: Cible?,
+        versMesApps: Boolean,
+        candidats: List<Pair<String, Rect>>,
+    ) {
+        val fleche = if (versMesApps) "▼" else "▲"
+        val rangee = if (versMesApps) "un élément de « Mes apps »" else "un favori"
+        val bonneRangee = if (versMesApps) estDansMesApps(apres) else estFavori(apres)
+        if (avant == null || apres == null || !bonneRangee) {
+            fail("[${design.name}] $nom ${decrire(avant)} puis $fleche : attendu $rangee, obtenu ${decrire(apres)}. ${rangees()}")
+            return
+        }
+        val sx = avant.bornes.center.x
+        val meilleur = candidats.minByOrNull { kotlin.math.abs(it.second.center.x - sx) }
+        val choisi = candidats.firstOrNull { it.first == apres.etiquette }
+        val tolerance = 2f * pxParU
+        if (meilleur == null || choisi == null ||
+            kotlin.math.abs(choisi.second.center.x - sx) > kotlin.math.abs(meilleur.second.center.x - sx) + tolerance
+        ) {
+            fail(
+                "[${design.name}] $nom ${decrire(avant)} puis $fleche : obtenu ${decrire(apres)}, attendu l'élément " +
+                    "visible le plus aligné ${meilleur?.let { "« ${it.first} » (${it.second.enU()})" } ?: "(aucun visible ?)"}. " +
+                    "Visibles avant l'appui : ${candidats.joinToString { it.first.substringAfterLast('.') }}. ${rangees()}",
+            )
+        }
+        if (!estVisible(apres.etiquette, versMesApps)) {
+            fail("[${design.name}] $nom puis $fleche : ${decrire(apres)} n'est pas visible à l'écran. ${rangees()}")
+        }
+    }
 
     protected fun favori(i: Int) = "favori:" + ui.favorites[i].packageName
     protected fun app(i: Int) = "app:" + ui.homeApps[i].packageName
@@ -221,9 +313,9 @@ abstract class BancAccueil(nomDesign: String) {
         return dernier
     }
 
-    /** Depuis le 1er favori, va au favori [i] avec ▶ (échec explicite si la rangée ne suit pas). */
-    protected fun allerAuFavori(i: Int) {
-        for (k in 1..i) {
+    /** Depuis le favori [depuis] (le 1er par défaut), va au favori [i] avec ▶ (échec explicite si la rangée ne suit pas). */
+    protected fun allerAuFavori(i: Int, depuis: Int = 0) {
+        for (k in depuis + 1..i) {
             appuyer(Key.DirectionRight)
             val f = focus()
             if (f?.etiquette != favori(k)) {

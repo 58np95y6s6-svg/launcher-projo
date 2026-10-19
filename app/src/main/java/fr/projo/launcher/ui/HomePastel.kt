@@ -556,7 +556,8 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth().fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
+        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth().navFavoris(ctx.nav)
+            .fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
         // Haut/bas : place pour l'agrandissement et l'anneau. Fin : la dernière carte peut
         // venir hors du fondu.
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 18.u, bottom = 18.u),
@@ -570,7 +571,8 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
             PastelFavori(
                 app, ctx,
                 Modifier.testTag("favori:" + app.packageName)
-                    .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier),
+                    .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
+                    .then(rememberCibleNav(ctx.nav.favoris, "fav:" + app.packageName)),
             )
         }
     }
@@ -581,7 +583,7 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
 private fun PastelRangeeApps(ctx: HomeContext) {
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.testTag("rangee:apps").fillMaxWidth().fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
+        modifier = Modifier.testTag("rangee:apps").fillMaxWidth().navApps(ctx.nav).fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 7.u, bottom = 7.u),
         horizontalArrangement = Arrangement.spacedBy(10.u),
         verticalAlignment = Alignment.CenterVertically,
@@ -723,7 +725,7 @@ private fun PastelCarteAide(ctx: HomeContext) {
         fondFocus = PastelPrimaireConteneur,
         onClick = {},
         onFocus = ctx.sansSelection,
-        modifier = Modifier.focusRequester(ctx.premierFocus),
+        modifier = Modifier.focusRequester(ctx.premierFocus).then(rememberCibleNav(ctx.nav.favoris, "aide")).testTag("aide"),
     ) {
         Text(
             "Aucun favori.\nMaintiens OK sur une app pour l'ajouter.",
@@ -807,7 +809,9 @@ private fun PastelPiluleApp(app: AppInfo, ctx: HomeContext, formeIcone: Shape) {
         fond = PastelFondPilule,
         contenu = PastelEncre,
         hauteur = 48.u, debut = 8.u, fin = 18.u,
-        modifier = Modifier.testTag("app:" + app.packageName).pastelGardeMarge(PASTEL_MARGE.u).pastelToucheMenu(menu),
+        modifier = Modifier.testTag("app:" + app.packageName)
+            .then(rememberCibleNav(ctx.nav.apps, "app:" + app.packageName))
+            .pastelGardeMarge(PASTEL_MARGE.u).pastelToucheMenu(menu),
     ) { _ ->
         Box(
             Modifier
@@ -848,7 +852,8 @@ private fun PastelPiluleBiblio(ctx: HomeContext) {
         fond = PastelTertiaireConteneur,
         contenu = PastelSurTertiaireConteneur,
         hauteur = 48.u, debut = 8.u, fin = 10.u,
-        modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio").pastelGardeMarge(PASTEL_MARGE.u),
+        modifier = Modifier.focusRequester(ctx.focusBiblio).then(rememberCibleNav(ctx.nav.apps, "bibliotheque"))
+            .testTag("biblio").pastelGardeMarge(PASTEL_MARGE.u),
     ) { focus ->
         Box(
             Modifier
