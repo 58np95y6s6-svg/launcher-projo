@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -650,6 +651,8 @@ private fun ConsoleTuile(
     modifier: Modifier = Modifier,
 ) {
     val visual = rememberAppVisual(iconPackage, icons)
+    // Tuile carrée : l'icône carrée de l'app (l'image 16:9 y serait rognée)
+    val icone = rememberAppIcon(iconPackage, icons)
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val rubrique = remember(app) { AppCategories.rubrique(app).titre }
     var focus by remember { mutableStateOf(false) }
@@ -690,6 +693,7 @@ private fun ConsoleTuile(
                 ConsoleVisuel(
                     app = app,
                     visual = visual,
+                    icone = icone,
                     couleur = couleur,
                     lettre = 26.us,
                     modifier = Modifier
@@ -943,7 +947,10 @@ private fun ConsoleCarteApp(
         modifier = modifier.consoleToucheMenu(onMenu),
     ) {
         ConsoleContenuCarte(app.label) {
-            ConsoleVisuel(app = app, visual = visual, couleur = couleur, lettre = 13.us, modifier = Modifier.fillMaxSize())
+            ConsoleVisuel(
+                app = app, visual = visual, icone = rememberAppIcon(iconPackage, icons),
+                couleur = couleur, lettre = 13.us, modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
@@ -1045,11 +1052,15 @@ private fun ConsoleCarte(
 
 // ------------------------------------------------------------------ éléments communs
 
-/** Visuel d'une app : carte recadrée en carré, tuile HDMI dessinée, ou initiale en attendant. */
+/**
+ * Visuel carré d'une app : son icône carrée sur un fond de sa couleur (sinon la carte
+ * recadrée), tuile HDMI dessinée, ou initiale en attendant.
+ */
 @Composable
 private fun ConsoleVisuel(
     app: AppInfo,
     visual: AppVisual?,
+    icone: ImageBitmap?,
     couleur: Color,
     lettre: TextUnit,
     modifier: Modifier = Modifier,
@@ -1062,6 +1073,17 @@ private fun ConsoleVisuel(
                 Icon(
                     ProjoIcons.Sources, contentDescription = app.label, tint = Color.White,
                     modifier = Modifier.fillMaxSize(0.46f),
+                )
+            }
+            icone != null -> {
+                // Icône entière (les icônes adaptatives remplissent tout le carré)
+                Box(Modifier.fillMaxSize().background(lerp(couleur, Color.Black, 0.35f)))
+                Image(
+                    bitmap = icone,
+                    contentDescription = app.label,
+                    contentScale = ContentScale.Fit,
+                    filterQuality = FilterQuality.Medium,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
             art != null -> Image(
