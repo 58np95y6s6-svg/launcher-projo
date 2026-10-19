@@ -31,6 +31,9 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.system.FireTv
 import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
+import fr.projo.launcher.ui.Design
+import fr.projo.launcher.ui.DesignDialog
+import fr.projo.launcher.ui.LocalDesign
 import fr.projo.launcher.ui.HiddenAppsDialog
 import fr.projo.launcher.ui.IconChoiceDialog
 import fr.projo.launcher.ui.HomeActions
@@ -82,7 +85,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Échelle : interface dessinée pour 960 dp de large
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
-            CompositionLocalProvider(LocalScale provides echelle, LocalFireTv provides FireTv.estFireTv(this)) {
+            val etat by vm.ui.collectAsStateWithLifecycle()
+            CompositionLocalProvider(
+                LocalScale provides echelle,
+                LocalFireTv provides FireTv.estFireTv(this),
+                LocalDesign provides Design.from(etat.prefs.design),
+            ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Contenu()
                 }
@@ -100,9 +108,11 @@ class MainActivity : ComponentActivity() {
         var montrerSources by remember { mutableStateOf(false) }
         var montrerDiagnostic by remember { mutableStateOf(false) }
         var montrerAide by remember { mutableStateOf(false) }
+        var montrerIphone by remember { mutableStateOf(false) }
         var logoApp by remember { mutableStateOf<AppInfo?>(null) }
         var montrerBibliotheque by remember { mutableStateOf(false) }
         var montrerReglages by remember { mutableStateOf(false) }
+        var montrerDesign by remember { mutableStateOf(false) }
         // Focus rendu à l'accueil quand un panneau se ferme (sinon plus rien n'est sélectionné)
         val focusReglages = remember { FocusRequester() }
         val focusBiblio = remember { FocusRequester() }
@@ -182,6 +192,7 @@ class MainActivity : ComponentActivity() {
             nbaErreur = nbaErreur,
             nbaRepo = vm.nba,
             majDisponible = maj.info?.available == true,
+            design = Design.from(ui.prefs.design),
         )
 
         if (montrerReglages) {
@@ -208,6 +219,7 @@ class MainActivity : ComponentActivity() {
                     allSettings = { vm.actions.openSettings() },
                     ouvertureAuto = { montrerAide = true },
                     close = { montrerReglages = false; focusApres = focusReglages },
+                    design = { montrerDesign = true },
                 ),
             )
         }
@@ -266,6 +278,13 @@ class MainActivity : ComponentActivity() {
                 onDismiss = { logoApp = null },
             )
         }
+        if (montrerDesign) {
+            DesignDialog(
+                current = Design.from(ui.prefs.design),
+                onChoose = { vm.setDesign(it.id) },
+                onDismiss = { montrerDesign = false },
+            )
+        }
         if (montrerMasquees) {
             HiddenAppsDialog(
                 apps = ui.hiddenApps,
@@ -299,6 +318,7 @@ class MainActivity : ComponentActivity() {
                             toast(erreur ?: "Ouverture automatique activée ✓")
                         }
                     },
+                    MenuAction("Activer depuis un iPhone") { montrerIphone = true },
                     MenuAction("Ouvrir les options pour les développeurs") {
                         if (!FireTv.ouvrirOptionsDeveloppeur(this)) toast("Ma Fire TV → À propos : clique 7 fois sur le nom de l'appareil")
                     },
@@ -308,6 +328,20 @@ class MainActivity : ComponentActivity() {
                     MenuAction("Fermer") {},
                 ),
                 onDismiss = { montrerAide = false },
+            )
+        }
+        if (montrerIphone) {
+            // Activation depuis une app ADB sur iPhone (les Fire OS récents bloquent l'ADB local)
+            val ip = FireTv.adresseIp() ?: "(Ma Fire TV → À propos → Réseau)"
+            val cmds = FireTv.commandesShell(this)
+            MenuDialog(
+                title = "Activer depuis un iPhone",
+                subtitle = "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
+                    "2. Sur l'iPhone, installe une app ADB (ex. « Bugjaeger - Mobile ADB »), même Wi-Fi que le Fire TV.\n" +
+                    "3. Connecte-toi à $ip, port 5555, et accepte « Autoriser le débogage » sur la télé.\n" +
+                    "4. Dans le terminal (shell) de l'app, tape :\n\n" + cmds.joinToString("\n\n"),
+                actions = listOf(MenuAction("Fermer") {}),
+                onDismiss = { montrerIphone = false },
             )
         }
         if (montrerDiagnostic) {

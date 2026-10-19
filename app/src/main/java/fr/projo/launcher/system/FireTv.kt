@@ -41,11 +41,24 @@ object FireTv {
         false
     }
 
-    /** Commande ADB à taper si le Fire TV ne montre pas le service dans ses réglages. */
-    fun commandeAdb(context: Context): String {
+    /** Les 2 commandes à taper dans une app ADB (iPhone, ordinateur) pour activer le service. */
+    fun commandesShell(context: Context): List<String> {
         val c = ComponentName(context, RedirectionAccueil::class.java).flattenToString()
-        return "adb shell settings put secure enabled_accessibility_services $c && " +
-            "adb shell settings put secure accessibility_enabled 1"
+        return listOf(
+            "settings put secure enabled_accessibility_services $c",
+            "settings put secure accessibility_enabled 1",
+        )
+    }
+
+    /** Adresse IP du Fire TV sur le réseau local (pour s'y connecter depuis un téléphone). */
+    fun adresseIp(): String? = try {
+        java.net.NetworkInterface.getNetworkInterfaces().toList()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList() }
+            .firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }
+            ?.hostAddress
+    } catch (e: Exception) {
+        null
     }
 
     /** Ouvre les réglages d'accessibilité (renvoie false si le Fire TV ne les propose pas). */

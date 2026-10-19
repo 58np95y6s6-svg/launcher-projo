@@ -44,10 +44,11 @@ object AdbLocal {
             if (FireTv.redirectionActive(context)) null
             else "Le Fire TV a refusé l'activation. Réessaie et accepte la fenêtre « Autoriser le débogage »."
         } catch (e: ConnectException) {
-            "Active d'abord « Débogage ADB » : Paramètres → Ma Fire TV → Options pour les développeurs."
+            "Connexion refusée : active « Débogage ADB » (Options pour les développeurs). S'il l'est déjà, " +
+                "ton Fire OS bloque cette méthode : utilise « Activer depuis un iPhone »."
         } catch (e: Exception) {
-            "Activation impossible (${e.javaClass.simpleName}). Vérifie que « Débogage ADB » est activé, " +
-                "puis accepte la fenêtre « Autoriser le débogage »."
+            "Activation impossible (${e.javaClass.simpleName}). Les Fire OS récents bloquent cette méthode : " +
+                "utilise « Activer depuis un iPhone »."
         }
     }
 

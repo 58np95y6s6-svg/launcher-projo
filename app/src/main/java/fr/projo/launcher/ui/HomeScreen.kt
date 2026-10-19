@@ -83,20 +83,20 @@ fun HomeScreen(
     nbaErreur: Boolean,
     nbaRepo: NbaRepository,
     majDisponible: Boolean = false,
+    design: Design = Design.AURORE,
 ) {
     var selection by remember { mutableStateOf<AppInfo?>(null) }
     var couleur by remember { mutableStateOf(IconLoader.COULEUR_PAR_DEFAUT) }
-    val surFocus = { app: AppInfo, c: Color -> selection = app; couleur = c }
 
     val defilement = rememberScrollState()
     val rangeeFavoris = rememberLazyListState()
     val rangeeApps = rememberLazyListState()
     val premierFocus = remember { FocusRequester() }
 
-
-    // Focus initial (et retour en haut à chaque appui sur Maison)
-    LaunchedEffect(ui.loaded, ui.prefs.defaultsApplied, homePressCount) {
+    // Focus initial (et retour en haut à chaque appui sur Maison ou changement de design)
+    LaunchedEffect(ui.loaded, ui.prefs.defaultsApplied, homePressCount, design) {
         if (!ui.loaded) return@LaunchedEffect
+        withFrameNanos {}
         defilement.scrollTo(0)
         rangeeFavoris.scrollToItem(0)
         rangeeApps.scrollToItem(0)
@@ -111,24 +111,60 @@ fun HomeScreen(
     }
     val scope = rememberCoroutineScope()
 
+    val ctx = HomeContext(
+        ui = ui, icons = icons, wifiLabel = wifiLabel, actions = actions,
+        nbaData = nbaData, nbaErreur = nbaErreur, nbaRepo = nbaRepo, majDisponible = majDisponible,
+        premierFocus = premierFocus, focusReglages = focusReglages, focusBiblio = focusBiblio,
+        rangeeFavoris = rangeeFavoris, rangeeApps = rangeeApps, defilement = defilement,
+        selection = selection, couleur = couleur,
+        surFocus = { app, c -> selection = app; couleur = c },
+        sansSelection = { selection = null },
+        fireTv = LocalFireTv.current,
+        // Le premier favori n'existe peut-être plus à l'écran si la rangée a défilé
+        sortieNba = {
+            scope.launch {
+                rangeeFavoris.scrollToItem(0)
+                withFrameNanos {}
+                runCatching { premierFocus.requestFocus() }
+            }
+        },
+    )
+    when (design) {
+        Design.AURORE -> HomeAurore(ctx)
+        Design.VERRE -> HomeVerre(ctx)
+        Design.PASTEL -> HomePastel(ctx)
+        Design.CONSOLE -> HomeConsole(ctx)
+        Design.GRAPHITE -> HomeGraphite(ctx)
+    }
+}
+
+/**
+ * Design « Aurore » (d'origine) : fond sombre + lueur de la couleur de l'app sélectionnée,
+ * horloge en haut à gauche, pastilles et bandeau NBA à droite, favoris puis « Mes apps ».
+ */
+@Composable
+fun HomeAurore(ctx: HomeContext) {
+    val ui = ctx.ui
+    val icons = ctx.icons
+    val actions = ctx.actions
     Box(Modifier.fillMaxSize()) {
-        GlowBackground(couleur)
+        GlowBackground(ctx.couleur)
 
         Column(Modifier.fillMaxSize()) {
             // --- En-tête fixe : horloge à gauche, pastilles à droite
-            EnTete(wifiLabel, actions, majDisponible, focusReglages)
+            EnTete(ctx.wifiLabel, actions, ctx.majDisponible, ctx.focusReglages)
 
             Column(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .verticalScroll(defilement)
+                    .verticalScroll(ctx.defilement)
             ) {
                 Spacer(Modifier.height(40.u))
 
                 // --- Nom de l'app sélectionnée, en grand (fondu enchaîné)
                 AnimatedContent(
-                    targetState = selection?.label.orEmpty(),
+                    targetState = ctx.selection?.label.orEmpty(),
                     transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
                     label = "nom",
                     modifier = Modifier.padding(start = 56.u),
@@ -141,8 +177,8 @@ fun HomeScreen(
 
                 // --- Rangée « Favoris »
                 LazyRow(
-                    state = rangeeFavoris,
-                    modifier = Modifier.fadingEdges(rangeeFavoris, 150.u),
+                    state = ctx.rangeeFavoris,
+                    modifier = Modifier.fadingEdges(ctx.rangeeFavoris, 150.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
                     horizontalArrangement = Arrangement.spacedBy(26.u),
                 ) {
@@ -152,7 +188,7 @@ fun HomeScreen(
                                 text = "Aucun favori.\nMaintiens OK sur une app pour l'ajouter.",
                                 width = 240.u, height = 135.u,
                                 onClick = {},
-                                modifier = Modifier.focusRequester(premierFocus),
+                                modifier = Modifier.focusRequester(ctx.premierFocus),
                             )
                         }
                     }
@@ -160,10 +196,10 @@ fun HomeScreen(
                         AppCard(
                             app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
                             width = 240.u, height = 135.u, showLabel = false,
-                            onFocused = surFocus,
+                            onFocused = ctx.surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
-                            modifier = if (i == 0) Modifier.focusRequester(premierFocus) else Modifier,
+                            modifier = if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier,
                         )
                     }
                 }
@@ -176,8 +212,8 @@ fun HomeScreen(
                     modifier = Modifier.padding(start = 56.u, top = 2.u),
                 )
                 LazyRow(
-                    state = rangeeApps,
-                    modifier = Modifier.fadingEdges(rangeeApps, 150.u),
+                    state = ctx.rangeeApps,
+                    modifier = Modifier.fadingEdges(ctx.rangeeApps, 150.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 12.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
                 ) {
@@ -186,7 +222,7 @@ fun HomeScreen(
                             app = app, icons = icons, iconPackage = ui.iconSourceOf(app.packageName),
                             // Pas de nom dessous : il s'affiche déjà en grand au-dessus des favoris
                             width = 136.u, height = 77.u, showLabel = false,
-                            onFocused = surFocus,
+                            onFocused = ctx.surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
                         )
@@ -197,8 +233,8 @@ fun HomeScreen(
                             text = "Toutes les apps\n(${ui.allApps.size})",
                             width = 136.u, height = 77.u,
                             onClick = actions.openLibrary,
-                            onFocused = { selection = null },
-                            modifier = Modifier.focusRequester(focusBiblio),
+                            onFocused = ctx.sansSelection,
+                            modifier = Modifier.focusRequester(ctx.focusBiblio),
                         )
                     }
                 }
@@ -208,20 +244,13 @@ fun HomeScreen(
 
         // --- Bandeau NBA sous les pastilles
         NbaPanel(
-            data = nbaData,
-            erreur = nbaErreur,
-            repo = nbaRepo,
+            data = ctx.nbaData,
+            erreur = ctx.nbaErreur,
+            repo = ctx.nbaRepo,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 90.u, end = 52.u),
-            // Le premier favori n'existe peut-être plus à l'écran si la rangée a défilé
-            onExit = {
-                scope.launch {
-                    rangeeFavoris.scrollToItem(0)
-                    withFrameNanos {}
-                    runCatching { premierFocus.requestFocus() }
-                }
-            },
+            onExit = ctx.sortieNba,
         )
     }
 }

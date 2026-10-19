@@ -41,6 +41,39 @@ class IconLoader(private val context: Context) {
 
     fun cached(packageName: String): AppVisual? = cache.get(packageName)
 
+    private val icones = object : LruCache<String, ImageBitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int = value.width * value.height * 4
+    }
+
+    fun cachedIcon(packageName: String): ImageBitmap? = icones.get(packageName)
+
+    /**
+     * Icône carrée de l'app (160 px, transparente autour pour les anciennes icônes).
+     * Icône adaptative : fond + logo, recadrés comme sur un écran d'accueil.
+     * Null pour les tuiles propres à Projo. À appeler hors du thread principal.
+     */
+    fun loadIcon(packageName: String): ImageBitmap? {
+        icones.get(packageName)?.let { return it }
+        if (packageName.startsWith("projo:")) return null
+        return try {
+            val d = context.packageManager.getApplicationIcon(packageName)
+            val b = Bitmap.createBitmap(ICONE, ICONE, Bitmap.Config.ARGB_8888)
+            val c = Canvas(b)
+            if (Build.VERSION.SDK_INT >= 26 && d is AdaptiveIconDrawable && d.background != null) {
+                // Le calque fait 108 unités, dont ~72 visibles sur un écran d'accueil
+                val e = (ICONE * 108f / 72f).toInt()
+                val o = (ICONE - e) / 2
+                d.background.setBounds(o, o, o + e, o + e); d.background.draw(c)
+                d.foreground?.let { it.setBounds(o, o, o + e, o + e); it.draw(c) }
+            } else {
+                d.setBounds(0, 0, ICONE, ICONE); d.draw(c)
+            }
+            b.asImageBitmap().also { icones.put(packageName, it) }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** À appeler hors du thread principal. */
     fun load(packageName: String): AppVisual {
         cache.get(packageName)?.let { return it }
@@ -137,6 +170,8 @@ class IconLoader(private val context: Context) {
         /** Taille des cartes générées (16:9). */
         const val LARGEUR = 352
         const val HAUTEUR = 198
+        /** Taille des icônes carrées. */
+        const val ICONE = 160
         val COULEUR_PAR_DEFAUT = Color(0xFF4A5A78)
         val COULEUR_HDMI = Color(0xFF2A9D8F)
     }

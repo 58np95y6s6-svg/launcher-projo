@@ -73,11 +73,12 @@ class SettingsActions(
     val close: () -> Unit,
     /** Fire TV : activer l'ouverture automatique (service d'accessibilité). */
     val ouvertureAuto: () -> Unit = {},
+    val design: () -> Unit = {},
 )
 
-private val FondPanneau = Color(0xFB101318)
-private val Carte = Color.White.copy(alpha = 0.06f)
-private val Accent = Color(0xFF5AB0FF)
+/** Couleurs du design choisi (Réglages → Design). */
+private val couleurs: DesignColors
+    @Composable get() = LocalDesign.current.colors()
 
 /**
  * Panneau « Réglages » de Projo, ouvert sur le côté droit (comme le centre de contrôle de
@@ -105,14 +106,14 @@ fun SettingsPanel(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
+    Box(Modifier.fillMaxSize().background(couleurs.voile)) {
         Column(
             Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
                 .width(372.u)
                 .clip(RoundedCornerShape(topStart = 26.u, bottomStart = 26.u))
-                .background(FondPanneau)
+                .background(couleurs.panneau)
                 // Le focus ne peut pas s'échapper vers l'accueil caché derrière
                 .focusProperties { exit = { FocusRequester.Cancel } }
                 .focusGroup()
@@ -123,11 +124,11 @@ fun SettingsPanel(
                 .padding(top = 30.u)
         ) {
             Text(
-                "Réglages", color = Color.White, fontSize = 28.us, fontWeight = FontWeight.Light,
+                "Réglages", color = couleurs.texte, fontSize = 28.us, fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(horizontal = 26.u),
             )
             Text(
-                "Projo $version", color = Color.White.copy(alpha = 0.45f), fontSize = 11.us,
+                "Projo $version", color = couleurs.texteDiscret, fontSize = 11.us,
                 modifier = Modifier.padding(horizontal = 26.u, vertical = 2.u),
             )
             Spacer(Modifier.height(12.u))
@@ -226,6 +227,15 @@ fun SettingsPanel(
                         onClick = actions.sources,
                     )
                 }
+                item(key = "design") {
+                    val d = LocalDesign.current
+                    Tuile(
+                        icone = ProjoIcons.Apps,
+                        titre = "Design · ${d.nom}",
+                        sousTitre = d.resume + " · changer",
+                        onClick = actions.design,
+                    )
+                }
                 item(key = "masquees") {
                     Tuile(
                         icone = ProjoIcons.Apps,
@@ -264,7 +274,7 @@ fun SettingsPanel(
 @Composable
 private fun Section(titre: String) {
     Text(
-        titre, color = Color.White.copy(alpha = 0.45f), fontSize = 10.us, letterSpacing = 3.us,
+        titre, color = couleurs.texteDiscret, fontSize = 10.us, letterSpacing = 3.us,
         fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.u, top = 12.u, bottom = 2.u),
     )
 }
@@ -290,10 +300,10 @@ private fun Tuile(
         modifier = modifier.fillMaxWidth().onFocusChanged { focus = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (accent) Accent.copy(alpha = 0.22f) else Carte,
-            contentColor = Color.White,
-            focusedContainerColor = Color.White,
-            focusedContentColor = Color(0xFF0B0D12),
+            containerColor = if (accent) couleurs.accent.copy(alpha = 0.22f) else couleurs.carte,
+            contentColor = couleurs.texte,
+            focusedContainerColor = couleurs.focusFond,
+            focusedContentColor = couleurs.focusTexte,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
     ) {
@@ -305,9 +315,9 @@ private fun Tuile(
                         .clip(CircleShape)
                         .background(
                             when {
-                                focus -> Color(0xFF0B0D12).copy(alpha = 0.08f)
-                                accent -> Accent.copy(alpha = 0.35f)
-                                else -> Color.White.copy(alpha = 0.08f)
+                                focus -> couleurs.focusTexte.copy(alpha = 0.08f)
+                                accent -> couleurs.accent.copy(alpha = 0.35f)
+                                else -> couleurs.texte.copy(alpha = 0.08f)
                             }
                         ),
                     contentAlignment = Alignment.Center,
@@ -319,7 +329,7 @@ private fun Tuile(
                     Text(titre, fontSize = 14.us, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         sousTitre, fontSize = 11.us, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        color = if (focus) Color(0xFF0B0D12).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.55f),
+                        color = if (focus) couleurs.focusTexte.copy(alpha = 0.65f) else couleurs.texteDiscret,
                     )
                 }
                 if (droite != null) {
@@ -389,14 +399,14 @@ private fun Jauge(valeur: Float) {
             .fillMaxWidth()
             .height(5.u)
             .clip(RoundedCornerShape(3.u))
-            .background(Color.White.copy(alpha = 0.14f))
+            .background(couleurs.texte.copy(alpha = 0.14f))
     ) {
         Box(
             Modifier
                 .fillMaxWidth(valeur.coerceIn(0f, 1f))
                 .height(5.u)
                 .clip(RoundedCornerShape(3.u))
-                .background(Accent)
+                .background(couleurs.accent)
         )
     }
 }
@@ -411,7 +421,7 @@ private fun Barres(niveau: Int) {
                     .width(4.u)
                     .height((4 + i * 3).u)
                     .clip(RoundedCornerShape(1.u))
-                    .background(if (i <= niveau) Accent else Color.White.copy(alpha = 0.2f))
+                    .background(if (i <= niveau) couleurs.accent else couleurs.texte.copy(alpha = 0.2f))
             )
         }
     }

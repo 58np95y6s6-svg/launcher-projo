@@ -172,3 +172,20 @@ fun IconChoiceDialog(
         onDismiss = onDismiss,
     )
 }
+
+/** Choix du design de l'écran d'accueil (Réglages → Design). */
+@Composable
+fun DesignDialog(
+    current: Design,
+    onChoose: (Design) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    MenuDialog(
+        title = "Design de l'accueil",
+        subtitle = "Change l'apparence de l'écran d'accueil en un clic",
+        actions = Design.entries.map { d ->
+            MenuAction((if (d == current) "✓ " else "") + d.nom + " — " + d.resume) { onChoose(d) }
+        },
+        onDismiss = onDismiss,
+    )
+}

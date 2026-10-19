@@ -292,6 +292,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         prefs.setHidden(ui.value.prefs.hidden - pkg)
     }
 
+    fun setDesign(id: String) = viewModelScope.launch {
+        prefs.setDesign(id)
+    }
+
     fun setSourcesComponent(component: String?) = viewModelScope.launch {
         prefs.setSourcesComponent(component)
     }
