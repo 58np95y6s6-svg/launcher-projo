@@ -34,8 +34,10 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import fr.projo.launcher.data.MODULES_PAR_DEFAUT
 import fr.projo.launcher.ui.NbaStyle
@@ -205,6 +207,7 @@ private fun EmplacementModule(
     mod: Modifier,
 ) {
     var focus by remember { mutableStateOf(false) }
+    val gestionFocus = LocalFocusManager.current
     // ◀ depuis le 2e module côte à côte : vers le 1er ; sinon sortie de la zone
     val sortir: () -> Unit = if (versGauche) {
         { runCatching { entrees[0].requestFocus() } }
@@ -224,12 +227,16 @@ private fun EmplacementModule(
         mod
             .testTag("module:" + m.id)
             .onFocusChanged { focus = it.hasFocus }
+            // ◀ que le module n'a pas utilisé : élément à gauche DANS le module s'il y en a un,
+            // sinon sortie (module voisin ou favoris). La recherche de focus ne peut pas sortir
+            // du module par la gauche (sinon elle tomberait n'importe où dans l'accueil).
+            .onKeyEvent {
+                if (it.key != Key.DirectionLeft) return@onKeyEvent false
+                if (it.type == KeyEventType.KeyDown && !gestionFocus.moveFocus(FocusDirection.Left)) sortir()
+                true
+            }
             .focusProperties {
-                exit = { dir ->
-                    if (dir == FocusDirection.Left) {
-                        if (versGauche) entrees[0] else { onExit(); FocusRequester.Cancel }
-                    } else FocusRequester.Default
-                }
+                exit = { dir -> if (dir == FocusDirection.Left) FocusRequester.Cancel else FocusRequester.Default }
             }
             .focusGroup()
     ) {

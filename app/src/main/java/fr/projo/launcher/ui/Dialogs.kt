@@ -344,7 +344,7 @@ fun ModulesDialog(
         }
         else -> ListeDialog(
             titre = "Modules de l'accueil",
-            sousTitre = "Ce qu'affiche l'emplacement des scores NBA : un module, ou deux côte à côte",
+            sousTitre = "À la place des scores NBA : un ou deux modules",
             lignes = buildList {
                 add(LigneListe("1er module · ${premier.nom}", premier.description) { etape = "choix1" })
                 add(

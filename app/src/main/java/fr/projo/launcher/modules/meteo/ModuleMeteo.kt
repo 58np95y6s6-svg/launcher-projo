@@ -156,7 +156,7 @@ object ModuleMeteo : Module(
             add(
                 LigneListe(
                     "Position automatique",
-                    detecte?.let { "D'après la connexion internet : ${it.nom} · OK pour détecter à nouveau" }
+                    detecte?.let { "Détectée : ${it.nom} · OK pour relancer" }
                         ?: "D'après la connexion internet",
                     coche = choisi == null,
                 ) {
