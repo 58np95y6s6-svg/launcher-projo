@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +35,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -44,7 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -78,6 +80,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,6 +99,7 @@ import fr.projo.launcher.data.AppVisual
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 // ------------------------------------------------------------------ palette « Console »
 // (couleurs déclarées en premier : les valeurs plus bas s'en servent à l'initialisation)
@@ -630,6 +634,7 @@ private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnnea
  * 110, entourée d'un liseré bleu nuit, d'un anneau blanc et d'un halo ; son nom et sa
  * rubrique apparaissent à côté.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConsoleTuile(
     app: AppInfo,
@@ -655,10 +660,20 @@ private fun ConsoleTuile(
     val p by animateFloatAsState(if (focus) 1f else 0f, tween(220), label = "anneauTuile")
     // Visuel arrivé après la prise de focus : on transmet la vraie couleur au fond
     LaunchedEffect(couleur) { if (focus) onFocused(app, couleur) }
+    // La rangée défile vers la tuile au moment du focus, quand elle est encore petite : une fois
+    // agrandie, on la ramène entièrement à l'écran (tuile au bord droit, arrivée par ▲ ou ▶)
+    val visible = remember { BringIntoViewRequester() }
+    LaunchedEffect(focus) {
+        if (focus) {
+            delay(240)
+            runCatching { visible.bringIntoView() }
+        }
+    }
 
     Row {
         Box(
             Modifier
+                .bringIntoViewRequester(visible)
                 // Taille lue à la mise en page : l'agrandissement ne recompose pas la tuile
                 .consoleCarre { cote }
                 .drawBehind { anneau.dessiner(this, p, size.minDimension * CONSOLE_RAYON_PCT / 100f) }
