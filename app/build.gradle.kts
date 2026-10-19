@@ -64,6 +64,21 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Tests d'interface sur la JVM (Robolectric) : ressources Android disponibles
+            isIncludeAndroidResources = true
+            all {
+                // Roborazzi : enregistre les captures d'écran (pas de comparaison)
+                it.systemProperty("roborazzi.test.record", "true")
+                it.maxHeapSize = "3g"
+                it.testLogging {
+                    events("passed", "skipped", "failed")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -77,4 +92,11 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.palette)
+
+    // Tests d'interface (navigation à la télécommande, captures des designs)
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 }

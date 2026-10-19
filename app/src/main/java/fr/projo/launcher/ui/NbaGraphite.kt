@@ -45,6 +45,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -141,6 +142,7 @@ internal fun NbaGraphite(
     val margeFilet = 40.u
     Column(
         modifier
+            .testTag("nba")
             // Retour : on quitte le bandeau
             .onPreviewKeyEvent {
                 if (it.key == Key.Back && it.type == KeyEventType.KeyUp) { onExit(); true }

@@ -76,6 +76,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -594,6 +595,7 @@ private fun GraphiteRaccourci(qa: GraphiteRaccourciInfo, onFocus: (Boolean) -> U
         onClick = qa.onClick,
         onLongClick = qa.onLongClick,
         modifier = modifier
+            .testTag("rapide:" + qa.libelle)
             .lueurFocus(zoom, rayon, tourne = focus)
             .height(39.u)
             .onFocusChanged {
@@ -763,6 +765,7 @@ private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
     LazyRow(
         state = ctx.rangeeFavoris,
         modifier = Modifier
+            .testTag("rangee:favoris")
             .offset(y = (G_FAV_Y - marge).u)
             .fillMaxWidth()
             .height((G_FAV_RANGEE + 2 * marge).u)
@@ -800,7 +803,8 @@ private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                     ctx.surFocus(app, couleur)
                 },
                 modifier = (if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
-                    .cibleGraphite(nav, cle, GZone.FAVORIS),
+                    .cibleGraphite(nav, cle, GZone.FAVORIS)
+                    .testTag(cle.replace("fav:", "favori:")),
             )
         }
     }
@@ -1049,6 +1053,7 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
     LazyRow(
         state = ctx.rangeeApps,
         modifier = Modifier
+            .testTag("rangee:apps")
             .offset(y = (G_APPS_Y - marge).u)
             .fillMaxWidth()
             .height((G_APPS_H + 2 * marge).u)
@@ -1081,7 +1086,7 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                         focusIndex = -1
                     }
                 },
-                modifier = Modifier.cibleGraphite(nav, cle, GZone.APPS),
+                modifier = Modifier.cibleGraphite(nav, cle, GZone.APPS).testTag(cle),
             )
         }
         // Bibliothèque : toutes les apps installées
@@ -1102,7 +1107,8 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 },
                 modifier = Modifier
                     .focusRequester(ctx.focusBiblio)
-                    .cibleGraphite(nav, "bibliotheque", GZone.APPS),
+                    .cibleGraphite(nav, "bibliotheque", GZone.APPS)
+                    .testTag("biblio"),
                 icone = {
                     GraphiteIconeTeintee(Color(0xFF9AA0AD), G_PILULE_ICONE.u, RoundedCornerShape(7.u)) {
                         Icon(GraphiteIcones.Grille, contentDescription = null, tint = Color(0xFFD7DAE1), modifier = Modifier.size(14.u))
