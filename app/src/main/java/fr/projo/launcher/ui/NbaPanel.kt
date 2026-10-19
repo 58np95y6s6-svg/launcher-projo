@@ -4,10 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaRepository
+import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.modules.ZoneModules
+import fr.projo.launcher.modules.sport.ModuleSport
 import fr.projo.launcher.modules.sport.SportReseau
 
 /**
@@ -36,6 +39,11 @@ data class NbaStyle(
      */
     val zoneLargeur: Int? = null,
     val zoneHauteur: Int? = null,
+    /**
+     * Mise en page « Graphite » (maquette t8) : bandeau NBA à sélecteur segmenté et pastilles
+     * d'équipes en couleur (NbaGraphite.kt), et panneau à filets pour les autres modules.
+     */
+    val graphite: Boolean = false,
 )
 
 /**
@@ -55,11 +63,33 @@ fun NbaPanel(
     /** Sortie rapide de la zone (flèche gauche, ou Retour) : retour aux favoris. */
     onExit: () -> Unit = {},
     style: NbaStyle = NbaStyle(),
+    /** Point d'entrée du focus (1er élément du 1er module), pour y venir depuis un autre élément. */
+    entree: FocusRequester? = null,
+    /** ◀ depuis le 1er module (Graphite : retour à Réglages) ; par défaut, comme [onExit]. */
+    onGauche: (() -> Unit)? = null,
 ) {
     // Les logos d'équipes partagent le cache du dépôt NBA fourni
     SportReseau.adopter(repo)
     val repli = remember(data, erreur) { SportReseau.hoteNba(data, erreur) }
+    val hote = LocalHoteModules.current ?: repli
     CompositionLocalProvider(LocalScale provides LocalScale.current * style.echelle) {
-        ZoneModules(style = style, onExit = onExit, modifier = modifier, repli = repli)
+        if (style.graphite && ModuleSport.nbaSeule(hote)) {
+            // Graphite, NBA seule (par défaut) : le bandeau de la maquette, à l'identique
+            val etat = ModuleSport.rememberNba(hote.donnees)
+            NbaGraphite(etat.valeur?.nba, etat.erreur, modifier, onExit, style, entree, onGauche)
+        } else {
+            ZoneModules(
+                style = style, onExit = onExit, modifier = modifier, repli = repli,
+                entree = entree, onGauche = onGauche,
+            )
+        }
     }
+}
+
+/** « Q3 4:12 » → « QT3 4:12 », « Halftime » → « Mi-temps ». */
+internal fun tempsDeJeu(s: String): String = when {
+    s.contains("half", ignoreCase = true) -> "Mi-temps"
+    s.startsWith("End of", ignoreCase = true) -> "Fin " + s.substringAfter("of ").replace("1st", "QT1")
+        .replace("2nd", "QT2").replace("3rd", "QT3").replace("4th", "QT4")
+    else -> s.replace(Regex("^(\\d)(st|nd|rd|th) Quarter"), "QT$1").replace(Regex("^Q(\\d)"), "QT$1").replace("OT", "Prol.")
 }

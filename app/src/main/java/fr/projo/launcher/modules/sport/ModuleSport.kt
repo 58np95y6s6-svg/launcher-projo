@@ -55,6 +55,7 @@ import fr.projo.launcher.data.NbaTeam
 import fr.projo.launcher.modules.CarteModule
 import fr.projo.launcher.modules.DonneesModules
 import fr.projo.launcher.modules.EtatDonnees
+import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.IconesModules
 import fr.projo.launcher.modules.LocalStyleModule
 import fr.projo.launcher.modules.Module
@@ -65,6 +66,7 @@ import fr.projo.launcher.modules.ligne
 import fr.projo.launcher.modules.rememberDonnees
 import fr.projo.launcher.ui.LigneListe
 import fr.projo.launcher.ui.ListeDialog
+import fr.projo.launcher.ui.tempsDeJeu
 import fr.projo.launcher.ui.u
 import fr.projo.launcher.ui.us
 import kotlinx.coroutines.Dispatchers
@@ -94,6 +96,23 @@ object ModuleSport : Module(
     tailles = setOf(TailleModule.PETIT, TailleModule.MOYEN, TailleModule.GRAND),
 ) {
     private const val CLE_COMPETITIONS = "competitions"
+
+    /** true si la zone n'affiche que le Sport, avec la NBA seule (réglage par défaut). */
+    fun nbaSeule(hote: HoteModules): Boolean =
+        hote.modules.singleOrNull() == this && competitions(hote.reglagesDe(id)).map { it.id } == listOf("nba")
+
+    /** Matchs NBA du cache des modules (pour un bandeau dessiné hors de la zone, ex. Graphite). */
+    @Composable
+    fun rememberNba(donnees: DonneesModules): EtatDonnees<MatchsCompetition> {
+        val context = LocalContext.current
+        val nba = COMPETITIONS[0]
+        return rememberDonnees(donnees, SportReseau.cle(nba), delai = { m: MatchsCompetition -> SportReseau.delai(nba, m) }) {
+            SportReseau.charger(context, nba)
+        }
+    }
+
+    override fun titre(reglages: ReglagesModule): String =
+        competitions(reglages).singleOrNull()?.nom ?: nom
 
     fun competitions(r: ReglagesModule): List<Competition> {
         val ids = r.liste(CLE_COMPETITIONS, COMPETITIONS_PAR_DEFAUT)
@@ -565,12 +584,4 @@ private fun detailAutre(s: String): String = when {
     s.equals("HT", ignoreCase = true) || s.contains("half", ignoreCase = true) -> "Mi-temps"
     s.isBlank() -> "En cours"
     else -> s.replace("ET", "Prol.").take(9)
-}
-
-/** « Q3 4:12 » → « QT3 4:12 », « Halftime » → « Mi-temps ». */
-private fun tempsDeJeu(s: String): String = when {
-    s.contains("half", ignoreCase = true) -> "Mi-temps"
-    s.startsWith("End of", ignoreCase = true) -> "Fin " + s.substringAfter("of ").replace("1st", "QT1")
-        .replace("2nd", "QT2").replace("3rd", "QT3").replace("4th", "QT4")
-    else -> s.replace(Regex("^(\\d)(st|nd|rd|th) Quarter"), "QT$1").replace(Regex("^Q(\\d)"), "QT$1").replace("OT", "Prol.")
 }

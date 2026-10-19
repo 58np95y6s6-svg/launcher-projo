@@ -70,7 +70,10 @@ abstract class BancAccueil(nomDesign: String) {
     @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    protected val ui: HomeUi by lazy { DonneesFactices.ui(design) }
+    /** Données affichées : celles de DonneesFactices, sauf si un test en donne d'autres à [afficher]. */
+    private var uiTest: HomeUi? = null
+    protected val ui: HomeUi
+        get() = uiTest ?: DonneesFactices.ui(design).also { uiTest = it }
 
     /**
      * Modules affichés à la place du bandeau NBA (voir ModulesTest) ; null : comme avant,
@@ -84,15 +87,25 @@ abstract class BancAccueil(nomDesign: String) {
 
     // ------------------------------------------------------------------ affichage
 
-    /** Affiche l'accueil chargé et vérifie que le focus initial est bien sur le 1er favori. */
-    protected fun afficher() {
+    /**
+     * Affiche l'accueil chargé et vérifie que le focus initial est bien sur le 1er favori.
+     * Variantes : libellé Wi-Fi ([wifiLabel], ex. « Hors ligne »), pastille « Mise à jour »
+     * ([majDisponible]) et autres données ([donnees] : sans favori, 30 apps…).
+     */
+    protected fun afficher(
+        wifiLabel: String = "Wi-Fi",
+        majDisponible: Boolean = false,
+        donnees: HomeUi? = null,
+    ) {
+        if (donnees != null) uiTest = donnees
+        val ui = this.ui
         val contexte = RuntimeEnvironment.getApplication()
         DonneesFactices.installer(contexte)
         val icons = IconLoader(contexte)
         // Visuels préparés d'avance : rien à attendre en arrière-plan pendant le test
         for (p in DonneesFactices.paquets) {
             icons.load(p)
-            icons.loadIcon(p)
+            icons.load(p, fr.projo.launcher.data.FormatVisuel.CARRE)
         }
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
@@ -113,13 +126,13 @@ abstract class BancAccueil(nomDesign: String) {
                     HomeScreen(
                         ui = ui,
                         icons = icons,
-                        wifiLabel = "Wi-Fi",
+                        wifiLabel = wifiLabel,
                         homePressCount = 0,
                         actions = actions,
                         nbaData = nbaData,
                         nbaErreur = false,
                         nbaRepo = nba,
-                        majDisponible = false,
+                        majDisponible = majDisponible,
                         design = design,
                     )
                 }
@@ -129,7 +142,7 @@ abstract class BancAccueil(nomDesign: String) {
         val racine = compose.onRoot().fetchSemanticsNode().size
         println("[${design.name}] écran ${racine.width} × ${racine.height} px, ${pxParU} px par unité")
         val f = focus()
-        if (f?.etiquette != favori(0)) {
+        if (ui.favorites.isNotEmpty() && f?.etiquette != favori(0)) {
             fail("[${design.name}] OUTILLAGE : focus initial attendu sur ${favori(0)}, obtenu ${decrire(f)} (écran ${racine.width}×${racine.height} px)")
         }
     }

@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -69,6 +72,12 @@ abstract class Module(
 
     /** true si le module a un écran de réglages ([Reglages]). */
     open val aDesReglages: Boolean get() = false
+
+    /**
+     * Titre affiché par un design quand le focus est dans le module (ex. le grand titre de
+     * Graphite) : « Météo · Lyon », « NBA »… Voir [FocusModules].
+     */
+    open fun titre(reglages: ReglagesModule): String = nom
 
     /** Résumé des réglages, affiché dans le dialogue « Modules » (ex. « Lyon »). */
     open fun resumeReglages(reglages: ReglagesModule): String? = null
@@ -133,6 +142,14 @@ class ModuleContexte(
 /** Unités d'interface pour une mesure non entière (ex. ctx.hauteur.u). */
 val Float.u: Dp
     @Composable @ReadOnlyComposable get() = (this * LocalScale.current).dp
+
+/**
+ * Module qui a le focus dans la zone de modules (null si le focus est ailleurs) : un design
+ * peut l'afficher en titre (Graphite : « Météo · Lyon »). État Compose, lu à la recomposition.
+ */
+object FocusModules {
+    var titre: String? by mutableStateOf(null)
+}
 
 /** Style du design, pour les sous-composants d'un module (fourni par la zone). */
 val LocalStyleModule = compositionLocalOf { NbaStyle() }

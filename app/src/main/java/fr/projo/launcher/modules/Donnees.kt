@@ -117,8 +117,17 @@ fun <T> ModuleContexte.rememberDonnees(
     delai: (T) -> Long,
     delaiErreur: Long = 2 * 60_000L,
     charger: suspend () -> T,
+): EtatDonnees<T> = rememberDonnees(donnees, cle, delai, delaiErreur, charger)
+
+/** Même chose hors d'un module (cache [hub] donné explicitement). */
+@Composable
+fun <T> rememberDonnees(
+    hub: DonneesModules,
+    cle: String,
+    delai: (T) -> Long,
+    delaiErreur: Long = 2 * 60_000L,
+    charger: suspend () -> T,
 ): EtatDonnees<T> {
-    val hub = donnees
     val flux = remember(hub, cle) { hub.flux(cle) }
     val etat by flux.collectAsState()
     val chargerActuel by rememberUpdatedState(charger)

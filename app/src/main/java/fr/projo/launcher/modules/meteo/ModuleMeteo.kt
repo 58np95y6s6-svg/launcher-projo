@@ -129,6 +129,11 @@ object ModuleMeteo : Module(
 
     override val aDesReglages: Boolean get() = true
 
+    override fun titre(reglages: ReglagesModule): String {
+        val lieu = Lieu.decoder(reglages.texte(CLE_LIEU)) ?: Lieu.decoder(reglages.texte(CLE_AUTO))
+        return if (lieu != null) "Météo · ${lieu.nom}" else nom
+    }
+
     override fun resumeReglages(reglages: ReglagesModule): String {
         val choisi = Lieu.decoder(reglages.texte(CLE_LIEU))
         if (choisi != null) return choisi.nom
