@@ -18,6 +18,9 @@
     <!-- Mise à jour de Projo depuis GitHub (Android demande toujours confirmation) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Fire TV : ouvrir iBiProjo au démarrage de l'appareil -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Bluetooth : afficher l'état et les appareils associés (Android 11 et moins) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
@@ -70,6 +73,30 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- Fire TV : ouverture automatique à la place de l'accueil d'Amazon
+             (à activer dans Paramètres → Accessibilité) -->
+        <service
+            android:name=".system.RedirectionAccueil"
+            android:exported="true"
+            android:label="@string/redirection_nom"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/redirection_accueil" />
+        </service>
+
+        <!-- Fire TV : ouverture au démarrage (anciennes versions de Fire OS) -->
+        <receiver
+            android:name=".system.DemarrageReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Partage de l'APK de mise à jour avec l'installeur d'Android -->
         <provider
             android:name="androidx.core.content.FileProvider"

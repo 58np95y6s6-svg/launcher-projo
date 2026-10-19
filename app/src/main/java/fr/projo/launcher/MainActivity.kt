@@ -28,6 +28,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.system.FireTv
 import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
 import fr.projo.launcher.ui.HiddenAppsDialog
@@ -35,6 +36,7 @@ import fr.projo.launcher.ui.IconChoiceDialog
 import fr.projo.launcher.ui.HomeActions
 import fr.projo.launcher.ui.HomeScreen
 import fr.projo.launcher.ui.LibraryScreen
+import fr.projo.launcher.ui.LocalFireTv
 import fr.projo.launcher.ui.LocalScale
 import fr.projo.launcher.ui.MenuAction
 import fr.projo.launcher.ui.MenuDialog
@@ -75,7 +77,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Échelle : interface dessinée pour 960 dp de large
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
-            CompositionLocalProvider(LocalScale provides echelle) {
+            CompositionLocalProvider(LocalScale provides echelle, LocalFireTv provides FireTv.estFireTv(this)) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Contenu()
                 }
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
         var montrerMasquees by remember { mutableStateOf(false) }
         var montrerSources by remember { mutableStateOf(false) }
         var montrerDiagnostic by remember { mutableStateOf(false) }
+        var montrerAide by remember { mutableStateOf(false) }
         var logoApp by remember { mutableStateOf<AppInfo?>(null) }
         var montrerBibliotheque by remember { mutableStateOf(false) }
         var montrerReglages by remember { mutableStateOf(false) }
@@ -198,6 +201,13 @@ class MainActivity : ComponentActivity() {
                     date = { vm.actions.openDate() },
                     sound = { vm.actions.openSound() },
                     allSettings = { vm.actions.openSettings() },
+                    ouvertureAuto = {
+                        if (FireTv.ouvrirAccessibilite(this)) {
+                            toast("Active « iBiProjo · ouverture automatique » puis reviens")
+                        } else {
+                            montrerAide = true
+                        }
+                    },
                     close = { montrerReglages = false; focusApres = focusReglages },
                 ),
             )
@@ -271,6 +281,17 @@ class MainActivity : ComponentActivity() {
                 current = ui.prefs.sourcesComponent,
                 onChoose = { vm.setSourcesComponent(it) },
                 onDismiss = { montrerSources = false },
+            )
+        }
+        if (montrerAide) {
+            // Fire TV sans page Accessibilité : activation depuis un ordinateur (ADB)
+            MenuDialog(
+                title = "Ouverture automatique",
+                subtitle = "Ce Fire TV ne propose pas la page Accessibilité. Depuis un ordinateur " +
+                    "(débogage ADB activé dans Ma Fire TV → Options pour les développeurs), tape :\n\n" +
+                    FireTv.commandeAdb(this),
+                actions = listOf(MenuAction("Fermer") {}),
+                onDismiss = { montrerAide = false },
             )
         }
         if (montrerDiagnostic) {

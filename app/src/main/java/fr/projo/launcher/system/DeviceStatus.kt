@@ -40,7 +40,7 @@ class DeviceStatus(private val context: Context) {
         return DeviceSnapshot(
             volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC),
             volumeMax = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1),
-            muet = audio.isStreamMute(AudioManager.STREAM_MUSIC),
+            muet = estMuet(),
             reseau = reseau,
             enLigne = enLigne,
             signal = signal,
@@ -57,22 +57,32 @@ class DeviceStatus(private val context: Context) {
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, v.coerceIn(0, max), 0)
     }
 
+    /** Son coupé ? (Android 5 ne le dit pas : on se souvient de notre propre réglage.) */
+    private var muetAncien = false
+
+    private fun estMuet(): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= 23) audio.isStreamMute(AudioManager.STREAM_MUSIC) else muetAncien
+
+    @Suppress("DEPRECATION")
     fun toggleMute() {
-        val muet = audio.isStreamMute(AudioManager.STREAM_MUSIC)
-        audio.adjustStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            if (muet) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE, 0,
-        )
+        val muet = estMuet()
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            audio.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                if (muet) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE, 0,
+            )
+        } else {
+            audio.setStreamMute(AudioManager.STREAM_MUSIC, !muet)
+            muetAncien = !muet
+        }
     }
 
     @Suppress("DEPRECATION")
     private fun lireReseau(): Triple<String, Boolean, Int> = try {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
-        when {
-            caps == null -> Triple("Hors ligne", false, -1)
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> Triple("Ethernet", true, -1)
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
+        when (NetworkInfo.transportActif(context)) {
+            NetworkInfo.AUCUN -> Triple("Hors ligne", false, -1)
+            NetworkCapabilities.TRANSPORT_ETHERNET -> Triple("Ethernet", true, -1)
+            NetworkCapabilities.TRANSPORT_WIFI -> {
                 val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
                 val info = wm.connectionInfo
                 val barres = info?.rssi?.let { WifiManager.calculateSignalLevel(it, 5) } ?: -1

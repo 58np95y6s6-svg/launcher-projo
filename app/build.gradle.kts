@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "fr.projo.launcher"
-        minSdk = 24
+        minSdk = 22
         targetSdk = 35
         versionCode = buildNumber
         versionName = nomVersion

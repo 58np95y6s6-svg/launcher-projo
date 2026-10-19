@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Projo</string>
+    <string name="redirection_nom">iBiProjo · ouverture automatique</string>
+    <string name="redirection_description">Ouvre iBiProjo à la place de l\'écran d\'accueil d\'origine (au démarrage et quand on appuie sur Maison). Ne lit pas le contenu de l\'écran.</string>
 </resources>

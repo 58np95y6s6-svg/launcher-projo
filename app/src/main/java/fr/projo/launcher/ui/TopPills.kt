@@ -54,7 +54,8 @@ fun TopPills(
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.u), verticalAlignment = Alignment.CenterVertically) {
         val h = 38
         if (majDisponible) PillMaj(h, onMaj)
-        Pill(ProjoIcons.Sources, "Sources", h, onSources, onSourcesLong)
+        // Fire TV : pas d'entrée HDMI à ouvrir
+        if (!LocalFireTv.current) Pill(ProjoIcons.Sources, "Sources", h, onSources, onSourcesLong)
         Pill(ProjoIcons.Wifi, wifiLabel, h, onWifi)
         Pill(ProjoIcons.Bluetooth, "Bluetooth", h, onBluetooth)
         Pill(

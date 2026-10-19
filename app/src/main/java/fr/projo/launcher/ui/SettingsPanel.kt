@@ -37,6 +37,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalContext
+import fr.projo.launcher.system.FireTv
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -69,6 +71,8 @@ class SettingsActions(
     val sound: () -> Unit,
     val allSettings: () -> Unit,
     val close: () -> Unit,
+    /** Fire TV : activer l'ouverture automatique (service d'accessibilité). */
+    val ouvertureAuto: () -> Unit = {},
 )
 
 private val FondPanneau = Color(0xFB101318)
@@ -91,6 +95,7 @@ fun SettingsPanel(
     actions: SettingsActions,
 ) {
     BackHandler(onBack = actions.close)
+    val fireTv = LocalFireTv.current
     val premier = remember { FocusRequester() }
     // Premier focus : la tuile est dans une liste « lazy », elle peut n'être prête qu'après une image
     LaunchedEffect(Unit) {
@@ -193,7 +198,20 @@ fun SettingsPanel(
                 }
 
                 item(key = "s-projo") { Section("PROJO") }
-                item(key = "accueil") {
+                if (fireTv) {
+                    // Fire TV : impossible de remplacer l'accueil d'Amazon, on s'ouvre à sa place
+                    item(key = "auto") {
+                        val actif = FireTv.redirectionActive(LocalContext.current)
+                        Tuile(
+                            icone = ProjoIcons.Accueil,
+                            titre = "Ouverture automatique",
+                            sousTitre = if (actif) "Activée ✓ · s'ouvre à la place de l'accueil Amazon"
+                            else "Désactivée · OK pour l'activer",
+                            accent = !actif,
+                            onClick = actions.ouvertureAuto,
+                        )
+                    }
+                } else item(key = "accueil") {
                     Tuile(
                         icone = ProjoIcons.Accueil,
                         titre = "Écran d'accueil",
@@ -201,7 +219,7 @@ fun SettingsPanel(
                         onClick = actions.homeApp,
                     )
                 }
-                item(key = "hdmi") {
+                if (!fireTv) item(key = "hdmi") {
                     Tuile(
                         icone = ProjoIcons.Sources,
                         titre = "Entrée HDMI",

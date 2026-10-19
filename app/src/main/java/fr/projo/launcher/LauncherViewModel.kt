@@ -14,6 +14,7 @@ import fr.projo.launcher.data.PrefsState
 import fr.projo.launcher.data.SourceCandidate
 import fr.projo.launcher.system.DeviceSnapshot
 import fr.projo.launcher.system.DeviceStatus
+import fr.projo.launcher.system.FireTv
 import fr.projo.launcher.system.SystemActions
 import fr.projo.launcher.system.UpdateInfo
 import fr.projo.launcher.system.UpdateManager
@@ -237,7 +238,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun reload() {
         viewModelScope.launch {
             // Les vraies apps + la tuile « Source HDMI » propre à Projo
-            val liste = (withContext(Dispatchers.IO) { repo.loadApps() } + AppInfo.HDMI)
+            // (pas de tuile HDMI sur Fire TV : il n'a pas d'entrée HDMI)
+            val reelles = withContext(Dispatchers.IO) { repo.loadApps() }
+            val liste = if (FireTv.estFireTv(getApplication())) reelles else reelles + AppInfo.HDMI
                 .sortedBy { it.label.lowercase() }
             apps.value = liste
             val p = prefs.state.first()

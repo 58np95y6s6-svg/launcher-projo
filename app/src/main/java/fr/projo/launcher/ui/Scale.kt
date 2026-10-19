@@ -22,3 +22,6 @@ val Int.u: Dp
 /** Taille de texte mise à l'échelle de la même façon. */
 val Int.us: TextUnit
     @Composable @ReadOnlyComposable get() = (this * LocalScale.current).sp
+
+/** true sur un Fire TV : on y masque ce qui n'a pas de sens (entrée HDMI…). */
+val LocalFireTv = compositionLocalOf { false }

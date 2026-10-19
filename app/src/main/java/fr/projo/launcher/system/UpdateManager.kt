@@ -47,10 +47,11 @@ class UpdateManager(private val context: Context) {
 
     /** À appeler hors du thread principal. */
     fun check(): UpdateInfo {
-        val url = if (canalTest) "$API/releases/tags/test" else "$API/releases/latest"
+        // Version Fire TV : sa propre release « firetv » (branche claude/launcher-firetv)
+        val url = if (canalTest) "$API/releases/tags/$TAG_TEST" else "$API/releases/latest"
         val json = JSONObject(lireTexte(url))
         val assets = json.optJSONArray("assets")
-        val nomFichier = if (canalTest) "launcher-test.apk" else "launcher.apk"
+        val nomFichier = if (canalTest) APK_TEST else "launcher.apk"
         var lien: String? = null
         if (assets != null) {
             for (i in 0 until assets.length()) {
@@ -98,15 +99,18 @@ class UpdateManager(private val context: Context) {
     }
 
     /** Autorisation « installer des apps inconnues » accordée à Projo ? */
-    fun peutInstaller(): Boolean = pm.canRequestPackageInstalls()
+    fun peutInstaller(): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= 26) pm.canRequestPackageInstalls() else true
 
     /** Ouvre l'écran système qui autorise Projo à installer des apps. */
     fun ouvrirAutorisation() {
         try {
-            context.startActivity(
+            val intent = if (android.os.Build.VERSION.SDK_INT >= 26) {
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            } else {
+                Intent(Settings.ACTION_SECURITY_SETTINGS)
+            }
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
             Log.w(AppRepository.TAG, "Écran d'autorisation indisponible", e)
         }
@@ -114,7 +118,16 @@ class UpdateManager(private val context: Context) {
 
     /** Lance la fenêtre d'installation d'Android. */
     fun installer(fichier: File) {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fichiers", fichier)
+        val uri = if (android.os.Build.VERSION.SDK_INT >= 24) {
+            FileProvider.getUriForFile(context, "${context.packageName}.fichiers", fichier)
+        } else {
+            // Android 5/6 (vieux Fire TV) : l'installeur ne lit que des fichiers publics
+            val dossier = context.externalCacheDir ?: context.cacheDir
+            val copie = File(dossier, "projo.apk")
+            fichier.copyTo(copie, overwrite = true)
+            copie.setReadable(true, false)
+            Uri.fromFile(copie)
+        }
         val intent = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, "application/vnd.android.package-archive")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -153,5 +166,8 @@ class UpdateManager(private val context: Context) {
 
     companion object {
         private const val API = "https://api.github.com/repos/58np95y6s6-svg/launcher-projo"
+        /** Canal de test de cette branche : la version Fire TV a sa propre release. */
+        private const val TAG_TEST = "firetv"
+        private const val APK_TEST = "launcher-firetv.apk"
     }
 }
