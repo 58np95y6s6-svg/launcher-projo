@@ -74,6 +74,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -703,8 +704,9 @@ private fun GraphiteTuile(
 @Composable
 private fun GraphiteTuileApp(app: AppInfo, ctx: HomeContext) {
     val paquet = ctx.ui.iconSourceOf(app.packageName)
-    val visuel = rememberAppVisual(paquet, ctx.icons)
-    val icone = rememberAppIcon(paquet, ctx.icons)
+    // Icône carrée arrondie (46 u) : visuel carré de l'app et sa couleur
+    val visuel = rememberAppVisual(paquet, ctx.icons, FormatVisuel.CARRE)
+    val icone = visuel?.art
     val couleur = visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     GraphiteTuile(
         largeur = GRAPHITE_DOCK_L.u,
