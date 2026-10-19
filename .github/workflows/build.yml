@@ -3,9 +3,10 @@
 # (signé avec la clé de test du dépôt : les versions de test s'installent les unes sur les autres)
 name: Build test
 
+# Les branches « captures/… » (résultats des tests, publiés plus bas) ne relancent rien
 on:
   push:
-    branches: ["**"]
+    branches: ["**", "!captures/**"]
   workflow_dispatch:
 
 permissions:
@@ -46,3 +47,52 @@ jobs:
             --target "${{ github.sha }}" \
             --title "Version de test #${{ github.run_number }}" \
             --notes "APK de test compilé depuis ${{ github.ref_name }} (${{ github.sha }})."
+
+  # Tests d'interface (Robolectric) : navigation à la télécommande et captures des 5 designs.
+  # Job séparé : un test qui échoue ne bloque jamais la compilation ni la publication de l'APK.
+  # Résultats publiés sur la branche « captures/<branche> » (captures/*.png + resultats.txt).
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Robolectric télécharge une image d'Android (plusieurs centaines de Mo) au premier test
+      - name: Cache d'Android pour Robolectric
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Tests d'interface (navigation + captures)
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest --continue 2>&1 | tee tests.log
+
+      - name: Publication des captures et des résultats
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCHE="captures/${GITHUB_REF_NAME//\//-}"
+          SORTIE="$RUNNER_TEMP/publication"
+          rm -rf "$SORTIE" && mkdir -p "$SORTIE/captures"
+          cp app/build/captures/*.png "$SORTIE/captures/" 2>/dev/null || true
+          {
+            echo "# Commit ${GITHUB_SHA} (${GITHUB_REF_NAME}), build n°${GITHUB_RUN_NUMBER}"
+            python3 .github/scripts/resultats.py app/build/test-results || echo "# Résultats illisibles"
+          } > "$SORTIE/resultats.txt"
+          tail -n 500 tests.log > "$SORTIE/journal.txt" 2>/dev/null || true
+          cd "$SORTIE"
+          git init -q
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Résultats des tests de ${GITHUB_SHA::7} (${GITHUB_REF_NAME})"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCHE}"
+          echo "Résultats publiés sur la branche ${BRANCHE}"
