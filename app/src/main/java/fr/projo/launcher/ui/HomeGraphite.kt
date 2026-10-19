@@ -569,7 +569,8 @@ private fun GraphiteRaccourcis(
     val derniere = liste.lastOrNull()?.cle
     val premiere = liste.firstOrNull()?.cle
     val trait = graphiteUnPixel()
-    val largeurs = rememberLargeursRaccourcis(liste, trait)
+    val barre = rememberLargeursRaccourcis(liste, trait)
+    val largeurs = barre.segments
     Row(
         modifier
             .size(G_RACCOURCIS_L.u, G_RACCOURCIS_H.u)
@@ -604,6 +605,7 @@ private fun GraphiteRaccourcis(
             GraphiteRaccourci(
                 qa,
                 largeurLibelle = largeurs.getOrNull(i)?.second,
+                serre = barre.serre,
                 onFocus = { f ->
                     if (f) {
                         focusIndex = i
@@ -621,14 +623,17 @@ private fun GraphiteRaccourcis(
     }
 }
 
+/** Largeurs des segments de la barre (segment, libellé) ; [serre] : marges réduites. */
+private class GraphiteLargeursBarre(val segments: List<Pair<Dp, Dp>>, val serre: Boolean)
+
 /**
  * Largeur de chaque segment de la barre (et largeur maximale de son libellé) : largeur naturelle
  * (marges 2 × 5 + pictogramme 15 + espace 8 + libellé), puis l'espace restant est réparti entre
- * les segments. Si tout ne tient pas, seul le libellé Wi-Fi (nom du réseau) est raccourci,
- * jamais « Mise à jour ».
+ * les segments. Si tout ne tient pas, les marges sont d'abord réduites (2 × 3 + 15 + 5), puis
+ * seul le libellé Wi-Fi (nom du réseau) est raccourci, jamais « Mise à jour ».
  */
 @Composable
-private fun rememberLargeursRaccourcis(liste: List<GraphiteRaccourciInfo>, trait: Dp): List<Pair<Dp, Dp>> {
+private fun rememberLargeursRaccourcis(liste: List<GraphiteRaccourciInfo>, trait: Dp): GraphiteLargeursBarre {
     val densite = LocalDensity.current
     val mesureur = rememberTextMeasurer()
     val style = LocalTextStyle.current.merge(TextStyle(fontSize = 12.us, fontWeight = FontWeight.Medium))
@@ -639,8 +644,10 @@ private fun rememberLargeursRaccourcis(liste: List<GraphiteRaccourciInfo>, trait
         with(densite) {
             // +1 : arrondis de mesure (le texte ne doit jamais être coupé d'un pixel)
             val textes = libelles.map { mesureur.measure(it, style, maxLines = 1).size.width.toDp() + unite }
-            val fixe = unite * (10f + 15f + 8f)
             val dispo = unite * (G_RACCOURCIS_L - 6f) - trait * (liste.size - 1).coerceAtLeast(0)
+            val large = unite * (10f + 15f + 8f)
+            val serre = textes.fold(0.dp) { acc, t -> acc + t + large } > dispo
+            val fixe = if (serre) unite * (6f + 15f + 5f) else large
             val textesAjustes = textes.toMutableList()
             val somme = textes.fold(0.dp) { acc, t -> acc + t + fixe }
             if (somme > dispo && wifi >= 0) {
@@ -648,7 +655,7 @@ private fun rememberLargeursRaccourcis(liste: List<GraphiteRaccourciInfo>, trait
             }
             val total = textesAjustes.fold(0.dp) { acc, t -> acc + t + fixe }
             val bonus = if (total < dispo && liste.isNotEmpty()) (dispo - total) / liste.size else 0.dp
-            textesAjustes.map { t -> (t + fixe + bonus) to t }
+            GraphiteLargeursBarre(textesAjustes.map { t -> (t + fixe + bonus) to t }, serre)
         }
     }
 }
@@ -657,6 +664,7 @@ private fun rememberLargeursRaccourcis(liste: List<GraphiteRaccourciInfo>, trait
 private fun GraphiteRaccourci(
     qa: GraphiteRaccourciInfo,
     largeurLibelle: Dp?,
+    serre: Boolean,
     onFocus: (Boolean) -> Unit,
     modifier: Modifier,
 ) {
@@ -689,7 +697,7 @@ private fun GraphiteRaccourci(
         Row(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 5.u),
+                .padding(horizontal = if (serre) 3.u else 5.u),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
@@ -708,7 +716,7 @@ private fun GraphiteRaccourci(
                     )
                 }
             }
-            Spacer(Modifier.width(8.u))
+            Spacer(Modifier.width(if (serre) 5.u else 8.u))
             Text(
                 qa.libelle, fontSize = 12.us, fontWeight = FontWeight.Medium,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
@@ -956,6 +964,8 @@ private fun Modifier.graphiteBords(
     plein: Dp,
     effaceFin: Dp = efface,
     pleinFin: Dp = plein,
+    /** Opacité minimale du fondu de droite (le contenu au-delà de [effaceFin] reste effacé). */
+    plancherFin: Float = 0f,
 ): Modifier {
     val avant by animateFloatAsState(if (etat.canScrollBackward) 1f else 0f, tween(200), label = "bordAvant")
     val apres by animateFloatAsState(if (etat.canScrollForward) 1f else 0f, tween(200), label = "bordApres")
@@ -974,7 +984,8 @@ private fun Modifier.graphiteBords(
             drawRect(
                 Brush.horizontalGradient(
                     0f to a(1f - avant), e to a(1f - avant), p to a(1f),
-                    1f - pf to a(1f), 1f - ef to a(1f - apres), 1f to a(1f - apres),
+                    1f - pf to a(1f), 1f - ef to a(1f - apres * (1f - plancherFin)),
+                    minOf(1f, 1f - ef + 0.0005f) to a(1f - apres), 1f to a(1f - apres),
                 ),
                 blendMode = BlendMode.DstIn,
             )
@@ -1415,7 +1426,7 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 }
             }
             // Ce qui dépasse du panneau (ou passe sous « Toutes les apps ») est effacé en fondu
-            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u, droiteApps, droiteApps + 48.u),
+            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u, droiteApps, droiteApps + 48.u, plancherFin = 0.45f),
         contentPadding = PaddingValues(start = (G_MARGE + 3).u, end = droiteApps, top = marge.u, bottom = marge.u),
         verticalAlignment = Alignment.CenterVertically,
     ) {

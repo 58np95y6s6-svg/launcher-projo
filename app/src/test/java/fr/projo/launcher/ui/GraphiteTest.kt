@@ -104,7 +104,21 @@ class GraphiteTest : BancAccueil("GRAPHITE") {
             attendre("« Mes apps » ▶ n°$k", app(k))
         }
         capturer("13_trente_apps_15e")
+        avancer(3000)
+        capturer("13b_trente_apps_15e_repos")
         verifierSaut(Key.DirectionUp, "favoris", ::estElementFavori)
+        capturer("13c_trente_apps_puis_favori")
+    }
+
+    /** 30 apps, focus donné directement à la 15e (sans parcours) : comparaison avec le parcours ▶. */
+    @Test
+    fun captureTrenteAppsDirect() {
+        val d = DonneesFactices.ui(design)
+        val plus = (1..30 - d.homeApps.size).map { AppInfo("fr.test.app$it", "Application $it", isTvApp = true) }
+        val apps = d.homeApps + plus
+        afficher(donnees = d.copy(homeApps = apps, prefs = d.prefs.copy(homeApps = apps.map { it.packageName })))
+        donnerFocus(app(14))
+        capturer("13d_trente_apps_direct")
     }
 
     /** Onglet « Résultats » du bandeau NBA. */
