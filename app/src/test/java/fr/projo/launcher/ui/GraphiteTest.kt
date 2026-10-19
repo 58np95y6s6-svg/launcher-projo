@@ -103,22 +103,12 @@ class GraphiteTest : BancAccueil("GRAPHITE") {
             appuyer(Key.DirectionRight)
             attendre("« Mes apps » ▶ n°$k", app(k))
         }
-        capturer("13_trente_apps_15e")
+        // Les pilules nouvellement composées ne sont dessinées par Robolectric qu'après quelques images
         avancer(3000)
-        capturer("13b_trente_apps_15e_repos")
+        capturer("13_trente_apps_15e")
         verifierSaut(Key.DirectionUp, "favoris", ::estElementFavori)
-        capturer("13c_trente_apps_puis_favori")
-    }
-
-    /** 30 apps, focus donné directement à la 15e (sans parcours) : comparaison avec le parcours ▶. */
-    @Test
-    fun captureTrenteAppsDirect() {
-        val d = DonneesFactices.ui(design)
-        val plus = (1..30 - d.homeApps.size).map { AppInfo("fr.test.app$it", "Application $it", isTvApp = true) }
-        val apps = d.homeApps + plus
-        afficher(donnees = d.copy(homeApps = apps, prefs = d.prefs.copy(homeApps = apps.map { it.packageName })))
-        donnerFocus(app(14))
-        capturer("13d_trente_apps_direct")
+        avancer(3000)
+        capturer("13b_trente_apps_puis_favori")
     }
 
     /** Onglet « Résultats » du bandeau NBA. */
