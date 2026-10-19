@@ -1,6 +1,7 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
@@ -27,6 +28,7 @@ abstract class BancLueur(nomDesign: String) : BancAccueil(nomDesign) {
  * Gros plans de la lueur sur chaque type d'élément, et sur des fonds teintés
  * (Aurore : le fond prend la couleur de l'app sélectionnée).
  */
+@OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
