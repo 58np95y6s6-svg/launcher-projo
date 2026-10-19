@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
@@ -89,6 +90,8 @@ private val VerreTeinte = Color(0x4D161230)
 private val VerreEncre = Color(0xFF111111)
 /** Bleu système (bouton « Mise à jour »). */
 private val VerreAccent = Color(0xFF0A84FF)
+/** Verre clair des boutons de l'ornement. */
+private val VerreFondBouton = Color.White.copy(alpha = 0.14f)
 /** Halo rosé autour de l'élément sélectionné. */
 private val VerreLueur = Color(0xFFFFE3F0).copy(alpha = 0.55f)
 /** Ombre portée violet très sombre (élément soulevé). */
@@ -158,8 +161,15 @@ private const val VERRE_ECHELLE = 1.12f
 fun HomeVerre(ctx: HomeContext) {
     val ui = ctx.ui
     val actions = ctx.actions
-    // Nom du bouton de l'ornement sélectionné (null : on affiche le nom de l'app)
-    var libelleBouton by remember { mutableStateOf<String?>(null) }
+    // Boutons de l'ornement : « Mise à jour » (si disponible) puis les 4 boutons rapides
+    val boutons = buildList {
+        if (ctx.majDisponible) add(QuickAction(ProjoIcons.MiseAJour, "Mise à jour", actions.update))
+        addAll(ctx.quickActions())
+    }
+    // Bouton de l'ornement sélectionné, repéré par son icône (null : on affiche le nom de l'app).
+    // Son nom est relu dans la liste : il suit le libellé Wi-Fi s'il change pendant le focus.
+    var boutonFocus by remember { mutableStateOf<ImageVector?>(null) }
+    val libelleBouton = boutons.firstOrNull { it.icon == boutonFocus }?.label
 
     Box(Modifier.fillMaxSize()) {
         VerreFond()
@@ -178,9 +188,10 @@ fun HomeVerre(ctx: HomeContext) {
                 label = "titre",
                 modifier = Modifier.padding(start = 108.u).height(36.u).widthIn(max = 410.u),
             ) { titre ->
+                // Interligne = hauteur de la zone (qui découpe) : jambages « g », « p » entiers
                 Text(
                     titre, color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Bold,
-                    letterSpacing = (-1).us, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    letterSpacing = (-1).us, lineHeight = 36.us, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
 
@@ -188,12 +199,13 @@ fun HomeVerre(ctx: HomeContext) {
             Row(Modifier.fillMaxWidth().height(136.u)) {
                 Box(Modifier.width(84.u).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
                     VerreOrnement(
-                        ctx = ctx,
-                        surLibelle = { libelle, focus ->
+                        boutons = boutons,
+                        focusReglages = ctx.focusReglages,
+                        surFocus = { icone, focus ->
                             if (focus) {
-                                libelleBouton = libelle
-                            } else if (libelleBouton == libelle) {
-                                libelleBouton = null
+                                boutonFocus = icone
+                            } else if (boutonFocus == icone) {
+                                boutonFocus = null
                             }
                         },
                         // Plus haut que la rangée : il déborde au-dessus et en dessous, centré sur les cartes
@@ -229,9 +241,10 @@ fun HomeVerre(ctx: HomeContext) {
                 }
             }
 
-            // --- « Mes apps » : icônes rondes dans une fenêtre de verre
+            // --- « Mes apps » : icônes rondes dans une fenêtre de verre (hauteur selon son contenu,
+            //     ~131 : pas de nom d'app rogné ; l'horloge au-dessus absorbe la différence)
             Spacer(Modifier.height(2.u))
-            VerreMesApps(ctx, Modifier.padding(start = 96.u, end = 30.u).fillMaxWidth().height(130.u))
+            VerreMesApps(ctx, Modifier.padding(start = 96.u, end = 30.u).fillMaxWidth())
             Spacer(Modifier.height(26.u))
         }
 
@@ -318,9 +331,17 @@ private fun VerreHorloge(modifier: Modifier = Modifier) {
 
 // ------------------------------------------------------------------ ornement (boutons rapides)
 
-/** Capsule de verre verticale : Mise à jour (si disponible), Sources, Wi-Fi, Bluetooth, Réglages. */
+/**
+ * Capsule de verre verticale : Mise à jour (si disponible), Sources, Wi-Fi, Bluetooth, Réglages.
+ * [surFocus] reçoit l'icône du bouton (clé stable, contrairement au libellé Wi-Fi).
+ */
 @Composable
-private fun VerreOrnement(ctx: HomeContext, surLibelle: (String, Boolean) -> Unit, modifier: Modifier) {
+private fun VerreOrnement(
+    boutons: List<QuickAction>,
+    focusReglages: FocusRequester,
+    surFocus: (ImageVector, Boolean) -> Unit,
+    modifier: Modifier,
+) {
     Column(
         modifier
             .width(54.u)
@@ -329,25 +350,18 @@ private fun VerreOrnement(ctx: HomeContext, surLibelle: (String, Boolean) -> Uni
         verticalArrangement = Arrangement.spacedBy(6.u),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (ctx.majDisponible) {
-            VerreBouton(
-                icone = ProjoIcons.MiseAJour,
-                libelle = "Mise à jour",
-                onClick = ctx.actions.update,
-                onLongClick = null,
-                surFocus = { surLibelle("Mise à jour", it) },
-                fond = VerreAccent,
-                contenuFocus = VerreAccent,
-            )
-        }
-        for (a in ctx.quickActions()) {
+        for (a in boutons) {
+            // « Mise à jour » : bleu système, pour qu'on la remarque
+            val maj = a.icon == ProjoIcons.MiseAJour
             VerreBouton(
                 icone = a.icon,
                 libelle = a.label,
                 onClick = a.onClick,
                 onLongClick = a.onLongClick,
-                surFocus = { surLibelle(a.label, it) },
-                modifier = if (a.estReglages) Modifier.focusRequester(ctx.focusReglages) else Modifier,
+                surFocus = { surFocus(a.icon, it) },
+                fond = if (maj) VerreAccent else VerreFondBouton,
+                contenuFocus = if (maj) VerreAccent else VerreEncre,
+                modifier = if (a.estReglages) Modifier.focusRequester(focusReglages) else Modifier,
             )
         }
     }
@@ -361,7 +375,7 @@ private fun VerreBouton(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     surFocus: (Boolean) -> Unit,
-    fond: Color = Color.White.copy(alpha = 0.14f),
+    fond: Color = VerreFondBouton,
     contenuFocus: Color = VerreEncre,
     modifier: Modifier = Modifier,
 ) {
@@ -530,14 +544,17 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
     val ui = ctx.ui
     val actions = ctx.actions
     Column(modifier.verreVitre(28.u, 1.u).padding(top = 8.u)) {
+        // Interligne explicite : sinon celui du thème (24 sp) s'applique aux petits textes
         Text(
             "Mes apps",
             color = Color.White.copy(alpha = 0.86f), fontSize = 13.us, fontWeight = FontWeight.SemiBold,
+            lineHeight = 16.us,
             modifier = Modifier.padding(start = 12.u),
         )
+        // Hauteur = celle des icônes + noms (pas de poids : rien n'est rogné)
         LazyRow(
             state = ctx.rangeeApps,
-            modifier = Modifier.fillMaxWidth().weight(1f).fadingEdges(ctx.rangeeApps, 40.u),
+            modifier = Modifier.fillMaxWidth().fadingEdges(ctx.rangeeApps, 40.u),
             // Marge haute : place pour la levée et le halo de l'icône sélectionnée
             contentPadding = PaddingValues(start = 12.u, end = 24.u, top = 16.u, bottom = 8.u),
             horizontalArrangement = Arrangement.spacedBy(12.u),
@@ -657,6 +674,7 @@ private fun VerreLegende(texte: String, focus: Boolean) {
         color = Color.White.copy(alpha = if (focus) 1f else 0.8f),
         fontSize = 11.us,
         fontWeight = FontWeight.Medium,
+        lineHeight = 14.us,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,
