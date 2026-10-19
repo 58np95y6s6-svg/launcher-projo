@@ -108,7 +108,7 @@ abstract class BancAccueil(nomDesign: String) {
         // Visuels préparés d'avance : rien à attendre en arrière-plan pendant le test
         for (p in DonneesFactices.paquets) {
             icons.load(p)
-            icons.loadIcon(p)
+            icons.load(p, fr.projo.launcher.data.FormatVisuel.CARRE)
         }
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
