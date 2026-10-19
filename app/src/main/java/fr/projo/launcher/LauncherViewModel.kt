@@ -240,7 +240,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             // Les vraies apps + la tuile « Source HDMI » propre à Projo
             // (pas de tuile HDMI sur Fire TV : il n'a pas d'entrée HDMI)
             val reelles = withContext(Dispatchers.IO) { repo.loadApps() }
-            val liste = if (FireTv.estFireTv(getApplication())) reelles else reelles + AppInfo.HDMI
+            val liste = (if (FireTv.estFireTv(getApplication())) reelles else reelles + AppInfo.HDMI)
                 .sortedBy { it.label.lowercase() }
             apps.value = liste
             val p = prefs.state.first()
