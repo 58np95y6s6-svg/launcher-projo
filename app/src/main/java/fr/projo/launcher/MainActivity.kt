@@ -310,7 +310,9 @@ class MainActivity : ComponentActivity() {
                     "(appui long sur Maison : accueil Amazon).\n" +
                     "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
                     "2. Choisis « Activer en un clic » puis accepte la fenêtre « Autoriser le débogage » " +
-                    "(coche « Toujours autoriser »).",
+                    "(coche « Toujours autoriser »).\n" +
+                    "Après une mise à jour d'iBiProjo, redémarre le Fire TV (ou refais « Activer en un clic ») " +
+                    "pour que Maison ouvre de nouveau iBiProjo tout de suite.",
                 actions = listOf(
                     MenuAction("Activer en un clic") {
                         toast("Activation… accepte la fenêtre du Fire TV si elle apparaît")

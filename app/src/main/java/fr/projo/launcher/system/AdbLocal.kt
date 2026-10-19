@@ -26,7 +26,8 @@ object AdbLocal {
 
     /**
      * Active le service d'ouverture automatique (en gardant les autres services d'accessibilité
-     * déjà actifs). À appeler hors du thread principal.
+     * déjà actifs). S'il l'était déjà, il est désactivé puis réactivé pour qu'Android relise
+     * sa configuration. À appeler hors du thread principal.
      * @return null si tout s'est bien passé, sinon un message d'erreur pour l'utilisateur.
      */
     fun activerOuverture(context: Context): String? {
@@ -36,13 +37,24 @@ object AdbLocal {
                 fun shell(cmd: String): String = adb.open("shell:$cmd").use { it.source.readUtf8() }
                 val actuels = shell("settings get secure enabled_accessibility_services").trim()
                 val liste = actuels.split(':').map { it.trim() }
-                    .filter { it.isNotEmpty() && it != "null" }.toMutableList()
-                if (liste.none { ComponentName.unflattenFromString(it) == notre }) liste += notre.flattenToString()
-                shell("settings put secure enabled_accessibility_services ${liste.joinToString(":")}")
+                    .filter { it.isNotEmpty() && it != "null" }
+                val autres = liste.filter { ComponentName.unflattenFromString(it) != notre }
+                if (autres.size != liste.size) {
+                    // Déjà activé : on le désactive d'abord, sinon Android 9 garde l'ancienne
+                    // configuration du service après une mise à jour (sans la touche Maison)
+                    if (autres.isEmpty()) shell("settings delete secure enabled_accessibility_services")
+                    else shell("settings put secure enabled_accessibility_services ${autres.joinToString(":")}")
+                    // Laisse le temps au système de délier le service
+                    Thread.sleep(1_500)
+                }
+                shell("settings put secure enabled_accessibility_services ${(autres + notre.flattenToString()).joinToString(":")}")
                 shell("settings put secure accessibility_enabled 1")
             }
-            if (FireTv.redirectionActive(context)) null
-            else "Le Fire TV a refusé l'activation. Réessaie et accepte la fenêtre « Autoriser le débogage »."
+            if (FireTv.redirectionActive(context)) {
+                // Laisse au système le temps de relier le service avant de vérifier
+                Thread.sleep(1_000)
+                if (FireTv.majAFinir(context)) "Activée, mais il faut redémarrer le Fire TV pour que Maison ouvre iBiProjo." else null
+            } else "Le Fire TV a refusé l'activation. Réessaie et accepte la fenêtre « Autoriser le débogage »."
         } catch (e: ConnectException) {
             "Connexion refusée : active « Débogage ADB » (Options pour les développeurs). S'il l'est déjà, " +
                 "ton Fire OS bloque cette méthode : utilise « Activer depuis un iPhone »."

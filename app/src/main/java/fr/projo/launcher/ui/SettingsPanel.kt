@@ -143,13 +143,19 @@ fun SettingsPanel(
                 }
                 // Version Fire TV : ouverture automatique, toujours visible et tout en haut
                 item(key = "auto") {
-                    val actif = FireTv.redirectionActive(LocalContext.current)
+                    val contexte = LocalContext.current
+                    val actif = FireTv.redirectionActive(contexte)
+                    // Après une mise à jour (Android 9) : le service tourne sans la touche Maison
+                    val aFinir = remember(actif) { actif && FireTv.majAFinir(contexte) }
                     Tuile(
                         icone = ProjoIcons.Accueil,
                         titre = "Ouverture automatique",
-                        sousTitre = if (actif) "Activée ✓ · Maison ouvre iBiProjo, appui long : Amazon"
-                        else "Désactivée · OK pour l'activer",
-                        accent = !actif,
+                        sousTitre = when {
+                            aFinir -> "À finir : redémarre le Fire TV (ou OK → Activer en un clic)"
+                            actif -> "Activée ✓ · Maison ouvre iBiProjo, appui long : Amazon"
+                            else -> "Désactivée · OK pour l'activer"
+                        },
+                        accent = !actif || aFinir,
                         onClick = actions.ouvertureAuto,
                     )
                 }
