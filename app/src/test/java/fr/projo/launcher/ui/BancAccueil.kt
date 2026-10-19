@@ -21,8 +21,10 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.pressKey
 import androidx.tv.material3.MaterialTheme
@@ -150,6 +152,15 @@ abstract class BancAccueil(nomDesign: String) {
 
     /** Donne le focus directement à un élément (préparation d'un test, pas une navigation). */
     protected fun donnerFocus(etiquette: String) {
+        // Élément pas encore composé (hors écran, ex. « Toutes les apps ») : on fait d'abord défiler sa rangée
+        if (compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+            for (rangee in listOf("rangee:apps", "rangee:favoris")) {
+                runCatching {
+                    compose.onNodeWithTag(rangee, useUnmergedTree = true).performScrollToNode(hasTestTag(etiquette))
+                }
+            }
+            avancer(500)
+        }
         compose.onAllNodes(
             (hasTestTag(etiquette) or hasAnyAncestor(hasTestTag(etiquette))) and
                 SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus),

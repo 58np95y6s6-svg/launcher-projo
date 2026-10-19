@@ -59,9 +59,11 @@ class NavRangees(etatFavoris: LazyListState, etatApps: LazyListState) {
         val candidats = infos.visibleItemsInfo.filter { vers.cibles.containsKey(it.key) }
         // De préférence un élément entièrement visible, sinon un élément au moins à moitié visible
         val entiers = candidats.filter { gaucheDe(it) >= ecranG - 1f && gaucheDe(it) + it.size <= ecranD + 1f }
-        val choix = entiers.ifEmpty { candidats.filter { centreDe(it) > ecranG && centreDe(it) < ecranD } }
+        val enPartie = candidats.filter { centreDe(it) > ecranG && centreDe(it) < ecranD }
+        val choix = entiers.ifEmpty { enPartie }
+        // Retour sur l'élément de départ, même s'il dépasse un peu du bord (il avait le focus)
         val s = dernierSaut
-        val retour = if (s != null && s.first === depuis && s.second == cle) choix.firstOrNull { it.key == s.third } else null
+        val retour = if (s != null && s.first === depuis && s.second == cle) enPartie.firstOrNull { it.key == s.third } else null
         val cible = retour ?: choix.minByOrNull { abs(centreDe(it) - x) } ?: return false
         val fr = vers.cibles[cible.key] ?: return false
         val ok = runCatching { fr.requestFocus() }.isSuccess
