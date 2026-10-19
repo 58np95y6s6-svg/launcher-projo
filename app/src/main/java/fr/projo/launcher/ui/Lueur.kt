@@ -42,6 +42,8 @@ private val COULEURS_LUEUR = intArrayOf(
     0xFF7C5CFF.toInt(), 0xFF5B6CFF.toInt(), 0xFF3B82F6.toInt(), 0xFF22D3EE.toInt(),
     0xFFD9FBFF.toInt(), 0xFF22D3EE.toInt(), 0xFF3B82F6.toInt(), 0xFF8B5CF6.toInt(), 0xFF7C5CFF.toInt(),
 )
+/** Halo : même dégradé, mais reflet cyan vif (un blanc peu opaque paraîtrait gris sur le fond). */
+private val COULEURS_HALO = COULEURS_LUEUR.copyOf().also { it[4] = 0xFF67E8F9.toInt() }
 private val POSITIONS_LUEUR = floatArrayOf(0f, 0.153f, 0.306f, 0.458f, 0.514f, 0.569f, 0.708f, 0.861f, 1f)
 
 /** Angle de départ : le reflet clair part du haut, un peu à droite (comme la maquette). */
@@ -92,13 +94,12 @@ fun Modifier.lueurFocus(
         val h = size.height
         // Dégradé « normalisé » : les couleurs se répartissent régulièrement sur tout le tour,
         // même sur un élément très allongé
-        val balayage = SweepGradient(0f, 0f, COULEURS_LUEUR, POSITIONS_LUEUR).apply {
-            setLocalMatrix(Matrix().apply {
-                setRotate(a)
-                postScale(1f, h / l)
-                postTranslate(l / 2f, h / 2f)
-            })
+        val matrice = Matrix().apply {
+            setRotate(a)
+            postScale(1f, h / l)
+            postTranslate(l / 2f, h / 2f)
         }
+        val balayage = SweepGradient(0f, 0f, COULEURS_LUEUR, POSITIONS_LUEUR).apply { setLocalMatrix(matrice) }
         val r = rayon.toPx()
         val un = unite.toPx()
 
@@ -106,7 +107,8 @@ fun Modifier.lueurFocus(
         val p = if (portee == Dp.Unspecified) porteeParDefaut(min(l, h), un) else portee.toPx()
         if (halo > 0f) {
             MasquesLueur.obtenir(l, h, r, p)?.let { m ->
-                pinceau.shader = ComposeShader(m.shader, balayage, PorterDuff.Mode.SRC_IN)
+                val couleurs = SweepGradient(0f, 0f, COULEURS_HALO, POSITIONS_LUEUR).apply { setLocalMatrix(matrice) }
+                pinceau.shader = ComposeShader(m.shader, couleurs, PorterDuff.Mode.SRC_IN)
                 pinceau.alpha = (force * halo.coerceIn(0f, 1f) * 255f).roundToInt()
                 drawIntoCanvas {
                     it.nativeCanvas.drawRect(-m.marge, -m.marge, l + m.marge, h + m.marge, pinceau)
