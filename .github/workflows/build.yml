@@ -53,6 +53,8 @@ jobs:
   # Résultats publiés sur la branche « captures/<branche> » (captures/*.png + resultats.txt).
   tests:
     runs-on: ubuntu-latest
+    # Un test bloqué (attente sans fin) ne doit pas occuper la machine des heures
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
