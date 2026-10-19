@@ -63,17 +63,20 @@ fun Modifier.lueurFocus(intensite: Float, rayon: Dp, tourne: Boolean = intensite
                 }
         }
         val r = rayon.toPx()
-        // Halo : 5 contours de plus en plus larges et transparents
-        for (i in 5 downTo 1) {
-            val largeur = halo.toPx() * i
-            val o = ecart.toPx() + largeur / 2f
+        // Halo : 24 fines bandes contiguës dont l'opacité décroît en douceur (courbe en cloche)
+        // → un dégradé continu, sans anneaux visibles
+        val bande = halo.toPx() / 6f
+        val depart = ecart.toPx() + epaisseur.toPx()
+        for (i in 0 until 24) {
+            val o = depart + bande * (i + 0.5f)
+            val x = i / 9f
             drawRoundRect(
                 brush = brosse,
                 topLeft = Offset(-o, -o),
                 size = Size(size.width + 2 * o, size.height + 2 * o),
                 cornerRadius = CornerRadius(r + o),
-                style = Stroke(width = largeur),
-                alpha = intensite * (0.05f + 0.035f * (5 - i)),
+                style = Stroke(width = bande * 1.15f),
+                alpha = intensite * 0.38f * kotlin.math.exp(-x * x),
             )
         }
         // Anneau net

@@ -29,14 +29,14 @@ class AppVisual(val art: ImageBitmap?, val color: Color)
  *    toute la carte et son LOGO est posé en grand au centre → rendu pleine image.
  *  - Ancienne icône : fond dégradé de sa couleur dominante + icône centrée.
  *
- * Images petites (352 × 198 px, 16 bits par pixel, ~140 Ko) et cache limité à 8 Mo :
+ * Images petites (400 × 225 px, 32 bits par pixel pour des dégradés lisses) et cache limité à 14 Mo :
  * le projecteur n'a qu'1 Go de RAM.
  */
 class IconLoader(private val context: Context) {
 
-    private val cache = object : LruCache<String, AppVisual>(8 * 1024 * 1024) {
+    private val cache = object : LruCache<String, AppVisual>(14 * 1024 * 1024) {
         override fun sizeOf(key: String, value: AppVisual): Int =
-            value.art?.let { it.width * it.height * 2 } ?: 64
+            value.art?.let { it.width * it.height * 4 } ?: 64
     }
 
     fun cached(packageName: String): AppVisual? = cache.get(packageName)
@@ -83,10 +83,8 @@ class IconLoader(private val context: Context) {
             val drawable = context.packageManager.getApplicationIcon(packageName)
             val art = Bitmap.createBitmap(LARGEUR, HAUTEUR, Bitmap.Config.ARGB_8888)
             val couleur = dessinerCarte(drawable, Canvas(art))
-            // 16 bits par pixel : moitié moins de mémoire, invisible sur une carte opaque
-            val compacte = art.copy(Bitmap.Config.RGB_565, false)
-            art.recycle()
-            AppVisual(compacte.asImageBitmap(), couleur)
+            // 32 bits par pixel : les dégradés restent lisses (le 16 bits faisait des bandes)
+            AppVisual(art.asImageBitmap(), couleur)
         } catch (e: Exception) {
             AppVisual(null, COULEUR_PAR_DEFAUT)
         }
@@ -115,23 +113,71 @@ class IconLoader(private val context: Context) {
             return couleurVive(icone) ?: couleurFond
         }
 
-        // Ancienne icône : fond dégradé de sa couleur + icône centrée
+        // Ancienne icône (la plupart des apps Fire TV) : on regarde d'abord le fond de l'icône
         val couleur = couleurVive(icone) ?: couleurDominante(icone, avecVive = false)
+        val fondUni = couleurDuBord(icone)
+        if (fondUni != null) {
+            // Icône « pleine » (Netflix, Prime Video, YouTube…) : sa couleur de fond remplit
+            // toute la carte et le logo s'affiche en grand → rendu « bannière », sans raccord visible
+            canvas.drawColor(fondUni)
+            val taille = (HAUTEUR * 0.94f).toInt()
+            val x = (LARGEUR - taille) / 2
+            val y = (HAUTEUR - taille) / 2
+            icone.setBounds(x, y, x + taille, y + taille)
+            icone.draw(canvas)
+            return couleur
+        }
+
+        // Icône détourée : dégradé doux (tramé, donc sans bandes) de sa couleur + grande icône
         val argb = android.graphics.Color.argb(
             255, (couleur.red * 255).toInt(), (couleur.green * 255).toInt(), (couleur.blue * 255).toInt(),
         )
-        val haut = assombrir(argb, 0.30f)
-        val bas = assombrir(argb, 0.65f)
         val paint = Paint().apply {
-            shader = LinearGradient(0f, 0f, 0f, HAUTEUR.toFloat(), haut, bas, Shader.TileMode.CLAMP)
+            isDither = true
+            shader = LinearGradient(
+                0f, 0f, LARGEUR.toFloat(), HAUTEUR.toFloat(),
+                assombrir(argb, 0.15f), assombrir(argb, 0.55f), Shader.TileMode.CLAMP,
+            )
         }
         canvas.drawRect(0f, 0f, LARGEUR.toFloat(), HAUTEUR.toFloat(), paint)
-        val taille = (HAUTEUR * 0.56f).toInt()
+        val taille = (HAUTEUR * 0.68f).toInt()
         val x = (LARGEUR - taille) / 2
         val y = (HAUTEUR - taille) / 2
         icone.setBounds(x, y, x + taille, y + taille)
         icone.draw(canvas)
         return couleur
+    }
+
+    /**
+     * Couleur du fond d'une icône si son bord est opaque et d'une seule couleur (icône carrée
+     * ou à coins arrondis), sinon null. On échantillonne le milieu des 4 côtés, loin des coins.
+     */
+    private fun couleurDuBord(icone: Drawable): Int? {
+        val n = 96
+        val b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888)
+        val anciennes = icone.copyBounds()
+        icone.setBounds(0, 0, n, n)
+        icone.draw(Canvas(b))
+        icone.bounds = anciennes
+        val bord = 3
+        val points = mutableListOf<Int>()
+        for (i in 0 until 7) {
+            val t = 30 + i * 6 // de 30 % à 66 % de chaque côté
+            points += b.getPixel(t, bord)
+            points += b.getPixel(t, n - 1 - bord)
+            points += b.getPixel(bord, t)
+            points += b.getPixel(n - 1 - bord, t)
+        }
+        b.recycle()
+        if (points.any { android.graphics.Color.alpha(it) < 245 }) return null
+        val r = points.map { android.graphics.Color.red(it) }.average().toInt()
+        val g = points.map { android.graphics.Color.green(it) }.average().toInt()
+        val bl = points.map { android.graphics.Color.blue(it) }.average().toInt()
+        val uni = points.all {
+            kotlin.math.abs(android.graphics.Color.red(it) - r) + kotlin.math.abs(android.graphics.Color.green(it) - g) +
+                kotlin.math.abs(android.graphics.Color.blue(it) - bl) < 36
+        }
+        return if (uni) android.graphics.Color.rgb(r, g, bl) else null
     }
 
     /** Couleur vive de l'icône (pour une lueur colorée même si le fond est blanc ou noir). */
@@ -168,8 +214,8 @@ class IconLoader(private val context: Context) {
 
     companion object {
         /** Taille des cartes générées (16:9). */
-        const val LARGEUR = 352
-        const val HAUTEUR = 198
+        const val LARGEUR = 400
+        const val HAUTEUR = 225
         /** Taille des icônes carrées. */
         const val ICONE = 160
         val COULEUR_PAR_DEFAUT = Color(0xFF4A5A78)
