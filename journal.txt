@@ -1,0 +1,197 @@
+Downloading https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%.............100%
+
+Welcome to Gradle 8.11.1!
+
+Here are the highlights of this release:
+ - Parallel load and store for Configuration Cache
+ - Java compilation errors at the end of the build output
+ - Consolidated report for warnings and deprecations
+
+For more details see https://docs.gradle.org/8.11.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+CapturesGraphiteTest > raccourci PASSED
+
+CapturesGraphiteTest > tuileDock PASSED
+
+CapturesTest > accueilFavori1[AURORE] PASSED
+
+CapturesTest > mesAppsPremier[AURORE] PASSED
+
+CapturesTest > accueilFavori1[VERRE] PASSED
+
+CapturesTest > mesAppsPremier[VERRE] PASSED
+
+CapturesTest > accueilFavori1[PASTEL] PASSED
+
+CapturesTest > mesAppsPremier[PASTEL] PASSED
+
+CapturesTest > accueilFavori1[CONSOLE] PASSED
+
+CapturesTest > mesAppsPremier[CONSOLE] PASSED
+
+CapturesTest > accueilFavori1[GRAPHITE] PASSED
+
+CapturesTest > mesAppsPremier[GRAPHITE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[AURORE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[AURORE] PASSED
+
+NavigationTest > basDepuisFavori1[AURORE] PASSED
+
+NavigationTest > basDepuisFavori2[AURORE] PASSED
+
+NavigationTest > basDepuisFavori3[AURORE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[AURORE] PASSED
+
+NavigationTest > hautDepuisMesApps1[AURORE] PASSED
+
+NavigationTest > hautDepuisMesApps3[AURORE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[VERRE] FAILED
+    java.lang.AssertionError: [VERRE] scénario signalé : favori n°1 « favori:com.netflix.ninja » (x 99…263 · y 260…359 u) ; ▼ → « favori:com.amazon.amazonvideo.livingroom » (x 263…427 · y 260…359 u) ; ▼ → « favori:com.netflix.ninja » (x 99…263 · y 260…359 u). « Mes apps » n'est pas atteint au 1er ▼. Pour info, Réglages puis ▼ → « app:projo:hdmi » (x 113…183 · y 418…487 u). rangée favoris x 84…960 · y 248…384 u ; rangée Mes apps x 96…930 · y 409…514 u
+        at org.junit.Assert.fail(Assert.java:89)
+        at fr.projo.launcher.ui.NavigationTest.scenario(NavigationTest.kt:126)
+        at fr.projo.launcher.ui.NavigationTest.scenarioSignaleDepuisFavori1(NavigationTest.kt:70)
+
+NavigationTest > scenarioSignaleDepuisFavori2[VERRE] FAILED
+    java.lang.AssertionError: [VERRE] scénario signalé : favori n°2 « favori:com.amazon.amazonvideo.livingroom » (x 263…427 · y 260…359 u) ; ▼ → « favori:com.netflix.ninja » (x 99…263 · y 260…359 u) ; ▼ → « favori:com.amazon.amazonvideo.livingroom » (x 263…427 · y 260…359 u). « Mes apps » n'est pas atteint au 1er ▼. Pour info, Réglages puis ▼ → « app:projo:hdmi » (x 113…183 · y 418…487 u). rangée favoris x 84…960 · y 248…384 u ; rangée Mes apps x 96…930 · y 409…514 u
+        at org.junit.Assert.fail(Assert.java:89)
+        at fr.projo.launcher.ui.NavigationTest.scenario(NavigationTest.kt:126)
+        at fr.projo.launcher.ui.NavigationTest.scenarioSignaleDepuisFavori2(NavigationTest.kt:78)
+
+NavigationTest > basDepuisFavori1[VERRE] FAILED
+    java.lang.AssertionError: [VERRE] favori n°1 « favori:com.netflix.ninja » (x 99…263 · y 260…359 u) puis ▼ : attendu un élément de « Mes apps », obtenu « favori:com.amazon.amazonvideo.livingroom » (x 263…427 · y 260…359 u). rangée favoris x 84…960 · y 248…384 u ; rangée Mes apps x 96…930 · y 409…514 u
+        at org.junit.Assert.fail(Assert.java:89)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis(NavigationTest.kt:87)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis$default(NavigationTest.kt:82)
+        at fr.projo.launcher.ui.NavigationTest.basDepuisFavori1(NavigationTest.kt:29)
+
+NavigationTest > basDepuisFavori2[VERRE] FAILED
+    java.lang.AssertionError: [VERRE] favori n°2 « favori:com.amazon.amazonvideo.livingroom » (x 263…427 · y 260…359 u) puis ▼ : attendu un élément de « Mes apps », obtenu « favori:com.netflix.ninja » (x 99…263 · y 260…359 u). rangée favoris x 84…960 · y 248…384 u ; rangée Mes apps x 96…930 · y 409…514 u
+        at org.junit.Assert.fail(Assert.java:89)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis(NavigationTest.kt:87)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis$default(NavigationTest.kt:82)
+        at fr.projo.launcher.ui.NavigationTest.basDepuisFavori2(NavigationTest.kt:36)
+
+NavigationTest > basDepuisFavori3[VERRE] FAILED
+    java.lang.AssertionError: [VERRE] favori n°3 « favori:com.canal.android.canal » (x 427…591 · y 260…359 u) puis ▼ : attendu un élément de « Mes apps », obtenu « favori:com.amazon.amazonvideo.livingroom » (x 263…427 · y 260…359 u). rangée favoris x 84…960 · y 248…384 u ; rangée Mes apps x 96…930 · y 409…514 u
+        at org.junit.Assert.fail(Assert.java:89)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis(NavigationTest.kt:87)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis$default(NavigationTest.kt:82)
+        at fr.projo.launcher.ui.NavigationTest.basDepuisFavori3(NavigationTest.kt:43)
+
+NavigationTest > basDepuisDernierFavoriVisible[VERRE] FAILED
+    java.lang.AssertionError: [VERRE] dernier favori visible (n°5) « favori:tv.twitch.android.app » (x 755…919 · y 260…359 u) puis ▼ : attendu un élément de « Mes apps », obtenu « favori:com.teamsmart.videomanager.tv » (x 591…755 · y 260…359 u). rangée favoris x 84…960 · y 248…384 u ; rangée Mes apps x 96…930 · y 409…514 u
+        at org.junit.Assert.fail(Assert.java:89)
+        at fr.projo.launcher.ui.NavigationTest.basDepuis(NavigationTest.kt:87)
+        at fr.projo.launcher.ui.NavigationTest.basDepuisDernierFavoriVisible(NavigationTest.kt:51)
+
+NavigationTest > hautDepuisMesApps1[VERRE] PASSED
+
+NavigationTest > hautDepuisMesApps3[VERRE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[PASTEL] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[PASTEL] PASSED
+
+NavigationTest > basDepuisFavori1[PASTEL] PASSED
+
+NavigationTest > basDepuisFavori2[PASTEL] PASSED
+
+NavigationTest > basDepuisFavori3[PASTEL] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[PASTEL] PASSED
+
+NavigationTest > hautDepuisMesApps1[PASTEL] PASSED
+
+NavigationTest > hautDepuisMesApps3[PASTEL] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[CONSOLE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori1[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori2[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori3[CONSOLE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesApps1[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesApps3[CONSOLE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[GRAPHITE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori1[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori2[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori3[GRAPHITE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesApps1[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesApps3[GRAPHITE] PASSED
+
+52 tests completed, 6 failed
+
+> Task :app:testDebugUnitTest FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1792433813138.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///home/runner/work/launcher-projo/launcher-projo/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 2m 33s
+26 actionable tasks: 26 executed
