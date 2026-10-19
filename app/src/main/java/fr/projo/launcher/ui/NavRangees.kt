@@ -34,6 +34,9 @@ import kotlin.math.abs
  *
  * Si le saut est impossible (rangée pas encore affichée, élément inconnu),
  * la touche n'est pas consommée : la navigation standard prend le relais.
+ * Attention : requestFocus() ne dit pas si le focus a bougé. Dès que la demande ne lève pas
+ * d'exception, la touche est consommée (cas rare d'une cible qui refuse le focus : rien ne
+ * bouge, un deuxième appui suffit).
  */
 class NavRangees(etatFavoris: LazyListState, etatApps: LazyListState) {
     val favoris = NavRangee(etatFavoris)
@@ -62,6 +65,7 @@ class NavRangees(etatFavoris: LazyListState, etatApps: LazyListState) {
         val retour = if (s != null && s.first === depuis && s.second == cle) enPartie.firstOrNull { it.key == s.third } else null
         val cible = retour ?: choix.minByOrNull { abs(centreDe(it) - x) } ?: return false
         val fr = vers.cibles[cible.key] ?: return false
+        // « ok » = pas d'exception (requestFocus ne renvoie rien en Compose 1.7)
         val ok = runCatching { fr.requestFocus() }.isSuccess
         if (ok) dernierSaut = Triple(vers, cible.key, cle)
         return ok
@@ -100,7 +104,7 @@ fun Modifier.navFavoris(nav: NavRangees): Modifier =
     this
         .positionRangee(nav.favoris)
         .onPreviewKeyEvent { e ->
-            // KeyDown seulement ; la touche n'est consommée que si le focus a bien sauté
+            // KeyDown seulement ; la touche n'est consommée que si le saut a été demandé
             e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown && nav.sauter(nav.favoris, nav.apps)
         }
 

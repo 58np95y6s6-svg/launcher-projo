@@ -179,7 +179,8 @@ private const val CONSOLE_BOUTON = 34
 fun HomeConsole(ctx: HomeContext) {
     val ui = ctx.ui
     // ▼ / ▲ entre les rangées : commun aux designs (NavRangees.kt). La carte NBA, entre les
-    // deux rangées à droite, s'atteint par ▶ sur la dernière tuile des favoris.
+    // deux rangées à droite, s'atteint par ▶ au bout d'une des deux rangées (dernière tuile
+    // des favoris ou « Toutes les apps »).
     val nav = ctx.nav
     val focusNba = remember { FocusRequester() }
     val anneau = rememberConsoleAnneau()
@@ -240,7 +241,7 @@ fun HomeConsole(ctx: HomeContext) {
                 }
             }
 
-            ConsoleMesApps(ctx, nav, anneau, surBiblio = { biblioFocus = it })
+            ConsoleMesApps(ctx, nav, anneau, focusNba, surBiblio = { biblioFocus = it })
             Spacer(Modifier.height(22.u))
         }
     }
@@ -827,7 +828,13 @@ private fun consoleNombreApps(n: Int): String = if (n > 1) "$n apps" else "$n ap
 
 /** « Mes apps » : cartes larges (icône + nom), puis « Toutes les apps (N) ». */
 @Composable
-private fun ConsoleMesApps(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnneau, surBiblio: (Boolean) -> Unit) {
+private fun ConsoleMesApps(
+    ctx: HomeContext,
+    nav: NavRangees,
+    anneau: ConsoleAnneau,
+    focusNba: FocusRequester,
+    surBiblio: (Boolean) -> Unit,
+) {
     val ui = ctx.ui
     val actions = ctx.actions
     val densite = LocalDensity.current
@@ -851,9 +858,14 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnn
                 // ▲ : directement à la tuile du dessus
                 .navApps(nav)
                 .onPreviewKeyEvent { e ->
-                    // ▶ sur « Toutes les apps » (toujours la dernière) : on reste (sinon, avec
-                    // peu d'apps, le focus remonterait en diagonale dans la carte NBA)
-                    e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight && nav.apps.cle == "bibliotheque"
+                    // ▶ sur « Toutes les apps » (toujours la dernière) : dans la carte NBA, au-dessus
+                    // à droite ; si elle ne peut pas prendre le focus, on reste sur place
+                    if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight && nav.apps.cle == "bibliotheque") {
+                        runCatching { focusNba.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
                 }
                 .fadingEdges(ctx.rangeeApps, 56.u),
             contentPadding = PaddingValues(horizontal = CONSOLE_MARGE.u, vertical = 13.u),

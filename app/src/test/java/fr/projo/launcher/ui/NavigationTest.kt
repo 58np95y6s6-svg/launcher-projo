@@ -2,6 +2,7 @@ package fr.projo.launcher.ui
 
 import androidx.compose.ui.input.key.Key
 import fr.projo.launcher.HomeUi
+import fr.projo.launcher.data.AppInfo
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -176,15 +177,45 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
         attendreApres(Key.DirectionRight, app(2), "${app(1)} puis ▶")
     }
 
-    /** Sortie du bandeau NBA par ◀ puis par Retour : retour au 1er favori (rangée remise au début). */
+    /**
+     * Sortie du bandeau NBA par ◀ puis par Retour : retour au 1er favori (rangée remise au début).
+     * Graphite : ◀ revient sur Réglages, d'où l'on y entre par ▶.
+     */
     @Test
     fun sortieDuBandeauNba() {
         afficher()
         allerAuFavori(3)
         donnerFocus("nba")
-        attendreApres(Key.DirectionLeft, favori(0), "bandeau NBA puis ◀")
+        val gauche = if (design == Design.GRAPHITE) "rapide:Réglages" else favori(0)
+        attendreApres(Key.DirectionLeft, gauche, "bandeau NBA puis ◀")
         donnerFocus("nba")
         attendreApres(Key.Back, favori(0), "bandeau NBA puis Retour")
+    }
+
+    /**
+     * Le bandeau NBA s'atteint encore à la télécommande (sans lui donner le focus directement) :
+     * ▲ depuis le dernier favori visible puis ▶ ; Console : ▶ au bout des favoris.
+     */
+    @Test
+    fun entreeDansLaNba() {
+        afficher()
+        val etapes = mutableListOf<String>()
+        fun dansNba() = focus()?.chaine?.contains("nba") == true
+        fun touche(k: Key, nom: String) {
+            appuyer(k)
+            etapes += "$nom → ${decrire(focus())}"
+        }
+        if (design == Design.CONSOLE) {
+            allerAuFavori(ui.favorites.lastIndex)
+            touche(Key.DirectionRight, "▶")
+        } else {
+            val i = dernierFavoriVisible()
+            allerAuFavori(i)
+            etapes += "favori n°${i + 1} ${decrire(focus())}"
+            touche(Key.DirectionUp, "▲")
+            repeat(8) { if (!dansNba()) touche(Key.DirectionRight, "▶") }
+        }
+        if (!dansNba()) fail("[${design.name}] bandeau NBA jamais atteint : ${etapes.joinToString(" ; ")}")
     }
 
     /** Fermeture des panneaux : le focus revient sur Réglages ou « Toutes les apps ». */
@@ -333,6 +364,19 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
 @Config(sdk = [33], qualifiers = ECRAN_TV)
 class NavigationConsoleTest : BancAccueil("CONSOLE") {
 
+    /** ▶ sur « Toutes les apps » (sous la carte NBA) : dans la carte, puis ◀ → 1er favori. */
+    @Test
+    fun droiteSurToutesLesAppsVersLaCarteNba() {
+        afficher()
+        donnerFocus("biblio")
+        appuyer(Key.DirectionRight)
+        val f = focus()
+        if (f?.chaine?.contains("nba") != true) fail("[CONSOLE] « Toutes les apps » puis ▶ : attendu la carte NBA, obtenu ${decrire(f)}")
+        appuyer(Key.DirectionLeft)
+        val g = focus()
+        if (g?.etiquette != favori(0)) fail("[CONSOLE] carte NBA puis ◀ : attendu ${favori(0)}, obtenu ${decrire(g)}")
+    }
+
     @Test
     fun droiteSurLaDerniereTuileVersLaCarteNba() {
         afficher()
@@ -344,5 +388,96 @@ class NavigationConsoleTest : BancAccueil("CONSOLE") {
         appuyer(Key.DirectionLeft)
         val g = focus()
         if (g?.etiquette != favori(0)) fail("[CONSOLE] carte NBA puis ◀ : attendu ${favori(0)}, obtenu ${decrire(g)}")
+    }
+}
+
+/**
+ * Rangées de tailles variées (1 app, 2 apps, 30 apps, 30 favoris), pour chacun des 5 designs :
+ * ▼ / ▲ sautent toujours vers l'élément visible le plus aligné de l'autre rangée,
+ * ▼ ne bouge plus une fois dans « Mes apps », et ▼ ▲ / ▲ ▼ ramènent au départ.
+ */
+@RunWith(ParameterizedRobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [33], qualifiers = ECRAN_TV)
+class NavigationVariantesTest(nomDesign: String, private val variante: String) : BancAccueil(nomDesign) {
+
+    companion object {
+        @JvmStatic
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{0} {1}")
+        fun cas(): List<Array<Any>> = Design.entries.flatMap { d ->
+            listOf("1 app", "2 apps", "30 apps", "30 favoris").map { arrayOf<Any>(d.name, it) }
+        }
+
+        /** Apps factices (sans visuel : initiale) pour allonger une rangée jusqu'à [total]. */
+        private fun completer(liste: List<AppInfo>, total: Int, nom: String): List<AppInfo> =
+            liste + (1..total - liste.size).map { AppInfo("fr.test.$nom$it", "${nom.replaceFirstChar { c -> c.uppercase() }} $it", isTvApp = true) }
+    }
+
+    override fun preparer(u: HomeUi): HomeUi {
+        fun apps(a: List<AppInfo>) = u.copy(homeApps = a, prefs = u.prefs.copy(homeApps = a.map { it.packageName }))
+        return when (variante) {
+            "1 app" -> apps(u.homeApps.take(1))
+            "2 apps" -> apps(u.homeApps.take(2))
+            "30 apps" -> apps(completer(u.homeApps, 30, "appli"))
+            else -> completer(u.favorites, 30, "favori").let { f ->
+                u.copy(favorites = f, prefs = u.prefs.copy(favorites = f.map { it.packageName }))
+            }
+        }
+    }
+
+    /** Favoris 1, 2, dernier visible et dernier : ▼ (le plus aligné), ▼ (on reste), ▲ (retour au favori). */
+    @Test
+    fun basPuisRetourDepuisLesFavoris() {
+        afficher()
+        val voulus = listOf(0, 1, dernierFavoriVisible(), ui.favorites.lastIndex).distinct().sorted()
+        var courant = 0
+        for (i in voulus) {
+            allerAuFavori(i, depuis = courant)
+            courant = i
+            val nom = "[$variante] favori n°${i + 1}"
+            val avant = focus()
+            val candidats = elementsVisibles(mesApps = true)
+            appuyer(Key.DirectionDown)
+            val arrivee = focus()
+            verifierSaut(nom, avant, arrivee, versMesApps = true, candidats = candidats)
+            appuyer(Key.DirectionDown)
+            val encore = focus()
+            if (encore?.etiquette != arrivee?.etiquette) {
+                fail("[${design.name}] $nom ▼ → ${decrire(arrivee)} ▼ → ${decrire(encore)} : attendu de rester dans « Mes apps ». ${rangees()}")
+            }
+            appuyer(Key.DirectionUp)
+            val retour = focus()
+            if (retour?.etiquette != favori(i)) {
+                fail("[${design.name}] $nom ▼ ▼ ▲ → ${decrire(retour)} : attendu le retour sur ${favori(i)}. ${rangees()}")
+            }
+        }
+    }
+
+    /** Le long de « Mes apps » (▶ d'app en app) : ▲ (le plus aligné) puis ▼ (retour sur l'app). */
+    @Test
+    fun hautPuisRetourLeLongDeMesApps() {
+        afficher()
+        val n = ui.homeApps.size
+        val voulus = setOf(0, 1, n / 2, n - 1, n)
+        donnerFocus(app(0))
+        for (k in 0..n) {
+            val etiquette = if (k == n) "biblio" else app(k)
+            if (k > 0) {
+                appuyer(Key.DirectionRight)
+                val f = focus()
+                if (f?.etiquette != etiquette) fail("[${design.name}] [$variante] ▶ dans « Mes apps » : attendu $etiquette, obtenu ${decrire(f)}")
+            }
+            if (k !in voulus) continue
+            val nom = "[$variante] ${if (k == n) "« Toutes les apps »" else "« Mes apps » n°${k + 1}"}"
+            val avant = focus()
+            val candidats = elementsVisibles(mesApps = false)
+            appuyer(Key.DirectionUp)
+            verifierSaut(nom, avant, focus(), versMesApps = false, candidats = candidats)
+            appuyer(Key.DirectionDown)
+            val retour = focus()
+            if (retour?.etiquette != etiquette) {
+                fail("[${design.name}] $nom ▲ ▼ → ${decrire(retour)} : attendu le retour sur $etiquette. ${rangees()}")
+            }
+        }
     }
 }
