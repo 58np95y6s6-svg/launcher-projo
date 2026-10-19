@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -467,7 +468,8 @@ private fun PastelTuileRapide(action: QuickAction, ctx: HomeContext, modifier: M
         contenu = PastelSurTonal,
         hauteur = 42.u, debut = 6.u, fin = 12.u,
         agrandi = 1.05f,
-        modifier = if (action.estReglages) modifier.focusRequester(ctx.focusReglages) else modifier,
+        modifier = (if (action.estReglages) modifier.focusRequester(ctx.focusReglages) else modifier)
+            .testTag("rapide:" + action.label),
     ) { focus ->
         Box(
             Modifier
@@ -552,7 +554,7 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.fillMaxWidth().fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
+        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth().fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
         // Haut/bas : place pour l'agrandissement et l'anneau. Fin : la dernière carte peut
         // venir hors du fondu.
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 18.u, bottom = 18.u),
@@ -563,7 +565,11 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
             item(key = "aide") { PastelCarteAide(ctx) }
         }
         itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
-            PastelFavori(app, ctx, if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
+            PastelFavori(
+                app, ctx,
+                Modifier.testTag("favori:" + app.packageName)
+                    .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier),
+            )
         }
     }
 }
@@ -573,7 +579,7 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
 private fun PastelRangeeApps(ctx: HomeContext) {
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.fillMaxWidth().fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
+        modifier = Modifier.testTag("rangee:apps").fillMaxWidth().fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 7.u, bottom = 7.u),
         horizontalArrangement = Arrangement.spacedBy(10.u),
         verticalAlignment = Alignment.CenterVertically,
@@ -801,7 +807,7 @@ private fun PastelPiluleApp(app: AppInfo, ctx: HomeContext, formeIcone: Shape) {
         fond = PastelFondPilule,
         contenu = PastelEncre,
         hauteur = 48.u, debut = 8.u, fin = 18.u,
-        modifier = Modifier.pastelGardeMarge(PASTEL_MARGE.u).pastelToucheMenu(menu),
+        modifier = Modifier.testTag("app:" + app.packageName).pastelGardeMarge(PASTEL_MARGE.u).pastelToucheMenu(menu),
     ) { _ ->
         Box(
             Modifier
@@ -842,7 +848,7 @@ private fun PastelPiluleBiblio(ctx: HomeContext) {
         fond = PastelTertiaireConteneur,
         contenu = PastelSurTertiaireConteneur,
         hauteur = 48.u, debut = 8.u, fin = 10.u,
-        modifier = Modifier.focusRequester(ctx.focusBiblio).pastelGardeMarge(PASTEL_MARGE.u),
+        modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio").pastelGardeMarge(PASTEL_MARGE.u),
     ) { focus ->
         Box(
             Modifier

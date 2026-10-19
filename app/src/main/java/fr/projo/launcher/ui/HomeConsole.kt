@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -488,6 +489,7 @@ private fun ConsoleBouton(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
+            .testTag("rapide:$libelle")
             .height(CONSOLE_BOUTON.u)
             .onFocusChanged { focus = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(CircleShape),
@@ -569,6 +571,7 @@ private fun ConsoleBande(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnnea
         modifier = Modifier
             .fillMaxWidth()
             // Hauteur fixe (tuile agrandie + anneau) : le héros ne bouge pas avec le focus
+            .testTag("rangee:favoris")
             .height((CONSOLE_TUILE_GRANDE + 28).u)
             .onPreviewKeyEvent { e ->
                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -626,7 +629,8 @@ private fun ConsoleBande(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnnea
                 },
                 onClick = { actions.launch(app) },
                 onMenu = { actions.openMenu(app) },
-                modifier = (if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier).focusRequester(cible),
+                modifier = (if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier).focusRequester(cible)
+                    .testTag("favori:" + app.packageName),
             )
         }
     }
@@ -853,6 +857,7 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
             state = ctx.rangeeApps,
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("rangee:apps")
                 .height((CONSOLE_CARTE_H + 26).u)
                 .onPreviewKeyEvent { e ->
                     if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -883,7 +888,7 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
                     },
                     onClick = { actions.launch(app) },
                     onMenu = { actions.openMenu(app) },
-                    modifier = Modifier.focusRequester(rememberConsoleCible(nav, cle)),
+                    modifier = Modifier.focusRequester(rememberConsoleCible(nav, cle)).testTag("app:" + app.packageName),
                 )
             }
             // Bibliothèque : toutes les apps installées
@@ -903,7 +908,8 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
                     pointille = pointille,
                     modifier = Modifier
                         .focusRequester(ctx.focusBiblio)
-                        .focusRequester(rememberConsoleCible(nav, "bibliotheque")),
+                        .focusRequester(rememberConsoleCible(nav, "bibliotheque"))
+                        .testTag("biblio"),
                 ) {
                     ConsoleContenuCarte("Toutes les apps (${ui.allApps.size})") {
                         Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.12f)))

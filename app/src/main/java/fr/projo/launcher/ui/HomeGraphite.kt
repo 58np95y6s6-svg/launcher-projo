@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
@@ -457,6 +458,7 @@ private fun GraphiteRaccourci(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
+            .testTag("rapide:$libelle")
             // Agrandissement géré ici pour que la lueur suive la ligne
             .graphicsLayer { val s = 1f + 0.02f * zoom; scaleX = s; scaleY = s }
             .lueurFocus(zoom, rayon, tourne = focus)
@@ -580,7 +582,7 @@ private fun GraphiteFavoris(ctx: HomeContext, horsApp: (String, String) -> Unit)
     val sansHaut = Modifier.focusProperties { up = FocusRequester.Cancel }
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth(),
         // Marges verticales : la lueur de la carte sélectionnée a la place de s'étendre
         contentPadding = PaddingValues(start = GRAPHITE_RETRAIT.u, end = 48.u, top = 16.u, bottom = 16.u),
         horizontalArrangement = Arrangement.spacedBy(18.u),
@@ -603,7 +605,8 @@ private fun GraphiteFavoris(ctx: HomeContext, horsApp: (String, String) -> Unit)
                 onFocused = ctx.surFocus,
                 onClick = { ctx.actions.launch(app) },
                 onMenu = { ctx.actions.openMenu(app) },
-                modifier = if (i == 0) sansHaut.focusRequester(ctx.premierFocus) else sansHaut,
+                modifier = Modifier.testTag("favori:" + app.packageName)
+                    .then(if (i == 0) sansHaut.focusRequester(ctx.premierFocus) else sansHaut),
             )
         }
     }
@@ -615,7 +618,7 @@ private fun GraphiteDock(ctx: HomeContext, horsApp: (String, String) -> Unit) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.testTag("rangee:apps").fillMaxWidth(),
         contentPadding = PaddingValues(start = GRAPHITE_RETRAIT.u, end = 48.u, top = 16.u, bottom = 16.u),
         horizontalArrangement = Arrangement.spacedBy(14.u),
     ) {
@@ -628,7 +631,7 @@ private fun GraphiteDock(ctx: HomeContext, horsApp: (String, String) -> Unit) {
                 nombre = ui.allApps.size,
                 onClick = ctx.actions.openLibrary,
                 onFocus = { horsApp("Toutes les apps", "Bibliothèque") },
-                modifier = Modifier.focusRequester(ctx.focusBiblio),
+                modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio"),
             )
         }
     }
@@ -711,6 +714,7 @@ private fun GraphiteTuileApp(app: AppInfo, ctx: HomeContext) {
         onClick = { ctx.actions.launch(app) },
         onLongClick = { ctx.actions.openMenu(app) },
         onFocus = { ctx.surFocus(app, couleur) },
+        modifier = Modifier.testTag("app:" + app.packageName),
     ) {
         GraphiteIcone(app, icone, couleur)
         Text(

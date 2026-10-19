@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.focus.FocusRequester
@@ -115,6 +116,7 @@ private fun NbaContenu(
     var resultatsFocus by remember { mutableStateOf(false) }
     Column(
         modifier
+            .testTag("nba")
             // Retour : on quitte le bandeau
             .onPreviewKeyEvent {
                 if (it.key == Key.Back && it.type == KeyEventType.KeyUp) { onExit(); true }
