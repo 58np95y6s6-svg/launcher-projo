@@ -147,7 +147,7 @@ fun SettingsPanel(
                     Tuile(
                         icone = ProjoIcons.Accueil,
                         titre = "Ouverture automatique",
-                        sousTitre = if (actif) "Activée ✓ · s'ouvre au démarrage et avec Maison"
+                        sousTitre = if (actif) "Activée ✓ · Maison ouvre iBiProjo, appui long : Amazon"
                         else "Désactivée · OK pour l'activer",
                         accent = !actif,
                         onClick = actions.ouvertureAuto,
