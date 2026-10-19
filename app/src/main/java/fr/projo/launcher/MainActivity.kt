@@ -43,7 +43,12 @@ import fr.projo.launcher.ui.MenuDialog
 import fr.projo.launcher.ui.SettingsActions
 import fr.projo.launcher.ui.SettingsPanel
 import fr.projo.launcher.ui.SourcesDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
+import fr.projo.launcher.system.AdbLocal
 
 /** Activité unique du launcher : c'est elle que le bouton Maison ouvre. */
 class MainActivity : ComponentActivity() {
@@ -201,13 +206,7 @@ class MainActivity : ComponentActivity() {
                     date = { vm.actions.openDate() },
                     sound = { vm.actions.openSound() },
                     allSettings = { vm.actions.openSettings() },
-                    ouvertureAuto = {
-                        if (FireTv.ouvrirAccessibilite(this)) {
-                            toast("Active « iBiProjo · ouverture automatique » puis reviens")
-                        } else {
-                            montrerAide = true
-                        }
-                    },
+                    ouvertureAuto = { montrerAide = true },
                     close = { montrerReglages = false; focusApres = focusReglages },
                 ),
             )
@@ -284,13 +283,30 @@ class MainActivity : ComponentActivity() {
             )
         }
         if (montrerAide) {
-            // Fire TV sans page Accessibilité : activation depuis un ordinateur (ADB)
+            // Ouverture automatique : activation en un clic par ADB local (sans ordinateur),
+            // ou à la main dans la page Accessibilité si le Fire TV la propose
             MenuDialog(
                 title = "Ouverture automatique",
-                subtitle = "Ce Fire TV ne propose pas la page Accessibilité. Depuis un ordinateur " +
-                    "(débogage ADB activé dans Ma Fire TV → Options pour les développeurs), tape :\n\n" +
-                    FireTv.commandeAdb(this),
-                actions = listOf(MenuAction("Fermer") {}),
+                subtitle = "iBiProjo s'ouvrira au démarrage et à chaque appui sur Maison.\n" +
+                    "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
+                    "2. Choisis « Activer en un clic » puis accepte la fenêtre « Autoriser le débogage » " +
+                    "(coche « Toujours autoriser »).",
+                actions = listOf(
+                    MenuAction("Activer en un clic") {
+                        toast("Activation… accepte la fenêtre du Fire TV si elle apparaît")
+                        lifecycleScope.launch {
+                            val erreur = withContext(Dispatchers.IO) { AdbLocal.activerOuverture(this@MainActivity) }
+                            toast(erreur ?: "Ouverture automatique activée ✓")
+                        }
+                    },
+                    MenuAction("Ouvrir les options pour les développeurs") {
+                        if (!FireTv.ouvrirOptionsDeveloppeur(this)) toast("Ma Fire TV → À propos : clique 7 fois sur le nom de l'appareil")
+                    },
+                    MenuAction("Ouvrir la page Accessibilité") {
+                        if (!FireTv.ouvrirAccessibilite(this)) toast("Ce Fire TV n'a pas cette page : utilise « Activer en un clic »")
+                    },
+                    MenuAction("Fermer") {},
+                ),
                 onDismiss = { montrerAide = false },
             )
         }

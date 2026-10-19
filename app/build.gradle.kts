@@ -48,7 +48,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Clé de publication si disponible (GitHub Actions), sinon clé de test (essais locaux)
             signingConfig = signingConfigs.findByName("publication") ?: signingConfigs.getByName("test")
         }
@@ -77,4 +77,6 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.palette)
+    // ADB local (Fire TV) : activation de l'ouverture automatique sans ordinateur
+    implementation("dev.mobile:dadb:1.2.10")
 }

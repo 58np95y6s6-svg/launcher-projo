@@ -27,9 +27,18 @@ object FireTv {
 
     /** Service d'ouverture automatique activé dans les réglages d'accessibilité ? */
     fun redirectionActive(context: Context): Boolean {
-        val attendu = ComponentName(context, RedirectionAccueil::class.java).flattenToString()
+        val notre = ComponentName(context, RedirectionAccueil::class.java)
         val actifs = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
-        return actifs.split(':').any { it.equals(attendu, ignoreCase = true) }
+        // Les réglages peuvent stocker le nom complet ou abrégé (« paquet/.Classe »)
+        return actifs.split(':').any { ComponentName.unflattenFromString(it.trim()) == notre }
+    }
+
+    /** Ouvre les options pour les développeurs (pour activer « Débogage ADB »). */
+    fun ouvrirOptionsDeveloppeur(context: Context): Boolean = try {
+        val i = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (i.resolveActivity(context.packageManager) == null) false else { context.startActivity(i); true }
+    } catch (e: Exception) {
+        false
     }
 
     /** Commande ADB à taper si le Fire TV ne montre pas le service dans ses réglages. */

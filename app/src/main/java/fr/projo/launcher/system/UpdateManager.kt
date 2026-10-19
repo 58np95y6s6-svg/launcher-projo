@@ -43,7 +43,7 @@ class UpdateManager(private val context: Context) {
     /** true pour une version de test (nom « test-NN »). */
     val canalTest: Boolean = versionInstallee.startsWith("test") || versionInstallee.endsWith("-dev")
 
-    val versionAffichee: String = if (canalTest) "test #$codeInstalle" else versionInstallee
+    val versionAffichee: String = if (canalTest) "Fire TV #$codeInstalle" else versionInstallee
 
     /** À appeler hors du thread principal. */
     fun check(): UpdateInfo {

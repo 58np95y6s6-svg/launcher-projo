@@ -140,6 +140,18 @@ fun SettingsPanel(
                 item(key = "volume") {
                     Volume(snapshot, actions, Modifier.focusRequester(premier))
                 }
+                // Version Fire TV : ouverture automatique, toujours visible et tout en haut
+                item(key = "auto") {
+                    val actif = FireTv.redirectionActive(LocalContext.current)
+                    Tuile(
+                        icone = ProjoIcons.Accueil,
+                        titre = "Ouverture automatique",
+                        sousTitre = if (actif) "Activée ✓ · s'ouvre au démarrage et avec Maison"
+                        else "Désactivée · OK pour l'activer",
+                        accent = !actif,
+                        onClick = actions.ouvertureAuto,
+                    )
+                }
                 // ---------------- Mise à jour (mise en avant si disponible)
                 if (maj.info?.available == true || maj.telechargement != null) {
                     item(key = "maj") {
@@ -198,20 +210,7 @@ fun SettingsPanel(
                 }
 
                 item(key = "s-projo") { Section("PROJO") }
-                if (fireTv) {
-                    // Fire TV : impossible de remplacer l'accueil d'Amazon, on s'ouvre à sa place
-                    item(key = "auto") {
-                        val actif = FireTv.redirectionActive(LocalContext.current)
-                        Tuile(
-                            icone = ProjoIcons.Accueil,
-                            titre = "Ouverture automatique",
-                            sousTitre = if (actif) "Activée ✓ · s'ouvre à la place de l'accueil Amazon"
-                            else "Désactivée · OK pour l'activer",
-                            accent = !actif,
-                            onClick = actions.ouvertureAuto,
-                        )
-                    }
-                } else item(key = "accueil") {
+                if (!fireTv) item(key = "accueil") {
                     Tuile(
                         icone = ProjoIcons.Accueil,
                         titre = "Écran d'accueil",
