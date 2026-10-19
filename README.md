@@ -72,6 +72,7 @@ redirige le bouton Maison (ex. « Button Mapper »).
 | Maintenir OK (ou touche Menu) sur une app | ajouter/retirer des favoris, déplacer, masquer, infos |
 | Retour | ne quitte jamais l'accueil |
 | Maison (déjà sur l'accueil) | revient au premier favori |
+| Fire TV (ouverture automatique activée) : maintenir Maison | accueil Amazon, sans retour forcé vers Projo jusqu'au prochain appui sur Maison |
 | Maintenir OK sur « Sources » | choisir ce qu'ouvre la pastille (app HDMI du fabricant, etc.) |
 | Maintenir OK sur « Réglages » | diagnostic : écran d'accueil par défaut, version |
 | Carte « Apps masquées » (fin de la 2ᵉ rangée) | ré-afficher une app masquée |
