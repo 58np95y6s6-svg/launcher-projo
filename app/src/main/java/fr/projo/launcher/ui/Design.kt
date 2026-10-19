@@ -31,7 +31,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     AURORE("aurore", "Aurore", "Lueur de la couleur de l'app"),
     VERRE("verre", "Verre", "Verre dépoli, lumière douce"),
     PASTEL("pastel", "Pastel", "Formes rondes, tons doux"),
-    CONSOLE("console", "Console", "Grand visuel de l'app choisie");
+    CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
+    GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan");
 
     companion object {
         fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
@@ -83,6 +84,12 @@ fun Design.colors(): DesignColors = when (this) {
         texte = Color(0xFFF4F6FB), texteDiscret = Color(0xFFF4F6FB).copy(alpha = 0.6f), accent = Color(0xFF8FB4FF),
         focusFond = Color(0xFFF4F6FB), focusTexte = Color(0xFF050817),
         voile = Color(0xFF040716).copy(alpha = 0.55f), fondBibliotheque = Color(0xFA050817),
+    )
+    Design.GRAPHITE -> DesignColors(
+        panneau = Color(0xF7121419), carte = Color.White.copy(alpha = 0.045f),
+        texte = Color(0xFFECEDF1), texteDiscret = Color(0xFF8D919E), accent = Color(0xFF5B6CFF),
+        focusFond = Color(0xFFECEDF1), focusTexte = Color(0xFF0D0E12),
+        voile = Color(0xFF0D0E12).copy(alpha = 0.7f), fondBibliotheque = Color(0xFA0D0E12),
     )
 }
 
