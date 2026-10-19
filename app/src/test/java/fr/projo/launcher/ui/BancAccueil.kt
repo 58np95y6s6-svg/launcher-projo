@@ -30,6 +30,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import fr.projo.launcher.HomeUi
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.NbaRepository
+import fr.projo.launcher.modules.HoteModules
+import fr.projo.launcher.modules.LocalHoteModules
 import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.rules.TestWatcher
@@ -70,6 +72,12 @@ abstract class BancAccueil(nomDesign: String) {
 
     protected val ui: HomeUi by lazy { DonneesFactices.ui(design) }
 
+    /**
+     * Modules affichés à la place du bandeau NBA (voir ModulesTest) ; null : comme avant,
+     * NbaPanel affiche les matchs NBA factices.
+     */
+    protected var hoteModules: HoteModules? = null
+
     /** Pixels par unité d'interface (.u). */
     protected val pxParU: Float
         get() = compose.density.density * compose.activity.resources.configuration.screenWidthDp / 960f
@@ -96,7 +104,11 @@ abstract class BancAccueil(nomDesign: String) {
         compose.setContent {
             // Comme MainActivity : interface dessinée pour 960 dp de large
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
-            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design) {
+            CompositionLocalProvider(
+                LocalScale provides echelle,
+                LocalDesign provides design,
+                LocalHoteModules provides hoteModules,
+            ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     HomeScreen(
                         ui = ui,
