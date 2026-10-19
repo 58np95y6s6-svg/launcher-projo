@@ -54,6 +54,7 @@ import fr.projo.launcher.modules.TailleModule
 import fr.projo.launcher.modules.filet
 import fr.projo.launcher.modules.ligne
 import fr.projo.launcher.modules.rememberDonnees
+import fr.projo.launcher.modules.u
 import fr.projo.launcher.ui.LigneListe
 import fr.projo.launcher.ui.ListeDialog
 import fr.projo.launcher.ui.NbaStyle

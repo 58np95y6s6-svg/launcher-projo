@@ -99,7 +99,7 @@ class DonneesModules(private val factices: ((String) -> Any?)? = null) {
 
     companion object {
         const val TAG = "ProjoModules"
-        private const val DELAI_MAX_CHARGEMENT = 25_000L
+        private const val DELAI_MAX_CHARGEMENT = 60_000L
     }
 }
 

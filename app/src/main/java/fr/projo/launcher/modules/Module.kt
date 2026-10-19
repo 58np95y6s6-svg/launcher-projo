@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -13,10 +14,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
+import fr.projo.launcher.ui.LocalScale
 import fr.projo.launcher.ui.NbaStyle
 import fr.projo.launcher.ui.u
 
@@ -125,6 +129,10 @@ class ModuleContexte(
     val largeur: Float,
     val hauteur: Float,
 )
+
+/** Unités d'interface pour une mesure non entière (ex. ctx.hauteur.u). */
+val Float.u: Dp
+    @Composable @ReadOnlyComposable get() = (this * LocalScale.current).dp
 
 /** Style du design, pour les sous-composants d'un module (fourni par la zone). */
 val LocalStyleModule = compositionLocalOf { NbaStyle() }
