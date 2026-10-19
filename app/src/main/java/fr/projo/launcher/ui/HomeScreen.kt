@@ -93,6 +93,8 @@ fun HomeScreen(
     val rangeeFavoris = rememberLazyListState()
     val rangeeApps = rememberLazyListState()
     val premierFocus = remember { FocusRequester() }
+    // Navigation entre les rangées : repart de zéro à chaque changement de design
+    val nav = remember(rangeeFavoris, rangeeApps, design) { NavRangees(rangeeFavoris, rangeeApps) }
 
     // Focus initial (et retour en haut à chaque appui sur Maison ou changement de design)
     LaunchedEffect(ui.loaded, ui.prefs.defaultsApplied, homePressCount, design) {
@@ -116,7 +118,7 @@ fun HomeScreen(
         ui = ui, icons = icons, wifiLabel = wifiLabel, actions = actions,
         nbaData = nbaData, nbaErreur = nbaErreur, nbaRepo = nbaRepo, majDisponible = majDisponible,
         premierFocus = premierFocus, focusReglages = focusReglages, focusBiblio = focusBiblio,
-        rangeeFavoris = rangeeFavoris, rangeeApps = rangeeApps, defilement = defilement,
+        rangeeFavoris = rangeeFavoris, rangeeApps = rangeeApps, nav = nav, defilement = defilement,
         selection = selection, couleur = couleur,
         surFocus = { app, c -> selection = app; couleur = c },
         sansSelection = { selection = null },
@@ -178,7 +180,7 @@ fun HomeAurore(ctx: HomeContext) {
                 // --- Rangée « Favoris »
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.testTag("rangee:favoris").fadingEdges(ctx.rangeeFavoris, 150.u),
+                    modifier = Modifier.testTag("rangee:favoris").navFavoris(ctx.nav).fadingEdges(ctx.rangeeFavoris, 150.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 18.u),
                     horizontalArrangement = Arrangement.spacedBy(26.u),
                 ) {
@@ -188,7 +190,8 @@ fun HomeAurore(ctx: HomeContext) {
                                 text = "Aucun favori.\nMaintiens OK sur une app pour l'ajouter.",
                                 width = 240.u, height = 135.u,
                                 onClick = {},
-                                modifier = Modifier.focusRequester(ctx.premierFocus),
+                                modifier = Modifier.focusRequester(ctx.premierFocus)
+                                    .then(rememberCibleNav(ctx.nav.favoris, "aide")).testTag("aide"),
                             )
                         }
                     }
@@ -200,7 +203,8 @@ fun HomeAurore(ctx: HomeContext) {
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
                             modifier = Modifier.testTag("favori:" + app.packageName)
-                                .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier),
+                                .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
+                                .then(rememberCibleNav(ctx.nav.favoris, "fav:" + app.packageName)),
                         )
                     }
                 }
@@ -214,7 +218,7 @@ fun HomeAurore(ctx: HomeContext) {
                 )
                 LazyRow(
                     state = ctx.rangeeApps,
-                    modifier = Modifier.testTag("rangee:apps").fadingEdges(ctx.rangeeApps, 150.u),
+                    modifier = Modifier.testTag("rangee:apps").navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 150.u),
                     contentPadding = PaddingValues(horizontal = 56.u, vertical = 12.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
                 ) {
@@ -226,7 +230,8 @@ fun HomeAurore(ctx: HomeContext) {
                             onFocused = ctx.surFocus,
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
-                            modifier = Modifier.testTag("app:" + app.packageName),
+                            modifier = Modifier.testTag("app:" + app.packageName)
+                                .then(rememberCibleNav(ctx.nav.apps, "app:" + app.packageName)),
                         )
                     }
                     // Bibliothèque : toutes les apps installées (comme sur Apple TV)
@@ -236,7 +241,8 @@ fun HomeAurore(ctx: HomeContext) {
                             width = 136.u, height = 77.u,
                             onClick = actions.openLibrary,
                             onFocused = ctx.sansSelection,
-                            modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio"),
+                            modifier = Modifier.focusRequester(ctx.focusBiblio)
+                                .then(rememberCibleNav(ctx.nav.apps, "bibliotheque")).testTag("biblio"),
                         )
                     }
                 }

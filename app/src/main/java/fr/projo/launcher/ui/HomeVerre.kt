@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -56,6 +57,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -216,7 +218,8 @@ fun HomeVerre(ctx: HomeContext) {
                 }
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight().fadingEdges(ctx.rangeeFavoris, 48.u),
+                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight().navFavoris(ctx.nav)
+                        .fadingEdges(ctx.rangeeFavoris, 48.u),
                     // Marges hautes/basses : place pour la levée, le halo et l'ombre (la rangée découpe)
                     contentPadding = PaddingValues(start = 24.u, end = 40.u, top = 24.u, bottom = 24.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
@@ -225,7 +228,8 @@ fun HomeVerre(ctx: HomeContext) {
                         item(key = "aide") {
                             VerreAide(
                                 onFocused = ctx.sansSelection,
-                                modifier = Modifier.focusRequester(ctx.premierFocus),
+                                modifier = Modifier.focusRequester(ctx.premierFocus)
+                                    .then(rememberCibleNav(ctx.nav.favoris, "aide")).testTag("aide"),
                             )
                         }
                     }
@@ -238,7 +242,8 @@ fun HomeVerre(ctx: HomeContext) {
                             onClick = { actions.launch(app) },
                             onMenu = { actions.openMenu(app) },
                             modifier = Modifier.testTag("favori:" + app.packageName)
-                                .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier),
+                                .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
+                                .then(rememberCibleNav(ctx.nav.favoris, "fav:" + app.packageName)),
                         )
                     }
                 }
@@ -442,8 +447,9 @@ private fun VerreCarte(
     Box(
         modifier
             .size(VERRE_CARTE_L.u, VERRE_CARTE_H.u)
-            // La carte se soulève (le halo, dessiné derrière, suit le mouvement)
-            .graphicsLayer { translationY = -leveePx * p }
+            // La carte se soulève (le halo, dessiné derrière, suit le mouvement). Décalage
+            // seulement au dessin : la carte ne bouge pas pour la navigation au D-pad
+            .verreLevee { leveePx * p }
             .drawWithCache {
                 val halo = verreHalo(verreRectAgrandi(size, VERRE_ECHELLE), rayonPx * VERRE_ECHELLE, haloPx, VerreLueur)
                 onDrawBehind { if (p > 0.01f) halo.dessiner(this, p) }
@@ -552,7 +558,7 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
         // Hauteur = celle des icônes + noms (pas de poids : rien n'est rogné)
         LazyRow(
             state = ctx.rangeeApps,
-            modifier = Modifier.testTag("rangee:apps").fillMaxWidth().fadingEdges(ctx.rangeeApps, 40.u),
+            modifier = Modifier.testTag("rangee:apps").fillMaxWidth().navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 40.u),
             // Marge haute : place pour la levée et le halo de l'icône sélectionnée
             contentPadding = PaddingValues(start = 12.u, end = 24.u, top = 16.u, bottom = 8.u),
             horizontalArrangement = Arrangement.spacedBy(12.u),
@@ -565,7 +571,8 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
                     onFocused = ctx.surFocus,
                     onClick = { actions.launch(app) },
                     onMenu = { actions.openMenu(app) },
-                    modifier = Modifier.testTag("app:" + app.packageName),
+                    modifier = Modifier.testTag("app:" + app.packageName)
+                        .then(rememberCibleNav(ctx.nav.apps, "app:" + app.packageName)),
                 )
             }
             // Bibliothèque : toutes les apps installées
@@ -574,7 +581,8 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
                     nombre = ui.allApps.size,
                     onClick = actions.openLibrary,
                     onFocused = ctx.sansSelection,
-                    modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio"),
+                    modifier = Modifier.focusRequester(ctx.focusBiblio)
+                        .then(rememberCibleNav(ctx.nav.apps, "bibliotheque")).testTag("biblio"),
                 )
             }
         }
@@ -706,7 +714,7 @@ private fun VerreRond(
     Box(
         modifier
             .size(VERRE_ICONE.u)
-            .graphicsLayer { translationY = -leveePx * p }
+            .verreLevee { leveePx * p }
             .drawWithCache {
                 val rect = verreRectAgrandi(size, VERRE_ECHELLE)
                 val halo = verreHalo(rect, rect.width / 2f, haloPx, VerreLueur)
@@ -751,6 +759,15 @@ private fun VerreRond(
 }
 
 // ------------------------------------------------------------------ matière « verre »
+
+/**
+ * Soulève l'élément de [hauteur] px, seulement au dessin. Avec un graphicsLayer, le
+ * rectangle de focus montait aussi : la recherche de focus prenait alors les cartes
+ * voisines pour « en dessous » (▼ passait d'un favori à l'autre au lieu de descendre).
+ */
+private fun Modifier.verreLevee(hauteur: () -> Float): Modifier = drawWithContent {
+    translate(top = -hauteur()) { this@drawWithContent.drawContent() }
+}
 
 /**
  * Verre dépoli (sans flou) : teinte sombre, voile blanc dégradé, reflet en haut à gauche

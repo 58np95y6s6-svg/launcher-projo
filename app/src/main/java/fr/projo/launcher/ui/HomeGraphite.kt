@@ -906,7 +906,8 @@ private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                     onFocus = { horsApp("Favoris") },
                     modifier = Modifier
                         .focusRequester(ctx.premierFocus)
-                        .cibleGraphite(nav, "aide", GZone.FAVORIS),
+                        .cibleGraphite(nav, "aide", GZone.FAVORIS)
+                        .testTag("aide"),
                 )
             }
         }
@@ -1680,14 +1681,25 @@ private class GraphiteNav {
         return commun >= (c.droite - c.gauche) * 0.5f
     }
 
+    /** Dernier saut : élément d'arrivée et élément de départ. */
+    private var dernierSaut: Pair<String, String>? = null
+
     fun sauter(vers: GZone): Boolean {
-        val depuis = cibles[courante] ?: return false
+        val cle = courante ?: return false
+        val depuis = cibles[cle] ?: return false
         val x = depuis.centre
         if (x.isNaN()) return false
-        val cible = cibles.values
-            .filter { it.zone == vers && visible(it) }
-            .minByOrNull { abs(it.centre - x) } ?: return false
-        return runCatching { cible.focus.requestFocus() }.isSuccess
+        // ▼ puis ▲ (ou l'inverse) sans bouger entre-temps : retour sur l'élément de départ
+        val s = dernierSaut
+        val retour = s?.takeIf { it.first == cle }?.second
+            ?.takeIf { d -> cibles[d]?.let { it.zone == vers && visible(it) } == true }
+        val arrivee = retour ?: cibles.entries
+            .filter { it.value.zone == vers && visible(it.value) }
+            .minByOrNull { abs(it.value.centre - x) }?.key ?: return false
+        val cible = cibles[arrivee] ?: return false
+        val ok = runCatching { cible.focus.requestFocus() }.isSuccess
+        if (ok) dernierSaut = arrivee to cle
+        return ok
     }
 
     /** Donne le focus à l'élément visible le plus à droite de la zone (hors éléments fixes). */
