@@ -89,6 +89,8 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.AppVisual
+import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -681,7 +683,9 @@ private fun PastelCarte(
 /** Favori : carte tonale de la couleur de l'app, avec son vrai visuel dedans. */
 @Composable
 private fun PastelFavori(app: AppInfo, ctx: HomeContext, modifier: Modifier) {
-    val visual = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons)
+    // Intérieur de la carte (cadre déduit) : 164 × 92, soit 16:9
+    val format = FormatVisuel.pour(PASTEL_CARTE_L - 2 * PASTEL_CADRE, PASTEL_CARTE_H - 2 * PASTEL_CADRE)
+    val visual = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons, format)
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val tons = remember(couleur) { pastelTons(couleur) }
     PastelCarte(
@@ -692,13 +696,14 @@ private fun PastelFavori(app: AppInfo, ctx: HomeContext, modifier: Modifier) {
         onFocus = { ctx.surFocus(app, couleur) },
         modifier = modifier,
     ) {
-        PastelVisuel(app, visual?.art)
+        PastelVisuel(app, visual)
     }
 }
 
 /** Visuel 16:9 d'une app ; tuile HDMI : icône Sources sur sa couleur. */
 @Composable
-private fun PastelVisuel(app: AppInfo, art: ImageBitmap?) {
+private fun PastelVisuel(app: AppInfo, visual: AppVisual?) {
+    val art = visual?.art
     when {
         app.isSpecial -> Box(
             Modifier.fillMaxSize().background(IconLoader.COULEUR_HDMI),
@@ -706,13 +711,7 @@ private fun PastelVisuel(app: AppInfo, art: ImageBitmap?) {
         ) {
             Icon(ProjoIcons.Sources, contentDescription = app.label, tint = Color.White, modifier = Modifier.size(38.u))
         }
-        art != null -> Image(
-            bitmap = art,
-            contentDescription = app.label,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            filterQuality = FilterQuality.Medium,
-        )
+        art != null -> ImageApp(visual, app.label, Modifier.fillMaxSize())
         // Visuel pas encore chargé (ou introuvable) : initiale sur la teinte de la carte
         else -> PastelTexte(app.label.take(1).uppercase(), 30.us, couleur = PastelEncreDouce, poids = FontWeight.Bold)
     }
@@ -798,8 +797,9 @@ private fun PastelPilule(
 @Composable
 private fun PastelPiluleApp(app: AppInfo, ctx: HomeContext, formeIcone: Shape) {
     val paquet = ctx.ui.iconSourceOf(app.packageName)
-    val visual = rememberAppVisual(paquet, ctx.icons)
-    val icone = rememberAppIcon(paquet, ctx.icons)
+    // Petite forme festonnée (32 u, carrée) : visuel carré de l'app et sa couleur
+    val visual = rememberAppVisual(paquet, ctx.icons, FormatVisuel.CARRE)
+    val icone = visual?.art
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val menu = { ctx.actions.openMenu(app) }
     PastelPilule(

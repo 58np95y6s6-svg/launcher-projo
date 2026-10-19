@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -92,6 +93,7 @@ import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
+import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
 import java.util.Locale
 
@@ -639,7 +641,8 @@ private fun ConsoleTuile(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visual = rememberAppVisual(iconPackage, icons)
+    // Tuile carrée : visuel carré de l'app (l'image 16:9 y serait rognée)
+    val visual = rememberAppVisual(iconPackage, icons, FormatVisuel.CARRE)
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val rubrique = remember(app) { AppCategories.rubrique(app).titre }
     var focus by remember { mutableStateOf(false) }
@@ -908,7 +911,8 @@ private fun ConsoleCarteApp(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visual = rememberAppVisual(iconPackage, icons)
+    // Pastille carrée (26 u) : visuel carré de l'app
+    val visual = rememberAppVisual(iconPackage, icons, FormatVisuel.CARRE)
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     var focus by remember { mutableStateOf(false) }
     LaunchedEffect(couleur) { if (focus) onFocused(app, couleur) }
@@ -1026,7 +1030,10 @@ private fun ConsoleCarte(
 
 // ------------------------------------------------------------------ éléments communs
 
-/** Visuel d'une app : carte recadrée en carré, tuile HDMI dessinée, ou initiale en attendant. */
+/**
+ * Visuel carré d'une app (format CARRE : logo entier, jamais rogné), tuile HDMI dessinée,
+ * ou initiale en attendant.
+ */
 @Composable
 private fun ConsoleVisuel(
     app: AppInfo,
@@ -1045,13 +1052,7 @@ private fun ConsoleVisuel(
                     modifier = Modifier.fillMaxSize(0.46f),
                 )
             }
-            art != null -> Image(
-                bitmap = art,
-                contentDescription = app.label,
-                contentScale = ContentScale.Crop,
-                filterQuality = FilterQuality.Medium,
-                modifier = Modifier.fillMaxSize(),
-            )
+            art != null -> ImageApp(visual, app.label, Modifier.fillMaxSize())
             else -> {
                 Box(Modifier.fillMaxSize().background(lerp(couleur, Color.Black, 0.5f)))
                 Text(

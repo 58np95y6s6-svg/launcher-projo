@@ -79,6 +79,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
 import java.util.Locale
 
@@ -428,7 +429,8 @@ private fun VerreCarte(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visual = rememberAppVisual(iconPackage, icons)
+    // Carte 5:3 : format le plus proche (16:9), recadré de 7 % au plus, logo intact
+    val visual = rememberAppVisual(iconPackage, icons, FormatVisuel.pour(VERRE_CARTE_L, VERRE_CARTE_H))
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val rayon = VERRE_CARTE_RAYON.u
     val forme = RoundedCornerShape(rayon)
@@ -494,13 +496,7 @@ private fun VerreCarte(
                             modifier = Modifier.size(36.u),
                         )
                     }
-                    art != null -> Image(
-                        bitmap = art,
-                        contentDescription = app.label,
-                        contentScale = ContentScale.Crop,
-                        filterQuality = FilterQuality.Medium,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    art != null -> ImageApp(visual, app.label, Modifier.fillMaxSize())
                     else -> {
                         Box(Modifier.fillMaxSize().background(lerp(couleur, Color.Black, 0.5f)))
                         Text(
@@ -604,9 +600,9 @@ private fun VerreIcone(
     onMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Visuel : seulement pour la couleur dominante transmise à l'accueil
-    val visual = rememberAppVisual(iconPackage, icons)
-    val icone = rememberAppIcon(iconPackage, icons)
+    // Icône ronde : visuel carré de l'app (logo dans le cercle central) et sa couleur dominante
+    val visual = rememberAppVisual(iconPackage, icons, FormatVisuel.CARRE)
+    val icone = visual?.art
     val couleur = visual?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     // Icône adaptative (carré plein) : découpée en rond ; ancienne icône : posée sur le verre
     val pleine = remember(icone) { icone != null && verrePleinCadre(icone) }

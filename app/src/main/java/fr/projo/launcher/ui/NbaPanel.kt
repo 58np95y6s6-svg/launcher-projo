@@ -82,6 +82,8 @@ data class NbaStyle(
     val pastilleFond: Color = Color.White.copy(alpha = 0.92f),
     /** Agrandit tout le bandeau (textes, lignes, largeur) : 1.25 = 25 % plus grand. */
     val echelle: Float = 1f,
+    /** Mise en page « Graphite » (maquette t8) : sélecteur segmenté, pastilles d'équipes en couleur. */
+    val graphite: Boolean = false,
 )
 
 @Composable
@@ -93,9 +95,17 @@ fun NbaPanel(
     /** Sortie rapide du bandeau (flèche gauche sur un match, ou Retour) : retour aux favoris. */
     onExit: () -> Unit = {},
     style: NbaStyle = NbaStyle(),
+    /** Point d'entrée du focus (onglet « Cette nuit »), pour y venir depuis un autre élément. */
+    entree: FocusRequester? = null,
+    /** ◀ depuis « Cette nuit » ou un match (Graphite seulement) ; par défaut, comme [onExit]. */
+    onGauche: (() -> Unit)? = null,
 ) {
     CompositionLocalProvider(LocalScale provides LocalScale.current * style.echelle, LocalNbaStyle provides style) {
-        NbaContenu(data, erreur, repo, modifier, onExit, style)
+        if (style.graphite) {
+            NbaGraphite(data, erreur, modifier, onExit, style, entree, onGauche)
+        } else {
+            NbaContenu(data, erreur, repo, modifier, onExit, style, entree)
+        }
     }
 }
 
@@ -109,6 +119,7 @@ private fun NbaContenu(
     modifier: Modifier,
     onExit: () -> Unit,
     style: NbaStyle,
+    entree: FocusRequester?,
 ) {
     val forme = RoundedCornerShape(style.rayon.u)
     var onglet by remember { mutableIntStateOf(0) }
@@ -144,7 +155,10 @@ private fun NbaContenu(
                 letterSpacing = 2.us, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 6.u, end = 8.u),
             )
-            Onglet(libelleNuit, onglet == 0, Modifier.focusRequester(focusNuit)) { onglet = 0 }
+            Onglet(
+                libelleNuit, onglet == 0,
+                Modifier.focusRequester(focusNuit).then(entree?.let { Modifier.focusRequester(it) } ?: Modifier),
+            ) { onglet = 0 }
             Spacer(Modifier.width(4.u))
             Onglet("RÉSULTATS", onglet == 1, Modifier.onFocusChanged { resultatsFocus = it.isFocused }) { onglet = 1 }
         }
@@ -294,7 +308,7 @@ private fun Etat(g: NbaGame) {
 }
 
 /** « Q3 4:12 » → « QT3 4:12 », « Halftime » → « Mi-temps ». */
-private fun tempsDeJeu(s: String): String = when {
+internal fun tempsDeJeu(s: String): String = when {
     s.contains("half", ignoreCase = true) -> "Mi-temps"
     s.startsWith("End of", ignoreCase = true) -> "Fin " + s.substringAfter("of ").replace("1st", "QT1")
         .replace("2nd", "QT2").replace("3rd", "QT3").replace("4th", "QT4")

@@ -69,7 +69,10 @@ abstract class BancAccueil(nomDesign: String) {
     @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    protected val ui: HomeUi by lazy { preparer(DonneesFactices.ui(design)) }
+    /** Données affichées : celles de DonneesFactices (passées par [preparer]), sauf si un test en donne d'autres à [afficher]. */
+    private var uiTest: HomeUi? = null
+    protected val ui: HomeUi
+        get() = uiTest ?: preparer(DonneesFactices.ui(design)).also { uiTest = it }
 
     /** Variante des données (sans favori, « Mes apps » vide…) : à redéfinir dans une classe de test. */
     protected open fun preparer(u: HomeUi): HomeUi = u
@@ -87,8 +90,18 @@ abstract class BancAccueil(nomDesign: String) {
 
     // ------------------------------------------------------------------ affichage
 
-    /** Affiche l'accueil chargé et vérifie que le focus initial est bien sur le 1er favori. */
-    protected fun afficher() {
+    /**
+     * Affiche l'accueil chargé et vérifie que le focus initial est bien sur le 1er favori.
+     * Variantes : libellé Wi-Fi ([wifiLabel], ex. « Hors ligne »), pastille « Mise à jour »
+     * ([majDisponible]) et autres données ([donnees] : sans favori, 30 apps…).
+     */
+    protected fun afficher(
+        wifiLabel: String = "Wi-Fi",
+        majDisponible: Boolean = false,
+        donnees: HomeUi? = null,
+    ) {
+        if (donnees != null) uiTest = donnees
+        val ui = this.ui
         val contexte = RuntimeEnvironment.getApplication()
         DonneesFactices.installer(contexte)
         val icons = IconLoader(contexte)
@@ -112,7 +125,7 @@ abstract class BancAccueil(nomDesign: String) {
                     HomeScreen(
                         ui = ui,
                         icons = icons,
-                        wifiLabel = "Wi-Fi",
+                        wifiLabel = wifiLabel,
                         homePressCount = 0,
                         focusReglages = focusReglages,
                         focusBiblio = focusBiblio,
@@ -120,7 +133,7 @@ abstract class BancAccueil(nomDesign: String) {
                         nbaData = nbaData,
                         nbaErreur = false,
                         nbaRepo = nba,
-                        majDisponible = false,
+                        majDisponible = majDisponible,
                         design = design,
                     )
                 }
