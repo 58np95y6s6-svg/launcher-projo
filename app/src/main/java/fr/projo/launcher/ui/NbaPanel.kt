@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -64,6 +66,23 @@ private const val LIGNES_VISIBLES = 3
  *  - « Résultats » : scores finaux de la nuit passée.
  * 3 matchs visibles, les autres en faisant défiler avec les flèches.
  */
+/** Apparence du bandeau NBA (chaque design peut fournir la sienne). */
+data class NbaStyle(
+    /** Largeur en unités d'écran (.u) avant mise à l'échelle. */
+    val largeur: Int = 340,
+    val rayon: Int = 14,
+    val fond: Color = Color.White.copy(alpha = 0.07f),
+    val bordure: Color = Color.White.copy(alpha = 0.11f),
+    val texte: Color = Color.White,
+    val texteDiscret: Color = Color.White.copy(alpha = 0.62f),
+    val ongletActif: Color = Color.White.copy(alpha = 0.16f),
+    val focusFond: Color = Color.White,
+    val focusTexte: Color = Color(0xFF0B0D12),
+    val pastilleFond: Color = Color.White.copy(alpha = 0.92f),
+    /** Agrandit tout le bandeau (textes, lignes, largeur) : 1.25 = 25 % plus grand. */
+    val echelle: Float = 1f,
+)
+
 @Composable
 fun NbaPanel(
     data: NbaData?,
@@ -72,8 +91,25 @@ fun NbaPanel(
     modifier: Modifier = Modifier,
     /** Sortie rapide du bandeau (flèche gauche sur un match, ou Retour) : retour aux favoris. */
     onExit: () -> Unit = {},
+    style: NbaStyle = NbaStyle(),
 ) {
-    val forme = RoundedCornerShape(14.u)
+    CompositionLocalProvider(LocalScale provides LocalScale.current * style.echelle, LocalNbaStyle provides style) {
+        NbaContenu(data, erreur, repo, modifier, onExit, style)
+    }
+}
+
+private val LocalNbaStyle = staticCompositionLocalOf { NbaStyle() }
+
+@Composable
+private fun NbaContenu(
+    data: NbaData?,
+    erreur: Boolean,
+    repo: NbaRepository,
+    modifier: Modifier,
+    onExit: () -> Unit,
+    style: NbaStyle,
+) {
+    val forme = RoundedCornerShape(style.rayon.u)
     var onglet by remember { mutableIntStateOf(0) }
     val focusNuit = remember { FocusRequester() }
     var resultatsFocus by remember { mutableStateOf(false) }
@@ -92,17 +128,17 @@ fun NbaPanel(
                 }
                 true
             }
-            .width(340.u)
+            .width(style.largeur.u)
             .clip(forme)
-            .background(Color.White.copy(alpha = 0.07f))
-            .border(BorderStroke(1.u, Color.White.copy(alpha = 0.11f)), forme)
+            .background(style.fond)
+            .border(BorderStroke(1.u, style.bordure), forme)
             .padding(start = 8.u, end = 8.u, top = 8.u, bottom = 8.u)
     ) {
         val nuit = data?.tonight
         val libelleNuit = if (nuit == null || nuit.isTonight) "CETTE NUIT" else NbaRepository.libelleJour(nuit.day)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "NBA", color = Color.White.copy(alpha = 0.62f), fontSize = 9.us,
+                "NBA", color = style.texteDiscret, fontSize = 9.us,
                 letterSpacing = 2.us, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 6.u, end = 8.u),
             )
@@ -123,7 +159,7 @@ fun NbaPanel(
                     else -> "Aucun match NBA cette semaine"
                 }
                 Text(
-                    msg, color = Color.White.copy(alpha = 0.5f), fontSize = 11.us,
+                    msg, color = style.texteDiscret, fontSize = 11.us,
                     modifier = Modifier.padding(horizontal = 6.u, vertical = 10.u),
                 )
             }
@@ -149,15 +185,16 @@ fun NbaPanel(
 /** Onglet : se sélectionne dès qu'on passe dessus (comme les onglets d'Android TV). */
 @Composable
 private fun Onglet(texte: String, actif: Boolean, modifier: Modifier, onSelect: () -> Unit) {
+    val style = LocalNbaStyle.current
     Surface(
         onClick = onSelect,
         modifier = modifier.height(20.u).onFocusChanged { if (it.isFocused) onSelect() },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.u)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (actif) Color.White.copy(alpha = 0.16f) else Color.Transparent,
-            contentColor = Color.White.copy(alpha = if (actif) 0.95f else 0.5f),
-            focusedContainerColor = Color.White,
-            focusedContentColor = Color(0xFF0B0D12),
+            containerColor = if (actif) style.ongletActif else Color.Transparent,
+            contentColor = if (actif) style.texte else style.texteDiscret,
+            focusedContainerColor = style.focusFond,
+            focusedContentColor = style.focusTexte,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
     ) {
@@ -169,6 +206,7 @@ private fun Onglet(texte: String, actif: Boolean, modifier: Modifier, onSelect: 
 
 @Composable
 private fun LigneMatch(g: NbaGame, repo: NbaRepository) {
+    val style = LocalNbaStyle.current
     val forme = RoundedCornerShape(9.u)
     // Ligne focalisable : c'est ce qui permet de faire défiler la liste à la télécommande
     Surface(
@@ -177,9 +215,9 @@ private fun LigneMatch(g: NbaGame, repo: NbaRepository) {
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
-            contentColor = Color.White.copy(alpha = if (g.state == "post") 0.55f else 1f),
-            focusedContainerColor = Color.White.copy(alpha = 0.95f),
-            focusedContentColor = Color(0xFF0B0D12),
+            contentColor = if (g.state == "post") style.texte.copy(alpha = style.texte.alpha * 0.6f) else style.texte,
+            focusedContainerColor = style.focusFond,
+            focusedContentColor = style.focusTexte,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
     ) {
@@ -212,7 +250,7 @@ private fun Logo(t: NbaTeam, repo: NbaRepository) {
         if (value == null && url != null) value = withContext(Dispatchers.IO) { repo.loadLogo(url) }
     }
     Box(
-        Modifier.size(23.u).clip(CircleShape).background(Color.White.copy(alpha = 0.92f)),
+        Modifier.size(23.u).clip(CircleShape).background(LocalNbaStyle.current.pastilleFond),
         contentAlignment = Alignment.Center,
     ) {
         val l = logo
