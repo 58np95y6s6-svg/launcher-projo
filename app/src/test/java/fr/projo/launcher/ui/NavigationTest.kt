@@ -6,6 +6,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
+import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -323,5 +324,25 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
             val g = focus()
             if (g?.etiquette != favori(i)) fail("[${design.name}] « Toutes les apps » puis ▲ : attendu ${favori(i)}, obtenu ${decrire(g)}. ${rangees()}")
         }
+    }
+}
+
+/** Console : la carte NBA est entre les deux rangées, à droite ; on y entre par ▶ sur la dernière tuile. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [33], qualifiers = ECRAN_TV)
+class NavigationConsoleTest : BancAccueil("CONSOLE") {
+
+    @Test
+    fun droiteSurLaDerniereTuileVersLaCarteNba() {
+        afficher()
+        allerAuFavori(ui.favorites.lastIndex)
+        appuyer(Key.DirectionRight)
+        val f = focus()
+        if (f?.chaine?.contains("nba") != true) fail("[CONSOLE] dernière tuile puis ▶ : attendu la carte NBA, obtenu ${decrire(f)}")
+        // ◀ : retour au 1er favori
+        appuyer(Key.DirectionLeft)
+        val g = focus()
+        if (g?.etiquette != favori(0)) fail("[CONSOLE] carte NBA puis ◀ : attendu ${favori(0)}, obtenu ${decrire(g)}")
     }
 }

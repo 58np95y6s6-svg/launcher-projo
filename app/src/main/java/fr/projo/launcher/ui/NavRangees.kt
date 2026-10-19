@@ -32,15 +32,12 @@ import kotlin.math.abs
  * dépendent de la mise en page (boutons rapides ou bandeau NBA plus proches que « Mes apps »).
  * Ici le choix ne dépend que de l'alignement horizontal.
  *
- * Si le saut est impossible (rangée pas encore affichée, élément inconnu, zone exclue),
+ * Si le saut est impossible (rangée pas encore affichée, élément inconnu),
  * la touche n'est pas consommée : la navigation standard prend le relais.
  */
 class NavRangees(etatFavoris: LazyListState, etatApps: LazyListState) {
     val favoris = NavRangee(etatFavoris)
     val apps = NavRangee(etatApps)
-
-    /** Pas de saut depuis un élément dont le centre est à droite de cette limite (px, repère de la fenêtre). */
-    var limiteDroite = Float.MAX_VALUE
 
     /** Dernier saut réussi : rangée et élément d'arrivée, élément de départ. */
     private var dernierSaut: Triple<NavRangee, Any, Any>? = null
@@ -49,7 +46,6 @@ class NavRangees(etatFavoris: LazyListState, etatApps: LazyListState) {
     fun sauter(depuis: NavRangee, vers: NavRangee): Boolean {
         val cle = depuis.cle ?: return false
         val x = depuis.centre(cle) ?: return false
-        if (x >= limiteDroite) return false
         val infos = vers.etat.layoutInfo
         fun gaucheDe(i: LazyListItemInfo) = vers.gauche + i.offset - infos.viewportStartOffset
         fun centreDe(i: LazyListItemInfo) = gaucheDe(i) + i.size / 2f

@@ -76,8 +76,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -178,9 +176,10 @@ private const val CONSOLE_BOUTON = 34
 @Composable
 fun HomeConsole(ctx: HomeContext) {
     val ui = ctx.ui
-    // ▼ / ▲ entre les rangées : commun aux designs (NavRangees.kt), sauf au-dessus /
-    // au-dessous de la carte NBA, qui est entre les deux rangées, à droite
+    // ▼ / ▲ entre les rangées : commun aux designs (NavRangees.kt). La carte NBA, entre les
+    // deux rangées à droite, s'atteint par ▶ sur la dernière tuile des favoris.
     val nav = ctx.nav
+    val focusNba = remember { FocusRequester() }
     val anneau = rememberConsoleAnneau()
     // « Toutes les apps » sélectionnée : le grand titre la présente
     var biblioFocus by remember { mutableStateOf(false) }
@@ -213,7 +212,7 @@ fun HomeConsole(ctx: HomeContext) {
         Column(Modifier.fillMaxSize()) {
             ConsoleBarre(ctx)
             Spacer(Modifier.height(4.u))
-            ConsoleBande(ctx, nav, anneau)
+            ConsoleBande(ctx, nav, anneau, focusNba)
 
             // --- Héros : grand titre à gauche, carte NBA en verre à droite
             Row(
@@ -226,8 +225,7 @@ fun HomeConsole(ctx: HomeContext) {
                 ConsoleHeros(heros, Modifier.weight(1f).padding(end = 24.u))
                 Box(
                     Modifier
-                        // Bord gauche du bandeau : pas de saut entre les rangées à sa droite
-                        .onGloballyPositioned { nav.limiteDroite = it.positionInRoot().x }
+                        .focusRequester(focusNba)
                         .background(ConsoleVerreNba, RoundedCornerShape(ConsoleNba.rayon.u * ConsoleNba.echelle))
                 ) {
                     NbaPanel(
@@ -556,7 +554,7 @@ private fun ConsoleBoutonMaj(onClick: () -> Unit) {
 
 /** Bande de tuiles carrées (favoris), ou la carte d'aide s'il n'y en a aucun. */
 @Composable
-private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnneau) {
+private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnneau, focusNba: FocusRequester) {
     val ui = ctx.ui
     val actions = ctx.actions
     val derniere = ui.favorites.lastOrNull()?.let { "fav:" + it.packageName } ?: "aide"
@@ -570,8 +568,14 @@ private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnnea
             // ▼ : directement à « Mes apps » (centre de la tuile seule, sans son nom)
             .navFavoris(nav)
             .onPreviewKeyEvent { e ->
-                // ▶ sur la dernière tuile : on reste (sinon le focus tomberait dans la carte NBA)
-                e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight && nav.favoris.cle == derniere
+                // ▶ sur la dernière tuile : dans la carte NBA (à droite, entre les rangées) ;
+                // si elle ne peut pas prendre le focus, on reste sur place
+                if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight && nav.favoris.cle == derniere) {
+                    runCatching { focusNba.requestFocus() }
+                    true
+                } else {
+                    false
+                }
             }
             .fadingEdges(ctx.rangeeFavoris, 56.u),
         // Marges hautes/basses : place pour l'anneau et le halo de la tuile sélectionnée
@@ -841,7 +845,7 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnn
                 .fillMaxWidth()
                 .testTag("rangee:apps")
                 .height((CONSOLE_CARTE_H + 26).u)
-                // ▲ : directement à la tuile du dessus, sauf sous la carte NBA
+                // ▲ : directement à la tuile du dessus
                 .navApps(nav)
                 .onPreviewKeyEvent { e ->
                     // ▶ sur « Toutes les apps » (toujours la dernière) : on reste (sinon, avec
