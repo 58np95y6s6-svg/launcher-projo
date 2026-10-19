@@ -1,6 +1,7 @@
 package fr.projo.launcher.data
 
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.LinearGradient
@@ -9,6 +10,7 @@ import android.graphics.Shader
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.util.DisplayMetrics
 import android.util.LruCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -56,7 +58,7 @@ class IconLoader(private val context: Context) {
         icones.get(packageName)?.let { return it }
         if (packageName.startsWith("projo:")) return null
         return try {
-            val d = context.packageManager.getApplicationIcon(packageName)
+            val d = iconeHd(packageName)
             val b = Bitmap.createBitmap(ICONE, ICONE, Bitmap.Config.ARGB_8888)
             val c = Canvas(b)
             if (Build.VERSION.SDK_INT >= 26 && d is AdaptiveIconDrawable && d.background != null) {
@@ -83,7 +85,7 @@ class IconLoader(private val context: Context) {
             val art = Bitmap.createBitmap(LARGEUR, HAUTEUR, Bitmap.Config.ARGB_8888)
             // Bannière TV officielle de l'app si elle en a une, sinon carte fabriquée depuis l'icône
             val couleur = banniereTv(packageName)?.let { dessinerBanniere(it, Canvas(art)) }
-                ?: dessinerCarte(context.packageManager.getApplicationIcon(packageName), Canvas(art))
+                ?: dessinerCarte(iconeHd(packageName), Canvas(art))
             // 32 bits par pixel : les dégradés restent lisses (le 16 bits faisait des bandes)
             AppVisual(art.asImageBitmap(), couleur)
         } catch (e: Exception) {
@@ -99,8 +101,32 @@ class IconLoader(private val context: Context) {
      */
     private fun banniereTv(packageName: String): Drawable? = try {
         val pm = context.packageManager
-        pm.getLeanbackLaunchIntentForPackage(packageName)?.let { pm.getActivityBanner(it) }
-            ?: pm.getApplicationBanner(packageName)
+        val app = pm.getApplicationInfo(packageName, 0)
+        val activite = pm.getLeanbackLaunchIntentForPackage(packageName)?.let { pm.resolveActivity(it, 0)?.activityInfo }
+        val id = activite?.banner?.takeIf { it != 0 } ?: app.banner
+        if (id == 0) null else versionHd(pm.getResourcesForApplication(app), id)
+    } catch (e: Exception) {
+        null
+    }
+
+    /**
+     * Icône de l'app dans sa plus haute résolution disponible : celle que donne Android
+     * par défaut est prévue pour la densité de l'écran (souvent 96 px) et devient floue
+     * une fois agrandie sur une carte.
+     */
+    private fun iconeHd(packageName: String): Drawable {
+        val pm = context.packageManager
+        return try {
+            val app = pm.getApplicationInfo(packageName, 0)
+            if (app.icon == 0) return pm.getApplicationIcon(app)
+            versionHd(pm.getResourcesForApplication(app), app.icon) ?: pm.getApplicationIcon(app)
+        } catch (e: Exception) {
+            pm.getApplicationIcon(packageName)
+        }
+    }
+
+    private fun versionHd(res: Resources, id: Int): Drawable? = try {
+        res.getDrawableForDensity(id, DisplayMetrics.DENSITY_XXXHIGH, null)
     } catch (e: Exception) {
         null
     }
