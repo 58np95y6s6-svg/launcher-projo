@@ -1,6 +1,7 @@
 package fr.projo.launcher.system
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -40,9 +41,6 @@ class RedirectionAccueil : AccessibilityService() {
     /** Redirection automatique suspendue jusqu'à cet instant (appui long → accueil Amazon). */
     private var pauseJusqua = 0L
 
-    /** Touche Maison laissée au système pendant ce court instant (notre propre « Maison »). */
-    private var laisserPasserJusqua = 0L
-
     /** Économiseur d'écran affiché : Maison doit d'abord le fermer, on la laisse au système. */
     private var enReve = false
 
@@ -55,7 +53,6 @@ class RedirectionAccueil : AccessibilityService() {
         // Porte de sortie : accueil Amazon, sans être renvoyé vers iBiProjo tout de suite
         val maintenant = SystemClock.uptimeMillis()
         pauseJusqua = maintenant + PAUSE_AMAZON
-        laisserPasserJusqua = maintenant + 1_000
         lancement = 0
         if (!performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)) {
             pauseJusqua = 0
@@ -90,6 +87,11 @@ class RedirectionAccueil : AccessibilityService() {
             Log.w(TAG, "Suivi de l'économiseur d'écran indisponible", e)
         }
         Log.i(TAG, "Ouverture automatique active (accueils surveillés : $accueils)")
+        // Android 9 : après une mise à jour, le service peut être relié avec son ancienne
+        // configuration (sans les touches) jusqu'au redémarrage. Voir FireTv.majAFinir.
+        if ((serviceInfo?.flags ?: 0) and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS == 0) {
+            Log.w(TAG, "Touche Maison non reçue : redémarrer l'appareil ou réactiver le service")
+        }
     }
 
     /**
@@ -114,7 +116,10 @@ class RedirectionAccueil : AccessibilityService() {
         // Répétitions (touche maintenue) : même chemin que le premier appui
         if (event.repeatCount > 0) return !appuiTransmis
         principal.removeCallbacks(appuiLong)
-        appuiTransmis = enReve || SystemClock.uptimeMillis() < laisserPasserJusqua
+        // iBiProjo trop occupé (> 0,5 s) : le système a déjà repris l'appui. On lui laisse
+        // aussi le relâchement pour qu'il reçoive bien la paire appui + relâchement.
+        val enRetard = SystemClock.uptimeMillis() - event.eventTime > DELAI_MAX
+        appuiTransmis = enReve || enRetard
         if (appuiTransmis) return false
         appuiLongFait = false
         principal.postDelayed(appuiLong, DUREE_APPUI_LONG)
@@ -187,6 +192,12 @@ class RedirectionAccueil : AccessibilityService() {
 
     companion object {
         private const val TAG = "Projo"
+
+        /**
+         * Le système attend notre réponse 500 ms au plus. Au-delà de ce délai (avec une marge),
+         * il a déjà traité la touche lui-même.
+         */
+        private const val DELAI_MAX = 400L
 
         /** Au-delà, l'appui sur Maison est un appui long. */
         private const val DUREE_APPUI_LONG = 700L

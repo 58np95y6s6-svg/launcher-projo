@@ -1,10 +1,12 @@
 package fr.projo.launcher.system
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 
 /**
  * Fire TV (Amazon) : on ne peut pas y remplacer l'écran d'accueil. iBiProjo s'y ouvre
@@ -33,6 +35,28 @@ object FireTv {
         return actifs.split(':').any { ComponentName.unflattenFromString(it.trim()) == notre }
     }
 
+    /**
+     * Service activé mais relié avec son ancienne configuration, sans la touche Maison.
+     * Android 9 garde la configuration d'avant une mise à jour d'iBiProjo jusqu'au
+     * redémarrage, ou jusqu'à ce que le service soit désactivé puis réactivé.
+     */
+    fun majAFinir(context: Context): Boolean = try {
+        val notre = ComponentName(context, RedirectionAccueil::class.java)
+        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        val info = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .firstOrNull {
+                val si = it.resolveInfo?.serviceInfo
+                si != null && ComponentName(si.packageName, si.name) == notre
+            }
+        // Pas encore relié : on ne peut rien dire
+        info != null && (
+            info.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_REQUEST_FILTER_KEY_EVENTS == 0 ||
+                info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS == 0
+            )
+    } catch (e: Exception) {
+        false
+    }
+
     /** Ouvre les options pour les développeurs (pour activer « Débogage ADB »). */
     fun ouvrirOptionsDeveloppeur(context: Context): Boolean = try {
         val i = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -41,10 +65,15 @@ object FireTv {
         false
     }
 
-    /** Les 2 commandes à taper dans une app ADB (iPhone, ordinateur) pour activer le service. */
+    /**
+     * Les commandes à taper dans une app ADB (iPhone, ordinateur) pour activer le service.
+     * La première le désactive d'abord, pour qu'Android relise sa configuration (utile
+     * après une mise à jour d'iBiProjo).
+     */
     fun commandesShell(context: Context): List<String> {
         val c = ComponentName(context, RedirectionAccueil::class.java).flattenToString()
         return listOf(
+            "settings delete secure enabled_accessibility_services",
             "settings put secure enabled_accessibility_services $c",
             "settings put secure accessibility_enabled 1",
         )
