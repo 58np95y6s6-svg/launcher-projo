@@ -162,7 +162,8 @@ private val ConsoleFormeTuile = RoundedCornerShape(percent = CONSOLE_RAYON_PCT)
 /** Cartes « Mes apps ». */
 private const val CONSOLE_CARTE_L = 100
 private const val CONSOLE_CARTE_H = 66
-private const val CONSOLE_BIBLIO_L = 132
+/** Assez large pour « Toutes les apps (123) » en entier (le nombre ne doit pas être coupé). */
+private const val CONSOLE_BIBLIO_L = 160
 private const val CONSOLE_BOUTON = 34
 
 /**
@@ -854,9 +855,15 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
                 .fillMaxWidth()
                 .height((CONSOLE_CARTE_H + 26).u)
                 .onPreviewKeyEvent { e ->
-                    // ▲ : directement à la tuile du dessus, sauf sous la carte NBA
-                    e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp &&
-                        nav.sauter(ctx.rangeeApps, nav.cleApp, Float.MAX_VALUE, ctx.rangeeFavoris)
+                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (e.key) {
+                        // ▲ : directement à la tuile du dessus, sauf sous la carte NBA
+                        Key.DirectionUp -> nav.sauter(ctx.rangeeApps, nav.cleApp, Float.MAX_VALUE, ctx.rangeeFavoris)
+                        // ▶ sur « Toutes les apps » (toujours la dernière) : on reste (sinon, avec
+                        // peu d'apps, le focus remonterait en diagonale dans la carte NBA)
+                        Key.DirectionRight -> nav.cleApp == "bibliotheque"
+                        else -> false
+                    }
                 }
                 .fadingEdges(ctx.rangeeApps, 56.u),
             contentPadding = PaddingValues(horizontal = CONSOLE_MARGE.u, vertical = 13.u),
