@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -36,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -99,6 +101,7 @@ import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
 import java.util.Calendar
 import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlin.math.floor
 import kotlin.math.pow
 
@@ -273,18 +276,22 @@ fun HomeUne(ctx: HomeContext) {
     val t = rememberMaintenant()
     val soir = uneSoir(t)
 
-    // Aplat : la couleur ne change qu'après 150 ms d'immobilité (flèche maintenue : pas de clignotement)
+    // Aplat : la couleur ne change qu'après 150 ms d'immobilité (flèche maintenue : pas de clignotement).
+    // Premier élément sélectionné : couleur posée d'emblée (pas de fondu depuis le gris au démarrage).
     val marque = sujet?.couleur ?: UneGraphite
     val cible = remember(marque, soir) { uneAplat(marque, soir) }
-    var retenu by remember { mutableStateOf(cible) }
-    LaunchedEffect(cible) {
-        if (retenu != cible) {
-            kotlinx.coroutines.delay(150)
-            retenu = cible
-        }
+    var retenu by remember { mutableStateOf<UneAplat?>(null) }
+    val avecSujet = sujet != null
+    LaunchedEffect(cible, avecSujet) {
+        if (!avecSujet) return@LaunchedEffect
+        if (retenu != null && retenu != cible) delay(150)
+        retenu = cible
     }
+    val affiche = retenu ?: cible
     // Lu seulement au dessin : le fondu ne recompose rien
-    val aplat = animateColorAsState(retenu.fond, tween(280), label = "aplatUne")
+    val aplat = animateColorAsState(
+        affiche.fond, if (retenu == null) snap() else tween(280), label = "aplatUne",
+    )
 
     Box(
         Modifier
@@ -533,7 +540,10 @@ private fun UneManchette(ctx: HomeContext, sujet: UneSujet?) {
             val app = sujet.app
             if (app != null) {
                 val paquet = ctx.ui.iconSourceOf(app.packageName)
-                UnePastille(app, rememberAppIcon(paquet, ctx.icons), null, UneCartouche, 22.u, 5.u, lisere = false)
+                // key : l'icône est rechargée pour chaque app (sinon l'état garde l'icône précédente)
+                key(paquet) {
+                    UnePastille(app, rememberAppIcon(paquet, ctx.icons), null, UneCartouche, 22.u, 5.u, lisere = false)
+                }
             } else if (sujet.icone != null) {
                 UnePastille(null, null, sujet.icone, sujet.couleur, 22.u, 5.u, lisere = false)
             }

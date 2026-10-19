@@ -2,8 +2,12 @@ package fr.projo.launcher.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.LauncherViewModel
@@ -97,7 +101,7 @@ class UneTest : BancAccueil("UNE") {
         donnerFocus(app(0))
         appuyer(Key.DirectionDown)
         if (focus()?.etiquette != app(0)) fail("[UNE] ▼ dans « Mes apps » : obtenu ${decrire(focus())}")
-        donnerFocus("biblio")
+        versBiblio()
         appuyer(Key.DirectionRight)
         if (focus()?.etiquette != "biblio") fail("[UNE] ▶ sur « Toutes les apps » : obtenu ${decrire(focus())}")
         // ▲ depuis « Toutes les apps » : un favori
@@ -120,6 +124,30 @@ class UneTest : BancAccueil("UNE") {
             val haut = focus()
             if (!estFavori(haut)) fail("[UNE] ▲ depuis ${decrire(bas)} : obtenu ${decrire(haut)}. ${rangees()}")
         }
+    }
+
+    /** ▶ jusqu'au bout de « Mes apps » : la rangée défile, « Toutes les apps » est entièrement visible. */
+    @Test
+    fun droiteJusquaToutesLesApps() {
+        afficher()
+        donnerFocus(app(0))
+        for (k in 1..ui.homeApps.size) appuyer(Key.DirectionRight)
+        val f = focus()
+        if (f?.etiquette != "biblio") fail("[UNE] ▶ × ${ui.homeApps.size} depuis ${app(0)} : attendu « Toutes les apps », obtenu ${decrire(f)}")
+        val largeur = compose.onRoot().fetchSemanticsNode().size.width
+        if (f != null && (f.bornes.left < 0f || f.bornes.right > largeur)) {
+            fail("[UNE] « Toutes les apps » coupée au bord : ${decrire(f)}")
+        }
+        // ▲ : le favori le plus aligné (le dernier, à droite)
+        appuyer(Key.DirectionUp)
+        if (!estFavori(focus())) fail("[UNE] ▲ depuis « Toutes les apps » : obtenu ${decrire(focus())}")
+    }
+
+    /** Fait défiler « Mes apps » jusqu'au bout puis sélectionne « Toutes les apps ». */
+    private fun versBiblio() {
+        compose.onNodeWithTag("rangee:apps").performScrollToIndex(ui.homeApps.size)
+        avancer(500)
+        donnerFocus("biblio")
     }
 
     @Test
@@ -159,7 +187,7 @@ class UneTest : BancAccueil("UNE") {
     @Test
     fun captureBibliotheque() {
         afficher()
-        donnerFocus("biblio")
+        versBiblio()
         capturer("6_biblio")
     }
 
@@ -172,9 +200,15 @@ class UneTest : BancAccueil("UNE") {
     @Test
     fun captureReglagesOuverts() {
         afficherVariante(reglages = true)
+        // Comme dans l'app : Réglages sélectionné, puis OK ouvre le panneau par-dessus l'accueil
+        donnerFocus("rapide:Réglages")
+        panneauOuvert.value = true
         avancer(1000)
         capturer("8_panneau_reglages")
     }
+
+    /** Panneau Réglages affiché (avec afficherVariante(reglages = true)). */
+    private val panneauOuvert = mutableStateOf(false)
 
     /**
      * Affichage avec d'autres données que le banc commun : mise à jour disponible, pas de
@@ -217,7 +251,7 @@ class UneTest : BancAccueil("UNE") {
                             majDisponible = maj,
                             design = design,
                         )
-                        if (reglages) {
+                        if (reglages && panneauOuvert.value) {
                             SettingsPanel(
                                 snapshot = DeviceSnapshot(
                                     volume = 10, volumeMax = 15, muet = false, reseau = "Maison-5G", enLigne = true,
