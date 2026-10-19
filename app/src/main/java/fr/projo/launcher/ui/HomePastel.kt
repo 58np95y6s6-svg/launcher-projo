@@ -556,7 +556,8 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
         // Haut/bas : place pour l'agrandissement et l'anneau. Fin : la dernière carte peut
         // venir hors du fondu.
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 18.u, bottom = 18.u),
-        horizontalArrangement = Arrangement.spacedBy(18.u),
+        // Écart > agrandissement + anneau : la carte sélectionnée ne touche jamais ses voisines
+        horizontalArrangement = Arrangement.spacedBy(22.u),
     ) {
         if (ui.loaded && ui.favorites.isEmpty()) {
             item(key = "aide") { PastelCarteAide(ctx) }
