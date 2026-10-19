@@ -582,7 +582,7 @@ private fun GraphiteFavoris(ctx: HomeContext, horsApp: (String, String) -> Unit)
     val sansHaut = Modifier.focusProperties { up = FocusRequester.Cancel }
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth(),
+        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth().navFavoris(ctx.nav),
         // Marges verticales : la lueur de la carte sélectionnée a la place de s'étendre
         contentPadding = PaddingValues(start = GRAPHITE_RETRAIT.u, end = 48.u, top = 16.u, bottom = 16.u),
         horizontalArrangement = Arrangement.spacedBy(18.u),
@@ -594,7 +594,7 @@ private fun GraphiteFavoris(ctx: HomeContext, horsApp: (String, String) -> Unit)
                     width = 280.u, height = GRAPHITE_FAV_H.u,
                     onClick = {},
                     onFocused = { horsApp("Favoris", "Accueil") },
-                    modifier = sansHaut.focusRequester(ctx.premierFocus),
+                    modifier = sansHaut.focusRequester(ctx.premierFocus).then(rememberCibleNav(ctx.nav.favoris, "aide")).testTag("aide"),
                 )
             }
         }
@@ -606,7 +606,8 @@ private fun GraphiteFavoris(ctx: HomeContext, horsApp: (String, String) -> Unit)
                 onClick = { ctx.actions.launch(app) },
                 onMenu = { ctx.actions.openMenu(app) },
                 modifier = Modifier.testTag("favori:" + app.packageName)
-                    .then(if (i == 0) sansHaut.focusRequester(ctx.premierFocus) else sansHaut),
+                    .then(if (i == 0) sansHaut.focusRequester(ctx.premierFocus) else sansHaut)
+                    .then(rememberCibleNav(ctx.nav.favoris, "fav:" + app.packageName)),
             )
         }
     }
@@ -618,7 +619,7 @@ private fun GraphiteDock(ctx: HomeContext, horsApp: (String, String) -> Unit) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.testTag("rangee:apps").fillMaxWidth(),
+        modifier = Modifier.testTag("rangee:apps").fillMaxWidth().navApps(ctx.nav),
         contentPadding = PaddingValues(start = GRAPHITE_RETRAIT.u, end = 48.u, top = 16.u, bottom = 16.u),
         horizontalArrangement = Arrangement.spacedBy(14.u),
     ) {
@@ -631,7 +632,8 @@ private fun GraphiteDock(ctx: HomeContext, horsApp: (String, String) -> Unit) {
                 nombre = ui.allApps.size,
                 onClick = ctx.actions.openLibrary,
                 onFocus = { horsApp("Toutes les apps", "Bibliothèque") },
-                modifier = Modifier.focusRequester(ctx.focusBiblio).testTag("biblio"),
+                modifier = Modifier.focusRequester(ctx.focusBiblio)
+                    .then(rememberCibleNav(ctx.nav.apps, "bibliotheque")).testTag("biblio"),
             )
         }
     }
@@ -714,7 +716,8 @@ private fun GraphiteTuileApp(app: AppInfo, ctx: HomeContext) {
         onClick = { ctx.actions.launch(app) },
         onLongClick = { ctx.actions.openMenu(app) },
         onFocus = { ctx.surFocus(app, couleur) },
-        modifier = Modifier.testTag("app:" + app.packageName),
+        modifier = Modifier.testTag("app:" + app.packageName)
+            .then(rememberCibleNav(ctx.nav.apps, "app:" + app.packageName)),
     ) {
         GraphiteIcone(app, icone, couleur)
         Text(

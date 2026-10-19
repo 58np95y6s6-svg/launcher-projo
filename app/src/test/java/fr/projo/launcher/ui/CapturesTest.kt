@@ -1,5 +1,6 @@
 package fr.projo.launcher.ui
 
+import androidx.compose.ui.input.key.Key
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
@@ -39,6 +40,16 @@ class CapturesTest(nomDesign: String) : BancAccueil(nomDesign) {
         donnerFocus(app(0))
         val f = capturer("2_mesapps_app1")
         if (design.avecLueur) zoomer(f, "2z_zoom_mesapps_app1")
+    }
+
+    /** 2e favori puis ▼ : le focus est descendu dans « Mes apps ». */
+    @Test
+    fun basVersMesApps() {
+        afficher()
+        appuyer(Key.DirectionRight)
+        appuyer(Key.DirectionDown)
+        avancer(1000)
+        capturer("5_favori2_puis_bas")
     }
 }
 

@@ -32,13 +32,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -98,7 +96,6 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
 import fr.projo.launcher.data.IconLoader
 import java.util.Locale
-import kotlin.math.abs
 
 // ------------------------------------------------------------------ palette « Console »
 // (couleurs déclarées en premier : les valeurs plus bas s'en servent à l'initialisation)
@@ -181,7 +178,9 @@ private const val CONSOLE_BOUTON = 34
 @Composable
 fun HomeConsole(ctx: HomeContext) {
     val ui = ctx.ui
-    val nav = remember { ConsoleNav() }
+    // ▼ / ▲ entre les rangées : commun aux designs (NavRangees.kt), sauf au-dessus /
+    // au-dessous de la carte NBA, qui est entre les deux rangées, à droite
+    val nav = ctx.nav
     val anneau = rememberConsoleAnneau()
     // « Toutes les apps » sélectionnée : le grand titre la présente
     var biblioFocus by remember { mutableStateOf(false) }
@@ -208,11 +207,7 @@ fun HomeConsole(ctx: HomeContext) {
         else -> null
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .onGloballyPositioned { nav.origine = it.positionInRoot().x }
-    ) {
+    Box(Modifier.fillMaxSize()) {
         ConsoleFond(ctx.couleur)
 
         Column(Modifier.fillMaxSize()) {
@@ -231,8 +226,8 @@ fun HomeConsole(ctx: HomeContext) {
                 ConsoleHeros(heros, Modifier.weight(1f).padding(end = 24.u))
                 Box(
                     Modifier
-                        // Bord gauche du bandeau : sert à la navigation entre les rangées
-                        .onGloballyPositioned { nav.nbaGauche = it.positionInRoot().x }
+                        // Bord gauche du bandeau : pas de saut entre les rangées à sa droite
+                        .onGloballyPositioned { nav.limiteDroite = it.positionInRoot().x }
                         .background(ConsoleVerreNba, RoundedCornerShape(ConsoleNba.rayon.u * ConsoleNba.echelle))
                 ) {
                     NbaPanel(
@@ -561,10 +556,9 @@ private fun ConsoleBoutonMaj(onClick: () -> Unit) {
 
 /** Bande de tuiles carrées (favoris), ou la carte d'aide s'il n'y en a aucun. */
 @Composable
-private fun ConsoleBande(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnneau) {
+private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnneau) {
     val ui = ctx.ui
     val actions = ctx.actions
-    val grandePx = with(LocalDensity.current) { CONSOLE_TUILE_GRANDE.u.toPx() }
     val derniere = ui.favorites.lastOrNull()?.let { "fav:" + it.packageName } ?: "aide"
     LazyRow(
         state = ctx.rangeeFavoris,
@@ -573,15 +567,11 @@ private fun ConsoleBande(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnnea
             // Hauteur fixe (tuile agrandie + anneau) : le héros ne bouge pas avec le focus
             .testTag("rangee:favoris")
             .height((CONSOLE_TUILE_GRANDE + 28).u)
+            // ▼ : directement à « Mes apps » (centre de la tuile seule, sans son nom)
+            .navFavoris(nav)
             .onPreviewKeyEvent { e ->
-                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (e.key) {
-                    // ▼ : directement à « Mes apps », sauf au-dessus de la carte NBA
-                    Key.DirectionDown -> nav.sauter(ctx.rangeeFavoris, nav.cleFavori, grandePx, ctx.rangeeApps)
-                    // ▶ sur la dernière tuile : on reste (sinon le focus tomberait dans la carte NBA)
-                    Key.DirectionRight -> nav.cleFavori == derniere
-                    else -> false
-                }
+                // ▶ sur la dernière tuile : on reste (sinon le focus tomberait dans la carte NBA)
+                e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight && nav.favoris.cle == derniere
             }
             .fadingEdges(ctx.rangeeFavoris, 56.u),
         // Marges hautes/basses : place pour l'anneau et le halo de la tuile sélectionnée
@@ -596,15 +586,11 @@ private fun ConsoleBande(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnnea
                     anneau = anneau,
                     onClick = {},
                     onLongClick = null,
-                    onFocus = { f ->
-                        if (f) {
-                            nav.cleFavori = "aide"
-                            ctx.sansSelection()
-                        }
-                    },
+                    onFocus = { f -> if (f) ctx.sansSelection() },
                     modifier = Modifier
                         .focusRequester(ctx.premierFocus)
-                        .focusRequester(rememberConsoleCible(nav, "aide")),
+                        .then(rememberCibleNav(nav.favoris, "aide"))
+                        .testTag("aide"),
                 ) {
                     Box(Modifier.fillMaxSize().padding(horizontal = 18.u), contentAlignment = Alignment.CenterStart) {
                         Text(
@@ -616,20 +602,16 @@ private fun ConsoleBande(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnnea
             }
         }
         itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
-            val cle = "fav:" + app.packageName
-            val cible = rememberConsoleCible(nav, cle)
+            val cible = rememberCibleNav(nav.favoris, "fav:" + app.packageName)
             ConsoleTuile(
                 app = app,
                 icons = ctx.icons,
                 iconPackage = ui.iconSourceOf(app.packageName),
                 anneau = anneau,
-                onFocused = { a, c ->
-                    nav.cleFavori = cle
-                    ctx.surFocus(a, c)
-                },
+                onFocused = ctx.surFocus,
                 onClick = { actions.launch(app) },
                 onMenu = { actions.openMenu(app) },
-                modifier = (if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier).focusRequester(cible)
+                modifier = (if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier).then(cible)
                     .testTag("favori:" + app.packageName),
             )
         }
@@ -838,7 +820,7 @@ private fun consoleNombreApps(n: Int): String = if (n > 1) "$n apps" else "$n ap
 
 /** « Mes apps » : cartes larges (icône + nom), puis « Toutes les apps (N) ». */
 @Composable
-private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnneau, surBiblio: (Boolean) -> Unit) {
+private fun ConsoleMesApps(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnneau, surBiblio: (Boolean) -> Unit) {
     val ui = ctx.ui
     val actions = ctx.actions
     val densite = LocalDensity.current
@@ -859,16 +841,12 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
                 .fillMaxWidth()
                 .testTag("rangee:apps")
                 .height((CONSOLE_CARTE_H + 26).u)
+                // ▲ : directement à la tuile du dessus, sauf sous la carte NBA
+                .navApps(nav)
                 .onPreviewKeyEvent { e ->
-                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when (e.key) {
-                        // ▲ : directement à la tuile du dessus, sauf sous la carte NBA
-                        Key.DirectionUp -> nav.sauter(ctx.rangeeApps, nav.cleApp, Float.MAX_VALUE, ctx.rangeeFavoris)
-                        // ▶ sur « Toutes les apps » (toujours la dernière) : on reste (sinon, avec
-                        // peu d'apps, le focus remonterait en diagonale dans la carte NBA)
-                        Key.DirectionRight -> nav.cleApp == "bibliotheque"
-                        else -> false
-                    }
+                    // ▶ sur « Toutes les apps » (toujours la dernière) : on reste (sinon, avec
+                    // peu d'apps, le focus remonterait en diagonale dans la carte NBA)
+                    e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight && nav.apps.cle == "bibliotheque"
                 }
                 .fadingEdges(ctx.rangeeApps, 56.u),
             contentPadding = PaddingValues(horizontal = CONSOLE_MARGE.u, vertical = 13.u),
@@ -876,19 +854,15 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { _, app ->
-                val cle = "app:" + app.packageName
                 ConsoleCarteApp(
                     app = app,
                     icons = ctx.icons,
                     iconPackage = ui.iconSourceOf(app.packageName),
                     anneau = anneau,
-                    onFocused = { a, c ->
-                        nav.cleApp = cle
-                        ctx.surFocus(a, c)
-                    },
+                    onFocused = ctx.surFocus,
                     onClick = { actions.launch(app) },
                     onMenu = { actions.openMenu(app) },
-                    modifier = Modifier.focusRequester(rememberConsoleCible(nav, cle)).testTag("app:" + app.packageName),
+                    modifier = Modifier.then(rememberCibleNav(nav.apps, "app:" + app.packageName)).testTag("app:" + app.packageName),
                 )
             }
             // Bibliothèque : toutes les apps installées
@@ -900,15 +874,12 @@ private fun ConsoleMesApps(ctx: HomeContext, nav: ConsoleNav, anneau: ConsoleAnn
                     onLongClick = null,
                     onFocus = { f ->
                         surBiblio(f)
-                        if (f) {
-                            nav.cleApp = "bibliotheque"
-                            ctx.sansSelection()
-                        }
+                        if (f) ctx.sansSelection()
                     },
                     pointille = pointille,
                     modifier = Modifier
                         .focusRequester(ctx.focusBiblio)
-                        .focusRequester(rememberConsoleCible(nav, "bibliotheque"))
+                        .then(rememberCibleNav(nav.apps, "bibliotheque"))
                         .testTag("biblio"),
                 ) {
                     ConsoleContenuCarte("Toutes les apps (${ui.allApps.size})") {
@@ -1146,54 +1117,4 @@ private fun DrawScope.consoleContour(decalage: Float, rayon: Float, trait: Strok
         style = trait,
         alpha = alpha,
     )
-}
-
-// ------------------------------------------------------------------ navigation au D-pad
-
-/**
- * Navigation verticale entre la bande des favoris et « Mes apps ». La carte NBA est entre
- * les deux, à droite : la recherche de focus standard l'y enverrait même depuis une tuile
- * tout à gauche (et il faudrait traverser tous les matchs pour redescendre). On saute donc
- * à l'élément le plus proche de l'autre rangée, sauf au-dessus / au-dessous de la carte.
- */
-private class ConsoleNav {
-    /** Demandeurs de focus des éléments composés des deux rangées, par clé. */
-    val cibles = HashMap<Any, FocusRequester>()
-    /** Bord gauche de la carte NBA et de l'écran d'accueil (px, repère de la fenêtre). */
-    var nbaGauche = Float.MAX_VALUE
-    var origine = 0f
-    /** Dernier élément sélectionné dans chaque rangée. */
-    var cleFavori: Any? = null
-    var cleApp: Any? = null
-
-    /** Donne le focus à l'élément de [vers] le plus proche horizontalement. false : navigation standard. */
-    fun sauter(depuis: LazyListState, cle: Any?, largeurMax: Float, vers: LazyListState): Boolean {
-        if (cle == null) return false
-        val x = depuis.consoleCentre(cle, largeurMax) ?: return false
-        if (origine + x >= nbaGauche) return false
-        val infos = vers.layoutInfo
-        val cible = infos.visibleItemsInfo.minByOrNull {
-            abs(it.offset - infos.viewportStartOffset + it.size / 2f - x)
-        } ?: return false
-        val fr = cibles[cible.key] ?: return false
-        return runCatching { fr.requestFocus() }.isSuccess
-    }
-}
-
-/** Centre horizontal (px, depuis le bord gauche de la rangée) d'un élément visible ; [largeurMax] : tuile seule. */
-private fun LazyListState.consoleCentre(cle: Any, largeurMax: Float): Float? {
-    val infos = layoutInfo
-    val item = infos.visibleItemsInfo.firstOrNull { it.key == cle } ?: return null
-    return item.offset - infos.viewportStartOffset + minOf(item.size.toFloat(), largeurMax) / 2f
-}
-
-/** Demandeur de focus d'un élément de rangée, enregistré tant qu'il est composé. */
-@Composable
-private fun rememberConsoleCible(nav: ConsoleNav, cle: String): FocusRequester {
-    val fr = remember { FocusRequester() }
-    DisposableEffect(nav, cle) {
-        nav.cibles[cle] = fr
-        onDispose { if (nav.cibles[cle] === fr) nav.cibles.remove(cle) }
-    }
-    return fr
 }

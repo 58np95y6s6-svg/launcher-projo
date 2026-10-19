@@ -117,6 +117,8 @@ class HomeContext(
     val focusBiblio: FocusRequester,
     val rangeeFavoris: LazyListState,
     val rangeeApps: LazyListState,
+    /** ▼ / ▲ entre les favoris et « Mes apps » (voir NavRangees.kt). */
+    val nav: NavRangees,
     /** Défilement vertical éventuel de la page (remis en haut par le bouton Maison). */
     val defilement: ScrollState,
     /** App sélectionnée (null sur une carte qui n'est pas une app) et sa couleur dominante. */
