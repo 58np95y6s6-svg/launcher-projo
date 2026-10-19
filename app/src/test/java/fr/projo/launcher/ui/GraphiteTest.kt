@@ -143,6 +143,25 @@ class GraphiteTest : BancAccueil("GRAPHITE") {
         verifierSaut(Key.DirectionUp, "favoris", ::estElementFavori)
     }
 
+    /** ▶ d'app en app jusqu'à « Toutes les apps » (fixé au bout de la barre), puis ◀ revient sur la dernière app. */
+    @Test
+    fun mesAppsJusquaToutesLesApps() {
+        afficher()
+        donnerFocus(app(0))
+        for (k in 1 until ui.homeApps.size) {
+            appuyer(Key.DirectionRight)
+            attendre("« Mes apps » ▶ n°$k", app(k))
+        }
+        appuyer(Key.DirectionRight)
+        attendre("dernière app puis ▶", "biblio")
+        val f = capturer("8_toutes_les_apps")
+        zoomer(f, "8z_zoom_toutes_les_apps")
+        appuyer(Key.DirectionRight)
+        attendre("« Toutes les apps » puis ▶", "biblio")
+        appuyer(Key.DirectionLeft)
+        attendre("« Toutes les apps » puis ◀", app(ui.homeApps.lastIndex))
+    }
+
     // ------------------------------------------------------------------ outils
 
     private fun estElementApps(t: String) = t.startsWith("app:") || t == "biblio"
