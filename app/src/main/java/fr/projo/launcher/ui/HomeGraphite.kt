@@ -857,10 +857,17 @@ private fun rememberGraphiteDefilement(debut: Dp, fin: Dp): BringIntoViewSpec {
 
 /**
  * Bords d'une rangée qui défile : ce qui dépasse est effacé (transparent avant [efface], fondu
- * jusqu'à [plein]), de chaque côté, seulement s'il reste du contenu à faire défiler de ce côté.
+ * jusqu'à [plein], distances au bord ; [effaceFin] / [pleinFin] pour le bord droit), de chaque
+ * côté seulement s'il reste du contenu à faire défiler de ce côté.
  */
 @Composable
-private fun Modifier.graphiteBords(etat: LazyListState, efface: Dp, plein: Dp): Modifier {
+private fun Modifier.graphiteBords(
+    etat: LazyListState,
+    efface: Dp,
+    plein: Dp,
+    effaceFin: Dp = efface,
+    pleinFin: Dp = plein,
+): Modifier {
     val avant by animateFloatAsState(if (etat.canScrollBackward) 1f else 0f, tween(200), label = "bordAvant")
     val apres by animateFloatAsState(if (etat.canScrollForward) 1f else 0f, tween(200), label = "bordApres")
     val actif = avant > 0.001f || apres > 0.001f
@@ -872,11 +879,13 @@ private fun Modifier.graphiteBords(etat: LazyListState, efface: Dp, plein: Dp): 
             val w = size.width
             val e = efface.toPx() / w
             val p = plein.toPx() / w
+            val ef = effaceFin.toPx() / w
+            val pf = pleinFin.toPx() / w
             fun a(v: Float) = Color.Black.copy(alpha = v)
             drawRect(
                 Brush.horizontalGradient(
                     0f to a(1f - avant), e to a(1f - avant), p to a(1f),
-                    1f - p to a(1f), 1f - e to a(1f - apres), 1f to a(1f - apres),
+                    1f - pf to a(1f), 1f - ef to a(1f - apres), 1f to a(1f - apres),
                 ),
                 blendMode = BlendMode.DstIn,
             )
@@ -1109,13 +1118,20 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 mesureur.measure(nombre, styleNombre, maxLines = 1).size.width.toDp()
             val dispo = unite * (G_LARGEUR - 6f)
             val somme = apps.fold(tout) { acc, d -> acc + d }
+            // Comme en CSS (flex: 1 1 auto) : l'espace libre va aux apps, pas à « Toutes les apps »
             val libre = dispo - somme
             val bonus = if (libre > 0.dp && apps.isNotEmpty()) libre / apps.size else 0.dp
             apps.map { it + bonus } + tout
         }
     }
     var focusIndex by remember { mutableIntStateOf(-1) }
-    val premiere = ui.homeApps.firstOrNull()?.let { "app:" + it.packageName } ?: "bibliotheque"
+    val premiere = ui.homeApps.firstOrNull()?.let { "app:" + it.packageName }
+    val derniere = ui.homeApps.lastOrNull()?.let { "app:" + it.packageName }
+    // « Toutes les apps (N) » est fixé au bout de la barre ; les apps défilent avant lui
+    val largeurTout = largeurs.last()
+    val finApps = if (ui.homeApps.isEmpty()) (G_MARGE + 3).u else (G_MARGE + G_LARGEUR - 3).u - largeurTout
+    val droiteApps = (960 - G_MARGE - G_LARGEUR + 3).u + largeurTout
+    val debutFenetre = G_MARGE.u
 
     // Panneau de la barre
     Box(
@@ -1126,8 +1142,9 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
     )
     // Pilules (rangée plus haute que le panneau : la lueur a la place de s'étendre). En défilant,
     // la pilule sélectionnée reste dans le panneau avec la place de sa lueur.
-    val garde = (G_MARGE + 3 + G_MARGE_LUEUR_APPS).u
-    CompositionLocalProvider(LocalBringIntoViewSpec provides rememberGraphiteDefilement(garde, garde)) {
+    val gardeDebut = (G_MARGE + 3 + G_MARGE_LUEUR_APPS).u
+    val gardeFin = droiteApps + G_MARGE_LUEUR_APPS.u
+    CompositionLocalProvider(LocalBringIntoViewSpec provides rememberGraphiteDefilement(gardeDebut, gardeFin)) {
     LazyRow(
         state = ctx.rangeeApps,
         modifier = Modifier
@@ -1141,14 +1158,20 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                     // ▲ : le favori le plus aligné ; rien en dessous
                     Key.DirectionUp -> { nav.sauter(GZone.FAVORIS); true }
                     Key.DirectionDown -> true
-                    Key.DirectionRight -> nav.courante == "bibliotheque"
+                    // ▶ sur la dernière app : « Toutes les apps »
+                    Key.DirectionRight -> if (nav.courante == derniere) {
+                        runCatching { ctx.focusBiblio.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
                     Key.DirectionLeft -> nav.courante == premiere
                     else -> false
                 }
             }
-            // Ce qui dépasse du panneau est effacé (fondu sur 22 unités à l'intérieur)
-            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u),
-        contentPadding = PaddingValues(start = (G_MARGE + 3).u, end = (G_MARGE + 3).u, top = marge.u, bottom = marge.u),
+            // Ce qui dépasse du panneau (ou passe sous « Toutes les apps ») est effacé en fondu
+            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u, droiteApps, droiteApps + 22.u),
+        contentPadding = PaddingValues(start = (G_MARGE + 3).u, end = droiteApps, top = marge.u, bottom = marge.u),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { i, app ->
@@ -1169,38 +1192,52 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 modifier = Modifier.cibleGraphite(nav, cle, GZone.APPS).testTag(cle),
             )
         }
-        // Bibliothèque : toutes les apps installées
-        item(key = "bibliotheque") {
-            val i = ui.homeApps.size
-            GraphitePilule(
-                largeur = largeurs.lastOrNull() ?: 160.u,
-                separateur = i > 0 && focusIndex != i && focusIndex != i - 1,
-                onClick = ctx.actions.openLibrary,
-                onLongClick = null,
-                onFocus = { f ->
-                    if (f) {
-                        focusIndex = i
-                        horsApp("Toutes les apps")
-                    } else if (focusIndex == i) {
-                        focusIndex = -1
-                    }
-                },
-                modifier = Modifier
-                    .focusRequester(ctx.focusBiblio)
-                    .cibleGraphite(nav, "bibliotheque", GZone.APPS)
-                    .testTag("biblio"),
-                icone = {
-                    GraphiteIconeTeintee(Color(0xFF9AA0AD), G_PILULE_ICONE.u, RoundedCornerShape(7.u)) {
-                        Icon(GraphiteIcones.Grille, contentDescription = null, tint = Color(0xFFD7DAE1), modifier = Modifier.size(14.u))
-                    }
-                },
-            ) {
-                Text("Toutes les apps", fontSize = 11.us, fontWeight = FontWeight.Medium, maxLines = 1)
-                Spacer(Modifier.width(3.u))
-                Text(nombre, color = GraphiteEncre2, fontSize = 10.us, fontFamily = FontFamily.Monospace, maxLines = 1)
-            }
-        }
     }
+    }
+
+    // Bibliothèque : toutes les apps installées, toujours visible au bout de la barre
+    val i = ui.homeApps.size
+    GraphitePilule(
+        largeur = largeurTout,
+        separateur = i > 0 && focusIndex != i && focusIndex != i - 1,
+        onClick = ctx.actions.openLibrary,
+        onLongClick = null,
+        onFocus = { f ->
+            if (f) {
+                focusIndex = i
+                horsApp("Toutes les apps")
+            } else if (focusIndex == i) {
+                focusIndex = -1
+            }
+        },
+        modifier = Modifier
+            .focusRequester(ctx.focusBiblio)
+            .cibleGraphite(nav, "bibliotheque", GZone.APPS, fixe = true)
+            .testTag("biblio")
+            .onPreviewKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (e.key) {
+                    Key.DirectionUp -> { nav.sauter(GZone.FAVORIS); true }
+                    // ◀ : la dernière app visible de la barre
+                    Key.DirectionLeft -> { nav.dernierVisible(GZone.APPS); true }
+                    Key.DirectionDown, Key.DirectionRight -> true
+                    else -> false
+                }
+            },
+        boite = Modifier
+            .offset(finApps, G_APPS_Y.u + 1.u / 2)
+            .onGloballyPositioned { c ->
+                nav.fenetreApps = with(densite) { debutFenetre.toPx() }..c.positionInRoot().x
+            },
+        icone = {
+            GraphiteIconeTeintee(Color(0xFF9AA0AD), G_PILULE_ICONE.u, RoundedCornerShape(7.u)) {
+                Icon(GraphiteIcones.Grille, contentDescription = null, tint = Color(0xFFD7DAE1), modifier = Modifier.size(14.u))
+            }
+        },
+    ) {
+        Text("Toutes les apps", fontSize = 11.us, fontWeight = FontWeight.Medium, maxLines = 1)
+        Spacer(Modifier.width(3.u))
+        Text(nombre, color = GraphiteEncre2, fontSize = 10.us, fontFamily = FontFamily.Monospace, maxLines = 1)
     }
 }
 
@@ -1268,6 +1305,8 @@ private fun GraphitePilule(
     onFocus: (Boolean) -> Unit,
     modifier: Modifier,
     icone: @Composable () -> Unit,
+    /** Position de la pilule (seulement pour « Toutes les apps », fixée au bout de la barre). */
+    boite: Modifier = Modifier,
     nom: @Composable () -> Unit,
 ) {
     var focus by remember { mutableStateOf(false) }
@@ -1276,7 +1315,7 @@ private fun GraphitePilule(
     val forme = RoundedCornerShape(rayon)
     val hauteurFilet = 27.u
     Box(
-        Modifier
+        boite
             .width(largeur)
             .height(G_PILULE_H.u)
             .drawBehind {
@@ -1339,11 +1378,13 @@ private fun GraphitePilule(
 internal enum class GZone { RACCOURCIS, FAVORIS, APPS }
 
 /** Élément focalisable connu de la navigation : son demandeur de focus et sa position à l'écran. */
-private class GraphiteCible(val zone: GZone, val focus: FocusRequester) {
-    /** Centre horizontal (px, repère de la fenêtre). */
-    var centre = Float.NaN
-    /** Au moins à moitié visible à l'écran. */
-    var visible = false
+private class GraphiteCible(val zone: GZone, val focus: FocusRequester, val fixe: Boolean) {
+    /** Bords gauche et droit (px, repère de la fenêtre, sans découpe). */
+    var gauche = Float.NaN
+    var droite = Float.NaN
+    val centre: Float get() = (gauche + droite) / 2f
+    /** Au moins à moitié visible à l'écran (découpe des rangées comprise). */
+    var aLEcran = false
 }
 
 /**
@@ -1361,23 +1402,42 @@ private class GraphiteNav {
     var compteur by mutableStateOf<GraphiteCompteur?>(null)
     /** Dernier favori sélectionné (reste grand quand le focus part ailleurs). */
     var favoriActif by mutableStateOf<String?>(null)
+    /** Partie visible de la barre « Mes apps » (px) : du bord du panneau à « Toutes les apps ». */
+    var fenetreApps: ClosedFloatingPointRange<Float>? = null
+
+    /** Élément réellement visible : à l'écran et, dans « Mes apps », pas effacé par le fondu. */
+    private fun visible(c: GraphiteCible): Boolean {
+        if (!c.aLEcran || c.gauche.isNaN()) return false
+        val f = fenetreApps
+        if (c.zone != GZone.APPS || c.fixe || f == null) return true
+        val commun = minOf(c.droite, f.endInclusive) - maxOf(c.gauche, f.start)
+        return commun >= (c.droite - c.gauche) * 0.5f
+    }
 
     fun sauter(vers: GZone): Boolean {
         val depuis = cibles[courante] ?: return false
         val x = depuis.centre
         if (x.isNaN()) return false
         val cible = cibles.values
-            .filter { it.zone == vers && it.visible && !it.centre.isNaN() }
+            .filter { it.zone == vers && visible(it) }
             .minByOrNull { abs(it.centre - x) } ?: return false
+        return runCatching { cible.focus.requestFocus() }.isSuccess
+    }
+
+    /** Donne le focus à l'élément visible le plus à droite de la zone (hors éléments fixes). */
+    fun dernierVisible(zone: GZone): Boolean {
+        val cible = cibles.values
+            .filter { it.zone == zone && !it.fixe && visible(it) }
+            .maxByOrNull { it.centre } ?: return false
         return runCatching { cible.focus.requestFocus() }.isSuccess
     }
 }
 
 /** Enregistre l'élément auprès de la navigation (focus, position, visibilité) tant qu'il est composé. */
 @Composable
-private fun Modifier.cibleGraphite(nav: GraphiteNav, cle: String, zone: GZone): Modifier {
+private fun Modifier.cibleGraphite(nav: GraphiteNav, cle: String, zone: GZone, fixe: Boolean = false): Modifier {
     val fr = remember { FocusRequester() }
-    val cible = remember(zone) { GraphiteCible(zone, fr) }
+    val cible = remember(zone, fixe) { GraphiteCible(zone, fr, fixe) }
     DisposableEffect(nav, cle, cible) {
         nav.cibles[cle] = cible
         onDispose { if (nav.cibles[cle] === cible) nav.cibles.remove(cle) }
@@ -1386,8 +1446,9 @@ private fun Modifier.cibleGraphite(nav: GraphiteNav, cle: String, zone: GZone): 
         .focusRequester(fr)
         .onGloballyPositioned { c ->
             val visible = c.boundsInRoot()
-            cible.centre = c.positionInRoot().x + c.size.width / 2f
-            cible.visible = c.size.width > 0 && visible.width >= c.size.width * 0.5f && visible.height > 0f
+            cible.gauche = c.positionInRoot().x
+            cible.droite = cible.gauche + c.size.width
+            cible.aLEcran = c.size.width > 0 && visible.width >= c.size.width * 0.5f && visible.height > 0f
         }
         .onFocusChanged { if (it.isFocused) nav.courante = cle }
 }

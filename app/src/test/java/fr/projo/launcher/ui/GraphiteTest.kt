@@ -151,8 +151,20 @@ class GraphiteTest : BancAccueil("GRAPHITE") {
 
     private fun SemanticsNode.tag(): String = config.getOrNull(SemanticsProperties.TestTag) ?: ""
 
-    /** Au moins à moitié visible à l'écran (bornes découpées par la rangée). */
-    private fun SemanticsNode.visible(): Boolean = size.width > 0 && boundsInRoot.width >= size.width * 0.5f
+    /**
+     * Réellement visible : au moins à moitié à l'écran (bornes découpées par la rangée) et, pour
+     * les apps de la barre, dans la partie non effacée (du bord du panneau, x = 48, jusqu'à
+     * « Toutes les apps », fixé au bout de la barre).
+     */
+    private fun SemanticsNode.visible(): Boolean {
+        if (size.width <= 0 || boundsInRoot.width < size.width * 0.5f) return false
+        if (!tag().startsWith("app:")) return true
+        val fin = noeuds { it == "biblio" }.firstOrNull()?.positionInRoot?.x ?: return true
+        val debut = 48f * pxParU
+        val gauche = positionInRoot.x
+        val commun = minOf(gauche + size.width, fin) - maxOf(gauche, debut)
+        return commun >= size.width * 0.5f
+    }
 
     private fun SemanticsNode.centreX(): Float = positionInRoot.x + size.width / 2f
 
