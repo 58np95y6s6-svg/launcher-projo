@@ -2,7 +2,12 @@ package fr.projo.launcher.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,6 +21,7 @@ import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.system.DeviceSnapshot
 import fr.projo.launcher.system.UpdateInfo
+import kotlinx.coroutines.delay
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -165,7 +171,8 @@ class UneTest : BancAccueil("UNE") {
     fun captureMesApps() {
         afficher()
         donnerFocus(app(2))
-        capturer("3_mesapps_app3")
+        val f = capturer("3_mesapps_app3")
+        zoomer(f, "3z_zoom_mesapps_app3")
     }
 
     @Test
@@ -207,16 +214,11 @@ class UneTest : BancAccueil("UNE") {
 
     @Test
     fun captureReglagesOuverts() {
-        afficherVariante(reglages = true)
         // Comme dans l'app : Réglages sélectionné, puis OK ouvre le panneau par-dessus l'accueil
-        donnerFocus("rapide:Réglages")
-        compose.runOnIdle { panneauOuvert.value = true }
-        avancer(1000)
+        afficherVariante(reglages = true)
+        avancer(1500)
         capturer("8_panneau_reglages")
     }
-
-    /** Panneau Réglages affiché (avec afficherVariante(reglages = true)). */
-    private val panneauOuvert = mutableStateOf(false)
 
     /**
      * Affichage avec d'autres données que le banc commun : mise à jour disponible, pas de
@@ -244,6 +246,17 @@ class UneTest : BancAccueil("UNE") {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
+            val focusReglages = remember { FocusRequester() }
+            var panneauOuvert by remember { mutableStateOf(false) }
+            if (reglages) {
+                // Réglages sélectionné après l'affichage, puis le panneau s'ouvre (horloge du test)
+                LaunchedEffect(Unit) {
+                    delay(1200)
+                    runCatching { focusReglages.requestFocus() }
+                    delay(500)
+                    panneauOuvert = true
+                }
+            }
             CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Box {
@@ -252,6 +265,7 @@ class UneTest : BancAccueil("UNE") {
                             icons = icons,
                             wifiLabel = "Maison-5G",
                             homePressCount = 0,
+                            focusReglages = focusReglages,
                             actions = actions,
                             nbaData = nba,
                             nbaErreur = nbaErreur,
@@ -259,7 +273,7 @@ class UneTest : BancAccueil("UNE") {
                             majDisponible = maj,
                             design = design,
                         )
-                        if (reglages && panneauOuvert.value) {
+                        if (panneauOuvert) {
                             SettingsPanel(
                                 snapshot = DeviceSnapshot(
                                     volume = 10, volumeMax = 15, muet = false, reseau = "Maison-5G", enLigne = true,
