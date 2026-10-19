@@ -89,11 +89,14 @@ class IconLoader(private val context: Context) {
         val cache = caches.getValue(format)
         cache.get(packageName)?.let { return it }
         // Tuiles propres à Projo : dessinées par l'interface, couleur fixe
-        if (packageName.startsWith("projo:")) return AppVisual(null, COULEUR_HDMI)
+        if (packageName.removePrefix(LOGO_ORIGINAL).startsWith("projo:")) return AppVisual(null, COULEUR_HDMI)
         val visual = try {
             fabriquer(packageName, format)
         } catch (e: Exception) {
             AppVisual(null, COULEUR_PAR_DEFAUT)
+        } catch (e: OutOfMemoryError) {
+            // Mémoire saturée (1 Go sur le projecteur) : pas d'image, et rien en cache pour réessayer plus tard
+            return AppVisual(null, COULEUR_PAR_DEFAUT)
         }
         cache.put(packageName, visual)
         return visual

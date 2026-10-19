@@ -115,13 +115,11 @@ object Illustrations {
             couleur = 0xFF25D1DA,
         ),
         regle("mubi", "mubi", "com.mubi"),
-        regle("infuse", "infuse.*", couleur = 0xFFFF8000),
         // Downloader d'AFTVnews : nom exact seulement (« downloader » est un mot courant)
         regle("downloader", "downloader(byaftvnews)?", "com.esaba.downloader", couleur = 0xFFF7931E),
         regle("tidal", "tidal.*", "com.aspiro.tidal"),
         regle("soundcloud", "soundcloud.*", "com.soundcloud.android", couleur = 0xFFFF5500),
         regle("ocs", "ocs|ocsgo"),
-        regle("salto", "salto"),
         regle("oqee", "oqee.*", "net.oqee.androidtv"),
         regle("tvorange", "(la)?tvdorange|orangetv|tvorange", couleur = 0xFFFF7900),
         regle("bboxtv", "btv|bboxtv"),
