@@ -78,6 +78,7 @@ import java.util.Locale
 
 private const val LIGNES_VISIBLES = 3
 private const val HAUTEUR_LIGNE = 34
+private const val HAUTEUR_LIGNE_PETITE = 36
 
 /**
  * Module Sport : scores et horaires des compétitions cochées dans ses réglages (NBA, football,
@@ -361,7 +362,9 @@ private fun SportPetit(
                 )
             }
         } else {
-            LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+            // Nombre entier de lignes : aucune ligne coupée en bas, quelle que soit la hauteur
+            val lignes = ((ctx.hauteur - 18f) / HAUTEUR_LIGNE_PETITE).toInt().coerceAtLeast(1)
+            LazyColumn(Modifier.fillMaxWidth().height((HAUTEUR_LIGNE_PETITE * minOf(lignes, liste.size)).u)) {
                 itemsIndexed(liste, key = { _, m -> m.c.id + ":" + m.g.id }) { i, m ->
                     LignePetite(m, repo, comps.size > 1, if (i == 0) Modifier.focusRequester(ctx.entree) else Modifier)
                 }
@@ -378,7 +381,7 @@ private fun LignePetite(m: MatchDe, repo: NbaRepository, avecCompetition: Boolea
     val forme = RoundedCornerShape(9.u)
     Surface(
         onClick = {},
-        modifier = modifier.fillMaxWidth().height(36.u),
+        modifier = modifier.fillMaxWidth().height(HAUTEUR_LIGNE_PETITE.u),
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
