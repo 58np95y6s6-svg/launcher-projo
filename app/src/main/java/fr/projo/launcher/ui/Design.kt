@@ -33,7 +33,7 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     PASTEL("pastel", "Pastel", "Formes rondes, tons doux"),
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
     GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan"),
-    UNE("une", "À la une", "Typographie géante aux couleurs de l'app"),
+    UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
     ORBITE("orbite", "Orbite", "Les apps en anneau, lueur violet-cyan"),
     CADRAN("cadran", "Cadran", "Cadran de radio, afficheurs lumineux");
 
@@ -94,11 +94,12 @@ fun Design.colors(): DesignColors = when (this) {
         focusFond = Color(0xFFECEDF1), focusTexte = Color(0xFF0D0E12),
         voile = Color(0xFF0D0E12).copy(alpha = 0.7f), fondBibliotheque = Color(0xFA0D0E12),
     )
+    // Maquette « Une » : panneau #0E0E12, tuiles #17171D, interrupteur actif #10B981, voile #050508 à 55 %
     Design.UNE -> DesignColors(
-        panneau = Color(0xF7140406), carte = Color.White.copy(alpha = 0.07f),
-        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.6f), accent = Color(0xFFFF3B3B),
-        focusFond = Color.White, focusTexte = Color(0xFF140406),
-        voile = Color.Black.copy(alpha = 0.55f), fondBibliotheque = Color(0xFA140406),
+        panneau = Color(0xFA0E0E12), carte = Color(0xFF17171D),
+        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f), accent = Color(0xFF10B981),
+        focusFond = Color.White, focusTexte = Color(0xFF0A0A0D),
+        voile = Color(0xFF050508).copy(alpha = 0.55f), fondBibliotheque = Color(0xFA0A0A0D),
     )
     Design.ORBITE -> DesignColors(
         panneau = Color(0xF70B0A1E), carte = Color.White.copy(alpha = 0.06f),
