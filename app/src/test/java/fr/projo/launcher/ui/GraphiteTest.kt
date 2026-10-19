@@ -1,6 +1,7 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.ui.input.key.Key
+import fr.projo.launcher.data.AppInfo
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -52,6 +53,70 @@ class GraphiteTest : BancAccueil("GRAPHITE") {
         donnerFocus("rapide:Réglages")
         val f = capturer("7_raccourci_reglages")
         zoomer(f, "7z_zoom_raccourci_reglages")
+    }
+
+    /** Pastille « Mise à jour » en tête de la barre : 5 segments, aucun libellé coupé. */
+    @Test
+    fun captureMiseAJour() {
+        afficher(majDisponible = true)
+        donnerFocus("rapide:Mise à jour")
+        val f = capturer("9_mise_a_jour")
+        zoomer(f, "9z_zoom_mise_a_jour", marge = 20)
+    }
+
+    /** Hors connexion et mise à jour disponible (le cas le plus chargé de la barre). */
+    @Test
+    fun captureHorsLigne() {
+        afficher(wifiLabel = "Hors ligne", majDisponible = true)
+        donnerFocus("rapide:Hors ligne")
+        val f = capturer("10_hors_ligne")
+        zoomer(f, "10z_zoom_hors_ligne", marge = 20)
+    }
+
+    /** Aucun favori : la carte d'aide. */
+    @Test
+    fun captureSansFavori() {
+        val d = DonneesFactices.ui(design)
+        afficher(donnees = d.copy(favorites = emptyList(), prefs = d.prefs.copy(favorites = emptyList())))
+        capturer("11_sans_favori")
+    }
+
+    /** Un seul favori. */
+    @Test
+    fun captureUnFavori() {
+        val d = DonneesFactices.ui(design)
+        val un = d.favorites.take(1)
+        afficher(donnees = d.copy(favorites = un, prefs = d.prefs.copy(favorites = un.map { it.packageName })))
+        capturer("12_un_favori")
+    }
+
+    /** 30 apps dans « Mes apps », focus sur la 15e : la barre défile, rien n'est coupé net. */
+    @Test
+    fun captureTrenteApps() {
+        val d = DonneesFactices.ui(design)
+        val plus = (1..30 - d.homeApps.size).map { AppInfo("fr.test.app$it", "Application $it", isTvApp = true) }
+        val apps = d.homeApps + plus
+        afficher(donnees = d.copy(homeApps = apps, prefs = d.prefs.copy(homeApps = apps.map { it.packageName })))
+        capturer("13a_trente_apps_repos")
+        donnerFocus(app(0))
+        for (k in 1..14) {
+            appuyer(Key.DirectionRight)
+            attendre("« Mes apps » ▶ n°$k", app(k))
+        }
+        capturer("13_trente_apps_15e")
+        verifierSaut(Key.DirectionUp, "favoris", ::estElementFavori)
+    }
+
+    /** Onglet « Résultats » du bandeau NBA. */
+    @Test
+    fun captureResultats() {
+        afficher()
+        donnerFocus("nba")
+        appuyer(Key.DirectionRight)
+        capturer("14_nba_resultats")
+        // ◀ depuis « Résultats » : « Cette nuit » (on reste dans le bandeau)
+        appuyer(Key.DirectionLeft)
+        attendre("Résultats puis ◀", "nba")
     }
 
     // ------------------------------------------------------------------ navigation
@@ -106,12 +171,15 @@ class GraphiteTest : BancAccueil("GRAPHITE") {
         attendre("rapide:Réglages puis ▶", "nba")
     }
 
+    /** ◀ depuis le bandeau NBA : retour sur Réglages, d'où l'on y entre par ▶ (on ne perd pas sa place). */
     @Test
     fun gaucheDepuisNba() {
         afficher()
-        donnerFocus("nba")
+        donnerFocus("rapide:Réglages")
+        appuyer(Key.DirectionRight)
+        attendre("Réglages puis ▶", "nba")
         appuyer(Key.DirectionLeft)
-        attendre("NBA puis ◀", favori(0))
+        attendre("NBA puis ◀", "rapide:Réglages")
     }
 
     @Test

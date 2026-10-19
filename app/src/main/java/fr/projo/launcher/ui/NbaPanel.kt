@@ -97,10 +97,12 @@ fun NbaPanel(
     style: NbaStyle = NbaStyle(),
     /** Point d'entrée du focus (onglet « Cette nuit »), pour y venir depuis un autre élément. */
     entree: FocusRequester? = null,
+    /** ◀ depuis « Cette nuit » ou un match (Graphite seulement) ; par défaut, comme [onExit]. */
+    onGauche: (() -> Unit)? = null,
 ) {
     CompositionLocalProvider(LocalScale provides LocalScale.current * style.echelle, LocalNbaStyle provides style) {
         if (style.graphite) {
-            NbaGraphite(data, erreur, modifier, onExit, style, entree)
+            NbaGraphite(data, erreur, modifier, onExit, style, entree, onGauche)
         } else {
             NbaContenu(data, erreur, repo, modifier, onExit, style, entree)
         }

@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
@@ -89,12 +90,16 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Constraints
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalTextStyle
@@ -102,10 +107,15 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.IconLoader
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /*
@@ -160,7 +170,8 @@ private const val G_PILULE_NOM_MAX = 112
 private val GraphiteToile = Color(0xFF0D0E12)
 private val GraphiteEncre = Color(0xFFF4F5F7)
 private val GraphiteEncre2 = Color(0xFFA3A7B2)
-private val GraphiteEncre3 = Color(0xFF6C707C)
+/** Texte discret : #8C909C plutôt que #6C707C (lisible au projecteur, noirs délavés). */
+private val GraphiteEncre3 = Color(0xFF8C909C)
 private val GraphiteLibelle = Color(0xFFE7E9EE)
 private val GraphiteCyan = Color(0xFF22D3EE)
 private val GraphiteBleu = Color(0xFF5B6CFF)
@@ -169,6 +180,8 @@ private val GraphiteVert = Color(0xFF34D399)
 /** Filets de 1 px : panneaux (blanc 7,5 %) et séparateurs (blanc 13 %). */
 private val GraphiteFilet = Color.White.copy(alpha = 0.075f)
 private val GraphiteFilet2 = Color.White.copy(alpha = 0.13f)
+/** Contour des cartes de favoris au repos. */
+private val GraphiteFiletCarte = Color.White.copy(alpha = 0.11f)
 
 /** Remplissage des panneaux : blanc 4 % → 1,8 %. */
 private val GraphitePanneauFond = Brush.verticalGradient(
@@ -277,6 +290,7 @@ fun HomeGraphite(ctx: HomeContext) {
         ctx.sansSelection()
     }
     val titre = ctx.selection?.label ?: titreLibre.ifEmpty { "Favoris" }
+    val surNba = ctx.selection == null && titreLibre == "NBA"
 
     Box(Modifier.fillMaxSize()) {
         GraphiteFond()
@@ -302,11 +316,13 @@ fun HomeGraphite(ctx: HomeContext) {
             onExit = ctx.sortieNba,
             style = GraphiteNbaStyle,
             entree = entreeNba,
+            // ◀ : retour sur Réglages (d'où l'on entre par ▶) ; Retour : sortie vers les favoris
+            onGauche = { runCatching { ctx.focusReglages.requestFocus() } },
         )
 
         // --- Nom de l'élément sélectionné, aides et compteur
         GraphiteTitre(
-            titre, nav.compteur,
+            titre, nav.compteur, surNba,
             Modifier
                 .offset(G_MARGE.u, G_TITRE_Y.u)
                 .width(G_LARGEUR.u)
@@ -483,16 +499,26 @@ private fun GraphiteHorloge() {
 
 // ---------------------------------------------------------------- raccourcis
 
-/** Bluetooth activé ? (point vert d'état ; lu une fois, sans permission sur ces appareils). */
+/**
+ * Bluetooth activé ? (point vert d'état ; sans permission sur ces appareils). L'accueil reste
+ * composé sous les Réglages et les applis système : l'état est relu au retour au premier plan,
+ * puis toutes les 5 s tant que l'accueil est affiché.
+ */
 @Composable
 private fun rememberBluetoothActif(): Boolean {
     val context = LocalContext.current
-    val actif by produceState(initialValue = false) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                val bm = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
-                bm?.adapter?.isEnabled == true
-            }.getOrDefault(false)
+    val cycle = LocalLifecycleOwner.current.lifecycle
+    val actif by produceState(initialValue = false, cycle) {
+        cycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                value = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val bm = context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
+                        bm?.adapter?.isEnabled == true
+                    }.getOrDefault(false)
+                }
+                delay(5_000)
+            }
         }
     }
     return actif
@@ -543,6 +569,7 @@ private fun GraphiteRaccourcis(
     val derniere = liste.lastOrNull()?.cle
     val premiere = liste.firstOrNull()?.cle
     val trait = graphiteUnPixel()
+    val largeurs = rememberLargeursRaccourcis(liste, trait)
     Row(
         modifier
             .size(G_RACCOURCIS_L.u, G_RACCOURCIS_H.u)
@@ -576,6 +603,7 @@ private fun GraphiteRaccourcis(
             }
             GraphiteRaccourci(
                 qa,
+                largeurLibelle = largeurs.getOrNull(i)?.second,
                 onFocus = { f ->
                     if (f) {
                         focusIndex = i
@@ -585,7 +613,7 @@ private fun GraphiteRaccourcis(
                     }
                 },
                 modifier = Modifier
-                    .weight(1f)
+                    .then(largeurs.getOrNull(i)?.let { Modifier.width(it.first) } ?: Modifier.weight(1f))
                     .cibleGraphite(nav, qa.cle, GZone.RACCOURCIS)
                     .then(if (qa.reglages) Modifier.focusRequester(ctx.focusReglages) else Modifier),
             )
@@ -593,8 +621,45 @@ private fun GraphiteRaccourcis(
     }
 }
 
+/**
+ * Largeur de chaque segment de la barre (et largeur maximale de son libellé) : largeur naturelle
+ * (marges 2 × 5 + pictogramme 15 + espace 8 + libellé), puis l'espace restant est réparti entre
+ * les segments. Si tout ne tient pas, seul le libellé Wi-Fi (nom du réseau) est raccourci,
+ * jamais « Mise à jour ».
+ */
 @Composable
-private fun GraphiteRaccourci(qa: GraphiteRaccourciInfo, onFocus: (Boolean) -> Unit, modifier: Modifier) {
+private fun rememberLargeursRaccourcis(liste: List<GraphiteRaccourciInfo>, trait: Dp): List<Pair<Dp, Dp>> {
+    val densite = LocalDensity.current
+    val mesureur = rememberTextMeasurer()
+    val style = LocalTextStyle.current.merge(TextStyle(fontSize = 12.us, fontWeight = FontWeight.Medium))
+    val unite = 1.u
+    val libelles = liste.map { it.libelle }
+    val wifi = liste.indexOfFirst { it.icone == GraphiteIcones.Wifi }
+    return remember(libelles, wifi, style, densite, unite, trait) {
+        with(densite) {
+            // +1 : arrondis de mesure (le texte ne doit jamais être coupé d'un pixel)
+            val textes = libelles.map { mesureur.measure(it, style, maxLines = 1).size.width.toDp() + unite }
+            val fixe = unite * (10f + 15f + 8f)
+            val dispo = unite * (G_RACCOURCIS_L - 6f) - trait * (liste.size - 1).coerceAtLeast(0)
+            val textesAjustes = textes.toMutableList()
+            val somme = textes.fold(0.dp) { acc, t -> acc + t + fixe }
+            if (somme > dispo && wifi >= 0) {
+                textesAjustes[wifi] = maxOf(unite * 24f, textes[wifi] - (somme - dispo))
+            }
+            val total = textesAjustes.fold(0.dp) { acc, t -> acc + t + fixe }
+            val bonus = if (total < dispo && liste.isNotEmpty()) (dispo - total) / liste.size else 0.dp
+            textesAjustes.map { t -> (t + fixe + bonus) to t }
+        }
+    }
+}
+
+@Composable
+private fun GraphiteRaccourci(
+    qa: GraphiteRaccourciInfo,
+    largeurLibelle: Dp?,
+    onFocus: (Boolean) -> Unit,
+    modifier: Modifier,
+) {
     var focus by remember { mutableStateOf(false) }
     val zoom by animateFloatAsState(if (focus) 1f else 0f, tween(220), label = "zoomRaccourci")
     val rayon = 8.u
@@ -646,7 +711,8 @@ private fun GraphiteRaccourci(qa: GraphiteRaccourciInfo, onFocus: (Boolean) -> U
             Spacer(Modifier.width(8.u))
             Text(
                 qa.libelle, fontSize = 12.us, fontWeight = FontWeight.Medium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
+                modifier = largeurLibelle?.let { Modifier.widthIn(max = it) } ?: Modifier,
             )
         }
     }
@@ -658,7 +724,7 @@ private fun GraphiteRaccourci(qa: GraphiteRaccourciInfo, onFocus: (Boolean) -> U
 private class GraphiteCompteur(val libelle: String, val position: Int, val total: Int)
 
 @Composable
-private fun GraphiteTitre(titre: String, compteur: GraphiteCompteur?, modifier: Modifier) {
+private fun GraphiteTitre(titre: String, compteur: GraphiteCompteur?, surNba: Boolean, modifier: Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         // Très grand nom en dégradé ; un peu plus petit pour les noms longs
         val taille = when {
@@ -681,13 +747,20 @@ private fun GraphiteTitre(titre: String, compteur: GraphiteCompteur?, modifier: 
             overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.width(17.u))
-        GraphiteAide({ GraphiteTouche { ToucheTexte("OK") } }, "Ouvrir")
-        Spacer(Modifier.width(14.u))
-        GraphiteAide({ GraphiteTouche { ToucheFleches() } }, "Parcourir")
+        if (surNba) {
+            // Bandeau NBA : ▼ parcourt les matchs, ◀ revient à la barre des raccourcis
+            GraphiteAide({ GraphiteTouche { ToucheFleche(bas = true) } }, "Matchs")
+            Spacer(Modifier.width(14.u))
+            GraphiteAide({ GraphiteTouche { ToucheFleche(bas = false) } }, "Retour")
+        } else {
+            GraphiteAide({ GraphiteTouche { ToucheTexte("OK") } }, "Ouvrir")
+            Spacer(Modifier.width(14.u))
+            GraphiteAide({ GraphiteTouche { ToucheFleches() } }, "Parcourir")
+        }
         Spacer(Modifier.weight(1f))
         if (compteur != null) {
             Row(Modifier.padding(top = 5.u), verticalAlignment = Alignment.CenterVertically) {
-                Text(compteur.libelle, color = GraphiteEncre3, fontSize = 11.us, maxLines = 1)
+                Text(compteur.libelle, color = GraphiteEncre3, fontSize = 12.us, maxLines = 1)
                 Spacer(Modifier.width(7.u))
                 Text(
                     buildAnnotatedString {
@@ -697,7 +770,7 @@ private fun GraphiteTitre(titre: String, compteur: GraphiteCompteur?, modifier: 
                         append(" / ")
                         append(compteur.total.toString().padStart(2, '0'))
                     },
-                    color = GraphiteEncre2, fontSize = 11.us, fontFamily = FontFamily.Monospace, maxLines = 1,
+                    color = GraphiteEncre2, fontSize = 12.us, fontFamily = FontFamily.Monospace, maxLines = 1,
                 )
             }
         }
@@ -746,6 +819,22 @@ private fun ToucheTexte(texte: String) {
         texte, color = Color(0xFFE3E5EA), fontSize = 8.us, fontWeight = FontWeight.Bold,
         fontFamily = FontFamily.Monospace, letterSpacing = (1.us / 4), maxLines = 1,
     )
+}
+
+/** Une seule flèche dessinée : « ▼ » ([bas]) ou « ◀ ». */
+@Composable
+private fun ToucheFleche(bas: Boolean) {
+    Canvas(Modifier.size(7.u, 7.u)) {
+        val c = Color(0xFFE3E5EA)
+        val w = size.width
+        val h = size.height
+        val p = if (bas) {
+            Path().apply { moveTo(0f, h * 0.18f); lineTo(w, h * 0.18f); lineTo(w / 2f, h * 0.9f); close() }
+        } else {
+            Path().apply { moveTo(w * 0.85f, 0f); lineTo(w * 0.85f, h); lineTo(w * 0.1f, h / 2f); close() }
+        }
+        drawPath(p, c)
+    }
 }
 
 /** « ◀ ▶ » dessinés (pas de caractère, qui pourrait s'afficher en émoji). */
@@ -941,7 +1030,7 @@ private fun GraphiteFavori(app: AppInfo, ctx: HomeContext, grand: Boolean, onFoc
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
     ) {
         GraphiteFace(couleur, focus, rayon) {
-            GraphiteLogoFavori(app, icone, couleur, if (g) 60.u else 46.u)
+            GraphiteLogoFavori(app, paquet, icone, couleur, grand = g, focus = focus, largeurCarte = largeur)
         }
     }
 }
@@ -980,34 +1069,178 @@ private fun GraphiteFace(couleur: Color, focus: Boolean, rayon: Dp, contenu: @Co
                     drawLine(Color.White.copy(alpha = if (focus) 0.08f else 0.05f), Offset(0f, 0.5f), Offset(w, 0.5f), 1f)
                 }
             }
-            .then(if (focus) Modifier else Modifier.border(un, GraphiteFilet, forme)),
+            // Filet au repos à 11 % (et non 7,5 %) : visible même quand le projecteur délave les noirs
+            .then(if (focus) Modifier else Modifier.border(un, GraphiteFiletCarte, forme)),
         contentAlignment = Alignment.Center,
     ) {
         contenu()
     }
 }
 
+/** Marques connues dessinées en texte comme dans la maquette (logos en texte uniquement). */
+private enum class GraphiteMarque { NETFLIX, PRIME, CANAL, YOUTUBE, TWITCH, DISNEY }
+
+private fun marqueDe(vararg paquets: String): GraphiteMarque? {
+    for (p in paquets) {
+        when {
+            p.startsWith("com.netflix.") -> return GraphiteMarque.NETFLIX
+            p.startsWith("com.amazon.amazonvideo") || p.startsWith("com.amazon.avod") -> return GraphiteMarque.PRIME
+            p.startsWith("com.canal.") || p.startsWith("com.canalplus") -> return GraphiteMarque.CANAL
+            // SmartTube = YouTube
+            p.startsWith("com.google.android.youtube") || p.startsWith("com.liskovsoft.smarttube") ||
+                p.startsWith("com.teamsmart.videomanager") -> return GraphiteMarque.YOUTUBE
+            p.startsWith("tv.twitch.") -> return GraphiteMarque.TWITCH
+            p.startsWith("com.disney.disneyplus") -> return GraphiteMarque.DISNEY
+        }
+    }
+    return null
+}
+
 /**
- * Logo d'un favori sur la face sombre. Aujourd'hui : l'icône HD de l'app, centrée.
- * À remplacer ici par l'illustration de marque (logo seul) quand IconLoader la fournira.
+ * Logo d'un favori sur la face sombre, comme la maquette : le logo de marque en texte
+ * (NETFLIX, prime video, CANAL+, YouTube, twitch, Disney+), sinon le NOM de l'app en grand,
+ * dans la couleur de sa marque. Le tout est réduit pour tenir dans ~78 % de la largeur.
+ * L'icône HD ne sert plus qu'aux apps sans nom exploitable. (Quand IconLoader fournira les
+ * illustrations de marque, c'est ici qu'il faudra les afficher en premier.)
  */
 @Composable
-private fun GraphiteLogoFavori(app: AppInfo, icone: ImageBitmap?, couleur: Color, taille: Dp) {
-    val forme = RoundedCornerShape(taille * 0.22f)
-    when {
-        app.isSpecial -> GraphiteIconeTeintee(IconLoader.COULEUR_HDMI, taille, forme) {
-            Icon(GraphiteIcones.Hdmi, contentDescription = app.label, tint = Color(0xFF5EEAD4), modifier = Modifier.size(taille * 0.55f))
+private fun GraphiteLogoFavori(
+    app: AppInfo,
+    paquet: String,
+    icone: ImageBitmap?,
+    couleur: Color,
+    grand: Boolean,
+    focus: Boolean,
+    largeurCarte: Dp,
+) {
+    val k = if (grand) 1.15f else 1f
+    val opacite = if (focus) 1f else 0.9f
+    val marque = remember(app.packageName, paquet) { marqueDe(app.packageName, paquet) }
+    val nom = app.label.trim()
+    Box(
+        Modifier
+            .graphicsLayer { alpha = opacite }
+            .ajusterLargeur(largeurCarte * 0.78f),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            app.isSpecial -> {
+                val taille = if (grand) 60.u else 46.u
+                GraphiteIconeTeintee(IconLoader.COULEUR_HDMI, taille, RoundedCornerShape(taille * 0.22f)) {
+                    Icon(GraphiteIcones.Hdmi, contentDescription = app.label, tint = Color(0xFF5EEAD4), modifier = Modifier.size(taille * 0.55f))
+                }
+            }
+            marque != null -> GraphiteLogoMarque(marque, k)
+            nom.isNotEmpty() -> {
+                // Nom de l'app dans la couleur de sa marque, éclaircie (toujours lisible sur le graphite)
+                val clair = lerp(couleur, Color.White, 0.25f)
+                val teinte = if (clair.luminance() < 0.22f) lerp(couleur, Color.White, 0.7f) else clair
+                BasicText(
+                    nom,
+                    style = TextStyle(
+                        color = teinte,
+                        fontSize = if (grand) 26.us else 22.us,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.5).sp,
+                    ),
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+            icone != null -> {
+                val taille = if (grand) 60.u else 46.u
+                Image(
+                    bitmap = icone,
+                    contentDescription = app.label,
+                    filterQuality = FilterQuality.High,
+                    modifier = Modifier
+                        .size(taille)
+                        .clip(RoundedCornerShape(taille * 0.22f)),
+                )
+            }
+            else -> {
+                val taille = if (grand) 60.u else 46.u
+                GraphiteIconeTeintee(couleur, taille, RoundedCornerShape(taille * 0.22f)) {
+                    Text("?", color = Color.White, fontSize = 20.us, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
-        icone != null -> Image(
-            bitmap = icone,
-            contentDescription = app.label,
-            filterQuality = FilterQuality.High,
-            modifier = Modifier
-                .size(taille)
-                .clip(forme),
+    }
+}
+
+/** Logos de marque en texte de la maquette t8 (tailles de la maquette / 2, × [k] sur la grande carte). */
+@Composable
+private fun GraphiteLogoMarque(marque: GraphiteMarque, k: Float) {
+    val base = TextStyle(fontWeight = FontWeight.Bold, color = Color.White)
+    when (marque) {
+        GraphiteMarque.NETFLIX -> BasicText(
+            "NETFLIX",
+            modifier = Modifier.graphicsLayer { scaleY = 1.18f },
+            style = base.copy(color = Color(0xFFE50914), fontWeight = FontWeight.Black, fontSize = 33.us * k, letterSpacing = (-0.01).em),
+            maxLines = 1, softWrap = false,
         )
-        else -> GraphiteIconeTeintee(couleur, taille, forme) {
-            Text(app.label.take(1).uppercase(), color = Color.White, fontSize = 20.us, fontWeight = FontWeight.SemiBold)
+        GraphiteMarque.PRIME -> BasicText(
+            buildAnnotatedString {
+                append("prime ")
+                withStyle(SpanStyle(color = Color(0xFF5CC3FF))) { append("video") }
+            },
+            style = base.copy(fontSize = 19.us * k, letterSpacing = (-0.035).em),
+            maxLines = 1, softWrap = false,
+        )
+        GraphiteMarque.CANAL -> BasicText(
+            "CANAL+",
+            style = base.copy(fontWeight = FontWeight.Black, fontSize = 21.us * k, letterSpacing = (-0.02).em),
+            maxLines = 1, softWrap = false,
+        )
+        GraphiteMarque.YOUTUBE -> Row(verticalAlignment = Alignment.CenterVertically) {
+            // Pastille rouge avec le triangle de lecture
+            Box(
+                Modifier
+                    .size(23.u * k, (33.u / 2) * k)
+                    .background(Color(0xFFFF0033), RoundedCornerShape((9.u / 2) * k)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.size(7.u * k, (15.u / 2) * k)) {
+                    drawPath(
+                        Path().apply { moveTo(0f, 0f); lineTo(size.width, size.height / 2f); lineTo(0f, size.height); close() },
+                        Color.White,
+                    )
+                }
+            }
+            Spacer(Modifier.width(4.u * k))
+            BasicText(
+                "YouTube",
+                style = base.copy(fontSize = (35.us / 2) * k, letterSpacing = (-0.045).em),
+                maxLines = 1, softWrap = false,
+            )
+        }
+        GraphiteMarque.TWITCH -> BasicText(
+            "twitch",
+            style = base.copy(color = Color(0xFFB48CFF), fontWeight = FontWeight.ExtraBold, fontSize = 23.us * k, letterSpacing = (-0.03).em),
+            maxLines = 1, softWrap = false,
+        )
+        GraphiteMarque.DISNEY -> BasicText(
+            "Disney+",
+            style = base.copy(
+                fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic,
+                fontSize = 22.us * k, letterSpacing = (-0.01).em,
+            ),
+            maxLines = 1, softWrap = false,
+        )
+    }
+}
+
+/** Réduit le contenu (à l'échelle, centré) s'il dépasse [max] de large ; sinon ne change rien. */
+private fun Modifier.ajusterLargeur(max: Dp): Modifier = layout { mesurable, contraintes ->
+    val p = mesurable.measure(contraintes.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+    val limite = max.roundToPx()
+    val s = if (p.width > limite) limite.toFloat() / p.width else 1f
+    val w = (p.width * s).roundToInt()
+    val h = (p.height * s).roundToInt()
+    layout(w, h) {
+        p.placeWithLayer((w - p.width) / 2, (h - p.height) / 2) {
+            scaleX = s
+            scaleY = s
         }
     }
 }
@@ -1118,10 +1351,22 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 mesureur.measure(nombre, styleNombre, maxLines = 1).size.width.toDp()
             val dispo = unite * (G_LARGEUR - 6f)
             val somme = apps.fold(tout) { acc, d -> acc + d }
-            // Comme en CSS (flex: 1 1 auto) : l'espace libre va aux apps, pas à « Toutes les apps »
-            val libre = dispo - somme
-            val bonus = if (libre > 0.dp && apps.isNotEmpty()) libre / apps.size else 0.dp
-            apps.map { it + bonus } + tout
+            if (somme <= dispo) {
+                // Comme en CSS (flex: 1 1 auto) : l'espace libre va aux apps, pas à « Toutes les apps »
+                val libre = dispo - somme
+                val bonus = if (apps.isNotEmpty()) libre / apps.size else 0.dp
+                apps.map { it + bonus } + tout
+            } else {
+                // Trop d'apps : les k premières pilules qui tiennent devant « Toutes les apps » se
+                // partagent la place restante, pour que la k-ième finisse pile à son séparateur
+                // (jamais de pilule coupée au repos). Les suivantes gardent leur largeur et défilent.
+                val place = dispo - tout
+                var k = 0
+                var occupe = 0.dp
+                while (k < apps.size && occupe + apps[k] <= place) { occupe += apps[k]; k++ }
+                val bonus = if (k > 0) (place - occupe) / k else 0.dp
+                apps.mapIndexed { i, d -> if (i < k) d + bonus else d } + tout
+            }
         }
     }
     var focusIndex by remember { mutableIntStateOf(-1) }
@@ -1170,7 +1415,7 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 }
             }
             // Ce qui dépasse du panneau (ou passe sous « Toutes les apps ») est effacé en fondu
-            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u, droiteApps, droiteApps + 22.u),
+            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u, droiteApps, droiteApps + 48.u),
         contentPadding = PaddingValues(start = (G_MARGE + 3).u, end = droiteApps, top = marge.u, bottom = marge.u),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1272,25 +1517,27 @@ private fun GraphitePiluleApp(
     }
 }
 
-/** Icône de pilule : HDMI dessinée (carré teinté), sinon l'icône de l'app, sinon son initiale. */
+/**
+ * Icône de pilule : toujours le même carré teinté de la maquette (couleur de la marque à 18 %,
+ * contour à 45 %), avec au centre la HDMI dessinée, l'icône HD de l'app (19 u) ou son initiale.
+ * Les icônes sans fond ont ainsi le même cadre que les autres.
+ */
 @Composable
 private fun GraphiteIconePilule(app: AppInfo, icone: ImageBitmap?, couleur: Color) {
     val taille = G_PILULE_ICONE.u
     val forme = RoundedCornerShape(7.u)
-    when {
-        app.isSpecial -> GraphiteIconeTeintee(Color(0xFF2DD4BF), taille, forme) {
-            Icon(GraphiteIcones.Hdmi, contentDescription = app.label, tint = Color(0xFF5EEAD4), modifier = Modifier.size(14.u))
-        }
-        icone != null -> Image(
-            bitmap = icone,
-            contentDescription = app.label,
-            filterQuality = FilterQuality.High,
-            modifier = Modifier
-                .size(taille)
-                .clip(forme),
-        )
-        else -> GraphiteIconeTeintee(couleur, taille, forme) {
-            Text(app.label.take(1).uppercase(), color = lerp(couleur, Color.White, 0.6f), fontSize = 12.us, fontWeight = FontWeight.Bold)
+    GraphiteIconeTeintee(if (app.isSpecial) Color(0xFF2DD4BF) else couleur, taille, forme) {
+        when {
+            app.isSpecial -> Icon(GraphiteIcones.Hdmi, contentDescription = app.label, tint = Color(0xFF5EEAD4), modifier = Modifier.size(14.u))
+            icone != null -> Image(
+                bitmap = icone,
+                contentDescription = app.label,
+                filterQuality = FilterQuality.High,
+                modifier = Modifier
+                    .size(19.u)
+                    .clip(RoundedCornerShape(5.u)),
+            )
+            else -> Text(app.label.take(1).uppercase(), color = lerp(couleur, Color.White, 0.6f), fontSize = 12.us, fontWeight = FontWeight.Bold)
         }
     }
 }

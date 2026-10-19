@@ -73,7 +73,7 @@ private const val NBA_G_LIGNES = 3
 
 private val NbaGEncre = Color(0xFFF4F5F7)
 private val NbaGEncre2 = Color(0xFFA3A7B2)
-private val NbaGEncre3 = Color(0xFF6C707C)
+private val NbaGEncre3 = Color(0xFF8C909C)
 private val NbaGFilet = Color.White.copy(alpha = 0.075f)
 private val NbaGRouge = Color(0xFFEF4444)
 private val NbaGOrange = Color(0xFFF97316)
@@ -133,6 +133,7 @@ internal fun NbaGraphite(
     onExit: () -> Unit,
     style: NbaStyle,
     entree: FocusRequester?,
+    onGauche: (() -> Unit)? = null,
 ) {
     val forme = RoundedCornerShape(11.u)
     var onglet by remember { mutableIntStateOf(0) }
@@ -148,11 +149,12 @@ internal fun NbaGraphite(
                 if (it.key == Key.Back && it.type == KeyEventType.KeyUp) { onExit(); true }
                 else it.key == Key.Back
             }
-            // ◀ n'importe où dans le bandeau : on en sort (seul « Résultats » → « Cette nuit » reste interne)
+            // ◀ n'importe où dans le bandeau : on en sort, vers l'élément d'où l'on vient si [onGauche]
+            // est donné (seul « Résultats » → « Cette nuit » reste interne)
             .onPreviewKeyEvent {
                 if (it.key != Key.DirectionLeft) return@onPreviewKeyEvent false
                 if (it.type == KeyEventType.KeyDown) {
-                    if (resultatsFocus) runCatching { focusNuit.requestFocus() } else onExit()
+                    if (resultatsFocus) runCatching { focusNuit.requestFocus() } else (onGauche ?: onExit)()
                 }
                 true
             }
