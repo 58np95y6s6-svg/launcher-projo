@@ -93,6 +93,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -1041,7 +1042,7 @@ private fun GraphiteFavori(app: AppInfo, ctx: HomeContext, grand: Boolean, onFoc
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
     ) {
         GraphiteFace(couleur, focus, rayon) {
-            GraphiteLogoFavori(app, paquet, icone, couleur, grand = g, focus = focus, largeurCarte = largeur)
+            GraphiteLogoFavori(app, paquet, icone, couleur, grand = g, largeurCarte = largeur)
         }
     }
 }
@@ -1121,17 +1122,14 @@ private fun GraphiteLogoFavori(
     icone: ImageBitmap?,
     couleur: Color,
     grand: Boolean,
-    focus: Boolean,
     largeurCarte: Dp,
 ) {
     val k = if (grand) 1.15f else 1f
-    val opacite = if (focus) 1f else 0.9f
     val marque = remember(app.packageName, paquet) { marqueDe(app.packageName, paquet) }
     val nom = app.label.trim()
     Box(
-        Modifier
-            .graphicsLayer { alpha = opacite }
-            .ajusterLargeur(largeurCarte * 0.78f),
+        // Aucun calque de plus ici (opacité, étirement) : un seul, et seulement s'il faut réduire
+        Modifier.ajusterLargeur(largeurCarte * 0.78f),
         contentAlignment = Alignment.Center,
     ) {
         when {
@@ -1184,10 +1182,13 @@ private fun GraphiteLogoFavori(
 private fun GraphiteLogoMarque(marque: GraphiteMarque, k: Float) {
     val base = TextStyle(fontWeight = FontWeight.Bold, color = Color.White)
     when (marque) {
+        // Lettres étirées en hauteur (scaleY 1,18 de la maquette) : plus grandes et resserrées
         GraphiteMarque.NETFLIX -> BasicText(
             "NETFLIX",
-            modifier = Modifier.graphicsLayer { scaleY = 1.18f },
-            style = base.copy(color = Color(0xFFE50914), fontWeight = FontWeight.Black, fontSize = 33.us * k, letterSpacing = (-0.01).em),
+            style = base.copy(
+                color = Color(0xFFE50914), fontWeight = FontWeight.Black, fontSize = 39.us * k,
+                letterSpacing = (-0.01).em, textGeometricTransform = TextGeometricTransform(scaleX = 1f / 1.18f),
+            ),
             maxLines = 1, softWrap = false,
         )
         GraphiteMarque.PRIME -> BasicText(
@@ -1249,9 +1250,13 @@ private fun Modifier.ajusterLargeur(max: Dp): Modifier = layout { mesurable, con
     val w = (p.width * s).roundToInt()
     val h = (p.height * s).roundToInt()
     layout(w, h) {
-        p.placeWithLayer((w - p.width) / 2, (h - p.height) / 2) {
-            scaleX = s
-            scaleY = s
+        if (s == 1f) {
+            p.place(0, 0)
+        } else {
+            p.placeWithLayer((w - p.width) / 2, (h - p.height) / 2) {
+                scaleX = s
+                scaleY = s
+            }
         }
     }
 }
