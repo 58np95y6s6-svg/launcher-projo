@@ -3,6 +3,9 @@ package fr.projo.launcher.ui
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,11 +24,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -39,13 +44,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
@@ -755,13 +763,20 @@ private fun ToucheFleches() {
 
 // ---------------------------------------------------------------- favoris
 
-/** Rangée des favoris : faces graphite sombres, la sélectionnée plus grande, levée, avec la lueur. */
+/**
+ * Rangée des favoris : faces graphite sombres ; la sélectionnée plus grande, levée, avec la lueur.
+ * Le dernier favori sélectionné reste grand quand le focus part ailleurs (la rangée ne saute pas).
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String) -> Unit) {
     val ui = ctx.ui
     val marge = G_MARGE_LUEUR_FAV
     val premiere = ui.favorites.firstOrNull()?.let { "fav:" + it.packageName } ?: "aide"
     val derniere = ui.favorites.lastOrNull()?.let { "fav:" + it.packageName } ?: "aide"
+    val actif = nav.favoriActif?.takeIf { cle -> ui.favorites.any { "fav:" + it.packageName == cle } } ?: premiere
+    // En défilant, la carte sélectionnée reste dans les marges de l'écran (48 unités)
+    CompositionLocalProvider(LocalBringIntoViewSpec provides rememberGraphiteDefilement(G_MARGE.u, G_MARGE.u)) {
     LazyRow(
         state = ctx.rangeeFavoris,
         modifier = Modifier
@@ -779,7 +794,9 @@ private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                     Key.DirectionLeft -> nav.courante == premiere
                     else -> false
                 }
-            },
+            }
+            // Cartes qui dépassent : effacées en fondu dans la marge (seulement s'il y a à défiler)
+            .graphiteBords(ctx.rangeeFavoris, 6.u, G_MARGE.u),
         contentPadding = PaddingValues(horizontal = G_MARGE.u, vertical = marge.u),
         horizontalArrangement = Arrangement.spacedBy(G_FAV_ECART.u),
         verticalAlignment = Alignment.CenterVertically,
@@ -798,7 +815,9 @@ private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
             val cle = "fav:" + app.packageName
             GraphiteFavori(
                 app, ctx,
+                grand = cle == actif,
                 onFocus = { couleur ->
+                    nav.favoriActif = cle
                     nav.compteur = GraphiteCompteur("Favoris", i + 1, ui.favorites.size)
                     ctx.surFocus(app, couleur)
                 },
@@ -808,11 +827,65 @@ private fun GraphiteFavoris(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
             )
         }
     }
+    }
+}
+
+/** Défilement des rangées : l'élément sélectionné reste à [debut] / [fin] des bords (place pour la lueur). */
+@OptIn(ExperimentalFoundationApi::class)
+private class GraphiteDefilement(private val debut: Float, private val fin: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val avant = offset - debut
+        val apres = offset + size - (containerSize - fin)
+        return when {
+            // Plus grand que la fenêtre utile : aligné au début (jamais d'aller-retour)
+            size > containerSize - debut - fin -> avant
+            avant >= 0f && apres <= 0f -> 0f
+            avant < 0f -> avant
+            else -> apres
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun rememberGraphiteDefilement(debut: Dp, fin: Dp): BringIntoViewSpec {
+    val densite = LocalDensity.current
+    return remember(densite, debut, fin) {
+        with(densite) { GraphiteDefilement(debut.toPx(), fin.toPx()) }
+    }
+}
+
+/**
+ * Bords d'une rangée qui défile : ce qui dépasse est effacé (transparent avant [efface], fondu
+ * jusqu'à [plein]), de chaque côté, seulement s'il reste du contenu à faire défiler de ce côté.
+ */
+@Composable
+private fun Modifier.graphiteBords(etat: LazyListState, efface: Dp, plein: Dp): Modifier {
+    val avant by animateFloatAsState(if (etat.canScrollBackward) 1f else 0f, tween(200), label = "bordAvant")
+    val apres by animateFloatAsState(if (etat.canScrollForward) 1f else 0f, tween(200), label = "bordApres")
+    val actif = avant > 0.001f || apres > 0.001f
+    return this
+        .graphicsLayer { compositingStrategy = if (actif) CompositingStrategy.Offscreen else CompositingStrategy.Auto }
+        .drawWithContent {
+            drawContent()
+            if (!actif) return@drawWithContent
+            val w = size.width
+            val e = efface.toPx() / w
+            val p = plein.toPx() / w
+            fun a(v: Float) = Color.Black.copy(alpha = v)
+            drawRect(
+                Brush.horizontalGradient(
+                    0f to a(1f - avant), e to a(1f - avant), p to a(1f),
+                    1f - p to a(1f), 1f - e to a(1f - apres), 1f to a(1f - apres),
+                ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
 }
 
 /** Carte d'un favori : face graphite sombre, logo au centre, teinte de la marque diffuse en bas. */
 @Composable
-private fun GraphiteFavori(app: AppInfo, ctx: HomeContext, onFocus: (Color) -> Unit, modifier: Modifier) {
+private fun GraphiteFavori(app: AppInfo, ctx: HomeContext, grand: Boolean, onFocus: (Color) -> Unit, modifier: Modifier) {
     val paquet = ctx.ui.iconSourceOf(app.packageName)
     val visuel = rememberAppVisual(paquet, ctx.icons)
     val icone = rememberAppIcon(paquet, ctx.icons)
@@ -823,9 +896,10 @@ private fun GraphiteFavori(app: AppInfo, ctx: HomeContext, onFocus: (Color) -> U
     var focus by remember { mutableStateOf(false) }
     val t by animateFloatAsState(if (focus) 1f else 0f, tween(220), label = "favoriGraphite")
     // Taille fixe par état (la lueur garde un masque précalculé par taille) ; l'agrandissement est animé en échelle
-    val largeur = if (focus) G_FAV_L_FOCUS.u else G_FAV_L.u
-    val hauteur = if (focus) G_FAV_H_FOCUS.u else G_FAV_H.u
-    val rayon = if (focus) 11.u else 9.u
+    val g = grand || focus
+    val largeur = if (g) G_FAV_L_FOCUS.u else G_FAV_L.u
+    val hauteur = if (g) G_FAV_H_FOCUS.u else G_FAV_H.u
+    val rayon = if (g) 11.u else 9.u
     val leve = 2.u
     val forme = RoundedCornerShape(rayon)
     Surface(
@@ -858,7 +932,7 @@ private fun GraphiteFavori(app: AppInfo, ctx: HomeContext, onFocus: (Color) -> U
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
     ) {
         GraphiteFace(couleur, focus, rayon) {
-            GraphiteLogoFavori(app, icone, couleur, if (focus) 60.u else 46.u)
+            GraphiteLogoFavori(app, icone, couleur, if (g) 60.u else 46.u)
         }
     }
 }
@@ -1009,6 +1083,7 @@ private fun GraphiteEnTeteApps() {
  * fins) terminée par « Toutes les apps (N) ». Comme en CSS (flex: 1 1 auto), l'espace libre est
  * réparti entre les apps ; s'il y en a trop, la barre défile.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String) -> Unit) {
     val ui = ctx.ui
@@ -1049,7 +1124,10 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
             .size(G_LARGEUR.u, G_APPS_H.u)
             .graphitePanneau(10.u)
     )
-    // Pilules (rangée plus haute que le panneau : la lueur a la place de s'étendre)
+    // Pilules (rangée plus haute que le panneau : la lueur a la place de s'étendre). En défilant,
+    // la pilule sélectionnée reste dans le panneau avec la place de sa lueur.
+    val garde = (G_MARGE + 3 + G_MARGE_LUEUR_APPS).u
+    CompositionLocalProvider(LocalBringIntoViewSpec provides rememberGraphiteDefilement(garde, garde)) {
     LazyRow(
         state = ctx.rangeeApps,
         modifier = Modifier
@@ -1067,7 +1145,9 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                     Key.DirectionLeft -> nav.courante == premiere
                     else -> false
                 }
-            },
+            }
+            // Ce qui dépasse du panneau est effacé (fondu sur 22 unités à l'intérieur)
+            .graphiteBords(ctx.rangeeApps, G_MARGE.u, (G_MARGE + 22).u),
         contentPadding = PaddingValues(start = (G_MARGE + 3).u, end = (G_MARGE + 3).u, top = marge.u, bottom = marge.u),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1120,6 +1200,7 @@ private fun GraphiteMesApps(ctx: HomeContext, nav: GraphiteNav, horsApp: (String
                 Text(nombre, color = GraphiteEncre2, fontSize = 10.us, fontFamily = FontFamily.Monospace, maxLines = 1)
             }
         }
+    }
     }
 }
 
@@ -1278,6 +1359,8 @@ private class GraphiteNav {
     var courante: String? = null
     /** Compteur affiché à droite du titre. */
     var compteur by mutableStateOf<GraphiteCompteur?>(null)
+    /** Dernier favori sélectionné (reste grand quand le focus part ailleurs). */
+    var favoriActif by mutableStateOf<String?>(null)
 
     fun sauter(vers: GZone): Boolean {
         val depuis = cibles[courante] ?: return false
