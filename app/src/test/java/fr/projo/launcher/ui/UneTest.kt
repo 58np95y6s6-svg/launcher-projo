@@ -184,6 +184,14 @@ class UneTest : BancAccueil("UNE") {
         capturer("5_raccourci_reglages_maj")
     }
 
+    /** Molotov (jaune) : aplat noir chaud et nom géant à la couleur de la marque. */
+    @Test
+    fun captureJauneInverse() {
+        afficher()
+        donnerFocus(app(6))
+        capturer("9_jaune_inverse_molotov")
+    }
+
     @Test
     fun captureBibliotheque() {
         afficher()
@@ -202,7 +210,7 @@ class UneTest : BancAccueil("UNE") {
         afficherVariante(reglages = true)
         // Comme dans l'app : Réglages sélectionné, puis OK ouvre le panneau par-dessus l'accueil
         donnerFocus("rapide:Réglages")
-        panneauOuvert.value = true
+        compose.runOnIdle { panneauOuvert.value = true }
         avancer(1000)
         capturer("8_panneau_reglages")
     }

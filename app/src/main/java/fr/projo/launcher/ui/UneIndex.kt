@@ -2,6 +2,9 @@ package fr.projo.launcher.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -46,6 +50,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -245,6 +250,33 @@ private class UneRepartition(private val minimum: Dp, private val maximum: Dp) :
     }
 }
 
+/**
+ * Défilement des rangées : l'entrée sélectionnée reste entièrement entre les marges de 48.u
+ * (jamais de nom coupé au bord, place pour l'anneau et l'agrandissement) ; rien ne bouge si
+ * elle y est déjà.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private class UneDefilement(private val marge: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val fin = offset + size
+        return when {
+            size > containerSize - 2 * marge -> offset - marge
+            offset < marge -> offset - marge
+            fin > containerSize - marge -> fin - (containerSize - marge)
+            else -> 0f
+        }
+    }
+}
+
+/** Rangée défilante de « Une » : BringIntoViewSpec à marges (voir UneDefilement). */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UneAvecMarges(contenu: @Composable () -> Unit) {
+    val marge = with(LocalDensity.current) { 48.u.toPx() }
+    val spec = remember(marge) { UneDefilement(marge) }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec) { contenu() }
+}
+
 // ------------------------------------------------------------------ bande d'index
 
 /** Bande sombre teintée (aplat 16 %, lueur de l'aplat en haut), libellés et deux rangées. */
@@ -334,71 +366,73 @@ private fun UneRangeeFavoris(
     val ecartMin = 8.u
     val ecartMax = 72.u
     val repartition = remember(ecartMin, ecartMax) { UneRepartition(ecartMin, ecartMax) }
-    LazyRow(
-        state = ctx.rangeeFavoris,
-        modifier = Modifier
-            .padding(top = 400.u)
-            .fillMaxWidth()
-            .height(50.u)
-            .testTag("rangee:favoris")
-            .graphicsLayer { this.alpha = alpha.value }
-            .onGloballyPositioned { nav.origineFavoris = it.positionInRoot().x }
-            .onPreviewKeyEvent { nav.toucheFavoris(it, ctx) },
-        contentPadding = PaddingValues(horizontal = 48.u),
-        horizontalArrangement = repartition,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (ui.loaded && ui.favorites.isEmpty()) {
-            item(key = UneNav.CLE_AIDE) {
-                UneBouton(
-                    onClick = {},
-                    onFocus = {
-                        nav.focusCle = UneNav.CLE_AIDE
-                        nav.memFavori = UneNav.CLE_AIDE
-                        ctx.sansSelection()
-                        montrer(
-                            UneSujet(
-                                cle = "aide", titre = "Favoris", suivant = null, rubrique = "Favoris",
-                                position = 0, total = 0, detail = "Maintiens OK sur une app pour l'ajouter",
-                                action = null, couleur = UneGraphite, icone = ProjoIcons.Accueil, ordre = 2000,
+    UneAvecMarges {
+        LazyRow(
+            state = ctx.rangeeFavoris,
+            modifier = Modifier
+                .padding(top = 400.u)
+                .fillMaxWidth()
+                .height(50.u)
+                .testTag("rangee:favoris")
+                .graphicsLayer { this.alpha = alpha.value }
+                .onGloballyPositioned { nav.origineFavoris = it.positionInRoot().x }
+                .onPreviewKeyEvent { nav.toucheFavoris(it, ctx) },
+            contentPadding = PaddingValues(horizontal = 48.u),
+            horizontalArrangement = repartition,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (ui.loaded && ui.favorites.isEmpty()) {
+                item(key = UneNav.CLE_AIDE) {
+                    UneBouton(
+                        onClick = {},
+                        onFocus = {
+                            nav.focusCle = UneNav.CLE_AIDE
+                            nav.memFavori = UneNav.CLE_AIDE
+                            ctx.sansSelection()
+                            montrer(
+                                UneSujet(
+                                    cle = "aide", titre = "Favoris", suivant = null, rubrique = "Favoris",
+                                    position = 0, total = 0, detail = "Maintiens OK sur une app pour l'ajouter",
+                                    action = null, couleur = UneGraphite, icone = ProjoIcons.Accueil, ordre = 2000,
+                                )
                             )
+                        },
+                        hauteur = 38.u,
+                        rayon = 8.u,
+                        padding = PaddingValues(horizontal = 12.u),
+                        fond = Color.White.copy(alpha = 0.07f),
+                        bordure = Color.White.copy(alpha = 0.14f),
+                        repere = repere == UneNav.CLE_AIDE,
+                        modifier = Modifier
+                            .focusRequester(ctx.premierFocus)
+                            .then(nav.cible(UneNav.CLE_AIDE)),
+                    ) {
+                        Text(
+                            "Aucun favori · maintiens OK sur une app de « Mes apps » pour l'ajouter",
+                            fontSize = 14.us, fontWeight = FontWeight.SemiBold, fontFamily = UnePolice, maxLines = 1,
                         )
-                    },
-                    hauteur = 38.u,
-                    rayon = 8.u,
-                    padding = PaddingValues(horizontal = 12.u),
-                    fond = Color.White.copy(alpha = 0.07f),
-                    bordure = Color.White.copy(alpha = 0.14f),
-                    repere = repere == UneNav.CLE_AIDE,
-                    modifier = Modifier
-                        .focusRequester(ctx.premierFocus)
-                        .then(nav.cible(UneNav.CLE_AIDE)),
-                ) {
-                    Text(
-                        "Aucun favori · maintiens OK sur une app de « Mes apps » pour l'ajouter",
-                        fontSize = 14.us, fontWeight = FontWeight.SemiBold, fontFamily = UnePolice, maxLines = 1,
-                    )
+                    }
                 }
             }
-        }
-        itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
-            val cle = "fav:" + app.packageName
-            UneEntreeApp(
-                app = app,
-                ctx = ctx,
-                nav = nav,
-                cle = cle,
-                favori = true,
-                index = i,
-                total = ui.favorites.size,
-                suivant = ui.favorites.getOrNull(i + 1)?.label,
-                repere = repere == cle,
-                montrer = montrer,
-                modifier = Modifier
-                    .testTag("favori:" + app.packageName)
-                    .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
-                    .then(nav.cible(cle)),
-            )
+            itemsIndexed(ui.favorites, key = { _, a -> "fav:" + a.packageName }) { i, app ->
+                val cle = "fav:" + app.packageName
+                UneEntreeApp(
+                    app = app,
+                    ctx = ctx,
+                    nav = nav,
+                    cle = cle,
+                    favori = true,
+                    index = i,
+                    total = ui.favorites.size,
+                    suivant = ui.favorites.getOrNull(i + 1)?.label,
+                    repere = repere == cle,
+                    montrer = montrer,
+                    modifier = Modifier
+                        .testTag("favori:" + app.packageName)
+                        .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
+                        .then(nav.cible(cle)),
+                )
+            }
         }
     }
 }
@@ -416,89 +450,91 @@ private fun UneRangeeApps(
     val ecartMax = 72.u
     val repartition = remember(ecartMin, ecartMax) { UneRepartition(ecartMin, ecartMax) }
     val total = ui.homeApps.size + 1
-    LazyRow(
-        state = ctx.rangeeApps,
-        modifier = Modifier
-            .padding(top = 463.u)
-            .fillMaxWidth()
-            .height(50.u)
-            .testTag("rangee:apps")
-            .graphicsLayer { this.alpha = alpha.value }
-            .onGloballyPositioned { nav.origineApps = it.positionInRoot().x }
-            .onPreviewKeyEvent { nav.toucheApps(it, ctx) },
-        contentPadding = PaddingValues(horizontal = 48.u),
-        horizontalArrangement = repartition,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { i, app ->
-            val cle = "app:" + app.packageName
-            UneEntreeApp(
-                app = app,
-                ctx = ctx,
-                nav = nav,
-                cle = cle,
-                favori = false,
-                index = i,
-                total = total,
-                suivant = ui.homeApps.getOrNull(i + 1)?.label ?: "Toutes les apps",
-                repere = repere == cle,
-                montrer = montrer,
-                modifier = Modifier
-                    .testTag("app:" + app.packageName)
-                    .then(nav.cible(cle)),
-            )
-        }
-        // Bibliothèque : une entrée, pas une app (contour en tirets, pastille du nombre d'apps)
-        item(key = UneNav.CLE_BIBLIO) {
-            val nombre = ui.allApps.size
-            UneBouton(
-                onClick = ctx.actions.openLibrary,
-                onFocus = {
-                    nav.focusCle = UneNav.CLE_BIBLIO
-                    ctx.sansSelection()
-                    montrer(
-                        UneSujet(
-                            cle = UneNav.CLE_BIBLIO, titre = "Toutes les apps", suivant = null, rubrique = "Mes apps",
-                            position = total, total = total,
-                            detail = if (nombre > 1) "$nombre applications" else "$nombre application",
-                            action = "Ouvrir", couleur = UneIndigo, icone = ProjoIcons.Apps, ordre = 3000 + total,
+    UneAvecMarges {
+        LazyRow(
+            state = ctx.rangeeApps,
+            modifier = Modifier
+                .padding(top = 463.u)
+                .fillMaxWidth()
+                .height(50.u)
+                .testTag("rangee:apps")
+                .graphicsLayer { this.alpha = alpha.value }
+                .onGloballyPositioned { nav.origineApps = it.positionInRoot().x }
+                .onPreviewKeyEvent { nav.toucheApps(it, ctx) },
+            contentPadding = PaddingValues(horizontal = 48.u),
+            horizontalArrangement = repartition,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            itemsIndexed(ui.homeApps, key = { _, a -> "app:" + a.packageName }) { i, app ->
+                val cle = "app:" + app.packageName
+                UneEntreeApp(
+                    app = app,
+                    ctx = ctx,
+                    nav = nav,
+                    cle = cle,
+                    favori = false,
+                    index = i,
+                    total = total,
+                    suivant = ui.homeApps.getOrNull(i + 1)?.label ?: "Toutes les apps",
+                    repere = repere == cle,
+                    montrer = montrer,
+                    modifier = Modifier
+                        .testTag("app:" + app.packageName)
+                        .then(nav.cible(cle)),
+                )
+            }
+            // Bibliothèque : une entrée, pas une app (contour en tirets, pastille du nombre d'apps)
+            item(key = UneNav.CLE_BIBLIO) {
+                val nombre = ui.allApps.size
+                UneBouton(
+                    onClick = ctx.actions.openLibrary,
+                    onFocus = {
+                        nav.focusCle = UneNav.CLE_BIBLIO
+                        ctx.sansSelection()
+                        montrer(
+                            UneSujet(
+                                cle = UneNav.CLE_BIBLIO, titre = "Toutes les apps", suivant = null, rubrique = "Mes apps",
+                                position = total, total = total,
+                                detail = if (nombre > 1) "$nombre applications" else "$nombre application",
+                                action = "Ouvrir", couleur = UneIndigo, icone = ProjoIcons.Apps, ordre = 3000 + total,
+                            )
                         )
-                    )
-                },
-                hauteur = 38.u,
-                rayon = 8.u,
-                padding = PaddingValues(start = 6.u, end = 9.u),
-                bordure = Color.White.copy(alpha = 0.3f),
-                pointille = true,
-                encre = Color.White.copy(alpha = 0.82f),
-                focusFond = UneIndigo,
-                focusEncre = Color.White,
-                repere = repere == UneNav.CLE_BIBLIO,
-                modifier = Modifier
-                    .testTag("biblio")
-                    .focusRequester(ctx.focusBiblio)
-                    .then(nav.cible(UneNav.CLE_BIBLIO)),
-            ) { focus ->
-                Box {
-                    UnePastille(null, null, ProjoIcons.Apps, UneIndigo, 25.u, 6.u, lisere = false)
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 6.u, y = (-5).u)
-                            .height(13.u)
-                            .widthIn(min = 17.u)
-                            .background(Color.White, RoundedCornerShape(7.u))
-                            .padding(horizontal = 4.u),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "$nombre", color = UneEncreSombre, fontSize = 8.us, fontWeight = FontWeight.ExtraBold,
-                            fontFamily = UnePolice, maxLines = 1,
-                        )
+                    },
+                    hauteur = 38.u,
+                    rayon = 8.u,
+                    padding = PaddingValues(start = 6.u, end = 9.u),
+                    bordure = Color.White.copy(alpha = 0.3f),
+                    pointille = true,
+                    encre = Color.White.copy(alpha = 0.82f),
+                    focusFond = UneIndigo,
+                    focusEncre = Color.White,
+                    repere = repere == UneNav.CLE_BIBLIO,
+                    modifier = Modifier
+                        .testTag("biblio")
+                        .focusRequester(ctx.focusBiblio)
+                        .then(nav.cible(UneNav.CLE_BIBLIO)),
+                ) { focus ->
+                    Box {
+                        UnePastille(null, null, ProjoIcons.Apps, UneIndigo, 25.u, 6.u, lisere = false)
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 6.u, y = (-5).u)
+                                .height(13.u)
+                                .widthIn(min = 17.u)
+                                .background(Color.White, RoundedCornerShape(7.u))
+                                .padding(horizontal = 4.u),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "$nombre", color = UneEncreSombre, fontSize = 8.us, fontWeight = FontWeight.ExtraBold,
+                                fontFamily = UnePolice, maxLines = 1,
+                            )
+                        }
                     }
+                    Spacer(Modifier.width(6.u))
+                    UneNom("Toutes les apps", focus)
                 }
-                Spacer(Modifier.width(6.u))
-                UneNom("Toutes les apps", focus)
             }
         }
     }
