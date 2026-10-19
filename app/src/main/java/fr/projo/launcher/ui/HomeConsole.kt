@@ -14,7 +14,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.using
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -952,8 +951,9 @@ private fun ConsoleContenuCarte(libelle: String, pastille: @Composable BoxScope.
         Box(
             Modifier.size(26.u).clip(RoundedCornerShape(7.u)),
             contentAlignment = Alignment.Center,
-            content = pastille,
-        )
+        ) {
+            pastille()
+        }
         Text(
             libelle, fontSize = 13.us, fontWeight = FontWeight.Medium,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -1030,8 +1030,9 @@ private fun ConsoleCarte(
                 border = Border(BorderStroke(1.u, Color.White.copy(alpha = 0.09f)), shape = forme),
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
-            content = contenu,
-        )
+        ) {
+            contenu()
+        }
     }
 }
 
