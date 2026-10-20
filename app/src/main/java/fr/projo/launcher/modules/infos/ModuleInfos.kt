@@ -3,6 +3,7 @@ package fr.projo.launcher.modules.infos
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -134,11 +135,12 @@ object ModuleInfos : Module(
                         etats.any { it.chargement } -> "Infos…"
                         else -> "Infos indisponibles"
                     }
-                    Text(
-                        msg, color = style.texteDiscret, fontSize = 11.us, style = ligne(14.us),
-                        textAlign = TextAlign.Center, maxLines = 1,
-                        modifier = Modifier.fillMaxWidth().padding(top = 24.u),
-                    )
+                    Box(Modifier.fillMaxWidth().weight(1f).padding(bottom = ENTETE.u), contentAlignment = Alignment.Center) {
+                        Text(
+                            msg, color = style.texteDiscret, fontSize = 11.us, style = ligne(14.us),
+                            textAlign = TextAlign.Center, maxLines = 1,
+                        )
+                    }
                 } else {
                     Crossfade(targetState = page, animationSpec = tween(700), label = "infos") { p ->
                         val morceau = titres.drop(p * parPage).take(parPage)

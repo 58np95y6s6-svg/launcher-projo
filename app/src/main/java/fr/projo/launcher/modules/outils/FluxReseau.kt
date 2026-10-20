@@ -90,7 +90,7 @@ object FluxReseau {
 object TexteFlux {
 
     private val ENTITES = mapOf(
-        "amp" to "&", "lt" to "<", "gt" to ">", "quot" to "\"", "apos" to "'", "nbsp" to " ",
+        "amp" to "&", "lt" to "<", "gt" to ">", "quot" to "\"", "apos" to "'", "nbsp" to "\u00A0",
         "rsquo" to "’", "lsquo" to "‘", "rdquo" to "”", "ldquo" to "“", "laquo" to "«", "raquo" to "»",
         "hellip" to "…", "ndash" to "–", "mdash" to "—", "euro" to "€", "eacute" to "é", "egrave" to "è",
         "ecirc" to "ê", "agrave" to "à", "acirc" to "â", "ccedil" to "ç", "ocirc" to "ô", "ucirc" to "û",
@@ -128,7 +128,10 @@ object TexteFlux {
     fun nettoyer(s: String?): String {
         if (s.isNullOrBlank()) return ""
         val sansBalises = entites(BALISE.replace(entites(s), " "))
+        // Guillemets et ponctuation double : espace insécable (pas de « seul en fin de ligne)
         return ESPACES.replace(sansBalises, " ").trim()
+            .replace("« ", "«\u00A0").replace(" »", "\u00A0»")
+            .replace(" :", "\u00A0:").replace(" ?", "\u00A0?").replace(" !", "\u00A0!")
     }
 }
 

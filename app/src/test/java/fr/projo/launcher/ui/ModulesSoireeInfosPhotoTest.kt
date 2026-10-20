@@ -394,7 +394,7 @@ class LectureSourcesTest {
 <item><title>Sans date</title></item>
 </channel></rss>"""
         val t = InfosReseau.lire(xml.byteInputStream(), "franceinfo")
-        assertEquals(listOf("Retraites : l'Assemblée adopte le texte", "Météo été : chaleur record", "Sans date"), t.map { it.titre })
+        assertEquals(listOf("Retraites\u00A0: l'Assemblée adopte le texte", "Météo été\u00A0: chaleur record", "Sans date"), t.map { it.titre })
         assertEquals(SimpleDateFormat("yyyy-MM-dd HH:mm Z", Locale.US).parse("2026-10-19 16:05 +0000")!!.time, t[0].date)
         assertEquals(SimpleDateFormat("yyyy-MM-dd HH:mm Z", Locale.US).parse("2026-10-19 15:30 +0000")!!.time, t[1].date)
         assertNull(t[2].date)
@@ -436,7 +436,7 @@ class LectureSourcesTest {
 
     @Test
     fun texte() {
-        assertEquals("L'été « chaud » – 3 €", TexteFlux.nettoyer("L&#x27;&eacute;t&eacute; &laquo;&nbsp;chaud&nbsp;&raquo; &ndash; 3&nbsp;&euro;"))
+        assertEquals("L'été «\u00A0chaud\u00A0» – 3\u00A0€", TexteFlux.nettoyer("L&#x27;&eacute;t&eacute; &laquo;&nbsp;chaud&nbsp;&raquo; &ndash; 3&nbsp;&euro;"))
         assertNotNull(SoireeTv.normaliser("Canal+").takeIf { it == "canalplus" })
         assertEquals("france2", SoireeTv.normaliser("France2.fr"))
     }
