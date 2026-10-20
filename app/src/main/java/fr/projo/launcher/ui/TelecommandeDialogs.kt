@@ -161,6 +161,7 @@ fun AppairageDialog(
                 when (etat) {
                     is EtatAppairage.EnCours -> QrCodeImage(etat.url, Modifier.fillMaxSize().testTag("qr"))
                     is EtatAppairage.Reussi -> Text("✓", color = Color(0xFF1B8A4A), fontSize = 120.us)
+                    is EtatAppairage.Inactif -> Text("…", color = Color(0xFF333333), fontSize = 40.us)
                     else -> Text("Code expiré", color = Color(0xFF333333), fontSize = 22.us, fontWeight = FontWeight.Medium)
                 }
             }
@@ -210,6 +211,11 @@ fun AppairageDialog(
                         Text("Il pilote maintenant la TV, sans refaire cette étape.", color = c.texteDiscret, fontSize = 13.us)
                         Spacer(Modifier.height(20.u))
                         Bouton("Terminé", Modifier.focusRequester(focus), accent = true, onClick = onFermer)
+                    }
+                    is EtatAppairage.Inactif -> {
+                        Text("Préparation du code…", color = c.texte, fontSize = 15.us)
+                        Spacer(Modifier.height(20.u))
+                        Bouton("Fermer", Modifier.focusRequester(focus), onClick = onFermer)
                     }
                     else -> {
                         Text("Le code a expiré au bout de 5 minutes.", color = c.texte, fontSize = 15.us)
@@ -402,25 +408,73 @@ fun AideTelecommandeDialog(
     onAccessibilite: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val etatClavier = when {
-        resume.clavierChoisi -> "Clavier iBiProjo : activé et choisi ✓"
-        resume.clavierActive -> "Clavier iBiProjo : activé, à choisir comme clavier"
-        else -> "Clavier iBiProjo : à activer"
+    val c = LocalDesign.current.colors()
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val focus = remember { FocusRequester() }
+        FocusInitial(focus)
+        Row(
+            Modifier
+                .width(880.u)
+                .background(c.panneau, RoundedCornerShape(26.u))
+                .padding(28.u),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Clavier et navigation", color = c.texte, fontSize = 24.us, fontWeight = FontWeight.Light)
+                Spacer(Modifier.height(12.u))
+                Etat(
+                    fait = resume.clavierChoisi,
+                    texte = when {
+                        resume.clavierChoisi -> "Clavier iBiProjo : activé et choisi"
+                        resume.clavierActive -> "Clavier iBiProjo : activé, à choisir"
+                        else -> "Clavier iBiProjo : à activer"
+                    },
+                )
+                Etat(fait = resume.navigationActive, texte = if (resume.navigationActive) "Navigation : activée" else "Navigation (accessibilité) : à activer")
+                Spacer(Modifier.height(10.u))
+                Text(
+                    "À faire une seule fois. Le clavier écrit dans les applis le texte tapé sur le téléphone ; " +
+                        "la navigation fait marcher les flèches et OK hors d'iBiProjo. Sans téléphone connecté, " +
+                        "le clavier rend la main au clavier habituel.",
+                    color = c.texteDiscret, fontSize = 12.us,
+                )
+                Spacer(Modifier.height(16.u))
+                Column(verticalArrangement = Arrangement.spacedBy(8.u)) {
+                    Bouton("Activer le clavier (page système)", Modifier.fillMaxWidth().focusRequester(focus), onClick = onReglagesClavier)
+                    Bouton("Choisir le clavier", Modifier.fillMaxWidth(), onClick = onChoisirClavier)
+                    Bouton("Activer la navigation (Accessibilité)", Modifier.fillMaxWidth(), onClick = onAccessibilite)
+                    Bouton("Fermer", Modifier.fillMaxWidth(), onClick = onDismiss)
+                }
+            }
+            Spacer(Modifier.width(24.u))
+            Column(Modifier.width(400.u)) {
+                Text("Fire TV, ou appareil sans ces pages", color = c.texte, fontSize = 14.us, fontWeight = FontWeight.SemiBold)
+                Text("Depuis un ordinateur avec adb (débogage ADB activé) :", color = c.texteDiscret, fontSize = 12.us)
+                Spacer(Modifier.height(10.u))
+                Column(
+                    Modifier.fillMaxWidth().background(c.carte, RoundedCornerShape(12.u)).padding(12.u),
+                    verticalArrangement = Arrangement.spacedBy(8.u),
+                ) {
+                    for (commande in commandes) {
+                        Text(commande, color = c.texte, fontSize = 10.us, fontFamily = FontFamily.Monospace, lineHeight = 13.us)
+                    }
+                }
+                Spacer(Modifier.height(8.u))
+                Text(
+                    "La dernière commande est facultative : elle permet au clavier iBiProjo de se re-choisir tout seul quand un téléphone se connecte.",
+                    color = c.texteDiscret, fontSize = 11.us,
+                )
+            }
+        }
     }
-    val etatNavigation = if (resume.navigationActive) "Navigation (accessibilité) : activée ✓" else "Navigation (accessibilité) : à activer"
-    MenuDialog(
-        title = "Clavier et navigation",
-        subtitle = "$etatClavier\n$etatNavigation\n\n" +
-            "Une seule fois : le clavier iBiProjo écrit dans les applis le texte tapé sur le téléphone ; " +
-            "la navigation permet les flèches et OK hors d'iBiProjo. Sans téléphone connecté, le clavier " +
-            "rend la main au clavier habituel.\n\n" +
-            "Fire TV (ou sans ces pages) : avec adb depuis un ordinateur, tape :\n" + commandes.joinToString("\n"),
-        actions = listOf(
-            MenuAction("Activer le clavier (page système)", onReglagesClavier),
-            MenuAction("Choisir le clavier", onChoisirClavier),
-            MenuAction("Activer la navigation (Accessibilité)", onAccessibilite),
-            MenuAction("Fermer") {},
-        ),
-        onDismiss = onDismiss,
-    )
+}
+
+/** Ligne d'état : pastille verte (fait) ou orange (à faire). */
+@Composable
+private fun Etat(fait: Boolean, texte: String) {
+    val c = LocalDesign.current.colors()
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.u)) {
+        Box(Modifier.size(10.u).background(if (fait) Color(0xFF3DDC84) else Color(0xFFFFB86B), RoundedCornerShape(5.u)))
+        Spacer(Modifier.width(10.u))
+        Text(texte, color = c.texte, fontSize = 14.us)
+    }
 }

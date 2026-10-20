@@ -28,7 +28,9 @@ class ChampFactice(texte: String, curseur: Int = texte.length, private val avecE
     private val contenu = SpannableStringBuilder(texte).also { Selection.setSelection(it, curseur) }
     val actions = mutableListOf<Int>()
     val touches = mutableListOf<KeyEvent>()
+    /** Modifications groupées de premier niveau (BaseInputConnection en ouvre aussi à l'intérieur). */
     var lots = 0
+    private var profondeur = 0
 
     val texte: String get() = contenu.toString()
     val selection: Pair<Int, Int> get() = Selection.getSelectionStart(contenu) to Selection.getSelectionEnd(contenu)
@@ -45,7 +47,8 @@ class ChampFactice(texte: String, curseur: Int = texte.length, private val avecE
         }
     }
 
-    override fun beginBatchEdit(): Boolean { lots++; return true }
+    override fun beginBatchEdit(): Boolean { if (profondeur++ == 0) lots++; return true }
+    override fun endBatchEdit(): Boolean { profondeur--; return profondeur > 0 }
     override fun performEditorAction(actionCode: Int): Boolean { actions += actionCode; return true }
     override fun sendKeyEvent(event: KeyEvent): Boolean { touches += event; return true }
 }
