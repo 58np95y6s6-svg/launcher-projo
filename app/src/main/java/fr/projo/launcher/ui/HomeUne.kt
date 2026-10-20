@@ -99,6 +99,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.modules.FocusModules
 import java.util.Calendar
 import java.util.Locale
 import kotlinx.coroutines.delay
@@ -273,6 +274,11 @@ fun HomeUne(ctx: HomeContext) {
     val nav = remember { UneNav() }
     var sujet by remember { mutableStateOf<UneSujet?>(null) }
     val montrer: (UneSujet) -> Unit = { sujet = it }
+    // Zone de modules sélectionnée : le titre du module (« Météo · Lyon »…) fait la une
+    val titreModule = FocusModules.titre
+    val sujetAffiche = sujet?.let { s ->
+        if (s.cle == UneNav.CLE_ZONE && titreModule != null) s.copy(cle = "zone:$titreModule", titre = titreModule) else s
+    }
     val t = rememberMaintenant()
     val soir = uneSoir(t)
 
@@ -298,7 +304,7 @@ fun HomeUne(ctx: HomeContext) {
             .fillMaxSize()
             .background(UneFond)
     ) {
-        UneAffiche(ctx, nav, sujet, soir, aplat, t, montrer)
+        UneAffiche(ctx, nav, sujetAffiche, soir, aplat, t, montrer)
         UneIndex(ctx, nav, aplat, montrer)
     }
 }
@@ -328,7 +334,7 @@ private fun UneAffiche(
 
         UneLigneHaute(ctx, nav, aplat, t, montrer)
         UneHorloge(t)
-        UneNba(
+        UneZone(
             ctx, nav, montrer,
             Modifier
                 .align(Alignment.TopEnd)

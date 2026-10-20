@@ -25,6 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
@@ -40,9 +42,13 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.em
 import androidx.tv.material3.Text
+import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaGame
 import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.data.NbaTeam
+import fr.projo.launcher.modules.LocalHoteModules
+import fr.projo.launcher.modules.sport.ModuleSport
+import fr.projo.launcher.modules.sport.SportReseau
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,15 +64,87 @@ private val UneStyleScore = TextStyle(
 )
 
 /**
+ * Zone de modules de « Une » (ex-bandeau NBA, choisie dans Réglages → Modules) :
+ *  - module Sport réglé sur la NBA seule (le cas par défaut) : le score façon journal sportif
+ *    de la maquette (UneNba), comme Graphite dessine son propre bandeau (NbaGraphite) ;
+ *  - autres choix : la zone de modules commune (NbaPanel), aux couleurs de « Une », réduite à
+ *    82 % pour tenir entre la ligne haute et le filet (360 × 117.u).
+ * Quand un module a le focus, son titre (FocusModules.titre) s'affiche en nom géant.
+ */
+@Composable
+internal fun UneZone(ctx: HomeContext, nav: UneNav, montrer: (UneSujet) -> Unit, modifier: Modifier) {
+    val repli = remember(ctx.nbaData, ctx.nbaErreur) { SportReseau.hoteNba(ctx.nbaData, ctx.nbaErreur) }
+    val hote = LocalHoteModules.current ?: repli
+    if (ModuleSport.nbaSeule(hote)) {
+        SportReseau.adopter(ctx.nbaRepo)
+        val etat = ModuleSport.rememberNba(hote.donnees)
+        UneNba(etat.valeur?.nba, etat.erreur, ctx, nav, montrer, modifier)
+    } else {
+        nav.ongletNba = 0
+        val entree = nav.demandeur("nba:0")
+        val sujet = UneSujet(
+            cle = UneNav.CLE_ZONE, titre = "Modules", suivant = null, rubrique = "Module",
+            position = 0, total = 0, detail = "Réglages → Modules", action = null,
+            couleur = UneGraphite, icone = ProjoIcons.Apps, ordre = 1000,
+        )
+        Box(
+            modifier
+                .padding(top = 64.u)
+                .onGloballyPositioned { nav.centres[UneNav.CLE_ZONE] = it.positionInRoot().x + it.size.width / 2f }
+                .onFocusChanged {
+                    if (it.hasFocus && nav.focusCle != UneNav.CLE_ZONE) {
+                        nav.focusCle = UneNav.CLE_ZONE
+                        ctx.sansSelection()
+                        montrer(sujet)
+                    }
+                }
+                // ▲ / ▼ que le module n'a pas utilisés : pilules / favoris
+                .onKeyEvent { nav.toucheZone(it, ctx) }
+        ) {
+            NbaPanel(
+                data = ctx.nbaData,
+                erreur = ctx.nbaErreur,
+                repo = ctx.nbaRepo,
+                onExit = ctx.sortieNba,
+                style = UneStyleModules,
+                entree = entree,
+            )
+        }
+    }
+}
+
+/** Zone de modules aux couleurs de « Une » : panneau sombre translucide sur l'aplat, encre blanche. */
+private val UneStyleModules = NbaStyle(
+    largeur = 439,
+    rayon = 12,
+    fond = Color.Black.copy(alpha = 0.2f),
+    bordure = Color.White.copy(alpha = 0.3f),
+    texte = Color.White,
+    texteDiscret = Color.White.copy(alpha = 0.8f),
+    ongletActif = Color.White.copy(alpha = 0.2f),
+    focusFond = Color.White,
+    focusTexte = UneEncreSombre,
+    pastilleFond = Color.White.copy(alpha = 0.92f),
+    echelle = 0.82f,
+    zoneLargeur = 439,
+)
+
+/**
  * Score NBA façon journal sportif : « NBA  CETTE NUIT  RÉSULTATS » (onglets focalisables),
  * le match à la une en chiffres géants (meneur ▲, pastille DIRECT, temps de jeu), puis les
  * matchs suivants sur une ligne. Sans match / sans réseau : un message à la place du score.
  * ◀ ▶ changent d'onglet ; ◀ sur le premier onglet ou Retour : retour aux favoris.
  */
 @Composable
-internal fun UneNba(ctx: HomeContext, nav: UneNav, montrer: (UneSujet) -> Unit, modifier: Modifier) {
+private fun UneNba(
+    data: NbaData?,
+    erreur: Boolean,
+    ctx: HomeContext,
+    nav: UneNav,
+    montrer: (UneSujet) -> Unit,
+    modifier: Modifier,
+) {
     var onglet by remember { mutableIntStateOf(0) }
-    val data = ctx.nbaData
     val nuit = data?.tonight
     val libelleNuit = if (nuit == null || nuit.isTonight) "Cette nuit" else NbaRepository.libelleJour(nuit.day)
 
@@ -117,7 +195,6 @@ internal fun UneNba(ctx: HomeContext, nav: UneNav, montrer: (UneSujet) -> Unit, 
                     rayon = 12.u,
                     padding = PaddingValues(horizontal = 6.u),
                     modifier = Modifier
-                        .testTag("nba:onglet$i")
                         .onGloballyPositioned { nav.centres[cle] = it.positionInRoot().x + it.size.width / 2f }
                         .then(nav.cible(cle)),
                 ) { focus ->
@@ -146,7 +223,7 @@ internal fun UneNba(ctx: HomeContext, nav: UneNav, montrer: (UneSujet) -> Unit, 
 
         if (vedette == null) {
             val message = when {
-                data == null && !ctx.nbaErreur -> "Chargement des matchs…"
+                data == null && !erreur -> "Chargement des matchs…"
                 data == null -> "Matchs indisponibles\n(pas de connexion)"
                 onglet == 1 -> "Pas de résultat récent"
                 else -> "Aucun match NBA\ncette semaine"

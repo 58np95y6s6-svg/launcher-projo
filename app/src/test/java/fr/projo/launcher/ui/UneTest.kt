@@ -10,6 +10,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToIndex
@@ -60,11 +63,9 @@ class UneTest : BancAccueil("UNE") {
         if (nba == null || "nba" !in nba.chaine) fail("[UNE] ▼ depuis Réglages : attendu le bloc NBA, obtenu ${decrire(nba)}")
         // ▶ : onglet Résultats, ◀ : retour à Cette nuit
         appuyer(Key.DirectionRight)
-        val res = focus()
-        if (res?.chaine?.contains("nba:onglet1") != true) fail("[UNE] ▶ dans le NBA : attendu « Résultats », obtenu ${decrire(res)}")
+        if (!ongletSelectionne("RÉSULTATS")) fail("[UNE] ▶ dans le NBA : attendu « Résultats », obtenu ${decrire(focus())}")
         appuyer(Key.DirectionLeft)
-        val nuit = focus()
-        if (nuit?.chaine?.contains("nba:onglet0") != true) fail("[UNE] ◀ sur « Résultats » : attendu « Cette nuit », obtenu ${decrire(nuit)}")
+        if (!ongletSelectionne("CETTE NUIT")) fail("[UNE] ◀ sur « Résultats » : attendu « Cette nuit », obtenu ${decrire(focus())}")
         // ▼ : retour au favori mémorisé (le 1er)
         appuyer(Key.DirectionDown)
         val fav = focus()
@@ -74,11 +75,12 @@ class UneTest : BancAccueil("UNE") {
     @Test
     fun gaucheEtRetourQuittentLeNba() {
         afficher()
-        donnerFocus("nba:onglet0")
+        donnerFocus("nba")
         appuyer(Key.DirectionLeft)
         val f = focus()
         if (!estFavori(f)) fail("[UNE] ◀ dans le NBA : attendu un favori, obtenu ${decrire(f)}")
-        donnerFocus("nba:onglet1")
+        donnerFocus("nba")
+        appuyer(Key.DirectionRight)
         appuyer(Key.Back)
         val g = focus()
         if (!estFavori(g)) fail("[UNE] Retour dans le NBA : attendu un favori, obtenu ${decrire(g)}")
@@ -87,7 +89,7 @@ class UneTest : BancAccueil("UNE") {
     @Test
     fun hautDepuisNbaVersPilules() {
         afficher()
-        donnerFocus("nba:onglet0")
+        donnerFocus("nba")
         appuyer(Key.DirectionUp)
         val f = focus()
         if (f == null || !f.etiquette.startsWith("rapide:")) fail("[UNE] ▲ depuis le NBA : attendu une pilule, obtenu ${decrire(f)}")
@@ -149,6 +151,22 @@ class UneTest : BancAccueil("UNE") {
         if (!estFavori(focus())) fail("[UNE] ▲ depuis « Toutes les apps » : obtenu ${decrire(focus())}")
     }
 
+    /** ▶ au bout des pilules : le bloc NBA. */
+    @Test
+    fun droiteAuBoutDesPilulesVersNba() {
+        afficher()
+        donnerFocus("rapide:Réglages")
+        appuyer(Key.DirectionRight)
+        val f = focus()
+        if (f == null || "nba" !in f.chaine) fail("[UNE] ▶ sur Réglages (dernière pilule) : attendu le bloc NBA, obtenu ${decrire(f)}")
+    }
+
+    /** Onglet NBA sélectionné, reconnu à son texte (« CETTE NUIT », « RÉSULTATS »). */
+    private fun ongletSelectionne(texte: String): Boolean =
+        compose.onAllNodes(hasText(texte) and hasAnyAncestor(isFocused()), useUnmergedTree = true)
+            .fetchSemanticsNodes().isNotEmpty() ||
+            compose.onAllNodes(hasText(texte) and isFocused(), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
     /** Fait défiler « Mes apps » jusqu'au bout puis sélectionne « Toutes les apps ». */
     private fun versBiblio() {
         compose.onNodeWithTag("rangee:apps").performScrollToIndex(ui.homeApps.size)
@@ -178,9 +196,9 @@ class UneTest : BancAccueil("UNE") {
     @Test
     fun captureNba() {
         afficher()
-        donnerFocus("nba:onglet0")
+        donnerFocus("nba")
         capturer("4_nba")
-        donnerFocus("nba:onglet1")
+        appuyer(Key.DirectionRight)
         capturer("4b_nba_resultats")
     }
 
