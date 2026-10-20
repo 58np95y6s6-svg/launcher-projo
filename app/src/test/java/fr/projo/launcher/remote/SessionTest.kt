@@ -153,13 +153,14 @@ class SessionTest {
         assertTrue(fermee)
     }
 
-    /** Clé différente de celle enregistrée pour cet appareil : refus. */
+    /** Appareil connu : le champ `cle` éventuel est ignoré, seule la clé enregistrée compte. */
     @Test
-    fun cleDifferenteDeLaCleEnregistree() {
+    fun cleRecueIgnoreePourUnAppareilConnu() {
         appairer()
         val s = session()
         s.recevoir(hello(cle = Vecteurs.TV_SPKI))
-        assertTrue(fermee)
+        assertTrue(s.authentifiee)
+        assertFalse(fermee)
     }
 
     @Test
@@ -219,20 +220,24 @@ class SessionTest {
         s.recevoir(msg("key", "k" to "up"))
         assertTrue(hote.injecteur.commandes.isEmpty())
 
-        // Il revient comme s'il était encore appairé : la TV lui dit d'oublier
+        // Il revient comme s'il était encore appairé : hello signé de la TV, puis revoked
         val s2 = session()
         s2.recevoir(hello())
-        assertEquals("revoked", envoyes.single().getString("t"))
+        assertEquals(listOf("hello", "revoked"), envoyes.map { it.getString("t") })
+        val cleTv = CryptoTelecommande.clePublique(Base64Url.decoder(Vecteurs.TV_SPKI)!!)!!
+        val chaine = CryptoTelecommande.chaineHelloTv(Vecteurs.DTLS_TV, Vecteurs.DTLS_TEL, Vecteurs.NONCE_TEL, envoyes[0].getString("nonce"))
+        assertTrue(CryptoTelecommande.verifier(cleTv, chaine, Base64Url.decoder(envoyes[0].getString("sig"))!!))
         assertTrue(fermee)
+        assertFalse(s2.authentifiee)
 
-        // Il revient avec sa clé : seulement un nouvel appairage possible, aucune commande
+        // Il revient avec sa clé : seulement un nouvel appairage possible (et ping), aucune commande
         val s3 = session()
         s3.recevoir(hello(cle = Vecteurs.TEL_SPKI))
         assertEquals("hello", envoyes.single().getString("t"))
         assertEquals(SessionTelecommande.Etat.CLE_VERIFIEE, s3.etat)
         toutesLesCommandes(s3)
         assertTrue(hote.injecteur.commandes.isEmpty())
-        assertEquals(1, envoyes.size)
+        assertEquals(listOf("hello", "pong"), envoyes.map { it.getString("t") })
     }
 
     // ------------------------------------------------------------------ appairage

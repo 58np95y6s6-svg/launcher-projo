@@ -43,6 +43,7 @@ class ClientPeerJs(
         }
     }
     private val reconnexion = Runnable { connecter() }
+    private val openImplicite = Runnable { if (socket != null && !ouvert) ouvrir("implicite") }
 
     /** Se connecte (et reste connecté) jusqu'à [arreter]. */
     fun demarrer() {
@@ -56,6 +57,7 @@ class ClientPeerJs(
         actif = false
         fil.removeCallbacks(reconnexion)
         fil.removeCallbacks(battement)
+        fil.removeCallbacks(openImplicite)
         generation++
         ouvert = false
         socket?.close(1000, null)
@@ -85,6 +87,14 @@ class ClientPeerJs(
         val gen = ++generation
         val requete = Request.Builder().url(RemoteConfig.urlPeerJs(id, jeton)).build()
         socket = http.newWebSocket(requete, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                fil.post {
+                    if (gen != generation) return@post
+                    fil.removeCallbacks(openImplicite)
+                    fil.postDelayed(openImplicite, RemoteConfig.OPEN_IMPLICITE_MS)
+                }
+            }
+
             override fun onMessage(webSocket: WebSocket, text: String) {
                 fil.post { if (gen == generation) recu(text) }
             }
@@ -102,14 +112,7 @@ class ClientPeerJs(
     private fun recu(texte: String) {
         val m = try { JSONObject(texte) } catch (e: Exception) { return }
         when (val type = m.optString("type")) {
-            "OPEN" -> {
-                ouvert = true
-                delai = RemoteConfig.RECONNEXION_MIN_MS
-                Log.i(TAG, "Serveur de mise en relation : connecté")
-                fil.removeCallbacks(battement)
-                fil.postDelayed(battement, RemoteConfig.HEARTBEAT_MS)
-                surEtat(true)
-            }
+            "OPEN" -> if (!ouvert) ouvrir("OPEN")
             "ID-TAKEN", "ERROR", "INVALID-KEY" -> {
                 Log.w(TAG, "Serveur de mise en relation : refus ($type)")
                 socket?.close(1000, null)
@@ -120,7 +123,18 @@ class ClientPeerJs(
         }
     }
 
+    private fun ouvrir(comment: String) {
+        fil.removeCallbacks(openImplicite)
+        ouvert = true
+        delai = RemoteConfig.RECONNEXION_MIN_MS
+        Log.i(TAG, "Serveur de mise en relation : connecté ($comment)")
+        fil.removeCallbacks(battement)
+        fil.postDelayed(battement, RemoteConfig.HEARTBEAT_MS)
+        surEtat(true)
+    }
+
     private fun perdu() {
+        fil.removeCallbacks(openImplicite)
         val etaitOuvert = ouvert
         ouvert = false
         generation++

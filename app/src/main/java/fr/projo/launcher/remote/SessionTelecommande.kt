@@ -91,7 +91,10 @@ class SessionTelecommande(
         val t = m.optString("t")
         if (t == "hello") return hello(m)
         when (etat) {
-            Etat.CLE_VERIFIEE -> if (t == "pair_request" && versionOk(m)) demandeAppairage(m)
+            Etat.CLE_VERIFIEE -> if (versionOk(m)) {
+                // Pendant l'appairage : seulement pair_request et ping
+                if (t == "pair_request") demandeAppairage(m) else if (t == "ping") envoyer(Protocole.pong(m.opt("n")))
+            }
             Etat.AUTHENTIFIEE -> if (versionOk(m)) commande(t, m)
             else -> Unit // avant les hello : ignoré
         }
@@ -144,17 +147,15 @@ class SessionTelecommande(
         ) return refuser()
 
         val connu = hote.registre.trouver(id)
-        val cleRecue = m.optString("cle").takeIf { it.isNotEmpty() }?.let { Base64Url.decoder(it) ?: return refuser() }
         val spki: ByteArray = when {
-            connu != null -> {
-                val enregistree = Base64Url.decoder(connu.cle) ?: return refuser()
-                if (cleRecue != null && !cleRecue.contentEquals(enregistree)) return refuser()
-                enregistree
-            }
-            cleRecue != null -> cleRecue
+            // Appareil connu : clé enregistrée (le champ `cle` éventuel est ignoré)
+            connu != null -> Base64Url.decoder(connu.cle) ?: return refuser()
+            m.optString("cle").isNotEmpty() -> Base64Url.decoder(m.optString("cle")) ?: return refuser()
             else -> {
-                // Téléphone qui se croit appairé mais inconnu de la TV (révoqué) : il oublie la TV
+                // Téléphone qui se croit appairé mais inconnu de la TV (révoqué hors ligne) :
+                // hello signé, puis revoked, puis fermeture. La PWA oublie alors la TV.
                 hote.journal("téléphone inconnu (révoqué)")
+                envoyerHelloTv(tel, tv, nonce)
                 envoyer(Protocole.revoked())
                 terminer()
                 return
@@ -166,8 +167,20 @@ class SessionTelecommande(
         appareil = id
         cleTelephone = spki
         nomPropose = RegistreTelecommande.nettoyerNom(m.optString("nom"))
+        envoyerHelloTv(tel, tv, nonce)
+        if (connu != null) {
+            etat = Etat.AUTHENTIFIEE
+            hote.journal("téléphone connecté")
+            hote.surAuthentifiee(this)
+        } else {
+            etat = Etat.CLE_VERIFIEE
+            hote.journal("téléphone non appairé")
+        }
+    }
+
+    private fun envoyerHelloTv(tel: String, tv: String, nonceTel: String) {
         val nonceTv = CryptoTelecommande.nonce()
-        val sigTv = hote.identite.signer(CryptoTelecommande.chaineHelloTv(tv, tel, nonce, nonceTv))
+        val sigTv = hote.identite.signer(CryptoTelecommande.chaineHelloTv(tv, tel, nonceTel, nonceTv))
         envoyer(
             Protocole.helloTv(
                 nonce = nonceTv,
@@ -178,14 +191,6 @@ class SessionTelecommande(
                 cle = Base64Url.encoder(hote.identite.spki),
             ),
         )
-        if (connu != null) {
-            etat = Etat.AUTHENTIFIEE
-            hote.journal("téléphone connecté")
-            hote.surAuthentifiee(this)
-        } else {
-            etat = Etat.CLE_VERIFIEE
-            hote.journal("téléphone non appairé")
-        }
     }
 
     /** Vérification ratée : canal fermé, sans détail. */
@@ -200,17 +205,17 @@ class SessionTelecommande(
         if (confirmationEnCours) return
         val id = appareil ?: return
         val spki = cleTelephone ?: return
-        val cle = Base64Url.decoder(m.optString("cle"))
-        // La clé de la demande doit être celle qui a signé le hello
-        if (cle == null || !cle.contentEquals(spki)) {
-            envoyer(Protocole.pairRefused(RaisonRefus.INVALIDE))
-            return
-        }
         val empreinteTv = CryptoTelecommande.empreinteCle(hote.identite.spki)
         val raison = hote.appairage.verifier(m.optString("secret"), m.optString("empreinteTV").ifEmpty { null }, empreinteTv)
         if (raison != null) {
             hote.journal("appairage refusé (${raison.valeur})")
             envoyer(Protocole.pairRefused(raison))
+            return
+        }
+        // La clé de la demande doit être celle qui a signé le hello
+        val cle = Base64Url.decoder(m.optString("cle"))
+        if (cle == null || !cle.contentEquals(spki)) {
+            envoyer(Protocole.pairRefused(RaisonRefus.INVALIDE))
             return
         }
         val nom = RegistreTelecommande.nettoyerNom(m.optString("nom")).ifEmpty { nomPropose }.ifEmpty { "Téléphone" }

@@ -44,7 +44,8 @@ object UsineWebRtc {
  * DataChannel « telecommande » ; la TV répond (ANSWER) et échange les candidats ICE.
  *
  * Format des `payload` relayés par le serveur (compatible PeerJS, voir docs/telecommande.md) :
- * - OFFER / ANSWER : `{ sdp: { type, sdp }, type: "data", connectionId }` ;
+ * - OFFER : `{ sdp: { type: "offer", sdp }, type: "data", connectionId, label, reliable, serialization }` ;
+ * - ANSWER : `{ sdp: { type: "answer", sdp }, type: "data", connectionId }` (connectionId de l'offre) ;
  * - CANDIDATE : `{ candidate: { candidate, sdpMid, sdpMLineIndex }, type: "data", connectionId }`.
  *
  * Tous les rappels sont ramenés sur [fil].
@@ -105,8 +106,7 @@ class ConnexionWebRtc(
                         JSONObject()
                             .put("sdp", JSONObject().put("type", "answer").put("sdp", sdp.description))
                             .put("type", "data")
-                            .put("connectionId", connectionId)
-                            .put("browser", "ibiprojo"),
+                            .put("connectionId", connectionId),
                     )
                 }
             }

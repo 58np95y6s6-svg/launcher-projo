@@ -168,20 +168,20 @@ object CryptoTelecommande {
     // ------------------------------------------------------------------ SDP
 
     /**
-     * Empreinte DTLS d'un SDP : valeur de la première ligne `a=fingerprint:sha-256 …`
-     * (session ou média), en hexadécimal MAJUSCULE avec les « : », sans le nom de
-     * l'algorithme. Ex. « 8A:3F:…:C2 » (32 octets, 95 caractères). null si absente.
+     * Empreinte DTLS d'un SDP, normalisée « <algorithme en minuscules> <HEX MAJUSCULES:…> »,
+     * ex. « sha-256 4F:1A:…:DD » : première ligne `a=fingerprint:` en sha-256, sinon la
+     * première ligne `a=fingerprint:` (session ou média). null si absente.
      */
     fun empreinteDtls(sdp: String): String? {
-        for (ligne in sdp.lineSequence()) {
+        val lignes = sdp.lineSequence().mapNotNull { ligne ->
             val l = ligne.trim()
-            if (!l.startsWith("a=fingerprint:", ignoreCase = true)) continue
-            val parties = l.substringAfter(':').trim().split(Regex("\\s+"), limit = 2)
-            if (parties.size != 2 || !parties[0].equals("sha-256", ignoreCase = true)) continue
-            val valeur = parties[1].trim().uppercase()
-            if (valeur.matches(Regex("([0-9A-F]{2}:){31}[0-9A-F]{2}"))) return valeur
-        }
-        return null
+            if (!l.startsWith("a=fingerprint:", ignoreCase = true)) return@mapNotNull null
+            val parties = l.substring("a=fingerprint:".length).trim().split(Regex("\\s+"))
+            if (parties.size != 2 || !parties[1].matches(Regex("[0-9A-Fa-f:]+"))) return@mapNotNull null
+            parties[0].lowercase() to parties[1].uppercase()
+        }.toList()
+        val choisie = lignes.firstOrNull { it.first == "sha-256" } ?: lignes.firstOrNull() ?: return null
+        return choisie.first + " " + choisie.second
     }
 }
 

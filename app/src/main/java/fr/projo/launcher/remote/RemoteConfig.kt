@@ -25,7 +25,14 @@ object RemoteConfig {
     const val PEERJS_SECURISE = true
 
     /** Battement envoyé au serveur (HEARTBEAT) pour garder la WebSocket ouverte. */
-    const val HEARTBEAT_MS = 10_000L
+    const val HEARTBEAT_MS = 5_000L
+
+    /**
+     * Reconnexion avec le même jeton : le serveur peut reprendre l'identifiant sans renvoyer
+     * OPEN. Connexion considérée ouverte à OPEN, ou ce délai après l'ouverture de la socket
+     * sans ID-TAKEN ni ERROR.
+     */
+    const val OPEN_IMPLICITE_MS = 2_500L
 
     /** Reconnexion au serveur : délai croissant (×2) entre ces deux bornes. */
     const val RECONNEXION_MIN_MS = 2_000L

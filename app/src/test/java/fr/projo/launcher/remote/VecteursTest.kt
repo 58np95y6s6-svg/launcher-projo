@@ -23,8 +23,8 @@ import java.security.spec.PKCS8EncodedKeySpec
  * Les clés privées sont des clés de TEST publiées ici : ne jamais les utiliser ailleurs.
  */
 object Vecteurs {
-    const val DTLS_TEL = "00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
-    const val DTLS_TV = "A0:A1:A2:A3:A4:A5:A6:A7:A8:A9:AA:AB:AC:AD:AE:AF:B0:B1:B2:B3:B4:B5:B6:B7:B8:B9:BA:BB:BC:BD:BE:BF"
+    const val DTLS_TEL = "sha-256 00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
+    const val DTLS_TV = "sha-256 A0:A1:A2:A3:A4:A5:A6:A7:A8:A9:AA:AB:AC:AD:AE:AF:B0:B1:B2:B3:B4:B5:B6:B7:B8:B9:BA:BB:BC:BD:BE:BF"
     const val NONCE_TEL = "AAECAwQFBgcICQoLDA0ODw"
     const val NONCE_TV = "EBESExQVFhcYGRobHB0eHw"
 
@@ -37,19 +37,19 @@ object Vecteurs {
     const val TV_EMPREINTE = "YPXzIOhZAT92PqkIdIKfBw"
 
     const val MSG_TEL = "ibiprojo-v1|hello|$DTLS_TEL|$DTLS_TV|$NONCE_TEL"
-    const val SIG_TEL = "OT12fBc_mwIQHw9M_P4v9Qd-d43CCoYeKP9qkMSZ6bqG82ixZlGbzYduUHxMt0Up_lflxPsXLFS5KBghhMk4pw"
+    const val SIG_TEL = "f3TG45JmH2GRnufVp1fo39Bv6DNHW_kg_qoTBC_3LBBcIx_FCtsR2AUgz5GPLcaa0yz1F6DSdssycYPjwQP7GQ"
 
     const val MSG_TV = "ibiprojo-v1|hello-tv|$DTLS_TV|$DTLS_TEL|$NONCE_TEL|$NONCE_TV"
-    const val SIG_TV = "TEfTatTvX4x1iH8BP-wStkUYiLhyVMsd12agaFfAAOgUqFe4nA_decE9SpvrQiBkSUX4SZOEkVKcvkkJOK2TmA"
+    const val SIG_TV = "3Y3_K7efigm7PyFWSNjImjCq1UYNyjGeqr2tObQ0-eK74k9_EYJB0x9BBIv3M0jPNJDEH1WZdZcHREhizKC2Fw"
 
     fun cleTel() = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(Base64Url.decoder(TEL_PKCS8)!!))
     fun cleTv() = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(Base64Url.decoder(TV_PKCS8)!!))
     fun identiteTv(): IdentiteTv = IdentiteJava(cleTv(), Base64Url.decoder(TV_SPKI)!!)
 
-    /** SDP minimal avec une empreinte (format de Chrome). */
+    /** SDP minimal avec une empreinte « sha-256 AB:… » (format de Chrome). */
     fun sdp(empreinte: String) = "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\n" +
         "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\n" +
-        "a=fingerprint:sha-256 $empreinte\r\na=setup:actpass\r\na=mid:0\r\na=sctp-port:5000\r\n"
+        "a=fingerprint:$empreinte\r\na=setup:actpass\r\na=mid:0\r\na=sctp-port:5000\r\n"
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -123,10 +123,12 @@ class VecteursTest {
     @Test
     fun empreinteDtlsDuSdp() {
         assertEquals(Vecteurs.DTLS_TV, CryptoTelecommande.empreinteDtls(Vecteurs.sdp(Vecteurs.DTLS_TV)))
-        // Minuscules (Firefox) : remises en majuscules
-        assertEquals(Vecteurs.DTLS_TV, CryptoTelecommande.empreinteDtls(Vecteurs.sdp(Vecteurs.DTLS_TV.lowercase()).replace("sha-256", "SHA-256")))
-        // Autre algorithme seulement : rien
-        assertNull(CryptoTelecommande.empreinteDtls(Vecteurs.sdp(Vecteurs.DTLS_TV).replace("sha-256", "sha-1")))
+        // Algorithme en majuscules, hexadécimal en minuscules : normalisés
+        assertEquals(Vecteurs.DTLS_TV, CryptoTelecommande.empreinteDtls(Vecteurs.sdp(Vecteurs.DTLS_TV.lowercase().replace("sha-256", "SHA-256"))))
+        // La ligne sha-256 passe avant une autre ; sans elle, la première ligne
+        val sha1 = "sha-1 01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14"
+        assertEquals(Vecteurs.DTLS_TV, CryptoTelecommande.empreinteDtls(Vecteurs.sdp(sha1) + "a=fingerprint:" + Vecteurs.DTLS_TV + "\r\n"))
+        assertEquals(sha1, CryptoTelecommande.empreinteDtls(Vecteurs.sdp(sha1)))
         assertNull(CryptoTelecommande.empreinteDtls("v=0\r\n"))
     }
 
