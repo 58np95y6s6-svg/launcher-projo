@@ -1,0 +1,475 @@
+Downloading https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%.............100%
+
+Welcome to Gradle 8.11.1!
+
+Here are the highlights of this release:
+ - Parallel load and store for Configuration Cache
+ - Java compilation errors at the end of the build output
+ - Consolidated report for warnings and deprecations
+
+For more details see https://docs.gradle.org/8.11.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+CapturesGraphiteTest > raccourci PASSED
+
+CapturesGraphiteTest > tuileDock PASSED
+
+CapturesModulesDialogTest > reglagesMeteo PASSED
+
+CapturesModulesDialogTest > reglagesSport PASSED
+
+CapturesModulesDialogTest > modules PASSED
+
+CapturesTest > basVersMesApps[AURORE] PASSED
+
+CapturesTest > accueilFavori1[AURORE] PASSED
+
+CapturesTest > mesAppsPremier[AURORE] PASSED
+
+CapturesTest > basVersMesApps[VERRE] PASSED
+
+CapturesTest > accueilFavori1[VERRE] PASSED
+
+CapturesTest > mesAppsPremier[VERRE] PASSED
+
+CapturesTest > basVersMesApps[PASTEL] PASSED
+
+CapturesTest > accueilFavori1[PASTEL] PASSED
+
+CapturesTest > mesAppsPremier[PASTEL] PASSED
+
+CapturesTest > basVersMesApps[CONSOLE] PASSED
+
+CapturesTest > accueilFavori1[CONSOLE] PASSED
+
+CapturesTest > mesAppsPremier[CONSOLE] PASSED
+
+CapturesTest > basVersMesApps[GRAPHITE] PASSED
+
+CapturesTest > accueilFavori1[GRAPHITE] PASSED
+
+CapturesTest > mesAppsPremier[GRAPHITE] PASSED
+
+GraphiteTest > hautDepuisChaqueFavoriVisible PASSED
+
+GraphiteTest > retourDepuisNba PASSED
+
+GraphiteTest > captureSansFavori PASSED
+
+GraphiteTest > parcoursFavorisPuisMesApps PASSED
+
+GraphiteTest > captureNba PASSED
+
+GraphiteTest > gaucheDepuisNba PASSED
+
+GraphiteTest > droiteDepuisReglagesVersNba PASSED
+
+GraphiteTest > captureMiseAJour PASSED
+
+GraphiteTest > hautDepuisChaqueAppVisible PASSED
+
+GraphiteTest > mesAppsJusquaToutesLesApps PASSED
+
+GraphiteTest > captureTrenteApps PASSED
+
+GraphiteTest > captureUnFavori PASSED
+
+GraphiteTest > basDepuisChaqueFavoriVisible PASSED
+
+GraphiteTest > captureFavori4 PASSED
+
+GraphiteTest > captureReglages PASSED
+
+GraphiteTest > basDepuisMesAppsReste PASSED
+
+GraphiteTest > captureResultats PASSED
+
+GraphiteTest > basDepuisChaqueRaccourci PASSED
+
+GraphiteTest > captureHorsLigne PASSED
+
+ModulesTest > navigationDeuxModules[AURORE] PASSED
+
+ModulesTest > sportPlusieursCompetitions[AURORE] PASSED
+
+ModulesTest > meteoSeule[AURORE] PASSED
+
+ModulesTest > meteoEtSport[AURORE] PASSED
+
+ModulesTest > navigationDeuxModules[VERRE] PASSED
+
+ModulesTest > sportPlusieursCompetitions[VERRE] PASSED
+
+ModulesTest > meteoSeule[VERRE] PASSED
+
+ModulesTest > meteoEtSport[VERRE] PASSED
+
+ModulesTest > navigationDeuxModules[PASTEL] PASSED
+
+ModulesTest > sportPlusieursCompetitions[PASTEL] PASSED
+
+ModulesTest > meteoSeule[PASTEL] PASSED
+
+ModulesTest > meteoEtSport[PASTEL] PASSED
+
+ModulesTest > navigationDeuxModules[CONSOLE] PASSED
+
+ModulesTest > sportPlusieursCompetitions[CONSOLE] PASSED
+
+ModulesTest > meteoSeule[CONSOLE] PASSED
+
+ModulesTest > meteoEtSport[CONSOLE] PASSED
+
+ModulesTest > navigationDeuxModules[GRAPHITE] PASSED
+
+ModulesTest > sportPlusieursCompetitions[GRAPHITE] PASSED
+
+ModulesTest > meteoSeule[GRAPHITE] PASSED
+
+ModulesTest > meteoEtSport[GRAPHITE] PASSED
+
+NavigationConsoleTest > droiteSurLaDerniereTuileVersLaCarteNba PASSED
+
+NavigationConsoleTest > droiteSurToutesLesAppsVersLaCarteNba PASSED
+
+NavigationSansFavoriTest > hautVersLaCarteAide[AURORE] PASSED
+
+NavigationSansFavoriTest > basDepuisLaCarteAide[AURORE] PASSED
+
+NavigationSansFavoriTest > hautVersLaCarteAide[VERRE] PASSED
+
+NavigationSansFavoriTest > basDepuisLaCarteAide[VERRE] PASSED
+
+NavigationSansFavoriTest > hautVersLaCarteAide[PASTEL] PASSED
+
+NavigationSansFavoriTest > basDepuisLaCarteAide[PASTEL] PASSED
+
+NavigationSansFavoriTest > hautVersLaCarteAide[CONSOLE] PASSED
+
+NavigationSansFavoriTest > basDepuisLaCarteAide[CONSOLE] PASSED
+
+NavigationSansFavoriTest > hautVersLaCarteAide[GRAPHITE] PASSED
+
+NavigationSansFavoriTest > basDepuisLaCarteAide[GRAPHITE] PASSED
+
+NavigationSeuleBibliothequeTest > basVersToutesLesApps[AURORE] PASSED
+
+NavigationSeuleBibliothequeTest > basVersToutesLesApps[VERRE] PASSED
+
+NavigationSeuleBibliothequeTest > basVersToutesLesApps[PASTEL] PASSED
+
+NavigationSeuleBibliothequeTest > basVersToutesLesApps[CONSOLE] PASSED
+
+NavigationSeuleBibliothequeTest > basVersToutesLesApps[GRAPHITE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[AURORE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[AURORE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[AURORE] PASSED
+
+NavigationTest > toucheMenu[AURORE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[AURORE] PASSED
+
+NavigationTest > basDepuisFavori1[AURORE] PASSED
+
+NavigationTest > basDepuisFavori2[AURORE] PASSED
+
+NavigationTest > basDepuisFavori3[AURORE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[AURORE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[AURORE] PASSED
+
+NavigationTest > allerRetourBasHaut[AURORE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[AURORE] PASSED
+
+NavigationTest > allerRetourHautBas[AURORE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[AURORE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[AURORE] PASSED
+
+NavigationTest > entreeDansLaNba[AURORE] PASSED
+
+NavigationTest > sortieDuBandeauNba[AURORE] PASSED
+
+NavigationTest > hautDepuisMesApps1[AURORE] PASSED
+
+NavigationTest > hautDepuisMesApps3[AURORE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[VERRE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[VERRE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[VERRE] PASSED
+
+NavigationTest > toucheMenu[VERRE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[VERRE] PASSED
+
+NavigationTest > basDepuisFavori1[VERRE] PASSED
+
+NavigationTest > basDepuisFavori2[VERRE] PASSED
+
+NavigationTest > basDepuisFavori3[VERRE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[VERRE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[VERRE] PASSED
+
+NavigationTest > allerRetourBasHaut[VERRE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[VERRE] PASSED
+
+NavigationTest > allerRetourHautBas[VERRE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[VERRE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[VERRE] PASSED
+
+NavigationTest > entreeDansLaNba[VERRE] PASSED
+
+NavigationTest > sortieDuBandeauNba[VERRE] PASSED
+
+NavigationTest > hautDepuisMesApps1[VERRE] PASSED
+
+NavigationTest > hautDepuisMesApps3[VERRE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[PASTEL] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[PASTEL] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[PASTEL] PASSED
+
+NavigationTest > toucheMenu[PASTEL] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[PASTEL] PASSED
+
+NavigationTest > basDepuisFavori1[PASTEL] PASSED
+
+NavigationTest > basDepuisFavori2[PASTEL] PASSED
+
+NavigationTest > basDepuisFavori3[PASTEL] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[PASTEL] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[PASTEL] PASSED
+
+NavigationTest > allerRetourBasHaut[PASTEL] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[PASTEL] PASSED
+
+NavigationTest > allerRetourHautBas[PASTEL] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[PASTEL] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[PASTEL] PASSED
+
+NavigationTest > entreeDansLaNba[PASTEL] PASSED
+
+NavigationTest > sortieDuBandeauNba[PASTEL] PASSED
+
+NavigationTest > hautDepuisMesApps1[PASTEL] PASSED
+
+NavigationTest > hautDepuisMesApps3[PASTEL] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[CONSOLE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[CONSOLE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[CONSOLE] PASSED
+
+NavigationTest > toucheMenu[CONSOLE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori1[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori2[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori3[CONSOLE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[CONSOLE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[CONSOLE] PASSED
+
+NavigationTest > allerRetourBasHaut[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[CONSOLE] PASSED
+
+NavigationTest > allerRetourHautBas[CONSOLE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[CONSOLE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[CONSOLE] PASSED
+
+NavigationTest > entreeDansLaNba[CONSOLE] PASSED
+
+NavigationTest > sortieDuBandeauNba[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesApps1[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesApps3[CONSOLE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[GRAPHITE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[GRAPHITE] PASSED
+
+NavigationTest > toucheMenu[GRAPHITE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori1[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori2[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori3[GRAPHITE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[GRAPHITE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[GRAPHITE] PASSED
+
+NavigationTest > allerRetourBasHaut[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[GRAPHITE] PASSED
+
+NavigationTest > allerRetourHautBas[GRAPHITE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[GRAPHITE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[GRAPHITE] PASSED
+
+NavigationTest > entreeDansLaNba[GRAPHITE] PASSED
+
+NavigationTest > sortieDuBandeauNba[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesApps1[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesApps3[GRAPHITE] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 30 favoris] PASSED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1792471168353.json
+
+BUILD SUCCESSFUL in 3m 14s
+26 actionable tasks: 26 executed
