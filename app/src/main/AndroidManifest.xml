@@ -11,18 +11,18 @@
     <!-- Internet : calendrier NBA et logos des équipes -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Télécommande smartphone : re-sélectionner le clavier iBiProjo quand un téléphone se
+         connecte (permission accordée seulement par adb : pm grant, voir l'aide dans Réglages) -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- État du réseau, pour afficher le nom du Wi-Fi quand c'est possible -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Mise à jour de Projo depuis GitHub (Android demande toujours confirmation) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
-    <!-- Télécommande smartphone : re-sélectionner le clavier iBiProjo quand un téléphone se
-         connecte (permission accordée seulement par adb : pm grant, voir l'aide dans Réglages) -->
-    <uses-permission
-        android:name="android.permission.WRITE_SECURE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
 
     <!-- Bluetooth : afficher l'état et les appareils associés (Android 11 et moins) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

@@ -29,9 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
-import fr.projo.launcher.data.AppInfo
-import fr.projo.launcher.modules.HoteModules
-import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.remote.ClavierTelecommande
 import fr.projo.launcher.remote.HoteNavigation
 import fr.projo.launcher.remote.Telecommande
@@ -41,6 +38,9 @@ import fr.projo.launcher.ui.ConfirmationAppairageDialog
 import fr.projo.launcher.ui.ResumeTelecommande
 import fr.projo.launcher.ui.TelephonesDialog
 import fr.projo.launcher.ui.commandesAdb
+import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.modules.HoteModules
+import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
 import fr.projo.launcher.ui.Design

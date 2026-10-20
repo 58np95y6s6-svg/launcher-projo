@@ -91,6 +91,10 @@ android {
 }
 
 dependencies {
+    // Télécommande smartphone (voir docs/telecommande.md)
+    implementation(libs.stream.webrtc)
+    implementation(libs.okhttp)
+    implementation(libs.zxing.core)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -101,10 +105,6 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.palette)
-    // Télécommande smartphone (voir docs/telecommande.md)
-    implementation(libs.stream.webrtc)
-    implementation(libs.okhttp)
-    implementation(libs.zxing.core)
 
     // Tests d'interface (navigation à la télécommande, captures des designs)
     testImplementation(libs.junit)
