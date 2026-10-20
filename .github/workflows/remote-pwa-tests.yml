@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 ne prend pas en charge ubuntu-latest (26.04) : version épinglée
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -28,13 +29,14 @@ jobs:
         with:
           node-version: "22"
 
+      # Les tests unitaires n'ont besoin que de Node : ils passent avant l'installation du navigateur
+      - name: Tests unitaires
+        run: npm test
+
       - name: Installation de Playwright (Chromium)
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
-
-      - name: Tests unitaires
-        run: npm test
 
       - name: Tests de bout en bout
         run: npm run test:e2e
