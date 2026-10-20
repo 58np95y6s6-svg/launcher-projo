@@ -117,7 +117,6 @@ internal fun UneNba(ctx: HomeContext, nav: UneNav, montrer: (UneSujet) -> Unit, 
                     rayon = 12.u,
                     padding = PaddingValues(horizontal = 6.u),
                     modifier = Modifier
-                        .testTag("nba:onglet$i")
                         .onGloballyPositioned { nav.centres[cle] = it.positionInRoot().x + it.size.width / 2f }
                         .then(nav.cible(cle)),
                 ) { focus ->

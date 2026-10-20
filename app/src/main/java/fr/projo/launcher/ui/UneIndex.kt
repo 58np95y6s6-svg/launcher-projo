@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -48,6 +49,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
@@ -71,9 +73,10 @@ import kotlin.math.roundToInt
  * Navigation à la télécommande de « Une ». Étages, de haut en bas : raccourcis → NBA → favoris
  * → « Mes apps ». Toutes les flèches verticales sont traitées ici (jamais la recherche de focus
  * standard, qui partait en biais) :
- *  - ▼ depuis un favori : l'élément VISIBLE de « Mes apps » dont le centre est le plus proche ;
+ *  - ▼ depuis un favori : l'élément de « Mes apps » ENTIÈREMENT visible le plus aligné ;
  *  - ▲ depuis « Mes apps » : le favori le plus proche ; ▲ depuis un favori : la pilule la plus proche ;
- *  - ▼ depuis une pilule : le bloc NBA ; ▲ depuis le NBA : la pilule la plus proche ;
+ *  - ▼ puis ▲ (ou ▲ puis ▼) sans bouger entre-temps : retour sur l'élément de départ ;
+ *  - ▼ (ou ▶ sur la dernière) depuis une pilule : le bloc NBA ; ▲ depuis le NBA : la pilule la plus proche ;
  *    ▼ (ou ◀, ou Retour) depuis le NBA : retour aux favoris ;
  *  - ◀ ▶ : élément voisin dans la rangée, sans boucle (on bute aux deux bouts).
  * La cible de ▲ / ▼ est marquée d'un petit trait blanc sous l'entrée de l'autre rangée.
@@ -83,9 +86,10 @@ internal class UneNav {
     val cibles = HashMap<String, FocusRequester>()
     /** Centre horizontal (px, repère de la fenêtre) des pilules et des onglets NBA. */
     val centres = HashMap<String, Float>()
-    /** Bord gauche des deux rangées (px, repère de la fenêtre). */
+    /** Bord gauche des deux rangées et largeur de la fenêtre (px). */
     var origineFavoris = 0f
     var origineApps = 0f
+    var largeurFenetre = Float.MAX_VALUE
     /** Clés des pilules, dans l'ordre. */
     var pilules: List<String> = emptyList()
     /** Onglet NBA affiché (0 : cette nuit, 1 : résultats). */
@@ -94,6 +98,9 @@ internal class UneNav {
     /** Élément sélectionné, et dernier favori sélectionné (retour depuis le NBA). */
     var focusCle by mutableStateOf<String?>(null)
     var memFavori by mutableStateOf<String?>(null)
+
+    /** Dernier saut ▲ / ▼ : vers « Mes apps » ?, élément d'arrivée, élément de départ. */
+    private var dernierSaut by mutableStateOf<Triple<Boolean, String, String>?>(null)
 
     fun aller(cle: String?): Boolean {
         val fr = cle?.let { cibles[it] } ?: return false
@@ -107,12 +114,40 @@ internal class UneNav {
         return origine + item.offset - infos.viewportStartOffset + item.size / 2f
     }
 
-    /** Élément visible d'une rangée dont le centre est le plus proche de [x]. */
-    fun plusProche(etat: LazyListState, origine: Float, x: Float): String? {
-        val infos = etat.layoutInfo
-        return infos.visibleItemsInfo.minByOrNull {
-            abs(origine + it.offset - infos.viewportStartOffset + it.size / 2f - x)
-        }?.key as? String
+    /**
+     * Cible de ▼ ([versApps]) ou de ▲ depuis l'élément [cle] (même règle que NavRangees) :
+     *  - retour sur l'élément de départ si l'on vient d'arriver par le saut inverse ;
+     *  - sinon l'élément ENTIÈREMENT visible le plus aligné, à défaut un élément au moins à
+     *    moitié visible.
+     * Sert au saut et au repère blanc : le repère montre exactement où ira la flèche.
+     */
+    fun cibleSaut(ctx: HomeContext, versApps: Boolean, cle: String): String? {
+        val depuis = if (versApps) ctx.rangeeFavoris else ctx.rangeeApps
+        val origineDepuis = if (versApps) origineFavoris else origineApps
+        val vers = if (versApps) ctx.rangeeApps else ctx.rangeeFavoris
+        val origine = if (versApps) origineApps else origineFavoris
+        val x = centre(depuis, origineDepuis, cle) ?: return null
+        val infos = vers.layoutInfo
+        fun gauche(i: LazyListItemInfo) = origine + i.offset - infos.viewportStartOffset
+        fun milieu(i: LazyListItemInfo) = gauche(i) + i.size / 2f
+        val ecranG = maxOf(origine, 0f)
+        val ecranD = minOf(origine + infos.viewportSize.width, largeurFenetre)
+        val candidats = infos.visibleItemsInfo.filter { (it.key as? String)?.let { k -> cibles.containsKey(k) } == true }
+        val entiers = candidats.filter { gauche(it) >= ecranG - 1f && gauche(it) + it.size <= ecranD + 1f }
+        val enPartie = candidats.filter { milieu(it) > ecranG && milieu(it) < ecranD }
+        val s = dernierSaut
+        if (s != null && s.first != versApps && s.second == cle) {
+            enPartie.firstOrNull { it.key == s.third }?.let { return it.key as String }
+        }
+        return entiers.ifEmpty { enPartie }.minByOrNull { abs(milieu(it) - x) }?.key as? String
+    }
+
+    /** Saut ▼ / ▲ vers l'autre rangée ; false : impossible (la touche n'est pas consommée). */
+    private fun sauter(ctx: HomeContext, versApps: Boolean, cle: String): Boolean {
+        val cible = cibleSaut(ctx, versApps, cle) ?: return false
+        if (!aller(cible)) return false
+        dernierSaut = Triple(versApps, cible, cle)
+        return true
     }
 
     fun pilulePlusProche(x: Float): String? =
@@ -125,10 +160,7 @@ internal class UneNav {
         if (e.type != KeyEventType.KeyDown) return false
         val cle = focusCle ?: return false
         return when (e.key) {
-            Key.DirectionDown -> {
-                val x = centre(ctx.rangeeFavoris, origineFavoris, cle) ?: return false
-                aller(plusProche(ctx.rangeeApps, origineApps, x))
-            }
+            Key.DirectionDown -> sauter(ctx, versApps = true, cle)
             Key.DirectionUp -> {
                 val x = centre(ctx.rangeeFavoris, origineFavoris, cle) ?: return false
                 aller(pilulePlusProche(x)) || true
@@ -144,10 +176,7 @@ internal class UneNav {
         if (e.type != KeyEventType.KeyDown) return false
         val cle = focusCle ?: return false
         return when (e.key) {
-            Key.DirectionUp -> {
-                val x = centre(ctx.rangeeApps, origineApps, cle) ?: return false
-                aller(plusProche(ctx.rangeeFavoris, origineFavoris, x))
-            }
+            Key.DirectionUp -> sauter(ctx, versApps = false, cle)
             // Rien en dessous : on reste
             Key.DirectionDown -> true
             Key.DirectionRight -> cle == CLE_BIBLIO
@@ -163,7 +192,8 @@ internal class UneNav {
             Key.DirectionUp -> true
             Key.DirectionDown -> aller("nba:$ongletNba") || allerFavori(ctx)
             Key.DirectionLeft -> cle == pilules.firstOrNull()
-            Key.DirectionRight -> cle == pilules.lastOrNull()
+            // ▶ au bout des pilules : le bloc NBA, juste en dessous à droite
+            Key.DirectionRight -> if (cle == pilules.lastOrNull()) aller("nba:$ongletNba") || true else false
             else -> false
         }
     }
@@ -287,8 +317,7 @@ internal fun UneIndex(ctx: HomeContext, nav: UneNav, aplat: State<Color>, montre
         derivedStateOf {
             val f = nav.focusCle
             when {
-                UneNav.estApp(f) -> nav.centre(ctx.rangeeApps, nav.origineApps, f!!)
-                    ?.let { nav.plusProche(ctx.rangeeFavoris, nav.origineFavoris, it) }
+                UneNav.estApp(f) -> nav.cibleSaut(ctx, versApps = false, f!!)
                 UneNav.estFavori(f) -> null
                 else -> nav.memFavori
             }
@@ -297,12 +326,7 @@ internal fun UneIndex(ctx: HomeContext, nav: UneNav, aplat: State<Color>, montre
     val repereApp by remember {
         derivedStateOf {
             val f = nav.focusCle
-            if (UneNav.estFavori(f)) {
-                nav.centre(ctx.rangeeFavoris, nav.origineFavoris, f!!)
-                    ?.let { nav.plusProche(ctx.rangeeApps, nav.origineApps, it) }
-            } else {
-                null
-            }
+            if (UneNav.estFavori(f)) nav.cibleSaut(ctx, versApps = true, f!!) else null
         }
     }
     // Un seul étage « vivant » : l'autre rangée est à 70 %
@@ -375,7 +399,10 @@ private fun UneRangeeFavoris(
                 .height(50.u)
                 .testTag("rangee:favoris")
                 .graphicsLayer { this.alpha = alpha.value }
-                .onGloballyPositioned { nav.origineFavoris = it.positionInRoot().x }
+                .onGloballyPositioned {
+                nav.origineFavoris = it.positionInRoot().x
+                nav.largeurFenetre = it.findRootCoordinates().size.width.toFloat()
+            }
                 .onPreviewKeyEvent { nav.toucheFavoris(it, ctx) },
             contentPadding = PaddingValues(horizontal = 48.u),
             horizontalArrangement = repartition,
