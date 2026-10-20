@@ -6,6 +6,12 @@ import { TEXTES_VERSION } from "./codec.js";
 import { initialiserInstallation, majCartes, estIOS, estInstallee } from "./installation.js";
 import { journal } from "./journal.js";
 
+// Comportement d'appli : pas de zoom au pincement (iOS ignore user-scalable=no).
+// Le zoom au double appui est déjà coupé par touch-action: manipulation (CSS).
+for (const ev of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+}
+
 const config = globalThis.IBIPROJO_CONFIG;
 const $ = (id) => document.getElementById(id);
 const ctrl = new Controleur(config);

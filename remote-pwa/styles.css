@@ -27,8 +27,16 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+/* Coque d'appli : la page ne défile jamais, ne rebondit pas et ne zoome pas.
+   Seuls les écrans et les feuilles ont un défilement interne. */
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+html { position: fixed; inset: 0; }
 body {
+  position: fixed; inset: 0;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
   background: var(--fond);
   background-image:
     radial-gradient(120% 60% at 15% -10%, rgba(124, 92, 255, 0.22), transparent 60%),
@@ -38,9 +46,8 @@ body {
   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
-  overflow-x: hidden;
 }
+input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 [hidden] { display: none !important; }
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .invisible { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
@@ -63,13 +70,19 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 /* ---------- Écrans ---------- */
 
 .ecran {
-  min-height: 100dvh;
+  position: absolute; inset: 0;
+  width: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: calc(12px + var(--haut)) 16px calc(20px + var(--bas));
   max-width: 520px;
   margin: 0 auto;
   display: flex; flex-direction: column; gap: 18px;
+  scrollbar-width: none;
   animation: entree 0.28s ease-out;
 }
+.ecran::-webkit-scrollbar { display: none; }
 @keyframes entree { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .ecran-centre { justify-content: center; align-items: center; text-align: center; gap: 14px; }
 .ecran-centre .btn-principal, .ecran-centre .btn-secondaire { width: 100%; max-width: 340px; }
@@ -306,7 +319,7 @@ body.clavier .saisie { order: -1; margin-top: 0; }
 .voile-centre { align-items: center; padding: 16px; }
 @keyframes fondu { from { opacity: 0; } }
 .feuille {
-  width: 100%; max-width: 520px; max-height: 88dvh; overflow-y: auto;
+  width: 100%; max-width: 520px; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain;
   background: var(--fond-2); border: 1px solid var(--bord); border-bottom: 0;
   border-radius: 28px 28px 0 0; padding: 10px 16px calc(20px + var(--bas));
   display: flex; flex-direction: column; gap: 14px; animation: monte .25s ease-out;
