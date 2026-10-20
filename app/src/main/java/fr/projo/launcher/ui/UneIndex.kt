@@ -431,6 +431,7 @@ private fun UneRangeeFavoris(
                         bordure = Color.White.copy(alpha = 0.14f),
                         repere = repere == UneNav.CLE_AIDE,
                         modifier = Modifier
+                            .testTag("aide")
                             .focusRequester(ctx.premierFocus)
                             .then(nav.cible(UneNav.CLE_AIDE)),
                     ) {
