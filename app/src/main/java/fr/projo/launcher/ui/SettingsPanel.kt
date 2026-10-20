@@ -49,6 +49,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.LauncherViewModel
+import fr.projo.launcher.modules.HoteModules
+import fr.projo.launcher.modules.IconesModules
+import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.system.DeviceSnapshot
 import java.util.Locale
 
@@ -70,6 +73,8 @@ class SettingsActions(
     val allSettings: () -> Unit,
     val close: () -> Unit,
     val design: () -> Unit = {},
+    /** Réglages → Modules : ce qu'affiche l'emplacement des scores NBA. */
+    val modules: () -> Unit = {},
 )
 
 /** Couleurs du design choisi (Réglages → Design). */
@@ -217,6 +222,15 @@ fun SettingsPanel(
                         titre = "Design · ${d.nom}",
                         sousTitre = d.resume + " · changer",
                         onClick = actions.design,
+                    )
+                }
+                item(key = "modules") {
+                    val hote = LocalHoteModules.current ?: HoteModules()
+                    Tuile(
+                        icone = IconesModules.Meteo,
+                        titre = "Modules · " + hote.modules.joinToString(" + ") { it.nom },
+                        sousTitre = "Météo, sport… à la place des scores NBA · changer",
+                        onClick = actions.modules,
                     )
                 }
                 item(key = "masquees") {

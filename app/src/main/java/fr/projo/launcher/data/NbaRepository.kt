@@ -16,8 +16,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-/** Une équipe dans un match. */
-data class NbaTeam(val abbr: String, val logoUrl: String?, val score: String?)
+/** Une équipe dans un match (NBA, football, rugby…). nom : nom complet (ex. « France »). */
+data class NbaTeam(val abbr: String, val logoUrl: String?, val score: String?, val nom: String = "")
 
 /** Un match NBA. state : "pre" (à venir), "in" (en cours), "post" (terminé). */
 data class NbaGame(
@@ -93,8 +93,26 @@ class NbaRepository(private val context: Context) {
     private fun jour(cal: Calendar): String =
         SimpleDateFormat("yyyyMMdd", Locale.US).apply { timeZone = ny }.format(cal.time)
 
-    private fun fetchDay(day: String): List<NbaGame> {
-        val json = lireTexte("$URL_SCOREBOARD?dates=$day")
+    private fun fetchDay(day: String): List<NbaGame> = lireMatchs(lireTexte("$URL_SCOREBOARD?dates=$day"))
+
+    /**
+     * Tableau des scores ESPN d'une autre compétition (même format que la NBA).
+     * chemin : « soccer/fra.1 », « rugby/270559 »… ; dates : « yyyyMMdd » ou « yyyyMMdd-yyyyMMdd ».
+     * À appeler hors du thread principal ; lève une exception si la source ne répond pas.
+     */
+    fun fetchScoreboard(chemin: String, dates: String?): List<NbaGame> {
+        val base = "$URL_ESPN/$chemin/scoreboard"
+        val json = try {
+            lireTexte(if (dates != null) "$base?dates=$dates&limit=200" else "$base?limit=200")
+        } catch (e: Exception) {
+            // Certaines compétitions refusent une plage de dates : tableau du moment
+            if (dates == null) throw e
+            lireTexte(base)
+        }
+        return lireMatchs(json)
+    }
+
+    private fun lireMatchs(json: String): List<NbaGame> {
         val events = JSONObject(json).optJSONArray("events") ?: return emptyList()
         val res = ArrayList<NbaGame>()
         for (i in 0 until events.length()) {
@@ -107,10 +125,14 @@ class NbaRepository(private val context: Context) {
                 for (j in 0 until equipes.length()) {
                     val c = equipes.getJSONObject(j)
                     val t = c.getJSONObject("team")
+                    val nom = t.optString("displayName").ifBlank { t.optString("shortDisplayName") }
                     val equipe = NbaTeam(
-                        abbr = t.optString("abbreviation", "?"),
+                        abbr = t.optString("abbreviation").ifBlank {
+                            t.optString("shortDisplayName", nom).take(3).uppercase(Locale.FRENCH)
+                        }.ifBlank { "?" },
                         logoUrl = t.optString("logo").ifBlank { null },
                         score = c.optString("score").ifBlank { null },
+                        nom = nom,
                     )
                     if (c.optString("homeAway") == "home") dom = equipe else ext = equipe
                 }
@@ -124,7 +146,7 @@ class NbaRepository(private val context: Context) {
                     detail = statut.optString("shortDetail"),
                 )
             } catch (ex: Exception) {
-                Log.w(AppRepository.TAG, "Match NBA illisible", ex)
+                Log.w(AppRepository.TAG, "Match illisible", ex)
             }
         }
         // Du plus tôt au plus tard
@@ -196,8 +218,8 @@ class NbaRepository(private val context: Context) {
     }
 
     companion object {
-        private const val URL_SCOREBOARD =
-            "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+        private const val URL_ESPN = "https://site.api.espn.com/apis/site/v2/sports"
+        private const val URL_SCOREBOARD = "$URL_ESPN/basketball/nba/scoreboard"
 
         /** Date d'une journée NBA, ex. « MER. 22 OCT. ». */
         fun libelleJour(day: String): String {
