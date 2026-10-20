@@ -28,6 +28,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.modules.HoteModules
+import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.system.FireTv
 import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
@@ -43,6 +45,7 @@ import fr.projo.launcher.ui.LocalFireTv
 import fr.projo.launcher.ui.LocalScale
 import fr.projo.launcher.ui.MenuAction
 import fr.projo.launcher.ui.MenuDialog
+import fr.projo.launcher.ui.ModulesDialog
 import fr.projo.launcher.ui.SettingsActions
 import fr.projo.launcher.ui.SettingsPanel
 import fr.projo.launcher.ui.SourcesDialog
@@ -86,10 +89,17 @@ class MainActivity : ComponentActivity() {
             // Échelle : interface dessinée pour 960 dp de large
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
             val etat by vm.ui.collectAsStateWithLifecycle()
+            // Zone de modules (ex-bandeau NBA) : modules choisis et leurs réglages
+            val modules = etat.prefs.modules
+            val reglagesModules = etat.prefs.reglagesModules
+            val hoteModules = remember(modules, reglagesModules) {
+                HoteModules(modules, reglagesModules, vm.donneesModules, vm::setReglageModule)
+            }
             CompositionLocalProvider(
                 LocalScale provides echelle,
                 LocalFireTv provides FireTv.estFireTv(this),
                 LocalDesign provides Design.from(etat.prefs.design),
+                LocalHoteModules provides hoteModules,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Contenu()
@@ -113,6 +123,7 @@ class MainActivity : ComponentActivity() {
         var montrerBibliotheque by remember { mutableStateOf(false) }
         var montrerReglages by remember { mutableStateOf(false) }
         var montrerDesign by remember { mutableStateOf(false) }
+        var montrerModules by remember { mutableStateOf(false) }
         // Focus rendu à l'accueil quand un panneau se ferme (sinon plus rien n'est sélectionné)
         val focusReglages = remember { FocusRequester() }
         val focusBiblio = remember { FocusRequester() }
@@ -161,12 +172,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Matchs NBA : mis à jour seulement pendant que l'accueil est affiché
-        val nbaDonnees by vm.nbaData.collectAsStateWithLifecycle()
-        val nbaErreur by vm.nbaErreur.collectAsStateWithLifecycle()
-        LaunchedEffect(lifecycle) {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.nbaLoop() }
-        }
+        // Matchs NBA, météo… : chargés par les modules eux-mêmes (voir modules.ZoneModules),
+        // seulement pendant que l'accueil est affiché
 
         HomeScreen(
             ui = ui,
@@ -188,8 +195,8 @@ class MainActivity : ComponentActivity() {
                 settingsLong = { vm.actions.openSettings() },
                 update = { vm.installUpdate(); vm.refreshDevice(); montrerReglages = true },
             ),
-            nbaData = nbaDonnees,
-            nbaErreur = nbaErreur,
+            nbaData = null,
+            nbaErreur = false,
             nbaRepo = vm.nba,
             majDisponible = maj.info?.available == true,
             design = Design.from(ui.prefs.design),
@@ -220,6 +227,7 @@ class MainActivity : ComponentActivity() {
                     ouvertureAuto = { montrerAide = true },
                     close = { montrerReglages = false; focusApres = focusReglages },
                     design = { montrerDesign = true },
+                    modules = { montrerModules = true },
                 ),
             )
         }
@@ -284,6 +292,15 @@ class MainActivity : ComponentActivity() {
                 onChoose = { vm.setDesign(it.id) },
                 onDismiss = { montrerDesign = false },
             )
+        }
+        if (montrerModules) {
+            LocalHoteModules.current?.let { hote ->
+                ModulesDialog(
+                    hote = hote,
+                    onChoisir = { vm.setModules(it) },
+                    onDismiss = { montrerModules = false },
+                )
+            }
         }
         if (montrerMasquees) {
             HiddenAppsDialog(

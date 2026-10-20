@@ -138,6 +138,7 @@ fun HomeScreen(
         Design.PASTEL -> HomePastel(ctx)
         Design.CONSOLE -> HomeConsole(ctx)
         Design.GRAPHITE -> HomeGraphite(ctx)
+        Design.UNE -> HomeUne(ctx)
     }
 }
 

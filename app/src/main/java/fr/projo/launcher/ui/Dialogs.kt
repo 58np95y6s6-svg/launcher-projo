@@ -1,6 +1,9 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -29,9 +33,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.SourceCandidate
+import fr.projo.launcher.modules.HoteModules
+import fr.projo.launcher.modules.RegistreModules
 
 /** Une ligne d'action dans un menu. */
 data class MenuAction(val label: String, val onClick: () -> Unit)
@@ -188,4 +195,170 @@ fun DesignDialog(
         },
         onDismiss = onDismiss,
     )
+}
+
+// ------------------------------------------------------------------ listes à choix (modules)
+
+/**
+ * Ligne d'un [ListeDialog] : action, case à cocher ([coche] non null) ou titre de section
+ * ([section], non sélectionnable).
+ */
+class LigneListe(
+    val titre: String,
+    val sousTitre: String? = null,
+    val coche: Boolean? = null,
+    val section: Boolean = false,
+    val onClick: () -> Unit = {},
+)
+
+/**
+ * Dialogue en liste, pilotable à la télécommande : contrairement à [MenuDialog], un clic ne
+ * ferme pas le dialogue (cases à cocher, sous-menus). Retour : [onDismiss].
+ */
+@Composable
+fun ListeDialog(
+    titre: String,
+    sousTitre: String?,
+    lignes: List<LigneListe>,
+    onDismiss: () -> Unit,
+    /** Ligne qui reçoit le focus à l'ouverture (par défaut la première sélectionnable). */
+    focusInitial: Int = -1,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        val cible = remember { FocusRequester() }
+        val indexFocus = lignes.getOrNull(focusInitial)?.takeIf { !it.section }?.let { focusInitial }
+            ?: lignes.indexOfFirst { !it.section }
+        Column(
+            Modifier
+                .width(460.u)
+                .background(Color(0xF2161A22), RoundedCornerShape(20.u))
+                .padding(22.u)
+        ) {
+            Text(titre, color = Color.White, fontSize = 22.us, fontWeight = FontWeight.Medium)
+            if (sousTitre != null) {
+                Spacer(Modifier.height(4.u))
+                Text(sousTitre, color = Color.White.copy(alpha = 0.6f), fontSize = 12.us)
+            }
+            Spacer(Modifier.height(14.u))
+            LazyColumn(
+                Modifier.heightIn(max = 380.u),
+                verticalArrangement = Arrangement.spacedBy(4.u),
+                state = androidx.compose.foundation.lazy.rememberLazyListState(maxOf(0, indexFocus - 2)),
+            ) {
+                items(lignes.size) { i ->
+                    val l = lignes[i]
+                    if (l.section) {
+                        Text(
+                            l.titre, color = Color.White.copy(alpha = 0.55f), fontSize = 10.us, letterSpacing = 3.us,
+                            fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.u, top = 10.u, bottom = 2.u),
+                        )
+                    } else {
+                        ListItem(
+                            selected = false,
+                            onClick = l.onClick,
+                            headlineContent = { Text(l.titre, fontSize = 15.us, maxLines = 1) },
+                            supportingContent = l.sousTitre?.let { st -> @Composable { Text(st, fontSize = 12.us, maxLines = 2) } },
+                            trailingContent = l.coche?.let { c -> @Composable { CaseACocher(c) } },
+                            modifier = if (i == indexFocus) Modifier.focusRequester(cible) else Modifier,
+                        )
+                    }
+                }
+            }
+        }
+        LaunchedEffect(Unit) {
+            for (essai in 1..4) {
+                withFrameNanos {}
+                if (runCatching { cible.requestFocus() }.isSuccess) break
+            }
+        }
+    }
+}
+
+/** Case à cocher dessinée (pas de caractère spécial : certaines polices d'Android 9 n'en ont pas). */
+@Composable
+private fun CaseACocher(coche: Boolean) {
+    val forme = RoundedCornerShape(5.u)
+    Box(
+        Modifier
+            .size(20.u)
+            .border(2.u, LocalContentColor.current.copy(alpha = if (coche) 1f else 0.6f), forme)
+            .padding(4.u)
+            .background(if (coche) LocalContentColor.current else Color.Transparent, RoundedCornerShape(2.u)),
+    )
+}
+
+/**
+ * Réglages → Modules : choix du 1er et du 2e module de la zone de modules (ex-bandeau NBA),
+ * et accès aux réglages de chaque module choisi.
+ */
+@Composable
+fun ModulesDialog(
+    hote: HoteModules,
+    onChoisir: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var etape by remember { mutableStateOf("menu") }
+    val modules = hote.modules
+    val premier = modules[0]
+    val second = modules.getOrNull(1)
+    when {
+        etape == "choix1" -> ListeDialog(
+            titre = "1er module",
+            sousTitre = "Affiché seul sur toute la zone, ou à gauche (en haut) avec un 2e module",
+            lignes = RegistreModules.tous.map { m ->
+                LigneListe(m.nom, m.description, coche = m.id == premier.id) {
+                    onChoisir(listOfNotNull(m.id, second?.id?.takeIf { it != m.id }))
+                    etape = "menu"
+                }
+            },
+            onDismiss = { etape = "menu" },
+            focusInitial = RegistreModules.tous.indexOf(premier),
+        )
+        etape == "choix2" -> {
+            val autres = RegistreModules.tous.filter { it.id != premier.id }
+            ListeDialog(
+                titre = "2e module",
+                sousTitre = "Partage la zone avec « ${premier.nom} »",
+                lignes = listOf(
+                    LigneListe("Aucun", "${premier.nom} seul, sur toute la zone", coche = second == null) {
+                        onChoisir(listOf(premier.id))
+                        etape = "menu"
+                    },
+                ) + autres.map { m ->
+                    LigneListe(m.nom, m.description, coche = m.id == second?.id) {
+                        onChoisir(listOf(premier.id, m.id))
+                        etape = "menu"
+                    }
+                },
+                onDismiss = { etape = "menu" },
+                focusInitial = if (second == null) 0 else autres.indexOf(second) + 1,
+            )
+        }
+        etape.startsWith("reglages:") -> {
+            val m = RegistreModules.trouver(etape.removePrefix("reglages:"))
+            if (m == null) {
+                LaunchedEffect(Unit) { etape = "menu" }
+            } else {
+                m.Reglages(hote.reglagesDe(m.id), hote.donnees) { etape = "menu" }
+            }
+        }
+        else -> ListeDialog(
+            titre = "Modules de l'accueil",
+            sousTitre = "À la place des scores NBA : un ou deux modules",
+            lignes = buildList {
+                add(LigneListe("1er module · ${premier.nom}", premier.description) { etape = "choix1" })
+                add(
+                    LigneListe(
+                        "2e module · ${second?.nom ?: "aucun"}",
+                        second?.description ?: "Ajouter un 2e module à côté du premier",
+                    ) { etape = "choix2" },
+                )
+                for (m in modules.filter { it.aDesReglages }) {
+                    add(LigneListe("Réglages · ${m.nom}", m.resumeReglages(hote.reglagesDe(m.id))) { etape = "reglages:" + m.id })
+                }
+                add(LigneListe("Fermer") { onDismiss() })
+            },
+            onDismiss = onDismiss,
+        )
+    }
 }

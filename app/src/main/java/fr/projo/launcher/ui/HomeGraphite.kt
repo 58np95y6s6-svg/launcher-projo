@@ -106,6 +106,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import fr.projo.launcher.modules.FocusModules
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
@@ -291,8 +292,12 @@ fun HomeGraphite(ctx: HomeContext) {
         nav.compteur = null
         ctx.sansSelection()
     }
-    val titre = ctx.selection?.label ?: titreLibre.ifEmpty { "Favoris" }
-    val surNba = ctx.selection == null && titreLibre == "NBA"
+    // Zone de modules (ex-bandeau NBA) : titre du module sélectionné (« Météo · Lyon »…),
+    // « NBA » pour le bandeau NBA de la maquette
+    val surZone = ctx.selection == null && titreLibre == "NBA"
+    val titreModule = FocusModules.titre
+    val titre = ctx.selection?.label ?: (if (surZone) titreModule ?: "NBA" else titreLibre).ifEmpty { "Favoris" }
+    val surNba = surZone && (titreModule == null || titreModule == "NBA")
 
     Box(Modifier.fillMaxSize()) {
         GraphiteFond()

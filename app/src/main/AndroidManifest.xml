@@ -24,6 +24,12 @@
     <!-- Bluetooth : afficher l'état et les appareils associés (Android 11 et moins) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
+    <!-- Module Minuteur et réveil : notifications (Android 13+), alarme exacte (Android 12+,
+         repli inexact sans elle) et écran d'alarme plein écran -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
     <!-- Projecteur : pas d'écran tactile, Leanback non obligatoire (marche aussi hors Android TV) -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -97,6 +103,23 @@
             </intent-filter>
         </receiver>
 
+        <!-- Module Minuteur et réveil : écran d'alarme par-dessus l'app en cours, et récepteur
+             de l'échéance (AlarmManager) et des boutons de notification -->
+        <activity
+            android:name=".modules.minuteur.AlarmeActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:showWhenLocked="true"
+            android:taskAffinity="fr.projo.launcher.alarme"
+            android:theme="@style/Theme.Projo"
+            android:turnScreenOn="true"
+            tools:targetApi="o_mr1" />
+        <receiver
+            android:name=".modules.minuteur.MinuteurReceiver"
+            android:exported="false" />
         <!-- Partage de l'APK de mise à jour avec l'installeur d'Android -->
         <provider
             android:name="androidx.core.content.FileProvider"

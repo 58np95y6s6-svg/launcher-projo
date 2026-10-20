@@ -32,7 +32,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     VERRE("verre", "Verre", "Verre dépoli, lumière douce"),
     PASTEL("pastel", "Pastel", "Formes rondes, tons doux"),
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
-    GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan");
+    GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan"),
+    UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app");
 
     companion object {
         fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
@@ -90,6 +91,13 @@ fun Design.colors(): DesignColors = when (this) {
         texte = Color(0xFFECEDF1), texteDiscret = Color(0xFF8D919E), accent = Color(0xFF5B6CFF),
         focusFond = Color(0xFFECEDF1), focusTexte = Color(0xFF0D0E12),
         voile = Color(0xFF0D0E12).copy(alpha = 0.7f), fondBibliotheque = Color(0xFA0D0E12),
+    )
+    // Maquette « Une » : panneau #0E0E12, tuiles #17171D, interrupteur actif #10B981, voile #050508 à 55 %
+    Design.UNE -> DesignColors(
+        panneau = Color(0xFA0E0E12), carte = Color(0xFF17171D),
+        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f), accent = Color(0xFF10B981),
+        focusFond = Color.White, focusTexte = Color(0xFF0A0A0D),
+        voile = Color(0xFF050508).copy(alpha = 0.55f), fondBibliotheque = Color(0xFA0A0A0D),
     )
 }
 
