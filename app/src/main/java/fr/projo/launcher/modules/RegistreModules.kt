@@ -65,7 +65,10 @@ package fr.projo.launcher.modules
  * ============================================================================================
  */
 
+import fr.projo.launcher.modules.appareil.ModuleAppareil
+import fr.projo.launcher.modules.bourse.ModuleBourse
 import fr.projo.launcher.modules.meteo.ModuleMeteo
+import fr.projo.launcher.modules.minuteur.ModuleMinuteur
 import fr.projo.launcher.modules.sport.ModuleSport
 
 /** Liste unique des modules disponibles. */
@@ -74,6 +77,9 @@ object RegistreModules {
     val tous: List<Module> = listOf(
         ModuleSport,
         ModuleMeteo,
+        ModuleMinuteur,
+        ModuleBourse,
+        ModuleAppareil,
     )
 
     /** Module affiché quand l'utilisateur n'a rien choisi (l'ancien bandeau NBA). */
