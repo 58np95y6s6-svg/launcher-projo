@@ -242,18 +242,36 @@ internal class UneNav {
 
     /** Demandeur de focus d'un élément, enregistré tant qu'il est composé. */
     @Composable
-    fun cible(cle: String): Modifier {
+    fun cible(cle: String): Modifier = Modifier.focusRequester(demandeur(cle))
+
+    /** Le même, sous forme de FocusRequester (point d'entrée de la zone de modules). */
+    @Composable
+    fun demandeur(cle: String): FocusRequester {
         val fr = remember { FocusRequester() }
         DisposableEffect(this, cle) {
             cibles[cle] = fr
             onDispose { if (cibles[cle] === fr) cibles.remove(cle) }
         }
-        return Modifier.focusRequester(fr)
+        return fr
+    }
+
+    /** Zone de modules (autre que le journal NBA) : ▲ et ▼ que les modules n'ont pas consommés. */
+    fun toucheZone(e: KeyEvent, ctx: HomeContext): Boolean {
+        if (e.type != KeyEventType.KeyDown) return false
+        return when (e.key) {
+            Key.DirectionUp -> {
+                centres[CLE_ZONE]?.let { aller(pilulePlusProche(it)) }
+                true
+            }
+            Key.DirectionDown -> allerFavori(ctx)
+            else -> false
+        }
     }
 
     companion object {
         const val CLE_BIBLIO = "bibliotheque"
         const val CLE_AIDE = "aide"
+        const val CLE_ZONE = "zone"
         fun estFavori(cle: String?) = cle != null && (cle.startsWith("fav:") || cle == CLE_AIDE)
         fun estApp(cle: String?) = cle != null && (cle.startsWith("app:") || cle == CLE_BIBLIO)
     }
