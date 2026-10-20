@@ -92,8 +92,8 @@ TV → téléphone :
 
 | `t` | Champs | Rôle |
 |---|---|---|
-| `hello` | `nonce`, `sig`, `nomTV`, `versionApp` | réponse authentifiée |
-| `paired` | `nomTV` | appairage accepté |
+| `hello` | `nonce`, `sig`, `nomTV`, `versionApp`, `cle` | réponse authentifiée (`cle` : SPKI de la TV, voir « Précisions ») |
+| `paired` | `nomTV`, `idTV` | appairage accepté (`idTV` : identifiant PeerJS stable) |
 | `pair_refused` | `raison` : `refuse` `expire` `invalide` `trop_d_essais` | appairage refusé |
 | `revoked` | — | ce téléphone a été révoqué (la PWA oublie la TV) |
 | `focus_text` | `type` : `texte` `email` `motdepasse` `nombre` `url` `recherche`, `s` (contenu actuel, vide si mot de passe), `action` : `go` `search` `send` `next` `done` | un champ texte a le focus |
@@ -122,5 +122,97 @@ Jamais de texte saisi, de secret, de clé privée ni de SDP complet dans les jou
 
 ## Hébergement
 
-- **PWA** : la GitHub Action `remote-pwa.yml` copie `remote-pwa/` sur la branche `gh-pages`, quand ce dossier change sur `claude/launcher-projo` (et plus tard `main`). Réglage unique dans le dépôt : Settings → Pages → Source « Deploy from a branch », branche `gh-pages`, dossier `/`.
-- **Service worker** : version dans `config.js`. Une nouvelle version détectée affiche une bannière « Nouvelle version — Recharger ».
+- **PWA** : la GitHub Action `.github/workflows/remote-pwa.yml` copie `remote-pwa/` sur la branche `gh-pages` (commit orphelin poussé en force, avec un fichier `.nojekyll`), quand ce dossier change sur `claude/launcher-projo` ou `main`, ou à la demande (workflow_dispatch).
+  - **Réglage unique dans le dépôt** : Settings → Pages → Source « Deploy from a branch », branche `gh-pages`, dossier `/` → Save. Le site est ensuite servi sur `https://58np95y6s6-svg.github.io/launcher-projo/`.
+  - `build.yml` ignore la branche `gh-pages` (pas de compilation d'APK dessus).
+- **Service worker** : version dans `config.js` (`versionApp`). À la publication, l'Action y ajoute le SHA du commit (`1.0.0+abc1234`) : chaque publication est donc détectée. Une nouvelle version affiche la bannière « Nouvelle version disponible — Recharger ».
+- **Tests** : `.github/workflows/remote-pwa-tests.yml` (Node 22 + Playwright/Chromium, sans Android) lance les tests unitaires, les tests de bout en bout et produit les captures (artefact `captures-telecommande`). En local :
+
+  ```bash
+  cd remote-pwa-dev && npm install && npx playwright install chromium
+  npm test            # unitaires (node:test)
+  npm run test:e2e    # PWA ↔ fausse TV, via un faux serveur PeerJS local
+  npm run captures    # captures iPhone 390×844 et Android 412×915
+  ```
+
+  `remote-pwa-dev/` (jamais publié) contient aussi la fausse TV en JavaScript (`e2e/fausse-tv.js`, utile comme implémentation de référence du côté TV), le faux serveur PeerJS (`e2e/faux-peerjs.mjs`) et la génération des icônes (`outils/icones.py`).
+
+## Précisions d'implémentation (v1) — à respecter à l'identique côté TV
+
+Ces points complètent la spécification ; la PWA les applique et la fausse TV des tests aussi.
+
+### Encodages
+
+- **base64url** : RFC 4648 §5, **sans** remplissage `=`.
+- **Nonce** et **secret d'appairage** : 16 octets aléatoires → 22 caractères base64url.
+- **Empreinte de clé** : `base64url(SHA-256(SPKI DER)[0..16])` → 22 caractères.
+- **Empreinte DTLS** (dans les textes signés) : lue dans la ligne `a=fingerprint:` du SDP, première ligne en `sha-256` (sinon la première), **normalisée** en `"<algorithme en minuscules> <octets HEX MAJUSCULES séparés par :>"`, par ex. `sha-256 4F:1A:…:DD`. Chacun lit la sienne dans SA description locale et celle de l'autre dans la description distante.
+- **Textes signés** (UTF-8, séparateur `|`, rien d'autre) :
+  - téléphone : `ibiprojo-v1|hello|<fpTel>|<fpTV>|<nonceTel>` ;
+  - TV : `ibiprojo-v1|hello-tv|<fpTV>|<fpTel>|<nonceTel>|<nonceTV>`.
+- **Signatures** : ECDSA P-256 / SHA-256, au format **IEEE P1363** (`r ‖ s`, 64 octets, chacun sur 32 octets), en base64url (86 caractères). C'est le format natif de WebCrypto ; une signature DER est refusée. Côté Android (`Signature("SHA256withECDSA")` produit du DER) : convertir DER → P1363 avant l'envoi et P1363 → DER avant la vérification.
+- **Vecteurs de test** : `remote-pwa-dev/tests/vecteurs.json` (SDP, empreintes, textes signés, signatures P1363 **et** DER des deux côtés, fragment, code). Données publiques uniquement ; à reprendre dans les tests Kotlin.
+
+### Serveur PeerJS (protocole WebSocket brut)
+
+- URL : `wss://0.peerjs.com:443/peerjs?key=peerjs&id=<id>&token=<jeton>` (`/` + `peerjs` ; hôte, port, chemin, clé dans `config.js`).
+- Le téléphone garde son **jeton** dans IndexedDB avec son identifiant : à la reconnexion avec le même jeton, le serveur reprend l'identifiant même si l'ancienne socket n'est pas encore expirée, **mais n'envoie alors pas `OPEN`**. Règle des deux côtés : connexion considérée ouverte à `OPEN`, ou 2,5 s après l'ouverture de la socket sans `ID-TAKEN` ni `ERROR`.
+- `{"type":"HEARTBEAT"}` toutes les 5 s.
+- Envoi : `{"type":"OFFER"|"ANSWER"|"CANDIDATE"|"LEAVE","dst":"<pair>","payload":{…}}` ; le serveur remet le message avec `"src"` ajouté.
+- `{"type":"EXPIRE","src":"<pair>","dst":"<nous>"}` : le pair n'était pas connecté (message gardé ~5 s puis abandonné) → la PWA affiche « box injoignable » et réessaie.
+- **C'est le téléphone qui appelle** : il crée l'offre et le DataChannel `telecommande` (`ordered: true`, fiable, non négocié) ; la TV répond et le reçoit par `ondatachannel` (refuser toute autre étiquette).
+- Charges utiles (compatibles avec celles de la bibliothèque PeerJS) :
+
+  ```json
+  OFFER     {"sdp":{"type":"offer","sdp":"v=0…"},"type":"data","connectionId":"tc_<16 hex>","label":"telecommande","reliable":true,"serialization":"json"}
+  ANSWER    {"sdp":{"type":"answer","sdp":"v=0…"},"type":"data","connectionId":"tc_<16 hex>"}
+  CANDIDATE {"candidate":{"candidate":"candidate:…","sdpMid":"0","sdpMLineIndex":0},"type":"data","connectionId":"tc_<16 hex>"}
+  LEAVE     {"type":"data","connectionId":"tc_<16 hex>"}
+  ```
+
+  - ICE « trickle » : les candidats partent dès qu'ils sont trouvés ; pas de message de fin de candidats. Chaque côté met en attente les candidats reçus avant d'avoir appliqué la description distante.
+  - La TV reprend le `connectionId` de l'offre dans ANSWER et CANDIDATE ; le téléphone ignore tout message d'un autre `src` ou d'un autre `connectionId`.
+  - `LEAVE` : envoyé par le téléphone quand il ferme volontairement la session (facultatif à traiter côté TV).
+- Les navigateurs masquent souvent leur IP locale derrière un nom `.local` (mDNS) : la TV n'a pas à le résoudre, la connexion s'établit par les candidats de la TV (candidat « peer-reflexive »).
+
+### Déroulé sur le DataChannel
+
+1. Téléphone → `hello` : `{v, t:"hello", appareil, nonce, sig}` ; **`appareil` = identifiant PeerJS du téléphone** (`tel-<32 hex>`). En appairage seulement, il ajoute `cle` (SPKI) et `nom`.
+2. TV : version non gérée → `erreur {code:"version", vMax}` puis fermeture. Sinon :
+   - appareil connu → vérifie avec la clé enregistrée (le champ `cle` éventuel est ignoré) ;
+   - appareil inconnu **avec** `cle` → session d'appairage, vérifie avec cette clé ;
+   - appareil inconnu **sans** `cle` (téléphone révoqué pendant qu'il était hors ligne) → envoie son `hello` signé, puis `revoked`, puis ferme ;
+   - signature fausse → fermeture, sans détail.
+3. TV → `hello` : `{v, t:"hello", nonce, sig, nomTV, versionApp, cle}`. **Ajout : `cle` (SPKI de la TV) est obligatoire** — le téléphone n'a que l'empreinte (QR code) ou rien (code de secours). Le téléphone vérifie : `cle` identique à celle enregistrée (TV appairée), ou `empreinte(cle)` = empreinte du QR code, ou rien (code de secours) ; puis la signature.
+   La PWA compare aussi `v` : `v` > sa version → « Rechargez la télécommande » ; `v` < sa version minimale → « Mettez à jour iBiProjo sur la TV ».
+4. Après les deux `hello` : `ping`/`pong` autorisés (y compris pendant l'appairage) ; la PWA envoie un `ping` toutes les 15 s et considère la connexion perdue après 2 `pong` manqués (puis se reconnecte). Elle envoie aussi un `ping` immédiat au retour au premier plan (4 s pour répondre).
+5. Appairage : téléphone → `pair_request {secret, nom, cle, empreinteTV}`.
+   - QR : `secret` = secret base64url du QR ; `empreinteTV` = empreinte du QR.
+   - Code de secours : `secret` = les 4 derniers caractères, en MAJUSCULES, sans tiret (`"PQ9X"`) ; **`empreinteTV` absent**.
+   - La TV vérifie en plus que `pair_request.cle` = la `cle` du `hello`.
+   - Pendant l'appairage, la TV n'accepte que `pair_request` et `ping` ; le téléphone, lui, ignore `focus_text`/`focus_lost`.
+6. TV → `paired {nomTV, idTV}`. **Ajout : `idTV` (identifiant PeerJS stable `ibiprojo-<32 hex>`) est obligatoire**, indispensable après un code de secours (le téléphone était connecté à `ibiprojo-c-XXXX`). Le **même DataChannel** devient alors une session de pilotage : la TV accepte les commandes sans reconnexion. Les reconnexions suivantes visent `idTV`.
+7. `revoked`, `focus_text`, `focus_lost`, `paired`, `pair_refused` reçus avant la vérification du `hello` de la TV sont ignorés par la PWA. Les messages sont traités strictement dans l'ordre de réception.
+8. `text` : `{s, curseur?}` ; `curseur` = position de fin de sélection dans `s` (absent si le navigateur ne la donne pas, par ex. champs `email`). Un message par modification (frappe, collage, correction automatique).
+
+### Saisie et champs côté téléphone
+
+| `focus_text.type` | champ du téléphone |
+|---|---|
+| `texte` | `type=text` |
+| `email` | `type=email` |
+| `motdepasse` | `type=password`, masqué par défaut, bouton « Afficher » |
+| `nombre` | `type=text`, `inputmode=decimal` |
+| `url` | `type=url` |
+| `recherche` | `type=search` |
+
+`action` devient `enterkeyhint` (touche Entrée du clavier). Entrée → `submit`. `focus_lost` → le champ est vidé, le clavier fermé (`blur`).
+
+### Limites iOS (et choix retenus)
+
+- **Clavier automatique** : iOS n'ouvre pas le clavier sur un `focus()` déclenché hors d'un geste de l'utilisateur (un message réseau n'en est pas un). La PWA tente `focus()` (suffisant sur Android/Chrome, surtout juste après un appui), puis, si le champ n'a pas le focus ou si iOS n'a pas réduit la zone visible, met le champ en surbrillance pulsée avec « Touchez le champ pour ouvrir le clavier ». Le champ texte reste toujours visible en bas de l'écran ; une fois touché, il remonte sous l'en-tête pour rester au-dessus du clavier.
+- **Installation** : pas de `beforeinstallprompt` sur iOS → instructions « Partager → Sur l'écran d'accueil ».
+- **Stockage séparé** : sur iPhone, l'app installée sur l'écran d'accueil ne partage pas l'IndexedDB de Safari. Un appairage fait dans Safari reste dans Safari. Après un scan du QR code dans Safari, la PWA le signale et propose « Copier le lien d'appairage » ; dans l'app installée, le champ « Code de secours ou lien d'appairage » accepte ce lien (sécurité du QR code) ou le code de secours.
+- **Vibreur** : `navigator.vibrate` n'existe pas sur iOS ; la PWA utilise l'interrupteur natif (`<input type=checkbox switch>`, iOS 18+) qui produit un léger retour haptique au toucher. Rien sur les versions plus anciennes.
+- **Arrière-plan** : iOS suspend la page ; au retour, la PWA vérifie la connexion (ping) et se reconnecte si besoin.
+- **Clé privée** : non exportable, conservée telle quelle (CryptoKey) dans IndexedDB. Si un navigateur refusait d'y stocker une CryptoKey, repli : clé PKCS#8 conservée localement (jamais envoyée).

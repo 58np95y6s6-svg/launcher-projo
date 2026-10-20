@@ -8,3 +8,7 @@ local.properties
 *.jks
 *.keystore
 !signature/debug-test.keystore
+# Outillage de la télécommande (PWA)
+remote-pwa-dev/node_modules/
+remote-pwa-dev/captures-pwa/
+remote-pwa-dev/package-lock.json

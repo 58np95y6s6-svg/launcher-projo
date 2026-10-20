@@ -1,0 +1,23 @@
+{
+  "_note": "Vecteurs de test du protocole télécommande v1 (docs/telecommande.md). Données publiques uniquement.",
+  "sdpTel": "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=fingerprint:sha-256 4f:1a:9C:2E:77:0B:5D:83:A1:6E:F0:12:34:56:78:9A:BC:DE:F0:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD\r\na=setup:actpass\r\na=mid:0\r\na=sctp-port:5000\r\n",
+  "sdpTV": "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=fingerprint:SHA-256 01:23:45:67:89:AB:CD:EF:FE:DC:BA:98:76:54:32:10:0F:1E:2D:3C:4B:5A:69:78:87:96:A5:B4:C3:D2:E1:F0\r\na=setup:active\r\na=mid:0\r\na=sctp-port:5000\r\n",
+  "empreinteDtlsTel": "sha-256 4F:1A:9C:2E:77:0B:5D:83:A1:6E:F0:12:34:56:78:9A:BC:DE:F0:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD",
+  "empreinteDtlsTV": "sha-256 01:23:45:67:89:AB:CD:EF:FE:DC:BA:98:76:54:32:10:0F:1E:2D:3C:4B:5A:69:78:87:96:A5:B4:C3:D2:E1:F0",
+  "cleTel": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETYh54ZyA7apU0a167IvgadbDMTj9KebdicYoMfcscpPBmm1ubN4smi8WGMWdu_vOAaiNsMzeg5oo5UnpY7e2yw",
+  "empreinteCleTel": "R5xvCJ6udBrTEWtdp0RggA",
+  "cleTV": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFCXo4AM-FaHwE8Mutu3EFXWYT3zbM3v65kSLnmlsjDpfea1u6XhNjTBzNwujW-4MEAr0iqXwzcT4pLuo45V7OA",
+  "empreinteCleTV": "edzppNhI05JFkML9N6NsPQ",
+  "nonceTel": "bm9uY2UtdGVsLTE2b2N0IQ",
+  "nonceTV": "bm9uY2UtdHYtLTE2b2N0IQ",
+  "texteHelloTel": "ibiprojo-v1|hello|sha-256 4F:1A:9C:2E:77:0B:5D:83:A1:6E:F0:12:34:56:78:9A:BC:DE:F0:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD|sha-256 01:23:45:67:89:AB:CD:EF:FE:DC:BA:98:76:54:32:10:0F:1E:2D:3C:4B:5A:69:78:87:96:A5:B4:C3:D2:E1:F0|bm9uY2UtdGVsLTE2b2N0IQ",
+  "sigHelloTelP1363": "rontuxtFxQqGutEPZo-Hcp5hJOC4mQAb6QFPp53krp8cuxLdPiuY9opwkKt8e0e50hMTcLTwJC6yfiMf6rreoQ",
+  "sigHelloTelDer": "MEUCIQCuie27G0XFCoa60Q9mj4dynmEk4LiZABvpAU-nneSunwIgHLsS3T4rmPaKcJCrfHtHudITE3C08CQusn4jH-q63qE",
+  "texteHelloTV": "ibiprojo-v1|hello-tv|sha-256 01:23:45:67:89:AB:CD:EF:FE:DC:BA:98:76:54:32:10:0F:1E:2D:3C:4B:5A:69:78:87:96:A5:B4:C3:D2:E1:F0|sha-256 4F:1A:9C:2E:77:0B:5D:83:A1:6E:F0:12:34:56:78:9A:BC:DE:F0:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD|bm9uY2UtdGVsLTE2b2N0IQ|bm9uY2UtdHYtLTE2b2N0IQ",
+  "sigHelloTVP1363": "N313wEqPbFvRvyByvyhFFTE621hin5JovFjNnPIMAaeAwdIZTJmMP0EZZuYByiBhZnZ3DQsrJwevC7J6i0lEUw",
+  "sigHelloTVDer": "MEUCIDd9d8BKj2xb0b8gcr8oRRUxOttYYp-SaLxYzZzyDAGnAiEAgMHSGUyZjD9BGWbmAcogYWZ2dw0LKycHrwuyeotJRFM",
+  "fragment": "#pair=ibiprojo-0123456789abcdef0123456789abcdef.BwcHBwcHBwcHBwcHBwcHBw.edzppNhI05JFkML9N6NsPQ",
+  "code": "K7M2-PQ9X",
+  "codeIdTV": "ibiprojo-c-K7M2",
+  "codeSecret": "PQ9X"
+}

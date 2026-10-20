@@ -3,10 +3,11 @@
 # (signé avec la clé de test du dépôt : les versions de test s'installent les unes sur les autres)
 name: Build test
 
-# Les branches « captures/… » (résultats des tests, publiés plus bas) ne relancent rien
+# Les branches « captures/… » (résultats des tests, publiés plus bas) et « gh-pages »
+# (télécommande publiée) ne relancent rien
 on:
   push:
-    branches: ["**", "!captures/**"]
+    branches: ["**", "!captures/**", "!gh-pages"]
   workflow_dispatch:
 
 permissions:
