@@ -440,9 +440,9 @@ class MainActivity : ComponentActivity() {
                 },
                 onAccessibilite = { montrerAideTelecommande = false; montrerAide = true },
                 onDismiss = { montrerAideTelecommande = false },
-                note = "Fire TV : la navigation passe par le service « Ouverture automatique » (bouton ci-dessous). " +
-                    "Il a maintenant aussi le droit de lire le contenu des fenêtres : après la mise à jour d'iBiProjo, " +
-                    "redémarre le Fire TV (ou refais « Activer en un clic ») pour que le téléphone puisse naviguer.",
+                note = "Fire TV : la navigation passe par le service « Ouverture automatique », qui lit maintenant " +
+                    "aussi le contenu des fenêtres. Après la mise à jour, redémarre le Fire TV (ou refais " +
+                    "« Activer en un clic »).",
             )
         }
         // Demande d'appairage : par-dessus tout le reste, même si l'utilisateur est revenu à l'accueil

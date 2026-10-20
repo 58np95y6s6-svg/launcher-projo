@@ -74,9 +74,9 @@ class FireTvTelecommandeTest : BancAccueil("AURORE") {
                         ResumeTelecommande(telephones = 1, clavierActive = true, clavierChoisi = true),
                         commandesAdb("fr.projo.launcher", null, navigation = "fr.projo.launcher/.system.RedirectionAccueil"),
                         onReglagesClavier = {}, onChoisirClavier = {}, onAccessibilite = {}, onDismiss = {},
-                        note = "Fire TV : la navigation passe par le service « Ouverture automatique » (bouton ci-dessous). " +
-                            "Il a maintenant aussi le droit de lire le contenu des fenêtres : après la mise à jour d'iBiProjo, " +
-                            "redémarre le Fire TV (ou refais « Activer en un clic ») pour que le téléphone puisse naviguer.",
+                        note = "Fire TV : la navigation passe par le service « Ouverture automatique », qui lit maintenant " +
+                            "aussi le contenu des fenêtres. Après la mise à jour, redémarre le Fire TV (ou refais " +
+                            "« Activer en un clic »).",
                     )
                 }
             }
@@ -86,5 +86,6 @@ class FireTvTelecommandeTest : BancAccueil("AURORE") {
         fichier.parentFile?.mkdirs()
         captureScreenRoboImage(fichier.path)
         compose.onNodeWithText("Clavier et navigation").assertIsDisplayed()
+        compose.onNodeWithText("Fermer").assertIsDisplayed()
     }
 }

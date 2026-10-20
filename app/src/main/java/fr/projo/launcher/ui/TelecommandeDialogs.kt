@@ -445,10 +445,6 @@ fun AideTelecommandeDialog(
                         "le clavier rend la main au clavier habituel.",
                     color = c.texteDiscret, fontSize = 12.us,
                 )
-                if (note != null) {
-                    Spacer(Modifier.height(8.u))
-                    Text(note, color = c.accent, fontSize = 12.us)
-                }
                 Spacer(Modifier.height(16.u))
                 Column(verticalArrangement = Arrangement.spacedBy(8.u)) {
                     Bouton("Activer le clavier (page système)", Modifier.fillMaxWidth().focusRequester(focus), onClick = onReglagesClavier)
@@ -475,6 +471,10 @@ fun AideTelecommandeDialog(
                     "La dernière commande est facultative : elle permet au clavier iBiProjo de se re-choisir tout seul quand un téléphone se connecte.",
                     color = c.texteDiscret, fontSize = 11.us,
                 )
+                if (note != null) {
+                    Spacer(Modifier.height(10.u))
+                    Text(note, color = c.accent, fontSize = 12.us)
+                }
             }
         }
     }
