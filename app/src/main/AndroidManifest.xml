@@ -11,6 +11,12 @@
     <!-- Internet : calendrier NBA et logos des équipes -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Télécommande smartphone : re-sélectionner le clavier iBiProjo quand un téléphone se
+         connecte (permission accordée seulement par adb : pm grant, voir l'aide dans Réglages) -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- État du réseau, pour afficher le nom du Wi-Fi quand c'est possible -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -120,6 +126,35 @@
         <receiver
             android:name=".modules.minuteur.MinuteurReceiver"
             android:exported="false" />
+        <!-- Télécommande smartphone : clavier iBiProjo (texte tapé sur le téléphone) -->
+        <service
+            android:name=".remote.ClavierTelecommande"
+            android:exported="true"
+            android:label="@string/clavier_nom"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+        <!-- Télécommande smartphone : navigation hors des champs texte (accessibilité).
+             Fire TV : désactivé (bool telecommande_service_navigation), le service
+             d'ouverture automatique porte aussi ce rôle. -->
+        <service
+            android:name=".remote.NavigationTelecommande"
+            android:enabled="@bool/telecommande_service_navigation"
+            android:exported="true"
+            android:label="@string/navigation_nom"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/navigation_telecommande" />
+        </service>
         <!-- Partage de l'APK de mise à jour avec l'installeur d'Android -->
         <provider
             android:name="androidx.core.content.FileProvider"

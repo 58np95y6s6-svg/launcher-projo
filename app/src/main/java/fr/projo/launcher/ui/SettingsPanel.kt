@@ -79,6 +79,10 @@ class SettingsActions(
     val design: () -> Unit = {},
     /** Réglages → Modules : ce qu'affiche l'emplacement des scores NBA. */
     val modules: () -> Unit = {},
+    /** Télécommande smartphone : appairage, téléphones appairés, aide clavier et navigation. */
+    val appairer: () -> Unit = {},
+    val telephones: () -> Unit = {},
+    val aideTelecommande: () -> Unit = {},
 )
 
 /** Couleurs du design choisi (Réglages → Design). */
@@ -99,6 +103,7 @@ fun SettingsPanel(
     hiddenCount: Int,
     isDefaultHome: Boolean,
     actions: SettingsActions,
+    telecommande: ResumeTelecommande = ResumeTelecommande(),
 ) {
     BackHandler(onBack = actions.close)
     val fireTv = LocalFireTv.current
@@ -279,6 +284,35 @@ fun SettingsPanel(
                     }
                 } else if (maj.message != null) {
                     item(key = "maj-message") { Text(maj.message, color = Color(0xFFFFB86B), fontSize = 11.us, modifier = Modifier.padding(4.u)) }
+                }
+
+                item(key = "s-telecommande") { Section("TÉLÉCOMMANDE SMARTPHONE") }
+                item(key = "appairer") {
+                    Tuile(IconesTelecommande.Qr, "Appairer un téléphone", "QR code à scanner avec le téléphone", onClick = actions.appairer)
+                }
+                item(key = "telephones") {
+                    val t = telecommande
+                    Tuile(
+                        icone = IconesTelecommande.Telephone,
+                        titre = "Téléphones appairés",
+                        sousTitre = when {
+                            t.telephones == 0 -> "Aucun"
+                            t.connectes > 0 -> "${t.telephones} appairé(s) · ${t.connectes} connecté(s)"
+                            else -> "${t.telephones} appairé(s) · renommer, révoquer"
+                        },
+                        onClick = actions.telephones,
+                    )
+                }
+                item(key = "aide-telecommande") {
+                    val t = telecommande
+                    val pret = t.clavierChoisi && t.navigationActive
+                    Tuile(
+                        icone = IconesTelecommande.Clavier,
+                        titre = "Clavier et navigation",
+                        sousTitre = if (pret) "Activés ✓ · texte et flèches dans toutes les applis" else "À activer une fois · OK pour l'aide",
+                        accent = !pret && t.telephones > 0,
+                        onClick = actions.aideTelecommande,
+                    )
                 }
 
                 item(key = "s-systeme") { Section("SYSTÈME") }

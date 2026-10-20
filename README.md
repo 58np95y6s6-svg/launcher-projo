@@ -149,3 +149,9 @@ signature/debug-test.keystore   clé de TEST publique (versions de test uniqueme
 ```
 
 Compilation locale (Android Studio ou ligne de commande) : `./gradlew assembleDebug`.
+
+## Télécommande smartphone (PWA)
+
+Le dossier `remote-pwa/` contient la télécommande pour téléphone, publiée sur
+`https://58np95y6s6-svg.github.io/launcher-projo/` (branche `gh-pages`). Protocole, déploiement,
+tests et limites iOS : voir [docs/telecommande.md](docs/telecommande.md).

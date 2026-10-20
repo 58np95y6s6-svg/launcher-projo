@@ -3,10 +3,11 @@
 # (signé avec la clé de test du dépôt : les versions de test s'installent les unes sur les autres)
 name: Build test
 
-# Les branches « captures/… » (résultats des tests, publiés plus bas) ne relancent rien
+# Les branches « captures/… » (résultats des tests, publiés plus bas) et « gh-pages »
+# (télécommande publiée) ne relancent rien
 on:
   push:
-    branches: ["**", "!captures/**"]
+    branches: ["**", "!captures/**", "!gh-pages"]
   workflow_dispatch:
 
 permissions:
@@ -33,6 +34,11 @@ jobs:
         env:
           VERSION_NAME: test-${{ github.run_number }}
         run: ./gradlew --no-daemon assembleDebug assembleRelease
+
+      - name: Taille des APK
+        run: |
+          ls -l app/build/outputs/apk/*/*.apk
+          unzip -lv app/build/outputs/apk/release/*.apk | awk '{d=$NF; sub(/\/.*/, "", d); n[d]+=$1; c[d]+=$3} END {for (k in n) printf "%-24s %10d octets (%d compressés)\n", k, n[k], c[k]}' | sort
 
       - name: Publication de l'APK de test
         # Seule la branche de test publie l'APK ; les autres branches compilent seulement
