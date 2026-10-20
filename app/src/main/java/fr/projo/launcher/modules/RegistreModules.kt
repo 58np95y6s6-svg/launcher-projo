@@ -66,9 +66,12 @@ package fr.projo.launcher.modules
  */
 
 import fr.projo.launcher.modules.air.ModuleAir
+import fr.projo.launcher.modules.appareil.ModuleAppareil
+import fr.projo.launcher.modules.bourse.ModuleBourse
 import fr.projo.launcher.modules.horloges.ModuleHorloges
 import fr.projo.launcher.modules.infos.ModuleInfos
 import fr.projo.launcher.modules.meteo.ModuleMeteo
+import fr.projo.launcher.modules.minuteur.ModuleMinuteur
 import fr.projo.launcher.modules.photo.ModulePhoto
 import fr.projo.launcher.modules.soleil.ModuleSoleil
 import fr.projo.launcher.modules.sport.ModuleSport
@@ -86,6 +89,9 @@ object RegistreModules {
         ModuleTv,
         ModuleInfos,
         ModulePhoto,
+        ModuleMinuteur,
+        ModuleBourse,
+        ModuleAppareil,
     )
 
     /** Module affiché quand l'utilisateur n'a rien choisi (l'ancien bandeau NBA). */
