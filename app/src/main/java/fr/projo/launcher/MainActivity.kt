@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.provider.Settings
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -30,6 +32,15 @@ import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.LocalHoteModules
+import fr.projo.launcher.remote.ClavierTelecommande
+import fr.projo.launcher.remote.HoteNavigation
+import fr.projo.launcher.remote.Telecommande
+import fr.projo.launcher.ui.AideTelecommandeDialog
+import fr.projo.launcher.ui.AppairageDialog
+import fr.projo.launcher.ui.ConfirmationAppairageDialog
+import fr.projo.launcher.ui.ResumeTelecommande
+import fr.projo.launcher.ui.TelephonesDialog
+import fr.projo.launcher.ui.commandesAdb
 import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
 import fr.projo.launcher.ui.Design
@@ -78,6 +89,9 @@ class MainActivity : ComponentActivity() {
             addDataScheme("package")
         }, ContextCompat.RECEIVER_NOT_EXPORTED)
 
+        // Télécommande smartphone : connexion seulement si un téléphone est appairé (voir remote.Telecommande)
+        Telecommande.demarrer(this)
+
         setContent {
             // Échelle : interface dessinée pour 960 dp de large
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
@@ -114,6 +128,14 @@ class MainActivity : ComponentActivity() {
         var montrerReglages by remember { mutableStateOf(false) }
         var montrerDesign by remember { mutableStateOf(false) }
         var montrerModules by remember { mutableStateOf(false) }
+        // Télécommande smartphone (Réglages → Télécommande)
+        var montrerAppairage by remember { mutableStateOf(false) }
+        var montrerTelephones by remember { mutableStateOf(false) }
+        var montrerAideTelecommande by remember { mutableStateOf(false) }
+        val etatAppairage by Telecommande.etatAppairage.collectAsStateWithLifecycle()
+        val demandeAppairage by Telecommande.confirmation.collectAsStateWithLifecycle()
+        val telephones by Telecommande.telephones.collectAsStateWithLifecycle()
+        val connectes by Telecommande.connectes.collectAsStateWithLifecycle()
         // Focus rendu à l'accueil quand un panneau se ferme (sinon plus rien n'est sélectionné)
         val focusReglages = remember { FocusRequester() }
         val focusBiblio = remember { FocusRequester() }
@@ -199,6 +221,7 @@ class MainActivity : ComponentActivity() {
                 version = vm.updates.versionAffichee,
                 hiddenCount = ui.hiddenApps.size,
                 isDefaultHome = vm.repo.currentHomePackage() == packageName,
+                telecommande = resumeTelecommande(telephones.size, connectes.size),
                 actions = SettingsActions(
                     volume = { vm.changeVolume(it) },
                     mute = { vm.toggleMute() },
@@ -217,6 +240,9 @@ class MainActivity : ComponentActivity() {
                     close = { montrerReglages = false; focusApres = focusReglages },
                     design = { montrerDesign = true },
                     modules = { montrerModules = true },
+                    appairer = { Telecommande.commencerAppairage(); montrerAppairage = true },
+                    telephones = { montrerTelephones = true },
+                    aideTelecommande = { montrerAideTelecommande = true },
                 ),
             )
         }
@@ -316,6 +342,62 @@ class MainActivity : ComponentActivity() {
                 onChooseHome = { vm.actions.openHomeSettings() },
                 onDismiss = { montrerDiagnostic = false },
             )
+        }
+
+        // ---------------- Télécommande smartphone
+        if (montrerAppairage) {
+            AppairageDialog(
+                etat = etatAppairage,
+                onNouveauCode = { Telecommande.commencerAppairage() },
+                onFermer = { montrerAppairage = false; Telecommande.arreterAppairage() },
+            )
+        }
+        if (montrerTelephones) {
+            TelephonesDialog(
+                telephones = telephones,
+                connectes = connectes,
+                onRenommer = { id, nom -> Telecommande.renommer(id, nom) },
+                onRevoquer = { Telecommande.revoquer(it) },
+                onAppairer = { montrerTelephones = false; Telecommande.commencerAppairage(); montrerAppairage = true },
+                onDismiss = { montrerTelephones = false },
+            )
+        }
+        if (montrerAideTelecommande) {
+            AideTelecommandeDialog(
+                resume = resumeTelecommande(telephones.size, connectes.size),
+                commandes = commandesAdb(packageName, Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)),
+                onReglagesClavier = { ouvrirPage(Settings.ACTION_INPUT_METHOD_SETTINGS) },
+                onChoisirClavier = {
+                    runCatching { (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() }
+                },
+                onAccessibilite = { ouvrirPage(Settings.ACTION_ACCESSIBILITY_SETTINGS) },
+                onDismiss = { montrerAideTelecommande = false },
+            )
+        }
+        // Demande d'appairage : par-dessus tout le reste, même si l'utilisateur est revenu à l'accueil
+        demandeAppairage?.let { d ->
+            ConfirmationAppairageDialog(
+                nom = d.nom,
+                onAutoriser = { Telecommande.repondreConfirmation(true) },
+                onRefuser = { Telecommande.repondreConfirmation(false) },
+            )
+        }
+    }
+
+    /** État du clavier et de la navigation, relu à chaque affichage. */
+    private fun resumeTelecommande(telephones: Int, connectes: Int) = ResumeTelecommande(
+        telephones = telephones,
+        connectes = connectes,
+        clavierActive = ClavierTelecommande.estActive(this),
+        clavierChoisi = ClavierTelecommande.estSelectionne(this),
+        navigationActive = HoteNavigation.estActive(this),
+    )
+
+    private fun ouvrirPage(action: String) {
+        try {
+            startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            toast("Page introuvable sur cet appareil : utilise les commandes adb")
         }
     }
 

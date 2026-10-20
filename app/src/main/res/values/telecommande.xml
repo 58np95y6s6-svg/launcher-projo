@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Télécommande smartphone (voir docs/telecommande.md) -->
+<resources>
+    <string name="clavier_nom">Clavier iBiProjo (téléphone)</string>
+    <string name="clavier_sous_type">Saisie depuis le téléphone</string>
+    <string name="clavier_bandeau">Saisie depuis le téléphone</string>
+    <string name="navigation_nom">iBiProjo · télécommande smartphone</string>
+    <string name="navigation_description">Permet au téléphone appairé de déplacer la sélection, de valider et de revenir en arrière dans toutes les applis. Le service lit l\'écran seulement pour trouver l\'élément voisin à sélectionner, n\'en garde rien et n\'envoie rien.</string>
+    <!-- false sur la branche Fire TV : le service RedirectionAccueil hérite de NavigationTelecommande -->
+    <bool name="telecommande_service_navigation">true</bool>
+</resources>

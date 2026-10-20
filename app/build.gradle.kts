@@ -18,6 +18,15 @@ android {
         targetSdk = 35
         versionCode = buildNumber
         versionName = nomVersion
+
+        // Télécommande smartphone (WebRTC natif) : seulement ARM. Projecteur : armeabi-v7a ou
+        // arm64-v8a ; Fire TV Stick Lite (AFTSS) : Fire OS 32 bits, armeabi-v7a. Sans x86 ni
+        // x86_64 (émulateurs), ~25 Mo de bibliothèques natives en moins.
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
+        // Règles R8 de la télécommande (fichier séparé : pas de conflit avec les autres branches)
+        proguardFile("proguard-telecommande.pro")
     }
 
     signingConfigs {
@@ -92,6 +101,10 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.palette)
+    // Télécommande smartphone (voir docs/telecommande.md)
+    implementation(libs.stream.webrtc)
+    implementation(libs.okhttp)
+    implementation(libs.zxing.core)
 
     // Tests d'interface (navigation à la télécommande, captures des designs)
     testImplementation(libs.junit)
