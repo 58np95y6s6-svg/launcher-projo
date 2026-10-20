@@ -236,7 +236,7 @@ class UneTest : BancAccueil("UNE") {
         val icons = IconLoader(contexte)
         for (p in DonneesFactices.paquets) {
             icons.load(p)
-            icons.loadIcon(p)
+            icons.load(p, fr.projo.launcher.data.FormatVisuel.CARRE)
         }
         val donnees = if (sansFavoris) ui.copy(favorites = emptyList()) else ui
         val actions = HomeActions(
