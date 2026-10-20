@@ -72,17 +72,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 .ecran {
   position: absolute; inset: 0;
   width: 100%;
-  overflow-y: auto; overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: calc(12px + var(--haut)) 16px calc(20px + var(--bas));
+  /* Chaque écran tient en entier : aucun défilement (seules les feuilles défilent) */
+  overflow: hidden;
+  padding: calc(12px + var(--haut)) 16px calc(16px + var(--bas));
   max-width: 520px;
   margin: 0 auto;
-  display: flex; flex-direction: column; gap: 18px;
-  scrollbar-width: none;
+  display: flex; flex-direction: column; gap: clamp(8px, 1.8dvh, 18px);
   animation: entree 0.28s ease-out;
 }
-.ecran::-webkit-scrollbar { display: none; }
 @keyframes entree { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .ecran-centre { justify-content: center; align-items: center; text-align: center; gap: 14px; }
 .ecran-centre .btn-principal, .ecran-centre .btn-secondaire { width: 100%; max-width: 340px; }
@@ -90,10 +87,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 .entete { display: flex; align-items: center; gap: 8px; min-height: 48px; }
 .titre-entete { font-size: 18px; font-weight: 650; }
 
-.hero { text-align: center; padding: 18px 0 4px; }
+.hero { text-align: center; padding: clamp(0px, 1.2dvh, 18px) 0 0; }
+.hero h1 { font-size: clamp(24px, 4.2dvh, 34px); }
 .hero-compact { padding-top: 0; }
 .logo {
-  width: 84px; height: 84px; margin: 0 auto 18px; border-radius: 26px;
+  width: clamp(52px, 9dvh, 84px); height: clamp(52px, 9dvh, 84px);
+  margin: 0 auto clamp(8px, 1.6dvh, 18px); border-radius: 30%;
   display: grid; place-items: center;
   background: var(--degrade); box-shadow: var(--lueur);
   color: #fff;
@@ -102,7 +101,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 .logo-app { background: none; overflow: hidden; }
 .logo-app img { width: 100%; height: 100%; display: block; }
 
-.etapes { margin: 0; padding: 16px 16px 16px 40px; background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); color: var(--texte-2); }
+.etapes { margin: 0; padding: clamp(8px, 1.5dvh, 16px) 16px clamp(8px, 1.5dvh, 16px) 40px; font-size: clamp(14px, 1.9dvh, 16px); background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); color: var(--texte-2); }
 .etapes li { margin: 4px 0; }
 .etapes strong { color: var(--texte); font-weight: 600; }
 
@@ -111,7 +110,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 
 .carte {
   background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon);
-  padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  padding: clamp(12px, 2dvh, 18px); display: flex; flex-direction: column; gap: clamp(6px, 1.2dvh, 10px);
 }
 .carte-note { font-size: 14px; color: var(--texte-2); }
 .carte-note p { margin: 0; }
@@ -155,7 +154,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outl
 
 .carte-install {
   display: flex; gap: 14px; align-items: center;
-  padding: 14px 16px; border-radius: var(--rayon);
+  padding: clamp(8px, 1.5dvh, 14px) 16px; border-radius: var(--rayon);
   background: linear-gradient(135deg, rgba(124, 92, 255, 0.16), rgba(34, 211, 238, 0.10));
   border: 1px solid rgba(124, 92, 255, 0.35);
   font-size: 14px; color: var(--texte-2);
@@ -367,4 +366,12 @@ body.clavier .saisie { order: -1; margin-top: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+}
+
+/* Petits écrans : on retire le superflu plutôt que de faire défiler */
+@media (max-height: 700px) {
+  .hero .sous-titre, .separateur, .aide { display: none; }
+}
+@media (max-height: 600px) {
+  .logo-app, .hero-compact .logo { display: none; }
 }
