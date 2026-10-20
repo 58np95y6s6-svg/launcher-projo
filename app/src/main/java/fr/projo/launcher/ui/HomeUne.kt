@@ -276,7 +276,7 @@ fun HomeUne(ctx: HomeContext) {
     val montrer: (UneSujet) -> Unit = { sujet = it }
     // Zone de modules sélectionnée : le titre du module (« Météo · Lyon »…) fait la une
     val titreModule = FocusModules.titre
-    val affiche = sujet?.let { s ->
+    val sujetAffiche = sujet?.let { s ->
         if (s.cle == UneNav.CLE_ZONE && titreModule != null) s.copy(cle = "zone:$titreModule", titre = titreModule) else s
     }
     val t = rememberMaintenant()
@@ -304,7 +304,7 @@ fun HomeUne(ctx: HomeContext) {
             .fillMaxSize()
             .background(UneFond)
     ) {
-        UneAffiche(ctx, nav, affiche, soir, aplat, t, montrer)
+        UneAffiche(ctx, nav, sujetAffiche, soir, aplat, t, montrer)
         UneIndex(ctx, nav, aplat, montrer)
     }
 }
