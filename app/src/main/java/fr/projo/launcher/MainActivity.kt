@@ -136,6 +136,10 @@ class MainActivity : ComponentActivity() {
         val demandeAppairage by Telecommande.confirmation.collectAsStateWithLifecycle()
         val telephones by Telecommande.telephones.collectAsStateWithLifecycle()
         val connectes by Telecommande.connectes.collectAsStateWithLifecycle()
+        // État du clavier et de l'accessibilité : relu à l'ouverture des Réglages ou de l'aide
+        val resumeTel = remember(montrerReglages, montrerAideTelecommande, telephones.size, connectes.size) {
+            resumeTelecommande(telephones.size, connectes.size)
+        }
         // Focus rendu à l'accueil quand un panneau se ferme (sinon plus rien n'est sélectionné)
         val focusReglages = remember { FocusRequester() }
         val focusBiblio = remember { FocusRequester() }
@@ -221,7 +225,7 @@ class MainActivity : ComponentActivity() {
                 version = vm.updates.versionAffichee,
                 hiddenCount = ui.hiddenApps.size,
                 isDefaultHome = vm.repo.currentHomePackage() == packageName,
-                telecommande = resumeTelecommande(telephones.size, connectes.size),
+                telecommande = resumeTel,
                 actions = SettingsActions(
                     volume = { vm.changeVolume(it) },
                     mute = { vm.toggleMute() },
@@ -364,7 +368,7 @@ class MainActivity : ComponentActivity() {
         }
         if (montrerAideTelecommande) {
             AideTelecommandeDialog(
-                resume = resumeTelecommande(telephones.size, connectes.size),
+                resume = resumeTel,
                 commandes = commandesAdb(packageName, Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)),
                 onReglagesClavier = { ouvrirPage(Settings.ACTION_INPUT_METHOD_SETTINGS) },
                 onChoisirClavier = {
