@@ -208,7 +208,9 @@ abstract class BancAccueil(nomDesign: String) {
             p = p.parent
         }
         val principale = tags.firstOrNull {
-            it.startsWith("favori:") || it.startsWith("app:") || it == "biblio" || it == "aide" || it.startsWith("rapide:")
+            it.startsWith("favori:") || it.startsWith("app:") || it == "biblio" || it == "aide" || it.startsWith("rapide:") ||
+                // Zone de modules (ex-bandeau NBA) : « nba », plutôt que l'emplacement « module:… » qu'elle contient
+                it == "nba"
         } ?: tags.firstOrNull() ?: "(élément sans étiquette)"
         return Cible(principale, tags, n.bornes())
     }
