@@ -274,5 +274,5 @@ Sur Fire TV, le service d'accessibilité `system/RedirectionAccueil` existe déj
 2. `res/xml/redirection_accueil.xml` : `android:canRetrieveWindowContent="true"` et `android:accessibilityFlags="flagRequestFilterKeyEvents|flagIncludeNotImportantViews"` ; adapter la description (« lit l'écran seulement pour la navigation depuis le téléphone »). Après la mise à jour, redémarrer le Fire TV (même remarque que pour la touche Maison).
 3. `res/values/telecommande.xml` : `telecommande_service_navigation` = `false` (le service séparé `NavigationTelecommande` disparaît des réglages du Fire TV).
 
-Aucun fichier n'entre en conflit textuel (fusion d'essai faite) : seules ces trois modifications sont à faire à la main dans le commit de fusion. Alternative sans modification : laisser les deux services et activer les deux (`enabled_accessibility_services` séparés par `:`).
+Fait sur `claude/wf-remote-firetv` (avec en plus : `FireTv.majAFinir` signale aussi un service relié sans la lecture des fenêtres, et l'aide de la télécommande donne les commandes adb de `RedirectionAccueil`). Aucun fichier n'entre en conflit textuel (fusion d'essai faite) : seules ces trois modifications sont à faire à la main dans le commit de fusion. Alternative sans modification : laisser les deux services et activer les deux (`enabled_accessibility_services` séparés par `:`).
 

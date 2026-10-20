@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Projo</string>
     <string name="redirection_nom">iBiProjo · ouverture automatique</string>
-    <string name="redirection_description">Ouvre iBiProjo dès qu\'on appuie sur Maison, et au démarrage. Appui long sur Maison : accueil d\'origine. Seule la touche Maison est gardée, les autres touches passent normalement. Ne lit pas le contenu de l\'écran.</string>
+    <string name="redirection_description">Ouvre iBiProjo dès qu\'on appuie sur Maison, et au démarrage. Appui long sur Maison : accueil d\'origine. Seule la touche Maison est gardée, les autres touches passent normalement. Permet aussi au téléphone appairé (télécommande smartphone) de naviguer dans toutes les applis : l\'écran est lu seulement à sa demande, pour trouver l\'élément voisin à sélectionner, et rien n\'en est gardé ni envoyé.</string>
 </resources>

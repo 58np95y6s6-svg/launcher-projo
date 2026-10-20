@@ -358,8 +358,10 @@ class MainActivity : ComponentActivity() {
                     "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
                     "2. Choisis « Activer en un clic » puis accepte la fenêtre « Autoriser le débogage » " +
                     "(coche « Toujours autoriser »).\n" +
+                    "Ce service sert aussi à la télécommande smartphone : à la demande d'un téléphone appairé, " +
+                    "il lit le contenu des fenêtres pour déplacer la sélection.\n" +
                     "Après une mise à jour d'iBiProjo, redémarre le Fire TV (ou refais « Activer en un clic ») " +
-                    "pour que Maison ouvre de nouveau iBiProjo tout de suite.",
+                    "pour que Maison ouvre de nouveau iBiProjo tout de suite et que le téléphone puisse naviguer.",
                 actions = listOf(
                     MenuAction("Activer en un clic") {
                         toast("Activation… accepte la fenêtre du Fire TV si elle apparaît")
@@ -426,13 +428,21 @@ class MainActivity : ComponentActivity() {
         if (montrerAideTelecommande) {
             AideTelecommandeDialog(
                 resume = resumeTel,
-                commandes = commandesAdb(packageName, Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)),
+                // Fire TV : la navigation est portée par le service d'ouverture automatique
+                commandes = commandesAdb(
+                    packageName,
+                    Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
+                    navigation = "$packageName/.system.RedirectionAccueil",
+                ),
                 onReglagesClavier = { ouvrirPage(Settings.ACTION_INPUT_METHOD_SETTINGS) },
                 onChoisirClavier = {
                     runCatching { (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() }
                 },
-                onAccessibilite = { ouvrirPage(Settings.ACTION_ACCESSIBILITY_SETTINGS) },
+                onAccessibilite = { montrerAideTelecommande = false; montrerAide = true },
                 onDismiss = { montrerAideTelecommande = false },
+                note = "Fire TV : la navigation passe par le service « Ouverture automatique » (bouton ci-dessous). " +
+                    "Il a maintenant aussi le droit de lire le contenu des fenêtres : après la mise à jour d'iBiProjo, " +
+                    "redémarre le Fire TV (ou refais « Activer en un clic ») pour que le téléphone puisse naviguer.",
             )
         }
         // Demande d'appairage : par-dessus tout le reste, même si l'utilisateur est revenu à l'accueil

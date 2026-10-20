@@ -48,10 +48,12 @@ object FireTv {
                 val si = it.resolveInfo?.serviceInfo
                 si != null && ComponentName(si.packageName, si.name) == notre
             }
-        // Pas encore relié : on ne peut rien dire
+        // Pas encore relié : on ne peut rien dire. Touche Maison, ou lecture de la fenêtre
+        // (navigation depuis le téléphone, ajoutée avec la télécommande smartphone)
         info != null && (
             info.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_REQUEST_FILTER_KEY_EVENTS == 0 ||
-                info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS == 0
+                info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS == 0 ||
+                info.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT == 0
             )
     } catch (e: Exception) {
         false

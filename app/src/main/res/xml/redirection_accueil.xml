@@ -2,12 +2,14 @@
 <!-- Service d'ouverture automatique :
      - touches de la télécommande (seule Maison est gardée, les autres passent) ;
      - changements d'app au premier plan (filet de sécurité), envoyés sans attendre.
-     Aucune lecture du contenu de l'écran. -->
+     - navigation depuis le téléphone (télécommande smartphone, hérité de
+       NavigationTelecommande) : lecture de la fenêtre active seulement à la demande d'un
+       téléphone appairé, pour trouver l'élément voisin à sélectionner. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRequestFilterKeyEvents"
+    android:accessibilityFlags="flagRequestFilterKeyEvents|flagIncludeNotImportantViews"
     android:canRequestFilterKeyEvents="true"
-    android:canRetrieveWindowContent="false"
+    android:canRetrieveWindowContent="true"
     android:description="@string/redirection_description"
     android:notificationTimeout="0" />

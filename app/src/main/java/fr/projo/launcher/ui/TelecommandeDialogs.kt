@@ -380,10 +380,16 @@ private fun SaisieNomDialog(initial: String, onValider: (String) -> Unit, onDism
     }
 }
 
-/** Commandes adb pour activer le clavier et la navigation sans passer par les menus. */
-fun commandesAdb(paquet: String, autresServices: String?): List<String> {
+/**
+ * Commandes adb pour activer le clavier et la navigation sans passer par les menus.
+ * [navigation] : service d'accessibilité qui porte la navigation (Fire TV : RedirectionAccueil).
+ */
+fun commandesAdb(
+    paquet: String,
+    autresServices: String?,
+    navigation: String = "$paquet/.remote.NavigationTelecommande",
+): List<String> {
     val clavier = "$paquet/.remote.ClavierTelecommande"
-    val navigation = "$paquet/.remote.NavigationTelecommande"
     val services = (autresServices?.split(':')?.filter { it.isNotBlank() && it != navigation }.orEmpty() + navigation).joinToString(":")
     return listOf(
         "adb shell ime enable $clavier",
@@ -407,6 +413,8 @@ fun AideTelecommandeDialog(
     onChoisirClavier: () -> Unit,
     onAccessibilite: () -> Unit,
     onDismiss: () -> Unit,
+    /** Remarque propre à l'appareil (Fire TV : service commun, redémarrage après mise à jour). */
+    note: String? = null,
 ) {
     val c = LocalDesign.current.colors()
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -437,6 +445,10 @@ fun AideTelecommandeDialog(
                         "le clavier rend la main au clavier habituel.",
                     color = c.texteDiscret, fontSize = 12.us,
                 )
+                if (note != null) {
+                    Spacer(Modifier.height(8.u))
+                    Text(note, color = c.accent, fontSize = 12.us)
+                }
                 Spacer(Modifier.height(16.u))
                 Column(verticalArrangement = Arrangement.spacedBy(8.u)) {
                     Bouton("Activer le clavier (page système)", Modifier.fillMaxWidth().focusRequester(focus), onClick = onReglagesClavier)

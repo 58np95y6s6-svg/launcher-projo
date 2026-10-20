@@ -15,6 +15,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import fr.projo.launcher.MainActivity
+import fr.projo.launcher.remote.NavigationTelecommande
 
 /**
  * Ouverture automatique d'iBiProjo (Fire TV et appareils où l'on ne peut pas changer
@@ -27,10 +28,15 @@ import fr.projo.launcher.MainActivity
  * 2. Filet de sécurité : si l'accueil du fabricant s'affiche quand même (démarrage, Fire OS
  *    qui ne prête pas la touche Maison…), on ouvre iBiProjo à sa place.
  *
- * À activer une fois dans Paramètres → Accessibilité. Le service ne lit aucun contenu
- * de l'écran : il regarde seulement QUELLE app passe au premier plan.
+ * 3. Navigation depuis le téléphone (télécommande smartphone) : hérité de
+ *    [NavigationTelecommande]. C'est le seul rôle qui lit le contenu de la fenêtre active,
+ *    et seulement à la demande d'un téléphone appairé, pour trouver l'élément voisin à
+ *    sélectionner. Un seul service à activer sur Fire TV (voir docs/telecommande.md).
+ *
+ * À activer une fois dans Paramètres → Accessibilité. Pour la redirection, le service
+ * regarde seulement QUELLE app passe au premier plan.
  */
-class RedirectionAccueil : AccessibilityService() {
+class RedirectionAccueil : NavigationTelecommande() {
 
     private val principal = Handler(Looper.getMainLooper())
     private var accueils: Set<String> = FireTv.ACCUEILS_AMAZON
