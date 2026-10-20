@@ -1,0 +1,53 @@
+# Tests de la télécommande (PWA) : Node seulement, sans Android.
+#  - tests unitaires (node:test) : messages, versions, appairage, signatures, signalisation ;
+#  - tests de bout en bout (Playwright + Chromium) : PWA ↔ fausse TV via un faux serveur PeerJS ;
+#  - captures d'écran (iPhone 390×844, Android 412×915) jointes au run.
+name: Télécommande (tests)
+
+on:
+  push:
+    branches: ["**", "!gh-pages", "!captures/**"]
+    paths: ["remote-pwa/**", "remote-pwa-dev/**", ".github/workflows/remote-pwa-tests.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: remote-pwa-tests-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    # Playwright 1.56 ne prend pas en charge ubuntu-latest (26.04) : version épinglée
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: remote-pwa-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Les tests unitaires n'ont besoin que de Node : ils passent avant l'installation du navigateur
+      - name: Tests unitaires
+        run: npm test
+
+      - name: Installation de Playwright (Chromium)
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Tests de bout en bout
+        run: npm run test:e2e
+
+      - name: Captures d'écran
+        if: always()
+        run: npm run captures
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captures-telecommande
+          path: remote-pwa-dev/captures-pwa/
+          if-no-files-found: ignore

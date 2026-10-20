@@ -1,0 +1,49 @@
+# Publie la télécommande (PWA, dossier remote-pwa/) sur GitHub Pages :
+#   https://58np95y6s6-svg.github.io/launcher-projo/
+# Le contenu de remote-pwa/ est copié sur la branche « gh-pages » (commit orphelin, poussé
+# en force : la branche ne contient que le site publié, sans historique).
+# Réglage unique dans le dépôt : Settings → Pages → Source « Deploy from a branch »,
+# branche « gh-pages », dossier « / ».
+name: Télécommande (publication)
+
+on:
+  push:
+    branches: ["claude/launcher-projo", "main"]
+    paths: ["remote-pwa/**", ".github/workflows/remote-pwa.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: remote-pwa-pages
+  cancel-in-progress: true
+
+jobs:
+  publication:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Préparation du site
+        run: |
+          SITE="$RUNNER_TEMP/site"
+          rm -rf "$SITE" && mkdir -p "$SITE"
+          cp -R remote-pwa/. "$SITE/"
+          # Version unique par publication : le service worker détecte toujours la mise à jour
+          # (bannière « Nouvelle version — Recharger »), même si versionApp n'a pas été changée.
+          sed -i -E "s/(versionApp: \"[^\"+]*)\"/\1+${GITHUB_SHA::7}\"/" "$SITE/config.js"
+          grep -q "+${GITHUB_SHA::7}\"" "$SITE/config.js"
+          touch "$SITE/.nojekyll"
+
+      - name: Publication sur gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP/site"
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Télécommande publiée depuis ${GITHUB_SHA::7} (${GITHUB_REF_NAME})"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/gh-pages
+          echo "Publié sur gh-pages : https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
