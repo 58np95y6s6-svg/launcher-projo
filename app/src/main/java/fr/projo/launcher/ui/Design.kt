@@ -33,9 +33,7 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     PASTEL("pastel", "Pastel", "Formes rondes, tons doux"),
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
     GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan"),
-    UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
-    ORBITE("orbite", "Orbite", "Les apps en anneau, lueur violet-cyan"),
-    CADRAN("cadran", "Cadran", "Cadran de radio, afficheurs lumineux");
+    UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app");
 
     companion object {
         fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
@@ -100,18 +98,6 @@ fun Design.colors(): DesignColors = when (this) {
         texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f), accent = Color(0xFF10B981),
         focusFond = Color.White, focusTexte = Color(0xFF0A0A0D),
         voile = Color(0xFF050508).copy(alpha = 0.55f), fondBibliotheque = Color(0xFA0A0A0D),
-    )
-    Design.ORBITE -> DesignColors(
-        panneau = Color(0xF70B0A1E), carte = Color.White.copy(alpha = 0.06f),
-        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.58f), accent = Color(0xFF7C5CFF),
-        focusFond = Color.White, focusTexte = Color(0xFF0B0A1E),
-        voile = Color(0xFF05040F).copy(alpha = 0.6f), fondBibliotheque = Color(0xFA0B0A1E),
-    )
-    Design.CADRAN -> DesignColors(
-        panneau = Color(0xF7111318), carte = Color.White.copy(alpha = 0.05f),
-        texte = Color(0xFFEDEFF3), texteDiscret = Color(0xFF8A8F9C), accent = Color(0xFF3FE0F0),
-        focusFond = Color(0xFFEDEFF3), focusTexte = Color(0xFF0E1014),
-        voile = Color(0xFF0E1014).copy(alpha = 0.7f), fondBibliotheque = Color(0xFA0E1014),
     )
 }
 
