@@ -138,6 +138,7 @@ fun HomeScreen(
         Design.CONSOLE -> HomeConsole(ctx)
         Design.GRAPHITE -> HomeGraphite(ctx)
         Design.UNE -> HomeUne(ctx)
+        Design.CHAINES -> HomeChaines(ctx)
     }
 }
 
