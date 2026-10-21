@@ -103,7 +103,9 @@ import fr.projo.launcher.modules.FocusModules
 import java.util.Calendar
 import java.util.Locale
 import kotlinx.coroutines.delay
+import kotlin.math.cbrt
 import kotlin.math.floor
+import kotlin.math.hypot
 import kotlin.math.pow
 
 // ------------------------------------------------------------------ palette « À la une »
@@ -192,23 +194,50 @@ internal fun uneEncreSur(c: Color): Color = if (uneLuminance(c) > 0.20f) Color(0
 internal data class UneAplat(val fond: Color, val geant: Color)
 
 /**
- * Aplat « calibré » : la luminance est plafonnée (0,07 le soir, 0,18 le jour) en gardant la
- * teinte, pour ne pas éblouir et garder l'encre blanche lisible. Les jaunes et ambres, qui
- * deviendraient kaki, sont « inversés » : aplat noir chaud et nom géant à la couleur de la marque.
+ * Aplat « calibré » : la couleur de marque, en plus sombre et surtout moins saturée (espace
+ * OKLab : clarté plafonnée à 0,40 le jour / 0,32 le soir, chroma à 0,10 / 0,075), en gardant
+ * la teinte. On reconnaît l'app sans être ébloui (le rouge Netflix pur fatiguait les yeux au
+ * projecteur) et l'encre blanche reste lisible. Les jaunes et ambres, qui deviendraient kaki,
+ * sont « inversés » : aplat noir chaud et nom géant à la couleur de la marque.
  */
 internal fun uneAplat(marque: Color, soir: Boolean): UneAplat {
     val y = uneLuminance(marque)
     val teinte = uneTeinte(marque)
     if (y > 0.35f && teinte in 35f..70f) return UneAplat(UneAplatInverse, marque.copy(alpha = 1f))
-    val plafond = if (soir) 0.07f else 0.18f
-    if (y <= plafond) return UneAplat(marque.copy(alpha = 1f), Color.White)
-    val k = plafond / y
-    val fond = Color(
-        uneSrgb(uneLineaire(marque.red) * k),
-        uneSrgb(uneLineaire(marque.green) * k),
-        uneSrgb(uneLineaire(marque.blue) * k),
+    val clarteMax = if (soir) 0.32f else 0.40f
+    val chromaMax = if (soir) 0.075f else 0.10f
+    val (l, a, b) = uneOklab(marque)
+    val chroma = hypot(a, b)
+    if (l <= clarteMax && chroma <= chromaMax) return UneAplat(marque.copy(alpha = 1f), Color.White)
+    val k = if (chroma > chromaMax) chromaMax / chroma else 1f
+    return UneAplat(uneDepuisOklab(minOf(l, clarteMax), a * k, b * k), Color.White)
+}
+
+/** sRGB → OKLab (clarté, a, b). */
+private fun uneOklab(c: Color): Triple<Float, Float, Float> {
+    val r = uneLineaire(c.red)
+    val g = uneLineaire(c.green)
+    val b = uneLineaire(c.blue)
+    val l = cbrt(0.4122214708f * r + 0.5363325363f * g + 0.0514459929f * b)
+    val m = cbrt(0.2119034982f * r + 0.6806995451f * g + 0.1073969566f * b)
+    val s = cbrt(0.0883024619f * r + 0.2817188376f * g + 0.6299787005f * b)
+    return Triple(
+        0.2104542553f * l + 0.7936177850f * m - 0.0040720468f * s,
+        1.9779984951f * l - 2.4285922050f * m + 0.4505937099f * s,
+        0.0259040371f * l + 0.7827717662f * m - 0.8086757660f * s,
     )
-    return UneAplat(fond, Color.White)
+}
+
+/** OKLab → sRGB (hors gamut : composantes ramenées entre 0 et 1). */
+private fun uneDepuisOklab(lum: Float, a: Float, b: Float): Color {
+    val l = (lum + 0.3963377774f * a + 0.2158037573f * b).pow(3)
+    val m = (lum - 0.1055613458f * a - 0.0638541728f * b).pow(3)
+    val s = (lum - 0.0894841775f * a - 1.2914855480f * b).pow(3)
+    return Color(
+        uneSrgb(4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s),
+        uneSrgb(-1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s),
+        uneSrgb(-0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s),
+    )
 }
 
 /** Mode Soir automatique de 19 h à 7 h. */
