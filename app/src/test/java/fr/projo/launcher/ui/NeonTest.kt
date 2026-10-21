@@ -270,14 +270,23 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         compose.runOnIdle { appuisMaison.intValue++ }
         avancer(1200)
         if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis « Mes apps » : obtenu ${decrire(focus())}")
+        // Maison depuis un bouton rond
+        donnerFocus("rapide:Wi-Fi")
+        compose.runOnIdle { appuisMaison.intValue++ }
+        avancer(1200)
+        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis Wi-Fi : obtenu ${decrire(focus())}")
         // Maison depuis le panneau des modules : panneau refermé, 1re tuile
         donnerFocus("rapide:Modules")
         appuyer(Key.DirectionCenter)
         avancer(800)
         if (focus()?.chaine?.contains("nba") != true) fail("[NEON $theme] Modules puis OK : obtenu ${decrire(focus())}")
+        val notes = mutableListOf("avant : ${decrire(focus())}")
         compose.runOnIdle { appuisMaison.intValue++ }
-        avancer(1200)
-        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : obtenu ${decrire(focus())}")
+        for (pas in listOf(16L, 16L, 100L, 1000L)) {
+            avancer(pas)
+            notes += "+$pas ms : ${decrire(focus())} ${focus()?.chaine}"
+        }
+        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : ${notes.joinToString(" | ")}")
         val zone = bornesDe("nba")
         if (zone != null && zone.top < compose.onRoot().fetchSemanticsNode().size.height - 1f) {
             fail("[NEON $theme] panneau des modules encore ouvert après Maison : ${zone.enU()}")
