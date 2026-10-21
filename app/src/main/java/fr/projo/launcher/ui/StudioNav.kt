@@ -176,8 +176,12 @@ internal fun Modifier.bandeModulesStudio(nav: StudioNav, surFocus: (StudioBande)
         .onFocusChanged { if (it.hasFocus) surFocus(StudioBande.MODULES) }
         .focusProperties {
             exit = { d ->
-                if (d == FocusDirection.Up) nav.cible(StudioBande.MODULES, -1) ?: FocusRequester.Cancel
-                else FocusRequester.Cancel
+                when (d) {
+                    FocusDirection.Up -> nav.cible(StudioBande.MODULES, -1) ?: FocusRequester.Cancel
+                    FocusDirection.Down, FocusDirection.Left, FocusDirection.Right -> FocusRequester.Cancel
+                    // Demandes directes (sortie de la zone, Maison…) : laissées passer
+                    else -> FocusRequester.Default
+                }
             }
         }
         .focusGroup()
