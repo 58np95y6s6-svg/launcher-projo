@@ -129,17 +129,26 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         basPuisRetour("carte d'aide")
     }
 
-    /** Panneau Réglages ouvert par-dessus l'accueil (comme MainActivity), tuile « Fond » comprise. */
+    /** Panneau Réglages ouvert par-dessus l'accueil (comme MainActivity), puis ▼ jusqu'à la tuile « Fond ». */
     @Test
     fun captureReglagesOuverts() {
         afficherAvecReglages()
         avancer(1500)
-        if (compose.onAllNodes(androidx.compose.ui.test.hasText("Fond · " + if (theme == "clair") "Clair" else "Sombre"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isEmpty()
-        ) {
-            fail("[NEON $theme] tuile « Fond » absente du panneau Réglages")
-        }
-        val fichier = File("build/captures/neon_n4_reglages_ouverts_$theme.png")
+        capturerEcran("n4_reglages_ouverts")
+        val texte = "Fond · " + if (theme == "clair") "Clair" else "Sombre"
+        val hauteur = compose.onRoot().fetchSemanticsNode().size.height
+        fun visible(): Boolean = compose.onAllNodes(androidx.compose.ui.test.hasText(texte), useUnmergedTree = true)
+            .fetchSemanticsNodes().any { it.boundsInRoot.bottom in 1f..hauteur.toFloat() }
+        // ▼ dans le panneau (liste défilante) jusqu'à ce que la tuile soit entièrement à l'écran
+        repeat(30) { if (!visible()) appuyer(Key.DirectionDown) }
+        appuyer(Key.DirectionDown)
+        if (!visible()) fail("[NEON $theme] tuile « $texte » jamais affichée dans le panneau Réglages")
+        capturerEcran("n4b_reglages_tuile_fond")
+    }
+
+    /** Capture de l'écran entier (panneau Réglages compris). */
+    private fun capturerEcran(nom: String) {
+        val fichier = File("build/captures/neon_${nom}_$theme.png")
         fichier.parentFile?.mkdirs()
         compose.onRoot().captureRoboImage(fichier.path)
     }
