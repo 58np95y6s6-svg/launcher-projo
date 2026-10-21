@@ -23,7 +23,7 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     // ------------------------------------------------------------------ ▼ depuis les favoris
@@ -301,7 +301,7 @@ class NavigationSansFavoriTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -337,7 +337,7 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -404,7 +404,7 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0} {1}")
-        fun cas(): List<Array<Any>> = Design.entries.flatMap { d ->
+        fun cas(): List<Array<Any>> = Design.entries.filter { it.deuxRangees }.flatMap { d ->
             listOf("1 app", "2 apps", "30 apps", "30 favoris").map { arrayOf<Any>(d.name, it) }
         }
 

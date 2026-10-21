@@ -86,6 +86,18 @@ abstract class BancAccueil(nomDesign: String) {
     /** Paquets dont le menu a été demandé (appui long ou touche Menu). */
     protected val menus = mutableListOf<String>()
 
+    /** Paquets lancés (OK sur une app). */
+    protected val lances = mutableListOf<String>()
+
+    /** Appuis sur Maison : l'incrémenter ramène l'accueil en haut (comme MainActivity). */
+    protected val pressionsMaison = androidx.compose.runtime.mutableIntStateOf(0)
+
+    /** Source des suggestions de Studio ; null : celle d'Android (repli dans Robolectric). */
+    protected var sourceStudio: StudioSource? = null
+
+    /** Contenu affiché par-dessus l'accueil (ex. panneau Réglages), à poser après [afficher]. */
+    protected val pardessus = androidx.compose.runtime.mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
+
     /**
      * Modules affichés à la place du bandeau NBA (voir ModulesTest) ; null : comme avant,
      * NbaPanel affiche les matchs NBA factices.
@@ -121,7 +133,7 @@ abstract class BancAccueil(nomDesign: String) {
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
         val actions = HomeActions(
-            launch = {}, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
+            launch = { lances += it.packageName }, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
             wifi = {}, bluetooth = {}, settings = {}, settingsLong = {}, update = {},
         )
         compose.mainClock.autoAdvance = false
@@ -132,13 +144,15 @@ abstract class BancAccueil(nomDesign: String) {
                 LocalScale provides echelle,
                 LocalDesign provides design,
                 LocalHoteModules provides hoteModules,
+                LocalStudioSource provides sourceStudio,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
+                  androidx.compose.foundation.layout.Box {
                     HomeScreen(
                         ui = ui,
                         icons = icons,
                         wifiLabel = wifiLabel,
-                        homePressCount = 0,
+                        homePressCount = pressionsMaison.intValue,
                         focusReglages = focusReglages,
                         focusBiblio = focusBiblio,
                         actions = actions,
@@ -148,6 +162,8 @@ abstract class BancAccueil(nomDesign: String) {
                         majDisponible = majDisponible,
                         design = design,
                     )
+                    pardessus.value?.invoke()
+                  }
                 }
             }
         }
