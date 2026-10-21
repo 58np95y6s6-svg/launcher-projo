@@ -195,6 +195,18 @@ abstract class BancAccueil(nomDesign: String) {
             donnerFocus(app(0))
             repeat(ui.homeApps.size + 2) { if (focus()?.etiquette != "biblio") appuyer(Key.DirectionRight) }
         }
+        // Idem pour un favori ou une app pas encore composé (rangée étroite) : ▶ depuis le début de sa rangée
+        val rangee = when {
+            etiquette.startsWith("app:") -> ui.homeApps.indices.map { app(it) }
+            etiquette.startsWith("favori:") -> ui.favorites.indices.map { favori(it) }
+            else -> emptyList()
+        }
+        if (rangee.size > 1 && etiquette != rangee[0] &&
+            compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+        ) {
+            donnerFocus(rangee[0])
+            repeat(rangee.size) { if (focus()?.etiquette != etiquette) appuyer(Key.DirectionRight) }
+        }
         compose.onAllNodes(
             (hasTestTag(etiquette) or hasAnyAncestor(hasTestTag(etiquette))) and
                 SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus),

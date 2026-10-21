@@ -34,7 +34,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
     GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan"),
     UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
-    CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments");
+    CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments"),
+    PLAYLIST("playlist", "Playlist", "Bibliothèque à gauche, cartes et lecteur, façon appli de musique");
 
     companion object {
         fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
@@ -107,6 +108,13 @@ fun Design.colors(): DesignColors = when (this) {
         focusFond = Color(0xFFCDEEFC), focusTexte = Color(0xFF0E4A63),
         voile = Color(0xFF6E757C).copy(alpha = 0.35f), fondBibliotheque = Color(0xFFF2F3F5),
         clair = true,
+    )
+    // « Playlist » : panneaux #121212 sur fond noir, gris #B3B3B3, accent vert #1ED760
+    Design.PLAYLIST -> DesignColors(
+        panneau = Color(0xFA121212), carte = Color.White.copy(alpha = 0.07f),
+        texte = Color.White, texteDiscret = Color(0xFFB3B3B3), accent = Color(0xFF1ED760),
+        focusFond = Color.White, focusTexte = Color.Black,
+        voile = Color.Black.copy(alpha = 0.6f), fondBibliotheque = Color(0xFA121212),
     )
 }
 
