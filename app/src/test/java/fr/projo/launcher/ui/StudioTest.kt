@@ -34,14 +34,72 @@ val Design.deuxRangees: Boolean get() = this != Design.STUDIO
 
 fun designsDeuxRangees(): List<Array<Any>> = Design.entries.filter { it.deuxRangees }.map { arrayOf<Any>(it.name) }
 
-/** Source de suggestions factice (tests seulement : l'app n'invente jamais de contenu). */
-class SourceStudioFactice(
-    private val liste: List<StudioProgramme> = emptyList(),
-    private val recente: String? = null,
-) : StudioSource {
-    override fun programmes() = liste
+/** Source factice sans suggestions TMDB (repli), avec éventuellement une app « récente ». */
+class SourceStudioFactice(private val recente: String? = null) : StudioSource {
+    override val synchrone = true
+    override fun suggestions(apps: List<AppInfo>) = StudioResultat(emptyList(), StudioEtat.OK)
     override fun plusRecente(paquets: Collection<String>) = recente?.takeIf { it in paquets }
     override fun image(adresse: String, largeur: Int) = null
+}
+
+/**
+ * Réponses TMDB factices (JSON), titres INVENTÉS pour les tests uniquement : l'app n'affiche
+ * jamais que de vraies données TMDB.
+ */
+object TmdbFactice {
+    private fun e(type: String, id: Int, titre: String, vararg genres: Int) =
+        """{"media_type":"$type","id":$id,"${if (type == "movie") "title" else "name"}":"$titre","backdrop_path":"/$id.jpg","genre_ids":[${genres.joinToString(",")}]}"""
+
+    private fun r(vararg el: String) = """{"results":[${el.joinToString(",")}]}"""
+
+    private val services = r(
+        """{"provider_id":8,"provider_name":"Netflix","display_priorities":{"FR":1}}""",
+        """{"provider_id":119,"provider_name":"Amazon Prime Video","display_priorities":{"FR":2}}""",
+        """{"provider_id":381,"provider_name":"Canal+","display_priorities":{"FR":3}}""",
+        """{"provider_id":236,"provider_name":"France TV","display_priorities":{"FR":4}}""",
+        """{"provider_id":234,"provider_name":"Arte","display_priorities":{"FR":5}}""",
+    )
+
+    /** Adresses demandées (pour vérifier les paramètres). */
+    val demandes = mutableListOf<String>()
+
+    fun lire(url: String, bearer: String?): String? {
+        demandes += url
+        val chemin = url.removePrefix(ClientTmdb.BASE).substringBefore('?')
+        val fournisseurs = Regex("with_watch_providers=([^&]+)").find(url)?.groupValues?.get(1)?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+        return when {
+            chemin.startsWith("watch/providers/") -> services
+            chemin == "trending/all/week" -> r(e("tv", 101, "Les Rivages de verre", 10765), e("movie", 202, "Minuit à Valparaiso", 53), e("movie", 999, "Hors service", 18))
+            chemin == "discover/movie" && fournisseurs == "8" -> r(e("movie", 202, "Minuit à Valparaiso", 53), e("movie", 203, "Le Dernier Phare", 18))
+            chemin == "discover/tv" && fournisseurs == "8" -> r(e("tv", 101, "Les Rivages de verre", 10765), e("tv", 104, "Brigade Nord", 80))
+            chemin == "discover/movie" && fournisseurs == "119" -> r(e("movie", 301, "Opération Saphir", 28))
+            chemin == "discover/tv" && fournisseurs == "119" -> r(e("tv", 302, "Les Gardiens du col", 9648))
+            chemin == "discover/tv" && fournisseurs == "381" -> r(e("tv", 402, "Station Polaire", 18))
+            chemin == "discover/movie" && fournisseurs == "381" -> r(e("movie", 401, "Le Bal des lucioles", 35))
+            else -> r()
+        }
+    }
+
+    /** Image factice : dégradé coloré d'après l'adresse (PNG). */
+    fun octets(url: String): ByteArray {
+        val b = android.graphics.Bitmap.createBitmap(320, 180, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(b)
+        val h = (url.hashCode() and 0xFFFFFF)
+        val p = android.graphics.Paint().apply {
+            shader = android.graphics.LinearGradient(
+                0f, 0f, 320f, 180f, (0xFF000000.toInt() or h), (0xFF101828.toInt()), android.graphics.Shader.TileMode.CLAMP,
+            )
+        }
+        c.drawRect(0f, 0f, 320f, 180f, p)
+        val sortie = java.io.ByteArrayOutputStream()
+        b.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, sortie)
+        return sortie.toByteArray()
+    }
+
+    fun source(cle: String? = "0123456789abcdef0123456789abcdef", panne: Boolean = false): StudioSource =
+        object : StudioSourceTmdb({ cle }, { u, b -> if (panne) null else lire(u, b) }, { u -> if (panne) null else octets(u) }) {
+            override val synchrone = true
+        }
 }
 
 /** Outils communs aux tests de Studio : bandes, écran affiché, sauts vérifiés. */
@@ -416,18 +474,84 @@ class StudioModulesTest : BancStudio() {
     }
 }
 
-/** Suggestions : repli sur les apps à la une, app la plus récente, vraies suggestions et onglets. */
+/** Suggestions : TMDB (factice), onglets, sans clé, panne réseau, repli sur les apps à la une. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
 class StudioSuggestionsTest : BancStudio() {
 
-    private fun suggestions(): List<Pair<String, Rect>> = elements(Bande.SUGGESTIONS)
+    private fun suggestions(): List<String> = elements(Bande.SUGGESTIONS).map { it.first }
+
+    @Test
+    fun suggestionsTmdb() {
+        sourceStudio = TmdbFactice.source()
+        afficher()
+        avancer(500)
+        val s = suggestions()
+        // Tendances de la semaine d'abord (disponibles sur Netflix, installé)
+        if (s.take(2) != listOf("suggestion:tv:101", "suggestion:movie:202")) fail("[STUDIO] TMDB : ordre $s")
+        if ("suggestion:movie:999" in s) fail("[STUDIO] TMDB : titre tendance hors des services installés affiché")
+        if (!textePresent("Série · Science-fiction · Netflix")) fail("[STUDIO] sous-titre « Série · Science-fiction · Netflix » absent")
+        if (!textePresent("Données : TMDB")) fail("[STUDIO] attribution TMDB absente")
+        if (textePresent("Activez les suggestions dans Réglages")) fail("[STUDIO] message « Activez… » affiché avec une clé")
+        // Paramètres TMDB : région FR, français, services installés
+        val d = TmdbFactice.demandes.firstOrNull { "discover/movie" in it } ?: ""
+        for (p in listOf("watch_region=FR", "language=fr-FR", "with_watch_providers=8", "api_key=")) {
+            if (TmdbFactice.demandes.none { "discover" in it && p in it }) fail("[STUDIO] paramètre $p absent : $d")
+        }
+        capturer("s0_ecran1_suggestions_tmdb")
+        // OK sur la grande affiche : ouvre le service (Netflix)
+        appuyer(Key.DirectionUp)
+        attendre("suggestion:tv:101", "▲ depuis la barre")
+        appuyer(Key.DirectionCenter)
+        if (lances != listOf(ui.favorites[0].packageName)) fail("[STUDIO] OK sur l'affiche : lancés $lances")
+    }
+
+    @Test
+    fun ongletsFiltrent() {
+        sourceStudio = TmdbFactice.source()
+        afficher()
+        avancer(500)
+        appuyer(Key.DirectionUp)
+        sauter(Key.DirectionUp, Bande.HAUT, "grande suggestion")
+        if (focus()?.etiquette?.startsWith("onglet:") != true) fail("[STUDIO] ▲ ▲ : attendu un onglet, obtenu ${decrire(focus())}")
+        donnerFocus("onglet:films")
+        val films = suggestions()
+        if (films.isEmpty() || films.any { !it.startsWith("suggestion:movie:") }) fail("[STUDIO] onglet Films : $films")
+        donnerFocus("onglet:series")
+        val series = suggestions()
+        if (series.isEmpty() || series.any { !it.startsWith("suggestion:tv:") }) fail("[STUDIO] onglet Séries : $series")
+        capturer("s0b_onglet_series")
+        appuyer(Key.DirectionDown)
+        if (focus()?.etiquette?.startsWith("suggestion:tv:") != true) fail("[STUDIO] onglet puis ▼ : ${decrire(focus())}")
+        donnerFocus("onglet:explorer")
+        if (suggestions().size < films.size + series.size - 1) fail("[STUDIO] Explorer : ${suggestions()}")
+    }
+
+    @Test
+    fun sansCle() {
+        sourceStudio = TmdbFactice.source(cle = null)
+        afficher()
+        avancer(500)
+        if (!textePresent("Activez les suggestions dans Réglages")) fail("[STUDIO] sans clé : message « Activez les suggestions dans Réglages » absent")
+        if (suggestions().firstOrNull() != "suggestion:" + ui.favorites[0].packageName) fail("[STUDIO] sans clé : repli attendu, ${suggestions()}")
+        if (textePresent("Explorer")) fail("[STUDIO] sans clé : onglets affichés")
+    }
+
+    @Test
+    fun panneReseau() {
+        sourceStudio = TmdbFactice.source(panne = true)
+        afficher()
+        avancer(500)
+        if (suggestions().firstOrNull() != "suggestion:" + ui.favorites[0].packageName) fail("[STUDIO] panne : repli attendu, ${suggestions()}")
+        if (textePresent("Activez les suggestions dans Réglages")) fail("[STUDIO] panne : le message de clé ne doit pas s'afficher")
+    }
 
     @Test
     fun repliSansHistorique() {
+        sourceStudio = SourceStudioFactice()
         afficher()
-        val s = suggestions()
+        val s = elements(Bande.SUGGESTIONS)
         val premiere = s.firstOrNull() ?: return fail("[STUDIO] aucune suggestion")
         if (premiere.first != "suggestion:" + ui.favorites[0].packageName) fail("[STUDIO] grande carte : ${premiere.first}, attendu le 1er favori")
         if (s.size > 1 && premiere.second.width < 1.5f * s[1].second.width) fail("[STUDIO] la 1re carte doit être la grande")
@@ -441,43 +565,21 @@ class StudioSuggestionsTest : BancStudio() {
         sourceStudio = SourceStudioFactice(recente = ui.favorites[2].packageName)
         afficher()
         avancer(500)
-        val premiere = suggestions().firstOrNull()?.first
+        val premiere = suggestions().firstOrNull()
         if (premiere != "suggestion:" + ui.favorites[2].packageName) fail("[STUDIO] app récente : grande carte $premiere")
         if (!textePresent("Reprendre sur ${ui.favorites[2].label}")) fail("[STUDIO] « Reprendre sur ${ui.favorites[2].label} » absent")
     }
 
     @Test
-    fun vraiesSuggestionsEtOnglets() {
-        val netflix = ui.favorites[0].packageName
-        fun p(id: String, titre: String, genre: StudioGenre) =
-            StudioProgramme(id, titre, null, netflix, genre, null, null, reprise = id.startsWith("w"))
-        sourceStudio = SourceStudioFactice(
-            listOf(
-                p("w1", "Programme test A", StudioGenre.SERIE),
-                p("p2", "Programme test B", StudioGenre.FILM),
-                p("p3", "Programme test C", StudioGenre.SERIE),
-                p("p4", "Programme test D", StudioGenre.AUTRE),
-            ),
-        )
-        afficher()
-        avancer(500)
-        if (suggestions().size != 4) fail("[STUDIO] 4 programmes attendus, ${suggestions().map { it.first }}")
-        // ▲ ▲ : de la barre aux onglets (au-dessus de la grande carte)
-        appuyer(Key.DirectionUp)
-        sauter(Key.DirectionUp, Bande.HAUT, "grande suggestion")
-        if (focus()?.etiquette?.startsWith("onglet:") != true) fail("[STUDIO] ▲ ▲ : attendu un onglet, obtenu ${decrire(focus())}")
-        // Explorer puis ▶ : « Films »
-        donnerFocus("onglet:explorer")
-        if (suggestions().size != 4) fail("[STUDIO] Explorer : 4 programmes attendus")
-        appuyer(Key.DirectionRight)
-        attendre("onglet:films", "▶ sur Explorer")
-        val films = suggestions().map { it.first }
-        if (films != listOf("suggestion:p2")) fail("[STUDIO] onglet Films : $films")
-        appuyer(Key.DirectionRight)
-        val series = suggestions().map { it.first }
-        if (series != listOf("suggestion:w1", "suggestion:p3")) fail("[STUDIO] onglet Séries : $series")
-        appuyer(Key.DirectionDown)
-        attendre("suggestion:w1", "onglet puis ▼")
+    fun formatsDeCle() {
+        if (!cleTmdbValide("0123456789abcdef0123456789ABCDEF")) fail("clé v3 refusée")
+        if (!cleTmdbValide("eyJ" + "a".repeat(150) + ".b.c")) fail("jeton v4 refusé")
+        if (cleTmdbValide("1234") || cleTmdbValide("eyJcourt")) fail("clé invalide acceptée")
+        // Jeton v4 : en-tête Authorization, pas de paramètre api_key
+        var entete: String? = null
+        var adresse = ""
+        ClientTmdb("eyJ" + "x".repeat(150)) { u, b -> adresse = u; entete = b; null }.listeServices()
+        if (entete == null || "api_key" in adresse) fail("jeton v4 : en-tête $entete, adresse $adresse")
     }
 }
 

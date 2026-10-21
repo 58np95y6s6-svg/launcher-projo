@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,8 +118,12 @@ fun HomeStudio(ctx: HomeContext) {
     val paquets = remember(ui.favorites, ui.homeApps) {
         (ui.favorites + ui.homeApps).filter { !it.isSpecial }.map { it.packageName }.distinct()
     }
-    val etat = rememberStudioSuggestions(paquets)
-    val programmes = etat.programmes
+    // Services installés : ceux des favoris et de « Mes apps » d'abord
+    val installees = remember(ui.favorites, ui.homeApps, ui.allApps) {
+        (ui.favorites + ui.homeApps + ui.allApps).distinctBy { it.packageName }
+    }
+    val etat = rememberStudioSuggestions(installees, paquets)
+    val programmes = etat.resultat.programmes
     val onglets = remember(programmes) {
         if (programmes.isEmpty()) emptyList()
         else listOfNotNull(
@@ -175,8 +180,18 @@ fun HomeStudio(ctx: HomeContext) {
             ) {
                 // ------------------------------------------------ écran 1
                 Column(Modifier.fillMaxWidth().height(hautEcran1.u)) {
-                    StudioEnTete(ctx, nav, onglets, onglet, { ongletChoisi = it }, reglagesBas, { reglagesBas = it }, versEcran)
+                    StudioEnTete(
+                        ctx, nav, onglets, onglet, { ongletChoisi = it }, reglagesBas, { reglagesBas = it }, versEcran,
+                        sansCle = etat.resultat.etat == StudioEtat.SANS_CLE,
+                    )
                     StudioRangeeSuggestions(ctx, nav, suggestions, onglet, versEcran)
+                    if (programmes.isNotEmpty()) {
+                        // Attribution demandée par TMDB
+                        Text(
+                            "Données : TMDB", color = StudioGrisClair, fontSize = 9.us, style = ligne(11.us),
+                            modifier = Modifier.align(Alignment.End).padding(end = S_MARGE.u),
+                        )
+                    }
                 }
                 StudioDock(ctx, nav, mesApps, versEcran)
                 // ------------------------------------------------ écran 2
@@ -201,6 +216,7 @@ private fun StudioEnTete(
     reglagesBas: Boolean,
     setReglagesBas: (Boolean) -> Unit,
     versEcran: (StudioBande) -> Unit,
+    sansCle: Boolean,
 ) {
     val a = ctx.actions
     Row(
@@ -215,6 +231,12 @@ private fun StudioEnTete(
                 "Pour vous", color = StudioEncre, fontSize = 27.us, fontWeight = FontWeight.Bold,
                 style = ligne(34.us),
             )
+            if (sansCle) {
+                Text(
+                    "Activez les suggestions dans Réglages", color = StudioGrisClair, fontSize = 11.us,
+                    fontWeight = FontWeight.Medium, style = ligne(14.us), modifier = Modifier.padding(top = 4.u),
+                )
+            }
             if (onglets.isNotEmpty()) {
                 Row(Modifier.padding(top = 6.u), horizontalArrangement = Arrangement.spacedBy(4.u)) {
                     for (o in onglets) {
@@ -339,18 +361,15 @@ private fun StudioRangeeSuggestions(
                     val app = s.app
                     StudioCarteSuggestion(
                         titre = p.titre,
-                        sousTitre = listOfNotNull(
-                            p.detail,
-                            when (p.genre) { StudioGenre.FILM -> "Film"; StudioGenre.SERIE -> "Série"; else -> null },
-                            app?.label,
-                        ).joinToString(" · "),
+                        sousTitre = sousTitreProgramme(p),
                         largeur = l.u, hauteur = h.u, grande = grande,
                         onClick = { ouvrirProgramme(context, p) { app?.let(ctx.actions.launch) } },
                         onMenu = app?.let { { ctx.actions.openMenu(it) } },
                         onFocus = { c -> if (app != null) ctx.surFocus(app, c ?: IconLoader.COULEUR_PAR_DEFAUT) else ctx.sansSelection() },
                         modifier = Modifier.testTag("suggestion:" + p.id).then(cible),
                         app = app, icons = ctx.icons, iconPackage = app?.let { ctx.ui.iconSourceOf(it.packageName) },
-                        imageProgramme = p.image, largeurImage = if (grande) 640 else 360,
+                        imageProgramme = p.image, largeurImage = with(LocalDensity.current) { l.u.roundToPx() },
+                        logoService = true,
                     )
                 }
             }
@@ -378,6 +397,8 @@ private fun StudioCarteSuggestion(
     iconPackage: String?,
     imageProgramme: String? = null,
     largeurImage: Int = 0,
+    /** Petit logo du service (icône de l'app) dans le coin de l'affiche. */
+    logoService: Boolean = false,
 ) {
     val visuel = iconPackage?.let { rememberAppVisual(it, icons, FormatVisuel.BANNIERE) }
     val image = if (imageProgramme != null) rememberImageProgramme(imageProgramme, largeurImage) else null
@@ -393,8 +414,25 @@ private fun StudioCarteSuggestion(
                     image, contentDescription = titre, contentScale = ContentScale.Crop,
                     filterQuality = FilterQuality.Medium, modifier = Modifier.fillMaxSize(),
                 )
+                imageProgramme != null -> Box(Modifier.fillMaxSize().background(Color(0xFFD5D8DE)))
                 visuel?.art != null -> ImageApp(visuel, app?.label, Modifier.fillMaxSize())
                 else -> InitialeStudio(app?.label ?: titre, visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT, if (grande) 40 else 24)
+            }
+            if (logoService && iconPackage != null) {
+                val icone = rememberAppIcon(iconPackage, icons)
+                if (icone != null) {
+                    val t = if (grande) 30.u else 22.u
+                    Image(
+                        icone, contentDescription = app?.label, filterQuality = FilterQuality.Medium,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(if (grande) 12.u else 8.u)
+                            .size(t)
+                            .ombreStudio(7.u, repos = 1f)
+                            .clip(RoundedCornerShape(7.u))
+                            .border(1.u, Color.White.copy(alpha = 0.7f), RoundedCornerShape(7.u)),
+                    )
+                }
             }
         }
         Text(

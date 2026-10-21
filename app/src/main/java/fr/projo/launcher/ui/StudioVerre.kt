@@ -88,14 +88,14 @@ internal fun Modifier.ombreStudio(rayon: Dp, repos: Float = 0.45f, force: () -> 
     val f = force()
     val k = repos + (1f - repos) * f
     if (k <= 0f) return@drawBehind
-    val pas = (1.6f + 1.4f * f) * density
-    for (i in 1..6) {
+    val pas = (1.3f + 0.9f * f) * density
+    for (i in 1..5) {
         val e = i * pas
         drawRoundRect(
-            Color.Black.copy(alpha = 0.018f * k),
-            topLeft = Offset(-e * 0.8f, -e * 0.5f + i * pas * 0.9f),
-            size = Size(size.width + e * 1.6f, size.height + e * 1.1f),
-            cornerRadius = CornerRadius(r + e),
+            Color.Black.copy(alpha = 0.02f * k),
+            topLeft = Offset(-e * 0.6f, -e * 0.3f + i * pas * 0.8f),
+            size = Size(size.width + e * 1.2f, size.height + e * 0.7f),
+            cornerRadius = CornerRadius(r + e * 0.6f),
         )
     }
 }

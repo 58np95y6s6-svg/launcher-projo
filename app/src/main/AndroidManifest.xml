@@ -39,13 +39,7 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- Design « Studio » : suggestions des apps (chaînes et Watch Next d'Android TV). Le
-         fournisseur TV ne montre les programmes des AUTRES apps qu'avec ACCESS_ALL_EPG_DATA,
-         réservée aux apps du système (signature|privileged) : sans elle, repli sur les apps. -->
-    <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
-    <uses-permission
-        android:name="com.android.providers.tv.permission.ACCESS_ALL_EPG_DATA"
-        tools:ignore="ProtectedPermissions" />
+    <!-- Design « Studio » : suggestions de films et séries lues sur TMDB (INTERNET, déjà déclaré) -->
 
     <!-- Projecteur : pas d'écran tactile, Leanback non obligatoire (marche aussi hors Android TV) -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
