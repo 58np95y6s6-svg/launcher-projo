@@ -181,6 +181,8 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
 
     /** Donne le focus au premier élément focalisable d'un module. */
     private fun focusDans(etiquette: String) {
+        // Chaînes : la zone de modules s'ouvre en grand par le bouton enveloppe
+        ouvrirZoneModules()
         compose.onAllNodes(
             hasAnyAncestor(hasTestTag(etiquette)) and SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus),
             useUnmergedTree = true,

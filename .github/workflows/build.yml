@@ -33,6 +33,8 @@ jobs:
       - name: Compilation (APK de test + vérification de la version release)
         env:
           VERSION_NAME: test-${{ github.run_number }}
+          # Clé TMDB (suggestions du design Studio) : secret du dépôt, jamais affichée
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
         run: ./gradlew --no-daemon assembleDebug assembleRelease
 
       - name: Taille des APK
