@@ -58,24 +58,24 @@ private const val PP_HAUT = 60f
 
 /** Masque elliptique (u) : centre et demi-axes ; nul hors de l'ellipse. */
 private const val PP_CX = 720f
-private const val PP_CY = 300f
+private const val PP_CY = 306f
 private const val PP_RX = 540f
-private const val PP_RY = 200f
+private const val PP_RY = 194f
 
 /** Opacité maximale de la photo : le fond lilas transparaît à peine. */
 private const val PP_OPACITE = 0.92f
 
 /**
- * Développement « pastel » : saturation gardée à 80 %, noirs relevés vers un prune doux,
+ * Développement « pastel » : saturation gardée à 74 %, noirs relevés vers un prune doux,
  * blancs ramenés un peu sous le lilas du fond (contraste réduit, teinte du thème).
  */
 internal fun filtrePhotosPastel(): ColorFilter {
-    val s = 0.8f
+    val s = 0.74f
     val lr = 0.213f * (1f - s)
     val lg = 0.715f * (1f - s)
     val lb = 0.072f * (1f - s)
     // Noir et blanc d'arrivée (0..255)
-    val noir = floatArrayOf(56f, 44f, 74f)
+    val noir = floatArrayOf(62f, 50f, 80f)
     val blanc = floatArrayOf(226f, 216f, 234f)
     val k = FloatArray(3) { (blanc[it] - noir[it]) / 255f }
     return ColorFilter.colorMatrix(
