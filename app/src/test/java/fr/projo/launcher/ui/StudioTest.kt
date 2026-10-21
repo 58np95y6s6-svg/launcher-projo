@@ -519,6 +519,49 @@ class StudioSuggestionsTest : BancStudio() {
         if (lances != listOf(ui.favorites[0].packageName)) fail("[STUDIO] OK sur l'affiche : lancés $lances")
     }
 
+    /**
+     * La grande carte suit la sélection : la carte sélectionnée s'agrandit et se cale à gauche,
+     * la précédente rapetisse ; ▼ vers la barre : rien ne bouge ; Maison : la 1re redevient grande.
+     */
+    @Test
+    fun grandeCarteSuitLaSelection() {
+        sourceStudio = TmdbFactice.source()
+        afficher()
+        avancer(500)
+        val s = suggestions()
+        if (s.size < 3) fail("[STUDIO] au moins 3 suggestions attendues : $s")
+        fun largeur(e: String) = (bornesDe(e)?.width ?: 0f) / pxParU
+        // Bord gauche de la rangée (1re carte au repos) : la carte sélectionnée, levée comprise,
+        // s'aligne dessus
+        val gauche = bornesDe(s[0])!!.left
+        if (largeur(s[0]) < 380f) fail("[STUDIO] au départ, la 1re carte est la grande : ${bornesDe(s[0])?.enU()}")
+        appuyer(Key.DirectionUp)
+        attendre(s[0], "▲ depuis la barre")
+        for (i in 1..2) {
+            appuyer(Key.DirectionRight)
+            attendre(s[i], "▶ vers la suggestion ${i + 1}")
+            val g = bornesDe(s[i])!!
+            if (largeur(s[i]) < 380f) fail("[STUDIO] suggestion ${i + 1} sélectionnée : elle doit être la grande (${g.enU()})")
+            if (largeur(s[i - 1]) > 240f) fail("[STUDIO] la suggestion $i doit rapetisser : ${bornesDe(s[i - 1])?.enU()}")
+            if (abs(g.left - gauche) > 4f * pxParU) {
+                fail("[STUDIO] la grande carte doit se caler à gauche (${(gauche / pxParU).toInt()} u) : ${g.enU()}")
+            }
+        }
+        capturer("s0b_grande_suit_la_selection")
+        // ▼ vers la barre : la dernière sélectionnée reste grande, à sa place
+        val avant = bornesDe(s[2])!!
+        appuyer(Key.DirectionDown)
+        val apres = bornesDe(s[2])!!
+        if (largeur(s[2]) < 380f || abs(apres.center.x - avant.center.x) > 2f * pxParU) {
+            fail("[STUDIO] ▼ vers la barre : la grande carte a changé (${avant.enU()} → ${apres.enU()})")
+        }
+        // Maison : retour au début, la 1re redevient la grande
+        changerEtat { pressionsMaison.intValue++ }
+        avancer(1000)
+        if (largeur(s[0]) < 380f) fail("[STUDIO] après Maison, la 1re carte doit redevenir la grande : ${bornesDe(s[0])?.enU()}")
+        if (largeur(s[2]) > 240f) fail("[STUDIO] après Maison, la 3e carte doit être petite : ${bornesDe(s[2])?.enU()}")
+    }
+
     @Test
     fun ongletsFiltrent() {
         sourceStudio = TmdbFactice.source()
