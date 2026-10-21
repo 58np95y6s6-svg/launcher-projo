@@ -1225,7 +1225,10 @@ private fun PlCentre(
                 modifier = Modifier.padding(start = 16.u, end = 16.u, top = 12.u),
             )
             PlGrille(ctx, nav, tuiles, lancer)
-            PlTitreSection("Vos apps")
+            // Attribution TMDB obligatoire quand les cartes montrent des nouveautés
+            val contexte = LocalContext.current
+            val tmdb = remember(fr.projo.launcher.data.CleTmdb.version) { fr.projo.launcher.data.CleTmdb.lire(contexte) != null }
+            PlTitreSection("Vos apps", if (tmdb && fr.projo.launcher.data.ReglageNouveautes.actif) "Données : TMDB" else null)
             PlRangeeFavoris(ctx, nav, ::rubrique, lancer)
             PlTitreSection("Toutes les apps")
             PlRangeeApps(ctx, nav, ::rubrique, lancer)
@@ -1233,12 +1236,18 @@ private fun PlCentre(
     }
 }
 
+/** Titre de section, et à droite une mention discrète facultative. */
 @Composable
-private fun PlTitreSection(texte: String) {
-    PlTexte(
-        texte, 20, FontWeight.ExtraBold, Color.White, serre = true,
-        modifier = Modifier.padding(start = 16.u, end = 16.u, top = 16.u, bottom = 4.u),
-    )
+private fun PlTitreSection(texte: String, mention: String? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.u, end = 16.u, top = 16.u, bottom = 4.u),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        PlTexte(texte, 20, FontWeight.ExtraBold, Color.White, Modifier.weight(1f), serre = true)
+        if (mention != null) PlTexte(mention, 11, FontWeight.Medium, PlGris.copy(alpha = 0.8f), Modifier.padding(bottom = 3.u))
+    }
 }
 
 /** Raccourcis façon « écoutés récemment » : deux colonnes de tuiles horizontales. */
