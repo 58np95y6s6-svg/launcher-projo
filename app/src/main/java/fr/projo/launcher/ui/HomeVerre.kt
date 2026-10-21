@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +82,7 @@ import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
+import kotlinx.coroutines.delay
 import java.util.Locale
 
 // ------------------------------------------------------------------ palette « Verre »
@@ -159,7 +161,9 @@ private const val VERRE_ECHELLE = 1.12f
  *  - boutons rapides dans un « ornement » vertical à gauche, centré sur les favoris
  *    (le nom du bouton sélectionné s'affiche à la place du nom de l'app) ;
  *  - favoris en cartes 5:3 qui se soulèvent au focus (liseré blanc, halo, reflet) ;
- *  - « Mes apps » en icônes rondes dans une fenêtre de verre, puis « Toutes les apps ».
+ *  - « Mes apps » en icônes rondes dans une fenêtre de verre, puis « Toutes les apps » ;
+ *  - app de streaming sélectionnée : photo d'une nouveauté incrustée dans le papier peint,
+ *    dépolie derrière les fenêtres de verre (VerrePhotos.kt).
  */
 @Composable
 fun HomeVerre(ctx: HomeContext) {
@@ -175,8 +179,24 @@ fun HomeVerre(ctx: HomeContext) {
     var boutonFocus by remember { mutableStateOf<ImageVector?>(null) }
     val libelleBouton = boutons.firstOrNull { it.icon == boutonFocus }?.label
 
+    // Photo de fond (VerrePhotos.kt) : seulement quand une app des favoris ou de « Mes apps »
+    // a le focus (pas l'ornement, la NBA, l'aide ni « Toutes les apps »), après 150 ms
+    // d'immobilité (flèche maintenue : pas de chargements en rafale)
+    var focusFavoris by remember { mutableStateOf(false) }
+    var focusApps by remember { mutableStateOf(false) }
+    val appSurvolee = if (focusFavoris || focusApps) ctx.selection else null
+    var appPhoto by remember { mutableStateOf<AppInfo?>(null) }
+    LaunchedEffect(appSurvolee) {
+        if (appPhoto != null) delay(150)
+        appPhoto = appSurvolee
+    }
+    val largeurPhoto = with(LocalDensity.current) { 960.u.toPx() }.toInt().coerceIn(320, 1280)
+    val photos = rememberPhotosUne(appPhoto, largeurPhoto)
+    val fond = rememberFondVerre(photos)
+
     Box(Modifier.fillMaxSize()) {
         VerreFond()
+        VerrePhotoFond(fond)
 
         Column(Modifier.fillMaxSize()) {
             // --- Haut : horloge (la fenêtre NBA flotte à droite, par-dessus)
@@ -184,19 +204,22 @@ fun HomeVerre(ctx: HomeContext) {
                 VerreHorloge(Modifier.padding(start = 108.u, top = 28.u))
             }
 
-            // --- Nom de l'app (ou du bouton) sélectionné, en fondu enchaîné
-            AnimatedContent(
-                targetState = libelleBouton ?: ctx.selection?.label.orEmpty(),
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
-                contentAlignment = Alignment.CenterStart,
-                label = "titre",
-                modifier = Modifier.padding(start = 108.u).height(36.u).widthIn(max = 410.u),
-            ) { titre ->
-                // Interligne = hauteur de la zone (qui découpe) : jambages « g », « p » entiers
-                Text(
-                    titre, color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Bold,
-                    letterSpacing = (-1).us, lineHeight = 36.us, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+            // --- Nom de l'app (ou du bouton) sélectionné, en fondu enchaîné ; à droite, légende de la photo
+            Box(Modifier.fillMaxWidth().height(36.u)) {
+                AnimatedContent(
+                    targetState = libelleBouton ?: ctx.selection?.label.orEmpty(),
+                    transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                    contentAlignment = Alignment.CenterStart,
+                    label = "titre",
+                    modifier = Modifier.padding(start = 108.u).height(36.u).widthIn(max = 410.u),
+                ) { titre ->
+                    // Interligne = hauteur de la zone (qui découpe) : jambages « g », « p » entiers
+                    Text(
+                        titre, color = Color.White, fontSize = 30.us, fontWeight = FontWeight.Bold,
+                        letterSpacing = (-1).us, lineHeight = 36.us, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                LegendeVerrePhotos(photos, Modifier.align(Alignment.BottomEnd).padding(end = 34.u, bottom = 8.u))
             }
 
             // --- Ornement (boutons rapides) + rangée « Favoris »
@@ -205,6 +228,7 @@ fun HomeVerre(ctx: HomeContext) {
                     VerreOrnement(
                         boutons = boutons,
                         focusReglages = ctx.focusReglages,
+                        fond = fond,
                         surFocus = { icone, focus ->
                             if (focus) {
                                 boutonFocus = icone
@@ -218,7 +242,8 @@ fun HomeVerre(ctx: HomeContext) {
                 }
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight().navFavoris(ctx.nav)
+                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight()
+                        .onFocusChanged { focusFavoris = it.hasFocus }.navFavoris(ctx.nav)
                         .fadingEdges(ctx.rangeeFavoris, 48.u),
                     // Marges hautes/basses : place pour la levée, le halo et l'ombre (la rangée découpe)
                     contentPadding = PaddingValues(start = 24.u, end = 40.u, top = 24.u, bottom = 24.u),
@@ -252,7 +277,10 @@ fun HomeVerre(ctx: HomeContext) {
             // --- « Mes apps » : icônes rondes dans une fenêtre de verre (hauteur selon son contenu,
             //     ~131 : pas de nom d'app rogné ; l'horloge au-dessus absorbe la différence)
             Spacer(Modifier.height(2.u))
-            VerreMesApps(ctx, Modifier.padding(start = 96.u, end = 30.u).fillMaxWidth())
+            VerreMesApps(
+                ctx, fond, { focusApps = it },
+                Modifier.padding(start = 96.u, end = 30.u).fillMaxWidth(),
+            )
             Spacer(Modifier.height(26.u))
         }
 
@@ -261,6 +289,7 @@ fun HomeVerre(ctx: HomeContext) {
             Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 30.u, end = 30.u)
+                .verreDepoli(fond, VerreNba.rayon.u * VerreNba.echelle)
                 .verreVitre(VerreNba.rayon.u * VerreNba.echelle, 1.u)
         ) {
             NbaPanel(
@@ -347,12 +376,14 @@ private fun VerreHorloge(modifier: Modifier = Modifier) {
 private fun VerreOrnement(
     boutons: List<QuickAction>,
     focusReglages: FocusRequester,
+    fond: FondVerre,
     surFocus: (ImageVector, Boolean) -> Unit,
     modifier: Modifier,
 ) {
     Column(
         modifier
             .width(54.u)
+            .verreDepoli(fond, 27.u)
             .verreVitre(27.u, 1.u)
             .padding(7.u),
         verticalArrangement = Arrangement.spacedBy(6.u),
@@ -542,12 +573,15 @@ private fun VerreAide(onFocused: () -> Unit, modifier: Modifier = Modifier) {
 
 // ------------------------------------------------------------------ mes apps
 
-/** Fenêtre de verre « Mes apps » : icônes rondes, puis « Toutes les apps (N) ». */
+/**
+ * Fenêtre de verre « Mes apps » : icônes rondes, puis « Toutes les apps (N) ».
+ * [surFocus] : la rangée contient (ou non) l'élément sélectionné (photo de fond).
+ */
 @Composable
-private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
+private fun VerreMesApps(ctx: HomeContext, fond: FondVerre, surFocus: (Boolean) -> Unit, modifier: Modifier) {
     val ui = ctx.ui
     val actions = ctx.actions
-    Column(modifier.verreVitre(28.u, 1.u).padding(top = 8.u)) {
+    Column(modifier.verreDepoli(fond, 28.u).verreVitre(28.u, 1.u).padding(top = 8.u)) {
         // Interligne explicite : sinon celui du thème (24 sp) s'applique aux petits textes
         Text(
             "Mes apps",
@@ -558,7 +592,8 @@ private fun VerreMesApps(ctx: HomeContext, modifier: Modifier) {
         // Hauteur = celle des icônes + noms (pas de poids : rien n'est rogné)
         LazyRow(
             state = ctx.rangeeApps,
-            modifier = Modifier.testTag("rangee:apps").fillMaxWidth().navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 40.u),
+            modifier = Modifier.testTag("rangee:apps").fillMaxWidth()
+                .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 40.u),
             // Marge haute : place pour la levée et le halo de l'icône sélectionnée
             contentPadding = PaddingValues(start = 12.u, end = 24.u, top = 16.u, bottom = 8.u),
             horizontalArrangement = Arrangement.spacedBy(12.u),
