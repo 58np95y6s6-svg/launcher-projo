@@ -293,6 +293,34 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         }
     }
 
+    /** Diagnostic : demandes de focus depuis le panneau des modules ouvert. */
+    @Test
+    fun diagnosticFocusDepuisLesModules() {
+        afficher()
+        val notes = mutableListOf<String>()
+        fun ouvrir() {
+            donnerFocus("rapide:Modules")
+            appuyer(Key.DirectionCenter)
+            avancer(800)
+            notes += "ouvert : ${decrire(focus())}"
+        }
+        ouvrir()
+        compose.runOnIdle { focusReglages.requestFocus() }
+        avancer(800)
+        notes += "focusReglages → ${decrire(focus())}"
+        ouvrir()
+        compose.runOnIdle { focusBiblio.requestFocus() }
+        avancer(1200)
+        notes += "focusBiblio → ${decrire(focus())}"
+        ouvrir()
+        val ok = compose.runOnIdle {
+            runCatching { focusReglages.requestFocus() }.exceptionOrNull()?.toString() ?: "sans exception"
+        }
+        avancer(800)
+        notes += "focusReglages (2) $ok → ${decrire(focus())}"
+        if (notes.any { "« nba »" in it && "→" in it }) fail("[NEON $theme] ${notes.joinToString(" | ")}")
+    }
+
     /** Panneau des modules : sortie par ◀ puis par Retour, toujours sur le bouton Modules ; panneau refermé. */
     @Test
     fun sortieDesModules() {
