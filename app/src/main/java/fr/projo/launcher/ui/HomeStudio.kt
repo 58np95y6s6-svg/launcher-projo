@@ -59,6 +59,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.FormatVisuel
+import fr.projo.launcher.data.GenreTmdb
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.LocalHoteModules
@@ -128,8 +129,8 @@ fun HomeStudio(ctx: HomeContext) {
         if (programmes.isEmpty()) emptyList()
         else listOfNotNull(
             StudioOnglet.EXPLORER,
-            StudioOnglet.FILMS.takeIf { programmes.any { it.genre == StudioGenre.FILM } },
-            StudioOnglet.SERIES.takeIf { programmes.any { it.genre == StudioGenre.SERIE } },
+            StudioOnglet.FILMS.takeIf { programmes.any { it.genre == GenreTmdb.FILM } },
+            StudioOnglet.SERIES.takeIf { programmes.any { it.genre == GenreTmdb.SERIE } },
         )
     }
     var ongletChoisi by remember { mutableStateOf(StudioOnglet.EXPLORER) }
@@ -139,8 +140,8 @@ fun HomeStudio(ctx: HomeContext) {
             .filter {
                 when (onglet) {
                     StudioOnglet.EXPLORER -> true
-                    StudioOnglet.FILMS -> it.genre == StudioGenre.FILM
-                    StudioOnglet.SERIES -> it.genre == StudioGenre.SERIE
+                    StudioOnglet.FILMS -> it.genre == GenreTmdb.FILM
+                    StudioOnglet.SERIES -> it.genre == GenreTmdb.SERIE
                 }
             }
             .map { p -> StudioSuggestion.Programme(p, ui.allApps.firstOrNull { it.packageName == p.paquet }) }

@@ -12,6 +12,8 @@ import androidx.compose.ui.test.onRoot
 import fr.projo.launcher.HomeUi
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.ClientTmdb
+import fr.projo.launcher.data.CleTmdb
 import fr.projo.launcher.system.DeviceSnapshot
 import fr.projo.launcher.system.UpdateInfo
 import org.junit.Assert.fail
@@ -582,14 +584,28 @@ class StudioSuggestionsTest : BancStudio() {
 
     @Test
     fun formatsDeCle() {
-        if (!cleTmdbValide("0123456789abcdef0123456789ABCDEF")) fail("clé v3 refusée")
-        if (!cleTmdbValide("eyJ" + "a".repeat(150) + ".b.c")) fail("jeton v4 refusé")
-        if (cleTmdbValide("1234") || cleTmdbValide("eyJcourt")) fail("clé invalide acceptée")
+        if (!CleTmdb.valide("0123456789abcdef0123456789ABCDEF")) fail("clé v3 refusée")
+        if (!CleTmdb.valide("eyJ" + "a".repeat(150) + ".b.c")) fail("jeton v4 refusé")
+        if (CleTmdb.valide("1234") || CleTmdb.valide("eyJcourt")) fail("clé invalide acceptée")
         // Jeton v4 : en-tête Authorization, pas de paramètre api_key
         var entete: String? = null
         var adresse = ""
         ClientTmdb("eyJ" + "x".repeat(150)) { u, b -> adresse = u; entete = b; null }.listeServices()
         if (entete == null || "api_key" in adresse) fail("jeton v4 : en-tête $entete, adresse $adresse")
+    }
+
+    /** Client partagé (data/Tmdb.kt) : dernières sorties d'un service (Netflix : 8). */
+    @Test
+    fun dernieresSorties() {
+        TmdbFactice.demandes.clear()
+        val r = ClientTmdb("0123456789abcdef0123456789abcdef", TmdbFactice::lire).dernieresSorties(listOf(8), max = 3)
+            ?: return fail("dernières sorties : null")
+        if (r.isEmpty() || r.size > 3) fail("dernières sorties : $r")
+        if (r.any { !it.image.startsWith(ClientTmdb.IMAGES) }) fail("dernières sorties : images ${r.map { it.image }}")
+        val d = TmdbFactice.demandes.joinToString(" ")
+        for (p in listOf("primary_release_date.desc", "first_air_date.desc", "with_watch_providers=8", "watch_region=FR")) {
+            if (p !in d) fail("dernières sorties : paramètre $p absent ($d)")
+        }
     }
 }
 

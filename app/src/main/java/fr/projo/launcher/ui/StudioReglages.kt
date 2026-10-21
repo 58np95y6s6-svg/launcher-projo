@@ -34,16 +34,11 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.BuildConfig
-
-/** Format d'une clé TMDB : clé v3 (32 caractères hexadécimaux) ou jeton v4 (« eyJ… »). */
-fun cleTmdbValide(cle: String): Boolean {
-    val c = cle.trim()
-    return Regex("[0-9a-fA-F]{32}").matches(c) || (c.startsWith("eyJ") && c.length > 100 && Regex("[A-Za-z0-9._-]+").matches(c))
-}
+import fr.projo.launcher.data.CleTmdb
 
 /** Résumé de la clé pour Réglages (jamais la clé elle-même). */
 fun resumeCleTmdb(context: android.content.Context): String = when {
-    StudioCle.saisie(context) != null -> "Clé saisie sur cet appareil · changer"
+    CleTmdb.saisie(context) != null -> "Clé saisie sur cet appareil · changer"
     BuildConfig.TMDB_KEY.isNotBlank() -> "Clé intégrée à l'app · en saisir une autre"
     else -> "Désactivées · saisir une clé TMDB (gratuite)"
 }
@@ -59,8 +54,8 @@ fun StudioCleDialog(onDismiss: () -> Unit) {
     var texte by remember { mutableStateOf("") }
     var erreur by remember { mutableStateOf<String?>(null) }
     val enregistrer: () -> Unit = {
-        if (cleTmdbValide(texte)) {
-            StudioCle.ecrire(context, texte)
+        if (CleTmdb.valide(texte)) {
+            CleTmdb.ecrire(context, texte)
             onDismiss()
         } else {
             erreur = "Format inconnu : clé API (32 caractères) ou jeton d'accès (eyJ…)"
@@ -103,7 +98,7 @@ fun StudioCleDialog(onDismiss: () -> Unit) {
             Spacer(Modifier.height(16.u))
             Row(horizontalArrangement = Arrangement.spacedBy(12.u)) {
                 BoutonStudio("Enregistrer", accent = true, onClick = enregistrer)
-                BoutonStudio("Effacer") { StudioCle.ecrire(context, null); onDismiss() }
+                BoutonStudio("Effacer") { CleTmdb.ecrire(context, null); onDismiss() }
                 BoutonStudio("Annuler", onClick = onDismiss)
             }
         }
