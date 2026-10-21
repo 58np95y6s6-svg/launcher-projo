@@ -157,7 +157,12 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
         focusDans("module:meteo")
         appuyer(Key.DirectionLeft)
         val f = focus()
-        val attendu = if (design == Design.GRAPHITE) "rapide:Réglages" else favori(0)
+        // Néon : le panneau des modules se referme sur le bouton Modules qui l'a ouvert
+        val attendu = when (design) {
+            Design.GRAPHITE -> "rapide:Réglages"
+            Design.NEON -> "rapide:Modules"
+            else -> favori(0)
+        }
         if (f?.etiquette != attendu) {
             fail("[${design.name}] ◀ depuis Météo (1er module) : attendu $attendu, obtenu ${decrire(f)}")
         }

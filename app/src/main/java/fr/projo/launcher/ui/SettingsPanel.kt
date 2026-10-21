@@ -75,6 +75,8 @@ class SettingsActions(
     val design: () -> Unit = {},
     /** Réglages → Modules : ce qu'affiche l'emplacement des scores NBA. */
     val modules: () -> Unit = {},
+    /** Design « Néon » : choix du fond clair ou sombre. */
+    val fondNeon: () -> Unit = {},
     /** Télécommande smartphone : appairage, téléphones appairés, aide clavier et navigation. */
     val appairer: () -> Unit = {},
     val telephones: () -> Unit = {},
@@ -228,6 +230,17 @@ fun SettingsPanel(
                         sousTitre = d.resume + " · changer",
                         onClick = actions.design,
                     )
+                }
+                // Design « Néon » seulement : fond clair ou sombre
+                if (LocalDesign.current == Design.NEON) {
+                    item(key = "fond-neon") {
+                        Tuile(
+                            icone = ProjoIcons.Accueil,
+                            titre = "Fond · " + if (NeonTheme.clair) "Clair" else "Sombre",
+                            sousTitre = "Fond clair ou sombre de l'accueil · changer",
+                            onClick = actions.fondNeon,
+                        )
+                    }
                 }
                 item(key = "modules") {
                     val hote = LocalHoteModules.current ?: HoteModules()

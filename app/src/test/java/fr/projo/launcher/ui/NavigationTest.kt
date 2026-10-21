@@ -14,6 +14,10 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * Navigation à la télécommande entre les favoris et « Mes apps », pour chacun des 5 designs.
  * Un échec indique où le focus est parti (étiquette de l'élément et position en unités .u).
+ *
+ * Néon n'a qu'une rangée de tuiles (favoris, puis « Mes apps », puis « Toutes les apps ») au-dessus
+ * de boutons ronds : les mêmes vérifications, transposées (▼ vers le bouton le plus aligné, ▲ retour
+ * sur la tuile, ◀ ▶ le long de la rangée, sans favori, 30 favoris…), sont dans NeonTest.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -23,7 +27,7 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangeesNeon()
     }
 
     // ------------------------------------------------------------------ ▼ depuis les favoris
@@ -301,7 +305,7 @@ class NavigationSansFavoriTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangeesNeon()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -337,7 +341,7 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangeesNeon()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -404,7 +408,7 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0} {1}")
-        fun cas(): List<Array<Any>> = Design.entries.flatMap { d ->
+        fun cas(): List<Array<Any>> = Design.entries.filter { it != Design.NEON }.flatMap { d ->
             listOf("1 app", "2 apps", "30 apps", "30 favoris").map { arrayOf<Any>(d.name, it) }
         }
 
@@ -481,3 +485,6 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
         }
     }
 }
+
+/** Designs à deux rangées « favoris » / « Mes apps » (Néon : une seule rangée, voir NeonTest). */
+fun designsDeuxRangeesNeon(): List<Array<Any>> = Design.entries.filter { it != Design.NEON }.map { arrayOf<Any>(it.name) }
