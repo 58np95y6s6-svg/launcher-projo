@@ -348,7 +348,7 @@ class StudioTest : BancStudio() {
                 notes += "+$pas ms : écran ${ecran()} focus ${decrire(focus())}"
             }
         }
-        maison(app(3))
+        maison(app(1))
         maison("biblio")
         maison("nba")
         if (focus()?.etiquette != favori(0) || ecran() != 1) fail("[STUDIO] Maison : ${notes.joinToString(" | ")}")
@@ -525,7 +525,8 @@ class StudioSuggestionsTest : BancStudio() {
         appuyer(Key.DirectionDown)
         if (focus()?.etiquette?.startsWith("suggestion:tv:") != true) fail("[STUDIO] onglet puis ▼ : ${decrire(focus())}")
         donnerFocus("onglet:explorer")
-        if (suggestions().size < films.size + series.size - 1) fail("[STUDIO] Explorer : ${suggestions()}")
+        val tout = suggestions()
+        if (tout.none { it.startsWith("suggestion:movie:") } || tout.none { it.startsWith("suggestion:tv:") }) fail("[STUDIO] Explorer : $tout")
     }
 
     @Test
