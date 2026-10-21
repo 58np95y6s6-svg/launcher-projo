@@ -64,6 +64,7 @@ import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.modules.TailleModule
 import fr.projo.launcher.modules.ligne
+import fr.projo.launcher.modules.u
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
