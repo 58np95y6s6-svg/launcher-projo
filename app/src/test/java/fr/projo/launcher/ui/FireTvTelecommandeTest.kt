@@ -29,7 +29,7 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class FireTvTelecommandeTest : BancAccueil("AURORE") {
+class FireTvTelecommandeTest : BancAccueil("VERRE") {
 
     private val contexte get() = RuntimeEnvironment.getApplication()
 
