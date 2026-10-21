@@ -258,6 +258,32 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         if (menus != attendu) fail("[NEON $theme] touche Menu : menus demandés $menus, attendu $attendu")
     }
 
+    /** OK lance l'app sélectionnée ; Maison ramène à la 1re tuile, même depuis le panneau des modules. */
+    @Test
+    fun okEtMaison() {
+        afficher()
+        appuyer(Key.DirectionRight)
+        appuyer(Key.DirectionCenter)
+        if (lances != listOf(ui.favorites[1].packageName)) fail("[NEON $theme] OK sur ${favori(1)} : apps lancées $lances")
+        // Maison depuis « Mes apps » (la rangée a glissé)
+        repeat(ui.favorites.size + 2) { appuyer(Key.DirectionRight) }
+        compose.runOnIdle { appuisMaison.intValue++ }
+        avancer(1200)
+        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis « Mes apps » : obtenu ${decrire(focus())}")
+        // Maison depuis le panneau des modules : panneau refermé, 1re tuile
+        donnerFocus("rapide:Modules")
+        appuyer(Key.DirectionCenter)
+        avancer(800)
+        if (focus()?.chaine?.contains("nba") != true) fail("[NEON $theme] Modules puis OK : obtenu ${decrire(focus())}")
+        compose.runOnIdle { appuisMaison.intValue++ }
+        avancer(1200)
+        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : obtenu ${decrire(focus())}")
+        val zone = bornesDe("nba")
+        if (zone != null && zone.top < compose.onRoot().fetchSemanticsNode().size.height - 1f) {
+            fail("[NEON $theme] panneau des modules encore ouvert après Maison : ${zone.enU()}")
+        }
+    }
+
     /** Panneau des modules : sortie par ◀ puis par Retour, toujours sur le bouton Modules ; panneau refermé. */
     @Test
     fun sortieDesModules() {

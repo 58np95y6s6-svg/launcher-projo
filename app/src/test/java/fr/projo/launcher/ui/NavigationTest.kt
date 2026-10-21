@@ -12,8 +12,12 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Navigation à la télécommande entre les favoris et « Mes apps », pour chacun des 5 designs.
+ * Navigation à la télécommande entre les favoris et « Mes apps », pour chacun des designs.
  * Un échec indique où le focus est parti (étiquette de l'élément et position en unités .u).
+ *
+ * Chaînes n'a pas deux rangées mais une grille paginée (favoris, puis « Mes apps », puis
+ * « Toutes les apps ») : chaque test y vérifie l'équivalent dans la grille (voisin prévu par
+ * GrilleChaines, même colonne pour ▲ ▼, allers-retours) ; les autres designs ne changent pas.
  *
  * Néon n'a qu'une rangée de tuiles (favoris, puis « Mes apps », puis « Toutes les apps ») au-dessus
  * de boutons ronds : les mêmes vérifications, transposées (▼ vers le bouton le plus aligné, ▲ retour
@@ -27,7 +31,7 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = designsDeuxRangeesNeon()
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     // ------------------------------------------------------------------ ▼ depuis les favoris
@@ -138,6 +142,11 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun allerRetourHautBas() {
         afficher()
         for (etiquette in listOf(app(0), app(3), "biblio")) {
+            // Chaînes : ▲ ▼ (ou ▼ ▲ depuis la 1re rangée d'une page) ramène à la tuile
+            if (chaines) {
+                allerRetourChaines(etiquette, etiquette)
+                continue
+            }
             donnerFocus(etiquette)
             val depart = focus()
             appuyer(Key.DirectionUp)
@@ -161,6 +170,16 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
         afficher()
         for (etiquette in listOf(app(0), app(2))) {
             donnerFocus(etiquette)
+            // Chaînes : ▼ descend tout droit dans la même colonne, ou dans la bande depuis la
+            // dernière rangée (jamais sur une voisine) ; dans la bande, ▼ ne bouge plus
+            if (chaines) {
+                val f = voisinChaines(Sens.BAS, etiquette)
+                if (f?.etiquette?.startsWith("rapide:") == true) {
+                    appuyer(Key.DirectionDown)
+                    if (focus()?.etiquette != f.etiquette) fail("[${design.name}] bande du bas puis ▼ : attendu de rester sur ${f.etiquette}, obtenu ${decrire(focus())}")
+                }
+                continue
+            }
             appuyer(Key.DirectionDown)
             val f = focus()
             if (f?.etiquette != etiquette) {
@@ -174,6 +193,15 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun gaucheDroiteDansLesRangees() {
         afficher()
         allerAuFavori(2)
+        if (chaines) {
+            // Mêmes appuis ; ▶ au bord droit de la grille passe à la page suivante
+            voisinChaines(Sens.GAUCHE, "${favori(2)} puis ◀")
+            donnerFocus(app(1))
+            voisinChaines(Sens.GAUCHE, "${app(1)} puis ◀")
+            voisinChaines(Sens.DROITE, "${app(0)} puis ▶")
+            voisinChaines(Sens.DROITE, "${app(1)} puis ▶")
+            return
+        }
         attendreApres(Key.DirectionLeft, favori(1), "${favori(2)} puis ◀")
         donnerFocus(app(1))
         attendreApres(Key.DirectionLeft, app(0), "${app(1)} puis ◀")
@@ -212,6 +240,11 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
         if (design == Design.CONSOLE) {
             allerAuFavori(ui.favorites.lastIndex)
             touche(Key.DirectionRight, "▶")
+        } else if (chaines) {
+            // Chaînes : ▼ jusqu'à la bande, ▶ jusqu'à l'enveloppe, OK ouvre la zone de modules
+            repeat(4) { if (focus()?.etiquette?.startsWith("rapide:") != true) touche(Key.DirectionDown, "▼") }
+            repeat(8) { if (focus()?.etiquette != "rapide:Modules") touche(Key.DirectionRight, "▶") }
+            touche(Key.DirectionCenter, "OK")
         } else {
             val i = dernierFavoriVisible()
             allerAuFavori(i)
@@ -254,6 +287,11 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
 
     /** ▼ depuis le favori [i] (déjà sélectionné) : élément VISIBLE de « Mes apps » le plus aligné. */
     private fun basDepuis(i: Int, nom: String = "favori n°${i + 1}") {
+        // Chaînes : tuile du dessous, dans la même colonne (ou la bande depuis la dernière rangée)
+        if (chaines) {
+            voisinChaines(Sens.BAS, nom)
+            return
+        }
         val avant = focus()
         val candidats = elementsVisibles(mesApps = true)
         appuyer(Key.DirectionDown)
@@ -263,6 +301,11 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     /** ▲ depuis un élément de « Mes apps » : favori VISIBLE le plus aligné. */
     private fun hautDepuis(etiquette: String, nom: String) {
         if (focus()?.etiquette != etiquette) donnerFocus(etiquette)
+        // Chaînes : tuile du dessus, dans la même colonne (rien depuis la 1re rangée)
+        if (chaines) {
+            voisinChaines(Sens.HAUT, nom)
+            return
+        }
         val avant = focus()
         val candidats = elementsVisibles(mesApps = false)
         appuyer(Key.DirectionUp)
@@ -280,6 +323,12 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
      * focus passait au 2e favori puis revenait au 1er au lieu de descendre dans « Mes apps ».
      */
     private fun scenario(i: Int) {
+        // Chaînes : ▼ ▼ descend deux rangées, tout droit
+        if (chaines) {
+            voisinChaines(Sens.BAS, "scénario, 1er ▼ :")
+            voisinChaines(Sens.BAS, "scénario, 2e ▼ :")
+            return
+        }
         val etapes = mutableListOf("favori n°${i + 1} ${decrire(focus())}")
         appuyer(Key.DirectionDown)
         val apres1 = focus()
@@ -305,7 +354,7 @@ class NavigationSansFavoriTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = designsDeuxRangeesNeon()
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -323,6 +372,18 @@ class NavigationSansFavoriTest(nomDesign: String) : BancAccueil(nomDesign) {
     @Test
     fun hautVersLaCarteAide() {
         afficher()
+        if (chaines) {
+            // La carte d'aide est la 1re tuile : ▲ y revient depuis la tuile juste dessous
+            val dessous = etiquettesChaines()[GrilleChaines.COLONNES]
+            donnerFocus(dessous)
+            appuyer(Key.DirectionUp)
+            if (focus()?.etiquette != "aide") fail("[${design.name}] $dessous puis ▲ : attendu la carte d'aide, obtenu ${decrire(focus())}")
+            for (etiquette in listOf(app(0), app(3), "biblio")) {
+                donnerFocus(etiquette)
+                voisinChaines(Sens.HAUT, "$etiquette puis ▲")
+            }
+            return
+        }
         for (etiquette in listOf(app(0), app(3), "biblio")) {
             donnerFocus(etiquette)
             appuyer(Key.DirectionUp)
@@ -341,7 +402,7 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = designsDeuxRangeesNeon()
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -350,6 +411,20 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
     @Test
     fun basVersToutesLesApps() {
         afficher()
+        if (chaines) {
+            // « Toutes les apps » suit les favoris : ▼ y mène depuis le favori du dessus
+            // (et depuis son voisin de droite, la rangée du dessous étant incomplète), ▲ en revient
+            val i = ui.favorites.size - GrilleChaines.COLONNES
+            allerAuFavori(i)
+            appuyer(Key.DirectionDown)
+            if (focus()?.etiquette != "biblio") fail("[${design.name}] ${favori(i)} puis ▼ : attendu « Toutes les apps », obtenu ${decrire(focus())}")
+            appuyer(Key.DirectionUp)
+            if (focus()?.etiquette != favori(i)) fail("[${design.name}] « Toutes les apps » puis ▲ : attendu ${favori(i)}, obtenu ${decrire(focus())}")
+            allerAuFavori(i + 1)
+            appuyer(Key.DirectionDown)
+            if (focus()?.etiquette != "biblio") fail("[${design.name}] ${favori(i + 1)} puis ▼ : attendu « Toutes les apps », obtenu ${decrire(focus())}")
+            return
+        }
         for (i in listOf(0, 1)) {
             if (i > 0) allerAuFavori(i, depuis = i - 1)
             appuyer(Key.DirectionDown)
@@ -408,7 +483,7 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0} {1}")
-        fun cas(): List<Array<Any>> = Design.entries.filter { it != Design.NEON }.flatMap { d ->
+        fun cas(): List<Array<Any>> = Design.entries.filter { it.deuxRangees }.flatMap { d ->
             listOf("1 app", "2 apps", "30 apps", "30 favoris").map { arrayOf<Any>(d.name, it) }
         }
 
@@ -435,6 +510,24 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
         afficher()
         val voulus = listOf(0, 1, dernierFavoriVisible(), ui.favorites.lastIndex).distinct().sorted()
         var courant = 0
+        if (chaines) {
+            // Grille : ▼ (tuile du dessous ou bande), puis ▲ revient sur le favori
+            // (sauf si ▼ a rejoint la dernière tuile d'une rangée incomplète : ▲ prévu par la grille)
+            for (i in voulus) {
+                allerAuFavori(i)
+                val nom = "[$variante] favori n°${i + 1}"
+                val arrivee = voisinChaines(Sens.BAS, nom)
+                val etiquettes = etiquettesChaines()
+                val j = etiquettes.indexOf(arrivee?.etiquette)
+                if (j < 0 || GrilleChaines.colonne(j) == GrilleChaines.colonne(i)) {
+                    appuyer(Key.DirectionUp)
+                    if (focus()?.etiquette != favori(i)) fail("[${design.name}] $nom ▼ ▲ → ${decrire(focus())} : attendu le retour sur ${favori(i)}")
+                } else {
+                    voisinChaines(Sens.HAUT, "$nom ▼ ▲")
+                }
+            }
+            return
+        }
         for (i in voulus) {
             allerAuFavori(i, depuis = courant)
             courant = i
@@ -463,6 +556,16 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
         afficher()
         val n = ui.homeApps.size
         val voulus = setOf(0, 1, n / 2, n - 1, n)
+        if (chaines) {
+            // Grille : on rejoint chaque élément voulu à la télécommande (pages comprises),
+            // puis ▲ ▼ (▼ ▲ depuis la 1re rangée) ramène dessus
+            for (k in voulus.sorted()) {
+                val etiquette = if (k == n) "biblio" else app(k)
+                allerALaTuile(etiquette)
+                allerRetourChaines(etiquette, "[$variante] $etiquette")
+            }
+            return
+        }
         donnerFocus(app(0))
         for (k in 0..n) {
             val etiquette = if (k == n) "biblio" else app(k)
@@ -485,6 +588,3 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
         }
     }
 }
-
-/** Designs à deux rangées « favoris » / « Mes apps » (Néon : une seule rangée, voir NeonTest). */
-fun designsDeuxRangeesNeon(): List<Array<Any>> = Design.entries.filter { it != Design.NEON }.map { arrayOf<Any>(it.name) }

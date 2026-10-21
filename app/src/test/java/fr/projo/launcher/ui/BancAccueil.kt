@@ -86,11 +86,27 @@ abstract class BancAccueil(nomDesign: String) {
     /** Paquets dont le menu a été demandé (appui long ou touche Menu). */
     protected val menus = mutableListOf<String>()
 
+    /** Paquets lancés (OK sur une app). */
+    protected val lances = mutableListOf<String>()
+
+    /** Appuis sur Maison : l'incrémenter ramène l'accueil en haut (comme MainActivity). */
+    /** Même compteur que [appuisMaison] (nom utilisé par les tests Studio). */
+    protected val pressionsMaison get() = appuisMaison
+
+    /** Source des suggestions de Studio ; null : celle d'Android (repli dans Robolectric). */
+    protected var sourceStudio: StudioSource? = null
+
+    /** Contenu affiché par-dessus l'accueil (ex. panneau Réglages), à poser après [afficher]. */
+    protected val pardessus = androidx.compose.runtime.mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
+
     /**
      * Modules affichés à la place du bandeau NBA (voir ModulesTest) ; null : comme avant,
      * NbaPanel affiche les matchs NBA factices.
      */
     protected var hoteModules: HoteModules? = null
+
+    /** Appuis sur la touche Maison (launcher déjà affiché) : à incrémenter pour la simuler. */
+    protected val appuisMaison = androidx.compose.runtime.mutableIntStateOf(0)
 
     /** Pixels par unité d'interface (.u). */
     protected val pxParU: Float
@@ -121,7 +137,7 @@ abstract class BancAccueil(nomDesign: String) {
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
         val actions = HomeActions(
-            launch = {}, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
+            launch = { lances += it.packageName }, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
             wifi = {}, bluetooth = {}, settings = {}, settingsLong = {}, update = {},
         )
         compose.mainClock.autoAdvance = false
@@ -132,13 +148,15 @@ abstract class BancAccueil(nomDesign: String) {
                 LocalScale provides echelle,
                 LocalDesign provides design,
                 LocalHoteModules provides hoteModules,
+                LocalStudioSource provides sourceStudio,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
+                  androidx.compose.foundation.layout.Box {
                     HomeScreen(
                         ui = ui,
                         icons = icons,
                         wifiLabel = wifiLabel,
-                        homePressCount = 0,
+                        homePressCount = appuisMaison.intValue,
                         focusReglages = focusReglages,
                         focusBiblio = focusBiblio,
                         actions = actions,
@@ -148,6 +166,8 @@ abstract class BancAccueil(nomDesign: String) {
                         majDisponible = majDisponible,
                         design = design,
                     )
+                    pardessus.value?.invoke()
+                  }
                 }
             }
         }
@@ -175,11 +195,34 @@ abstract class BancAccueil(nomDesign: String) {
 
     /** Donne le focus directement à un élément (préparation d'un test, pas une navigation). */
     protected fun donnerFocus(etiquette: String) {
+        // Chaînes : la zone de modules s'ouvre par l'enveloppe ; une tuile d'une autre page
+        // n'est pas composée : on y va à la télécommande, page après page
+        if (chaines && etiquette == "nba") {
+            // Ouverte par l'enveloppe, la zone reçoit le focus sur son point d'entrée (1er module)
+            ouvrirZoneModules()
+            return
+        }
+        if (chaines && etiquette in etiquettesChaines() && !estComposee(etiquette)) {
+            allerALaTuile(etiquette)
+            return
+        }
         // « Toutes les apps » pas encore composée (hors écran) : on y va avec ▶ depuis la 1re app
         // (performScrollToNode attendrait sans fin : la lueur anime en continu)
         if (etiquette == "biblio" && compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
             donnerFocus(app(0))
             repeat(ui.homeApps.size + 2) { if (focus()?.etiquette != "biblio") appuyer(Key.DirectionRight) }
+        }
+        // Idem pour un favori ou une app pas encore composé (rangée étroite) : ▶ depuis le début de sa rangée
+        val rangee = when {
+            etiquette.startsWith("app:") -> ui.homeApps.indices.map { app(it) }
+            etiquette.startsWith("favori:") -> ui.favorites.indices.map { favori(it) }
+            else -> emptyList()
+        }
+        if (rangee.size > 1 && etiquette != rangee[0] &&
+            compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+        ) {
+            donnerFocus(rangee[0])
+            repeat(rangee.size) { if (focus()?.etiquette != etiquette) appuyer(Key.DirectionRight) }
         }
         compose.onAllNodes(
             (hasTestTag(etiquette) or hasAnyAncestor(hasTestTag(etiquette))) and
@@ -327,8 +370,15 @@ abstract class BancAccueil(nomDesign: String) {
         return dernier
     }
 
-    /** Depuis le favori [depuis] (le 1er par défaut), va au favori [i] avec ▶ (échec explicite si la rangée ne suit pas). */
+    /**
+     * Depuis le favori [depuis] (le 1er par défaut), va au favori [i] avec ▶ (échec explicite si la rangée ne suit pas).
+     * Chaînes (grille paginée) : chemin ▶ ◀ ▲ ▼ calculé sur la grille, chaque pas vérifié.
+     */
     protected fun allerAuFavori(i: Int, depuis: Int = 0) {
+        if (chaines) {
+            allerALaTuile(favori(i))
+            return
+        }
         for (k in depuis + 1..i) {
             appuyer(Key.DirectionRight)
             val f = focus()
@@ -336,6 +386,121 @@ abstract class BancAccueil(nomDesign: String) {
                 fail("[${design.name}] ▶ depuis ${favori(k - 1)} : attendu ${favori(k)}, obtenu ${decrire(f)}")
             }
         }
+    }
+
+    // ------------------------------------------------------------------ Chaînes (grille paginée)
+
+    /** Design « Chaînes » : une grille paginée au lieu des deux rangées favoris / « Mes apps ». */
+    protected val chaines: Boolean get() = design == Design.CHAINES
+
+    /** Étiquettes des tuiles de la grille, dans l'ordre (pages successives). */
+    protected fun etiquettesChaines(): List<String> = tuilesChaines(ui).map { it.etiquette }
+
+    private fun estComposee(etiquette: String) =
+        compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
+    protected fun touche(sens: Sens): Key = when (sens) {
+        Sens.GAUCHE -> Key.DirectionLeft
+        Sens.DROITE -> Key.DirectionRight
+        Sens.HAUT -> Key.DirectionUp
+        Sens.BAS -> Key.DirectionDown
+    }
+
+    /**
+     * Appuie sur la flèche [sens] depuis la tuile sélectionnée et vérifie l'arrivée prévue par
+     * la grille (GrilleChaines) : tuile voisine, même colonne pour ▲ ▼, ou bouton de la bande.
+     */
+    protected fun voisinChaines(sens: Sens, nom: String): Cible? {
+        val etiquettes = etiquettesChaines()
+        val avant = focus()
+        val i = etiquettes.indexOf(avant?.etiquette)
+        if (i < 0) {
+            fail("[${design.name}] $nom : départ hors de la grille, ${decrire(avant)}")
+            return avant
+        }
+        val v = GrilleChaines.voisin(i, etiquettes.size, sens)
+        appuyer(touche(sens))
+        val apres = focus()
+        if (v == GrilleChaines.BANDE) {
+            if (apres == null || !apres.etiquette.startsWith("rapide:")) {
+                fail("[${design.name}] $nom ${decrire(avant)} puis ${sens.name} : attendu la bande du bas, obtenu ${decrire(apres)}")
+            }
+            return apres
+        }
+        val attendu = etiquettes[v]
+        if (apres?.etiquette != attendu) {
+            fail("[${design.name}] $nom ${decrire(avant)} puis ${sens.name} : attendu $attendu (tuile ${v + 1}), obtenu ${decrire(apres)}")
+        }
+        // ▲ ▼ dans la même colonne : la tuile d'arrivée est bien alignée avec celle de départ
+        if (avant != null && apres != null && (sens == Sens.HAUT || sens == Sens.BAS) &&
+            GrilleChaines.colonne(v) == GrilleChaines.colonne(i) &&
+            kotlin.math.abs(apres.bornes.center.x - avant.bornes.center.x) > 2f * pxParU
+        ) {
+            fail("[${design.name}] $nom puis ${sens.name} : ${decrire(apres)} n'est pas aligné avec ${decrire(avant)}")
+        }
+        return apres
+    }
+
+    /** Va à la tuile [etiquette] à la télécommande depuis la tuile sélectionnée, chaque pas vérifié. */
+    protected fun allerALaTuile(etiquette: String) {
+        val etiquettes = etiquettesChaines()
+        val t = etiquettes.indexOf(etiquette)
+        if (t < 0) {
+            fail("[${design.name}] OUTILLAGE : $etiquette n'est pas une tuile de la grille")
+            return
+        }
+        // Focus hors de la grille (bande, modules…) : départ d'une tuile de la page affichée
+        if (etiquettes.indexOf(focus()?.etiquette) < 0) {
+            etiquettes.firstOrNull { estComposee(it) }?.let { donnerFocus(it) }
+        }
+        repeat(80) {
+            val i = etiquettes.indexOf(focus()?.etiquette)
+            if (i == t) return
+            if (i < 0) {
+                fail("[${design.name}] vers $etiquette : focus hors de la grille, ${decrire(focus())}")
+                return
+            }
+            val g = GrilleChaines
+            val sens = when {
+                g.page(t) > g.page(i) -> Sens.DROITE
+                g.page(t) < g.page(i) -> Sens.GAUCHE
+                g.rangee(t) > g.rangee(i) -> Sens.BAS
+                g.rangee(t) < g.rangee(i) -> Sens.HAUT
+                g.colonne(t) > g.colonne(i) -> Sens.DROITE
+                else -> Sens.GAUCHE
+            }
+            voisinChaines(sens, "vers $etiquette :")
+        }
+        fail("[${design.name}] $etiquette jamais atteinte, focus sur ${decrire(focus())}")
+    }
+
+    /**
+     * ▼ puis ▲, ou ▲ puis ▼ : retour sur la tuile de départ [etiquette]. On monte d'abord
+     * si la grille le permet ; depuis la 1re rangée, on descend (tuile ou bande) puis on remonte.
+     */
+    protected fun allerRetourChaines(etiquette: String, nom: String) {
+        if (focus()?.etiquette != etiquette) donnerFocus(etiquette)
+        val etiquettes = etiquettesChaines()
+        val i = etiquettes.indexOf(etiquette)
+        val monte = GrilleChaines.voisin(i, etiquettes.size, Sens.HAUT) != i
+        val etapes = mutableListOf(decrire(focus()))
+        for (sens in if (monte) listOf(Sens.HAUT, Sens.BAS) else listOf(Sens.BAS, Sens.HAUT)) {
+            appuyer(touche(sens))
+            etapes += "${sens.name} → ${decrire(focus())}"
+        }
+        if (focus()?.etiquette != etiquette) {
+            fail("[${design.name}] $nom : ${etapes.joinToString(" ; ")} : attendu le retour sur $etiquette")
+        }
+    }
+
+    /** Chaînes : ouvre la zone de modules par le bouton enveloppe (OK), comme à la télécommande. */
+    protected fun ouvrirZoneModules() {
+        if (!chaines || estComposee("nba")) return
+        donnerFocus("rapide:Modules")
+        appuyer(Key.DirectionCenter)
+        avancer(500)
+        val f = focus()
+        if (f == null || "nba" !in f.chaine) fail("[${design.name}] OUTILLAGE : enveloppe puis OK, zone de modules attendue, obtenu ${decrire(f)}")
     }
 
     // ------------------------------------------------------------------ captures
