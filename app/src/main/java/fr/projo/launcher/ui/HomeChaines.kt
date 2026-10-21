@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -290,6 +291,12 @@ fun HomeChaines(ctx: HomeContext) {
             .fillMaxSize()
             .fondChaines()
     ) {
+        // --- Rangées du contrat (HomeContext) : pas de rangée dans ce design, mais HomeScreen
+        // (Maison, focus initial) et sortieNba les remettent au début avant de donner le focus,
+        // ce qui attend leur première mise en page : deux LazyRow vides et invisibles les portent.
+        LazyRow(state = ctx.rangeeFavoris, modifier = Modifier.size(0.dp)) {}
+        LazyRow(state = ctx.rangeeApps, modifier = Modifier.size(0.dp)) {}
+
         // --- Relais du focus : premierFocus (Maison, sortie des modules) et focusBiblio
         // (retour de la bibliothèque) visent des tuiles qui ne sont composées que sur leur page.
         if (page != 0) Relais(ctx.premierFocus) { etat.page = 0; etat.cible = 0 }
