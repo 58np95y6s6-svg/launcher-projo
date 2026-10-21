@@ -267,12 +267,12 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         if (lances != listOf(ui.favorites[1].packageName)) fail("[NEON $theme] OK sur ${favori(1)} : apps lancées $lances")
         // Maison depuis « Mes apps » (la rangée a glissé)
         repeat(ui.favorites.size + 2) { appuyer(Key.DirectionRight) }
-        compose.runOnIdle { appuisMaison.intValue++ }
+        maison()
         avancer(1200)
         if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis « Mes apps » : obtenu ${decrire(focus())}")
         // Maison depuis un bouton rond
         donnerFocus("rapide:Wi-Fi")
-        compose.runOnIdle { appuisMaison.intValue++ }
+        maison()
         avancer(1200)
         if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis Wi-Fi : obtenu ${decrire(focus())}")
         // Maison depuis le panneau des modules : panneau refermé, 1re tuile
@@ -281,45 +281,16 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         avancer(800)
         if (focus()?.chaine?.contains("nba") != true) fail("[NEON $theme] Modules puis OK : obtenu ${decrire(focus())}")
         val notes = mutableListOf("avant : ${decrire(focus())}")
-        DiagnosticMaison.etapes.clear()
-        compose.runOnIdle { appuisMaison.intValue++ }
+        maison()
         for (pas in listOf(16L, 16L, 100L, 1000L)) {
             avancer(pas)
             notes += "+$pas ms : ${decrire(focus())} ${focus()?.chaine}"
         }
-        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : ${notes.joinToString(" | ")} ; étapes ${DiagnosticMaison.etapes}")
+        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : ${notes.joinToString(" | ")}")
         val zone = bornesDe("nba")
         if (zone != null && zone.top < compose.onRoot().fetchSemanticsNode().size.height - 1f) {
             fail("[NEON $theme] panneau des modules encore ouvert après Maison : ${zone.enU()}")
         }
-    }
-
-    /** Diagnostic : demandes de focus depuis le panneau des modules ouvert. */
-    @Test
-    fun diagnosticFocusDepuisLesModules() {
-        afficher()
-        val notes = mutableListOf<String>()
-        fun ouvrir() {
-            donnerFocus("rapide:Modules")
-            appuyer(Key.DirectionCenter)
-            avancer(800)
-            notes += "ouvert : ${decrire(focus())}"
-        }
-        ouvrir()
-        compose.runOnIdle { focusReglages.requestFocus() }
-        avancer(800)
-        notes += "focusReglages → ${decrire(focus())}"
-        ouvrir()
-        compose.runOnIdle { focusBiblio.requestFocus() }
-        avancer(1200)
-        notes += "focusBiblio → ${decrire(focus())}"
-        ouvrir()
-        val ok = compose.runOnIdle {
-            runCatching { focusReglages.requestFocus() }.exceptionOrNull()?.toString() ?: "sans exception"
-        }
-        avancer(800)
-        notes += "focusReglages (2) $ok → ${decrire(focus())}"
-        if (notes.any { "« nba »" in it && "→" in it }) fail("[NEON $theme] ${notes.joinToString(" | ")}")
     }
 
     /** Panneau des modules : sortie par ◀ puis par Retour, toujours sur le bouton Modules ; panneau refermé. */
@@ -344,6 +315,18 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
     }
 
     // ------------------------------------------------------------------ outils
+
+    /**
+     * Appui sur Maison (comme MainActivity : compteur incrémenté). L'écriture est publiée tout
+     * de suite (sendApplyNotifications), sinon elle peut rester en attente et HomeScreen ne
+     * voit pas l'appui.
+     */
+    private fun maison() {
+        compose.runOnIdle {
+            appuisMaison.intValue++
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        }
+    }
 
     /** Boutons ronds affichés (étiquette, centre x en px), de gauche à droite. */
     private fun boutons(): List<Pair<String, Float>> {

@@ -99,21 +99,11 @@ fun HomeScreen(
     // Focus initial (et retour en haut à chaque appui sur Maison ou changement de design)
     LaunchedEffect(ui.loaded, ui.prefs.defaultsApplied, homePressCount, design) {
         if (!ui.loaded) return@LaunchedEffect
-        DiagnosticMaison.etapes += "début $homePressCount"
-        try {
-            withFrameNanos {}
-            DiagnosticMaison.etapes += "image"
-            defilement.scrollTo(0)
-            DiagnosticMaison.etapes += "défilement"
-            rangeeFavoris.scrollToItem(0)
-            DiagnosticMaison.etapes += "favoris"
-            rangeeApps.scrollToItem(0)
-            DiagnosticMaison.etapes += "apps"
-            DiagnosticMaison.etapes += "focus " + runCatching { premierFocus.requestFocus() }.exceptionOrNull()
-        } catch (e: Throwable) {
-            DiagnosticMaison.etapes += "exception $e"
-            throw e
-        }
+        withFrameNanos {}
+        defilement.scrollTo(0)
+        rangeeFavoris.scrollToItem(0)
+        rangeeApps.scrollToItem(0)
+        runCatching { premierFocus.requestFocus() }
     }
     LaunchedEffect(retourFocus) {
         if (retourFocus == 0) return@LaunchedEffect
@@ -303,9 +293,4 @@ private fun EnTete(wifiLabel: String, actions: HomeActions, majDisponible: Boole
             modifier = Modifier.padding(top = 6.u),
         )
     }
-}
-
-/** DIAGNOSTIC TEMPORAIRE (Néon, Maison depuis les modules). */
-object DiagnosticMaison {
-    val etapes = mutableListOf<String>()
 }
