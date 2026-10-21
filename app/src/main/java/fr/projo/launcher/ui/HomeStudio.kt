@@ -46,6 +46,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -138,6 +139,8 @@ fun HomeStudio(ctx: HomeContext) {
         )
     }
     var ongletChoisi by remember { mutableStateOf(StudioOnglet.EXPLORER) }
+    // Arrière-plan photo de l'écran 1 (StudioPhotos.kt) : app ou suggestion sélectionnée
+    val selectionFond = remember { SelectionFondStudio() }
     val onglet = if (ongletChoisi in onglets) ongletChoisi else StudioOnglet.EXPLORER
     val suggestions: List<StudioSuggestion> = if (programmes.isNotEmpty()) {
         programmes
@@ -173,6 +176,9 @@ fun HomeStudio(ctx: HomeContext) {
                 }
             }
             val hautModules = hauteur - S_DOCK_HAUT - S_DOCK - S_ECART_BANDE - S_BANDE - S_ECART_MODULES - S_BAS_MODULES
+            // Photos : seulement quand l'écran 1 est affiché (la page est en haut)
+            val largeurFond = with(LocalDensity.current) { P_LARGEUR.u.roundToPx() }.coerceIn(320, 1280)
+            val fond = rememberFondStudio(selectionFond, largeurFond) { ctx.defilement.value < decalagePx / 2 }
 
             Column(
                 Modifier
@@ -184,21 +190,27 @@ fun HomeStudio(ctx: HomeContext) {
                     .testTag("studio:page"),
             ) {
                 // ------------------------------------------------ écran 1
-                Column(Modifier.fillMaxWidth().height(hautEcran1.u)) {
-                    StudioEnTete(
-                        ctx, nav, onglets, onglet, { ongletChoisi = it }, reglagesBas, { reglagesBas = it }, versEcran,
-                        sansCle = etat.resultat.etat == StudioEtat.SANS_CLE,
-                    )
-                    StudioRangeeSuggestions(ctx, nav, suggestions, onglet, versEcran)
-                    if (programmes.isNotEmpty()) {
-                        // Attribution demandée par TMDB
-                        Text(
-                            "Données : TMDB", color = StudioGrisClair, fontSize = 9.us, style = ligne(11.us),
-                            modifier = Modifier.align(Alignment.End).padding(end = S_MARGE.u),
+                Box(Modifier.fillMaxWidth().height(hautEcran1.u)) {
+                    // Photo sur le grand fond, sous l'en-tête et les cartes
+                    FondPhotosStudio(fond, Modifier.matchParentSize())
+                    Column(Modifier.fillMaxSize()) {
+                        StudioEnTete(
+                            ctx, nav, onglets, onglet, { ongletChoisi = it }, reglagesBas, { reglagesBas = it }, versEcran,
+                            sansCle = etat.resultat.etat == StudioEtat.SANS_CLE,
+                        )
+                        StudioRangeeSuggestions(ctx, nav, suggestions, onglet, versEcran, selectionFond)
+                        // Attribution demandée par TMDB (suggestions ou photo affichées)
+                        AttributionTmdb(
+                            programmes.isNotEmpty(), fond,
+                            Modifier.align(Alignment.End).padding(end = S_MARGE.u),
                         )
                     }
+                    // Légende de la nouveauté, sous l'heure (dans le halo clair)
+                    LegendePhotosStudio(
+                        fond, Modifier.align(Alignment.TopEnd).padding(top = 83.u, end = (S_MARGE + 2).u),
+                    )
                 }
-                StudioDock(ctx, nav, mesApps, versEcran)
+                StudioDock(ctx, nav, mesApps, versEcran, selectionFond)
                 // ------------------------------------------------ écran 2
                 Spacer(Modifier.height(S_ECART_BANDE.u))
                 StudioEntreesRaccourcis(ctx, nav, entrees, reglagesBas, { reglagesBas = it }, versEcran)
@@ -207,6 +219,13 @@ fun HomeStudio(ctx: HomeContext) {
             }
         }
     }
+}
+
+/** « Données : TMDB » sous les suggestions, aussi quand seule une nouveauté est affichée. */
+@Composable
+private fun AttributionTmdb(suggestions: Boolean, fond: FondStudio, modifier: Modifier) {
+    if (!suggestions && !fond.nouveauteAffichee()) return
+    Text("Données : TMDB", color = StudioGrisClair, fontSize = 9.us, style = ligne(11.us), modifier = modifier)
 }
 
 // ------------------------------------------------------------------ en-tête
@@ -331,6 +350,7 @@ private fun StudioRangeeSuggestions(
     suggestions: List<StudioSuggestion>,
     onglet: StudioOnglet,
     versEcran: (StudioBande) -> Unit,
+    selectionFond: SelectionFondStudio,
 ) {
     // État « Mes apps » du contrat (HomeScreen le remet au début à chaque Maison) : ici les
     // suggestions, car les apps de « Mes apps » sont dans la barre. Il DOIT être attaché à une
@@ -370,6 +390,7 @@ private fun StudioRangeeSuggestions(
                     onFocus = { c -> choisir(); ctx.surFocus(s.app, c ?: IconLoader.COULEUR_PAR_DEFAUT) },
                     modifier = Modifier.testTag("suggestion:" + s.app.packageName).then(cible),
                     app = s.app, icons = ctx.icons, iconPackage = ctx.ui.iconSourceOf(s.app.packageName),
+                    surFond = { f, _ -> selectionFond.app(s.app, f) },
                 )
                 is StudioSuggestion.Programme -> {
                     val p = s.programme
@@ -388,6 +409,7 @@ private fun StudioRangeeSuggestions(
                         app = app, icons = ctx.icons, iconPackage = app?.let { ctx.ui.iconSourceOf(it.packageName) },
                         imageProgramme = p.image, largeurImage = largeurImage,
                         logoService = true,
+                        surFond = { f, image -> selectionFond.suggestion(s.cle, image, f) },
                     )
                 }
             }
@@ -431,15 +453,22 @@ private fun StudioCarteSuggestion(
     largeurImage: Int = 0,
     /** Petit logo du service (icône de l'app) dans le coin de l'affiche. */
     logoService: Boolean = false,
+    /** Arrière-plan photo : sélection de la carte (et son image, une fois chargée). */
+    surFond: ((focus: Boolean, image: ImageBitmap?) -> Unit)? = null,
 ) {
     val visuel = iconPackage?.let { rememberAppVisual(it, icons, FormatVisuel.BANNIERE) }
     val image = if (imageProgramme != null) rememberImageProgramme(imageProgramme, largeurImage) else null
+    var focusCarte by remember { mutableStateOf(false) }
+    if (surFond != null) LaunchedEffect(focusCarte, image) { surFond(focusCarte, image) }
     Column(Modifier.width(largeur)) {
         StudioCadre(
             onClick = onClick, onMenu = onMenu, largeur = largeur, hauteur = hauteur,
             rayon = if (grande) 14.u else 11.u, modifier = modifier, levee = if (grande) 1.04f else 1.07f,
             fond = visuel?.fond ?: Color(0xFFDADDE3), ombreRepos = 0.8f,
-            onFocus = { if (it) onFocus(visuel?.color) },
+            onFocus = {
+                focusCarte = it
+                if (it) onFocus(visuel?.color)
+            },
         ) {
             when {
                 image != null -> Image(
@@ -499,7 +528,13 @@ private fun InitialeStudio(nom: String, couleur: Color, taille: Int) {
 // ------------------------------------------------------------------ barre des apps
 
 @Composable
-private fun StudioDock(ctx: HomeContext, nav: StudioNav, mesApps: List<AppInfo>, versEcran: (StudioBande) -> Unit) {
+private fun StudioDock(
+    ctx: HomeContext,
+    nav: StudioNav,
+    mesApps: List<AppInfo>,
+    versEcran: (StudioBande) -> Unit,
+    selectionFond: SelectionFondStudio,
+) {
     val ui = ctx.ui
     Box(
         Modifier
@@ -540,7 +575,7 @@ private fun StudioDock(ctx: HomeContext, nav: StudioNav, mesApps: List<AppInfo>,
             items(ui.favorites.size, key = { "fav:" + ui.favorites[it].packageName }) { i ->
                 val app = ui.favorites[i]
                 StudioTuileApp(
-                    ctx, app,
+                    ctx, app, selectionFond,
                     Modifier.testTag("favori:" + app.packageName).then(
                         rememberCibleStudio(nav, StudioBande.DOCK, "fav:" + app.packageName, fr = if (i == 0) ctx.premierFocus else null)
                     ),
@@ -553,7 +588,7 @@ private fun StudioDock(ctx: HomeContext, nav: StudioNav, mesApps: List<AppInfo>,
             }
             items(mesApps, key = { "app:" + it.packageName }) { app ->
                 StudioTuileApp(
-                    ctx, app,
+                    ctx, app, selectionFond,
                     Modifier.testTag("app:" + app.packageName).then(rememberCibleStudio(nav, StudioBande.DOCK, "app:" + app.packageName)),
                 )
             }
@@ -563,13 +598,17 @@ private fun StudioDock(ctx: HomeContext, nav: StudioNav, mesApps: List<AppInfo>,
 
 /** Tuile 16:9 d'une app dans la barre : son illustration, aux couleurs de la marque. */
 @Composable
-private fun StudioTuileApp(ctx: HomeContext, app: AppInfo, modifier: Modifier) {
+private fun StudioTuileApp(ctx: HomeContext, app: AppInfo, selectionFond: SelectionFondStudio, modifier: Modifier) {
     val visuel = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons, FormatVisuel.BANNIERE)
     StudioCadre(
         onClick = { ctx.actions.launch(app) }, onMenu = { ctx.actions.openMenu(app) },
         largeur = S_TUILE_L.u, hauteur = S_TUILE_H.u, rayon = 11.u, modifier = modifier, levee = 1.12f,
         fond = visuel?.fond ?: Color(0xFFDADDE3), ombreRepos = 0.6f,
-        onFocus = { if (it) ctx.surFocus(app, visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT) },
+        onFocus = {
+            // Arrière-plan photo : nouveautés de l'app (si elle a un catalogue)
+            selectionFond.app(app, it)
+            if (it) ctx.surFocus(app, visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT)
+        },
     ) {
         if (visuel?.art != null) ImageApp(visuel, app.label, Modifier.fillMaxSize())
         else InitialeStudio(app.label, visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT, 24)
