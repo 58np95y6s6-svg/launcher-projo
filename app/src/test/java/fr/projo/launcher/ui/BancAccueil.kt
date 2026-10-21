@@ -49,8 +49,8 @@ const val ECRAN_TV = "w960dp-h540dp-land-xhdpi"
  * Banc d'essai de l'écran d'accueil : affiche HomeScreen comme MainActivity (échelle,
  * design, thème), avec des données factices, puis pilote le focus comme une télécommande.
  *
- * L'horloge de Compose avance à la main (autoAdvance = false) : la lueur tourne sans fin
- * et empêcherait sinon le test d'attendre que l'écran soit « au repos ».
+ * L'horloge de Compose avance à la main (autoAdvance = false) : une animation sans fin
+ * empêcherait sinon le test d'attendre que l'écran soit « au repos ».
  */
 @OptIn(ExperimentalTestApi::class)
 abstract class BancAccueil(nomDesign: String) {
@@ -207,7 +207,7 @@ abstract class BancAccueil(nomDesign: String) {
             return
         }
         // « Toutes les apps » pas encore composée (hors écran) : on y va avec ▶ depuis la 1re app
-        // (performScrollToNode attendrait sans fin : la lueur anime en continu)
+        // (performScrollToNode attendrait sans fin si une animation tourne en continu)
         if (etiquette == "biblio" && compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
             donnerFocus(app(0))
             repeat(ui.homeApps.size + 2) { if (focus()?.etiquette != "biblio") appuyer(Key.DirectionRight) }

@@ -66,7 +66,7 @@ private val UneStyleScore = TextStyle(
 /**
  * Zone de modules de « Une » (ex-bandeau NBA, choisie dans Réglages → Modules) :
  *  - module Sport réglé sur la NBA seule (le cas par défaut) : le score façon journal sportif
- *    de la maquette (UneNba), comme Graphite dessine son propre bandeau (NbaGraphite) ;
+ *    de la maquette (UneNba), dessiné hors de la zone commune ;
  *  - autres choix : la zone de modules commune (NbaPanel), aux couleurs de « Une », réduite à
  *    82 % pour tenir entre la ligne haute et le filet (360 × 117.u).
  * Quand un module a le focus, son titre (FocusModules.titre) s'affiche en nom géant.

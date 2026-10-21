@@ -20,7 +20,7 @@ import androidx.compose.ui.layout.positionInRoot
 import kotlin.math.abs
 
 /**
- * Navigation verticale entre la rangée des favoris et « Mes apps », la même dans les 5 designs.
+ * Navigation verticale entre la rangée des favoris et « Mes apps », la même dans tous les designs à deux rangées.
  *
  * ▼ depuis un favori : on va directement à l'élément de « Mes apps » visible le plus aligné.
  * ▲ depuis « Mes apps » : au favori visible le plus aligné.

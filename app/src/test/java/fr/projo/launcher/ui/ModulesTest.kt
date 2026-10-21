@@ -7,7 +7,6 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
@@ -112,12 +111,6 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
         focusDans("module:meteo")
         verifierZoneVisible()
         capturer("m1_meteo_seule")
-        // Graphite : le grand titre nomme le module sélectionné
-        if (design == Design.GRAPHITE &&
-            compose.onAllNodes(hasText("Météo · Lyon"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
-        ) {
-            fail("[GRAPHITE] titre « Météo · Lyon » attendu quand la Météo est sélectionnée")
-        }
     }
 
     @Test
@@ -141,44 +134,22 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
         capturer("m3_sport_plusieurs")
     }
 
-    /**
-     * Deux modules côte à côte : ◀ / ▶ passent de l'un à l'autre (Playlist : empilés, ▲ / ▼) ;
-     * ◀ sur le 1er revient aux favoris (Graphite : à Réglages, d'où l'on entre dans la zone par ▶).
-     */
+    /** Deux modules côte à côte : ◀ / ▶ passent de l'un à l'autre ; ◀ sur le 1er revient aux favoris. */
     @Test
     fun navigationDeuxModules() {
         hoteModules = ModulesFactices.hote("meteo", "sport")
         afficher()
         focusDans("module:sport")
-        if (design == Design.PLAYLIST) {
-            // Playlist : panneau de droite étroit et haut, les deux modules y sont EMPILÉS ;
-            // ▲ / ▼ passent de l'un à l'autre (◀ quitte la zone, vérifié plus bas)
-            appuyer(Key.DirectionUp)
-            attendreFocus("module:meteo", "▲ depuis Sport")
-            appuyer(Key.DirectionDown)
-            attendreFocus("module:sport", "▼ depuis Météo")
-        } else {
-            appuyer(Key.DirectionLeft)
-            attendreFocus("module:meteo", "◀ depuis Sport")
-            appuyer(Key.DirectionRight)
-            attendreFocus("module:sport", "▶ depuis Météo")
-        }
+        appuyer(Key.DirectionLeft)
+        attendreFocus("module:meteo", "◀ depuis Sport")
+        appuyer(Key.DirectionRight)
+        attendreFocus("module:sport", "▶ depuis Météo")
         focusDans("module:meteo")
         appuyer(Key.DirectionLeft)
         val f = focus()
-        // Néon : le panneau des modules se referme sur le bouton Modules qui l'a ouvert
-        val attendu = when (design) {
-            Design.GRAPHITE -> "rapide:Réglages"
-            Design.NEON -> "rapide:Modules"
-            else -> favori(0)
-        }
+        val attendu = favori(0)
         if (f?.etiquette != attendu) {
             fail("[${design.name}] ◀ depuis Météo (1er module) : attendu $attendu, obtenu ${decrire(f)}")
-        }
-        if (design == Design.GRAPHITE) {
-            // ▶ depuis Réglages : retour dans la zone, sur le 1er module
-            appuyer(Key.DirectionRight)
-            attendreFocus("module:meteo", "Réglages puis ▶")
         }
     }
 
@@ -220,7 +191,7 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class CapturesModulesDialogTest : BancAccueil("AURORE") {
+class CapturesModulesDialogTest : BancAccueil("VERRE") {
 
     @OptIn(ExperimentalRoborazziApi::class)
     private fun dialogue(nom: String, contenu: @androidx.compose.runtime.Composable () -> Unit) {
