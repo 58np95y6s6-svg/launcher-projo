@@ -1,0 +1,500 @@
+
+NavigationTest > hautDepuisMesApps1[PASTEL] PASSED
+
+NavigationTest > hautDepuisMesApps3[PASTEL] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[CONSOLE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[CONSOLE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[CONSOLE] PASSED
+
+NavigationTest > toucheMenu[CONSOLE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori1[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori2[CONSOLE] PASSED
+
+NavigationTest > basDepuisFavori3[CONSOLE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[CONSOLE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[CONSOLE] PASSED
+
+NavigationTest > allerRetourBasHaut[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[CONSOLE] PASSED
+
+NavigationTest > allerRetourHautBas[CONSOLE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[CONSOLE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[CONSOLE] PASSED
+
+NavigationTest > entreeDansLaNba[CONSOLE] PASSED
+
+NavigationTest > sortieDuBandeauNba[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesApps1[CONSOLE] PASSED
+
+NavigationTest > hautDepuisMesApps3[CONSOLE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[GRAPHITE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[GRAPHITE] PASSED
+
+NavigationTest > toucheMenu[GRAPHITE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori1[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori2[GRAPHITE] PASSED
+
+NavigationTest > basDepuisFavori3[GRAPHITE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[GRAPHITE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[GRAPHITE] PASSED
+
+NavigationTest > allerRetourBasHaut[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[GRAPHITE] PASSED
+
+NavigationTest > allerRetourHautBas[GRAPHITE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[GRAPHITE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[GRAPHITE] PASSED
+
+NavigationTest > entreeDansLaNba[GRAPHITE] PASSED
+
+NavigationTest > sortieDuBandeauNba[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesApps1[GRAPHITE] PASSED
+
+NavigationTest > hautDepuisMesApps3[GRAPHITE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[UNE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[UNE] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[UNE] PASSED
+
+NavigationTest > toucheMenu[UNE] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[UNE] PASSED
+
+NavigationTest > basDepuisFavori1[UNE] PASSED
+
+NavigationTest > basDepuisFavori2[UNE] PASSED
+
+NavigationTest > basDepuisFavori3[UNE] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[UNE] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[UNE] PASSED
+
+NavigationTest > allerRetourBasHaut[UNE] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[UNE] PASSED
+
+NavigationTest > allerRetourHautBas[UNE] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[UNE] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[UNE] PASSED
+
+NavigationTest > entreeDansLaNba[UNE] PASSED
+
+NavigationTest > sortieDuBandeauNba[UNE] PASSED
+
+NavigationTest > hautDepuisMesApps1[UNE] PASSED
+
+NavigationTest > hautDepuisMesApps3[UNE] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[CHAINES] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[CHAINES] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[CHAINES] PASSED
+
+NavigationTest > toucheMenu[CHAINES] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[CHAINES] PASSED
+
+NavigationTest > basDepuisFavori1[CHAINES] PASSED
+
+NavigationTest > basDepuisFavori2[CHAINES] PASSED
+
+NavigationTest > basDepuisFavori3[CHAINES] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[CHAINES] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[CHAINES] PASSED
+
+NavigationTest > allerRetourBasHaut[CHAINES] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[CHAINES] PASSED
+
+NavigationTest > allerRetourHautBas[CHAINES] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[CHAINES] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[CHAINES] PASSED
+
+NavigationTest > entreeDansLaNba[CHAINES] PASSED
+
+NavigationTest > sortieDuBandeauNba[CHAINES] PASSED
+
+NavigationTest > hautDepuisMesApps1[CHAINES] PASSED
+
+NavigationTest > hautDepuisMesApps3[CHAINES] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori1[PLAYLIST] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[PLAYLIST] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[PLAYLIST] PASSED
+
+NavigationTest > toucheMenu[PLAYLIST] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[PLAYLIST] PASSED
+
+NavigationTest > basDepuisFavori1[PLAYLIST] PASSED
+
+NavigationTest > basDepuisFavori2[PLAYLIST] PASSED
+
+NavigationTest > basDepuisFavori3[PLAYLIST] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[PLAYLIST] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[PLAYLIST] PASSED
+
+NavigationTest > allerRetourBasHaut[PLAYLIST] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[PLAYLIST] PASSED
+
+NavigationTest > allerRetourHautBas[PLAYLIST] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[PLAYLIST] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[PLAYLIST] PASSED
+
+NavigationTest > entreeDansLaNba[PLAYLIST] PASSED
+
+NavigationTest > sortieDuBandeauNba[PLAYLIST] PASSED
+
+NavigationTest > hautDepuisMesApps1[PLAYLIST] PASSED
+
+NavigationTest > hautDepuisMesApps3[PLAYLIST] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[AURORE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[AURORE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[GRAPHITE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[GRAPHITE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PLAYLIST 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PLAYLIST 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PLAYLIST 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PLAYLIST 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PLAYLIST 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PLAYLIST 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PLAYLIST 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PLAYLIST 30 favoris] PASSED
+
+NeonTest > trenteFavoris[sombre] PASSED
+
+NeonTest > hautRevientSurLaTuileDeDepart[sombre] PASSED
+
+NeonTest > sortieDesModules[sombre] PASSED
+
+NeonTest > toucheMenu[sombre] PASSED
+
+NeonTest > retourDuFocusApresLesPanneaux[sombre] PASSED
+
+NeonTest > captureSansFavori[sombre] PASSED
+
+NeonTest > parcoursDeLaRangee[sombre] PASSED
+
+NeonTest > captureBoutonWifi[sombre] PASSED
+
+NeonTest > gaucheDroite[sombre] PASSED
+
+NeonTest > captureReglagesOuverts[sombre] PASSED
+
+NeonTest > captureToutesLesAppsHorsLigne[sombre] PASSED
+
+NeonTest > okEtMaison[sombre] PASSED
+
+NeonTest > capturePanneauModules[sombre] PASSED
+
+NeonTest > captureTuile1[sombre] PASSED
+
+NeonTest > basPuisRetourDepuisLesFavoris[sombre] PASSED
+
+NeonTest > trenteFavoris[clair] PASSED
+
+NeonTest > hautRevientSurLaTuileDeDepart[clair] PASSED
+
+NeonTest > sortieDesModules[clair] PASSED
+
+NeonTest > toucheMenu[clair] PASSED
+
+NeonTest > retourDuFocusApresLesPanneaux[clair] PASSED
+
+NeonTest > captureSansFavori[clair] PASSED
+
+NeonTest > parcoursDeLaRangee[clair] PASSED
+
+NeonTest > captureBoutonWifi[clair] PASSED
+
+NeonTest > gaucheDroite[clair] PASSED
+
+NeonTest > captureReglagesOuverts[clair] PASSED
+
+NeonTest > captureToutesLesAppsHorsLigne[clair] PASSED
+
+NeonTest > okEtMaison[clair] PASSED
+
+NeonTest > capturePanneauModules[clair] PASSED
+
+NeonTest > captureTuile1[clair] PASSED
+
+NeonTest > basPuisRetourDepuisLesFavoris[clair] PASSED
+
+PlaylistTest > reglagesVersLesModulesEtRetour PASSED
+
+PlaylistTest > droiteDepuisLaBibliotheque PASSED
+
+PlaylistTest > buteeEtRetour PASSED
+
+PlaylistTest > captureBibliotheque PASSED
+
+PlaylistTest > captureModuleSeul PASSED
+
+PlaylistTest > captureModules PASSED
+
+PlaylistTest > gaucheVersLaBibliothequePuisRetour PASSED
+
+PlaylistTest > captureBoutonRondEtMiseAJour PASSED
+
+PlaylistTest > captureToutesLesApps PASSED
+
+PlaylistTest > captureTuile PASSED
+
+PlaylistTest > captureReglagesOuverts PASSED
+
+PlaylistTest > tuilesVersLaBarreDuHaut PASSED
+
+PlaylistTest > droiteAuBoutDesFavorisVersLesModules PASSED
+
+PlaylistTest > hautVersLesTuilesPuisRetour PASSED
+
+PlaylistTest > filtreMusique PASSED
+
+StudioModulesTest > deuxModules PASSED
+
+StudioModulesTest > unModule PASSED
+
+StudioModulesTest > deuxModulesMoyens PASSED
+
+StudioSuggestionsTest > suggestionsTmdb PASSED
+
+StudioSuggestionsTest > formatsDeCle PASSED
+
+StudioSuggestionsTest > repliAppLaPlusRecente PASSED
+
+StudioSuggestionsTest > ongletsFiltrent PASSED
+
+StudioSuggestionsTest > repliSansHistorique PASSED
+
+StudioSuggestionsTest > dernieresSorties PASSED
+
+StudioSuggestionsTest > sansCle PASSED
+
+StudioSuggestionsTest > panneReseau PASSED
+
+StudioTest > sortieDesModules PASSED
+
+StudioTest > ecran1AuDemarrage PASSED
+
+StudioTest > okEtMenu PASSED
+
+StudioTest > retourDuFocusApresLesPanneaux PASSED
+
+StudioTest > enTeteEtSuggestions PASSED
+
+StudioTest > passageEcran1Ecran2 PASSED
+
+StudioTest > basPuisRetourDepuisChaqueTuile PASSED
+
+StudioTest > hautEtBasDepuisChaqueRaccourci PASSED
+
+StudioTest > maisonRevientEnHaut PASSED
+
+StudioTest > captureReglages PASSED
+
+StudioTest > gaucheDroiteRestentDansLaBande PASSED
+
+StudioVariantesTest > navigation[sans favori] PASSED
+
+StudioVariantesTest > navigation[fire tv] PASSED
+
+StudioVariantesTest > navigation[30 apps] PASSED
+
+StudioVariantesTest > navigation[1 app] PASSED
+
+UneTest > droiteAuBoutDesPilulesVersNba PASSED
+
+UneTest > butees PASSED
+
+UneTest > captureBibliotheque PASSED
+
+UneTest > retourDepuisMesAppsVersPremierFavori PASSED
+
+UneTest > captureMesApps PASSED
+
+UneTest > captureNba PASSED
+
+UneTest > captureRaccourciReglages PASSED
+
+UneTest > droiteJusquaToutesLesApps PASSED
+
+UneTest > captureSansFavoriSansNba PASSED
+
+UneTest > hautDepuisFavoriVersPilules PASSED
+
+UneTest > gaucheEtRetourQuittentLeNba PASSED
+
+UneTest > basPuisHautDepuisChaqueFavori PASSED
+
+UneTest > captureJauneInverse PASSED
+
+UneTest > basDepuisPiluleVersNbaPuisFavori PASSED
+
+UneTest > captureReglagesOuverts PASSED
+
+UneTest > hautDepuisNbaVersPilules PASSED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1792601726977.json
+
+BUILD SUCCESSFUL in 5m 21s
+28 actionable tasks: 28 executed
