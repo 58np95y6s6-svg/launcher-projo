@@ -140,6 +140,8 @@ fun SettingsPanel(
             )
             Spacer(Modifier.height(12.u))
 
+            // Design « Néon » : tuile du fond clair ou sombre
+            val designNeon = LocalDesign.current == Design.NEON
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.u, end = 22.u, top = 6.u, bottom = 30.u),
                 verticalArrangement = Arrangement.spacedBy(8.u),
@@ -232,7 +234,7 @@ fun SettingsPanel(
                     )
                 }
                 // Design « Néon » seulement : fond clair ou sombre
-                if (LocalDesign.current == Design.NEON) {
+                if (designNeon) {
                     item(key = "fond-neon") {
                         Tuile(
                             icone = ProjoIcons.Accueil,
