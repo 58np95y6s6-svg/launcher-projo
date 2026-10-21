@@ -142,18 +142,27 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
     }
 
     /**
-     * Deux modules côte à côte : ◀ / ▶ passent de l'un à l'autre ; ◀ sur le 1er revient aux
-     * favoris (Graphite : à Réglages, d'où l'on entre dans la zone par ▶).
+     * Deux modules côte à côte : ◀ / ▶ passent de l'un à l'autre (Playlist : empilés, ▲ / ▼) ;
+     * ◀ sur le 1er revient aux favoris (Graphite : à Réglages, d'où l'on entre dans la zone par ▶).
      */
     @Test
     fun navigationDeuxModules() {
         hoteModules = ModulesFactices.hote("meteo", "sport")
         afficher()
         focusDans("module:sport")
-        appuyer(Key.DirectionLeft)
-        attendreFocus("module:meteo", "◀ depuis Sport")
-        appuyer(Key.DirectionRight)
-        attendreFocus("module:sport", "▶ depuis Météo")
+        if (design == Design.PLAYLIST) {
+            // Playlist : panneau de droite étroit et haut, les deux modules y sont EMPILÉS ;
+            // ▲ / ▼ passent de l'un à l'autre (◀ quitte la zone, vérifié plus bas)
+            appuyer(Key.DirectionUp)
+            attendreFocus("module:meteo", "▲ depuis Sport")
+            appuyer(Key.DirectionDown)
+            attendreFocus("module:sport", "▼ depuis Météo")
+        } else {
+            appuyer(Key.DirectionLeft)
+            attendreFocus("module:meteo", "◀ depuis Sport")
+            appuyer(Key.DirectionRight)
+            attendreFocus("module:sport", "▶ depuis Météo")
+        }
         focusDans("module:meteo")
         appuyer(Key.DirectionLeft)
         val f = focus()
