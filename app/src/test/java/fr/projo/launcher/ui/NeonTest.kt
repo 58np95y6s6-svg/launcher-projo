@@ -281,12 +281,13 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
         avancer(800)
         if (focus()?.chaine?.contains("nba") != true) fail("[NEON $theme] Modules puis OK : obtenu ${decrire(focus())}")
         val notes = mutableListOf("avant : ${decrire(focus())}")
+        DiagnosticMaison.etapes.clear()
         compose.runOnIdle { appuisMaison.intValue++ }
         for (pas in listOf(16L, 16L, 100L, 1000L)) {
             avancer(pas)
             notes += "+$pas ms : ${decrire(focus())} ${focus()?.chaine}"
         }
-        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : ${notes.joinToString(" | ")}")
+        if (focus()?.etiquette != favori(0)) fail("[NEON $theme] Maison depuis les modules : ${notes.joinToString(" | ")} ; étapes ${DiagnosticMaison.etapes}")
         val zone = bornesDe("nba")
         if (zone != null && zone.top < compose.onRoot().fetchSemanticsNode().size.height - 1f) {
             fail("[NEON $theme] panneau des modules encore ouvert après Maison : ${zone.enU()}")
