@@ -186,6 +186,15 @@ abstract class BancStudio : BancAccueil("STUDIO") {
             ui.homeApps.filter { !it.isSpecial && ui.favorites.none { f -> f.packageName == it.packageName } }
                 .map { "app:" + it.packageName }
 
+    /** Écrit un état lu par l'accueil et le signale aussitôt à Compose (horloge du test arrêtée). */
+    protected fun changerEtat(ecriture: () -> Unit) {
+        compose.runOnIdle {
+            ecriture()
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        }
+        avancer(50)
+    }
+
     protected fun textePresent(t: String) =
         compose.onAllNodes(hasText(t), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
@@ -208,7 +217,7 @@ abstract class BancStudio : BancAccueil("STUDIO") {
                 ),
             )
         }
-        compose.runOnIdle { pardessus.value = panneau }
+        changerEtat { pardessus.value = panneau }
         avancer(1500)
     }
 }
@@ -342,7 +351,7 @@ class StudioTest : BancStudio() {
         fun maison(depart: String) {
             donnerFocus(depart)
             notes += "[$depart] avant : écran ${ecran()}"
-            compose.runOnIdle { pressionsMaison.intValue++ }
+            changerEtat { pressionsMaison.intValue++ }
             for (pas in listOf(16L, 100L, 1000L)) {
                 avancer(pas)
                 notes += "+$pas ms : écran ${ecran()} focus ${decrire(focus())}"
