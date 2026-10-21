@@ -59,12 +59,22 @@ class NeonTest(private val theme: String) : BancAccueil("NEON") {
     }
 
     init {
-        NeonTheme.clair = theme == "clair"
+        changerTheme(theme == "clair")
     }
 
     @After
     fun remettreLeTheme() {
-        NeonTheme.clair = false
+        changerTheme(false)
+    }
+
+    /**
+     * Écrit le thème hors de toute composition : sans sendApplyNotifications(), l'écriture
+     * resterait « en attente » dans l'instantané global (aucune vue Compose ne l'observe encore)
+     * et la règle de test n'atteindrait plus jamais le repos, pour ce test et tous les suivants.
+     */
+    private fun changerTheme(clair: Boolean) {
+        NeonTheme.clair = clair
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
     }
 
     private fun capture(nom: String) = capturer("${nom}_$theme")
