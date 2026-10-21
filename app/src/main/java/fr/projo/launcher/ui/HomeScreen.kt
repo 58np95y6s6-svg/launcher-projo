@@ -142,6 +142,7 @@ fun HomeScreen(
         Design.CHAINES -> HomeChaines(ctx)
         Design.PLAYLIST -> HomePlaylist(ctx)
         Design.STUDIO -> HomeStudio(ctx)
+        Design.NEON -> HomeNeon(ctx)
     }
 }
 

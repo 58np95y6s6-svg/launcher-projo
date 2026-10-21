@@ -31,8 +31,9 @@ import kotlin.math.abs
  * des modules. Les tests de NavigationTest propres aux deux rangées ne valent donc pas pour
  * Studio : leurs équivalents (▼ / ▲ vers l'élément visible le plus aligné de la bande voisine,
  * allers-retours, rangées longues, sans favori…) sont dans StudioTest.
+ * Néon non plus : une seule rangée de tuiles au-dessus de boutons ronds (équivalents dans NeonTest).
  */
-val Design.deuxRangees: Boolean get() = this != Design.STUDIO
+val Design.deuxRangees: Boolean get() = this != Design.STUDIO && this != Design.NEON
 
 fun designsDeuxRangees(): List<Array<Any>> = Design.entries.filter { it.deuxRangees }.map { arrayOf<Any>(it.name) }
 
