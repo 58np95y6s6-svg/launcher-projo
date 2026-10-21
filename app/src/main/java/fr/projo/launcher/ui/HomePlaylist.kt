@@ -178,14 +178,14 @@ private fun Rubrique.court(): String = when (this) {
     Rubrique.AUTRES -> "Autres"
 }
 
-/** Sous-titre d'une carte (une ligne sous le nom). */
+/** Sous-titre d'une carte (une ligne courte sous le nom : 14 caractères tiennent). */
 private fun Rubrique.sousTitre(): String = when (this) {
-    Rubrique.STREAMING -> "Vidéo · streaming"
+    Rubrique.STREAMING -> "Streaming"
     Rubrique.TV -> "TV en direct"
-    Rubrique.MUSIQUE -> "Musique · audio"
+    Rubrique.MUSIQUE -> "Musique"
     Rubrique.JEUX -> "Jeux"
-    Rubrique.STORE -> "Téléchargement"
-    Rubrique.OUTILS -> "Internet · outils"
+    Rubrique.STORE -> "Stores"
+    Rubrique.OUTILS -> "Outils"
     Rubrique.SYSTEME -> "Système"
     Rubrique.AUTRES -> "Application"
 }
@@ -411,10 +411,15 @@ internal class PlaylistNav {
         return ok
     }
 
-    /** Sortie de la zone de modules par la recherche de focus : ▲ vers la barre du haut, sinon on reste. */
+    /**
+     * Sortie de la zone de modules par la recherche de focus : ▲ vers la barre du haut, ▶ et ▼
+     * on reste. Les autres sens passent (◀ est géré par la zone ; Enter : requestFocus() d'un
+     * élément hors de la zone, ex. retour à la 1re carte, qui ne doit pas être bloqué).
+     */
     @OptIn(ExperimentalComposeUiApi::class)
     fun sortieZone(sens: FocusDirection): FocusRequester {
-        if (sens != FocusDirection.Up) return FocusRequester.Cancel
+        if (sens == FocusDirection.Right || sens == FocusDirection.Down) return FocusRequester.Cancel
+        if (sens != FocusDirection.Up) return FocusRequester.Default
         val cle = boutonLePlusProche(xZone) ?: return FocusRequester.Cancel
         val fr = cibles[cle] ?: return FocusRequester.Cancel
         dernierSaut = Triple(cle, CLE_ZONE, PlSens.HAUT)
@@ -1415,7 +1420,7 @@ private fun PlRangeeApps(ctx: HomeContext, nav: PlaylistNav, rubrique: (AppInfo)
                 onClick = ctx.actions.openLibrary,
                 onLongClick = null,
                 onFocus = { if (it) ctx.sansSelection() },
-                titre = "Toutes les apps",
+                titre = "Tout afficher",
                 sousTitre = if (n > 1) "$n applications" else "$n application",
                 modifier = Modifier
                     .testTag("biblio")
