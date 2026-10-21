@@ -18,6 +18,10 @@ import org.robolectric.annotation.GraphicsMode
  * Chaînes n'a pas deux rangées mais une grille paginée (favoris, puis « Mes apps », puis
  * « Toutes les apps ») : chaque test y vérifie l'équivalent dans la grille (voisin prévu par
  * GrilleChaines, même colonne pour ▲ ▼, allers-retours) ; les autres designs ne changent pas.
+ *
+ * Néon n'a qu'une rangée de tuiles (favoris, puis « Mes apps », puis « Toutes les apps ») au-dessus
+ * de boutons ronds : les mêmes vérifications, transposées (▼ vers le bouton le plus aligné, ▲ retour
+ * sur la tuile, ◀ ▶ le long de la rangée, sans favori, 30 favoris…), sont dans NeonTest.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

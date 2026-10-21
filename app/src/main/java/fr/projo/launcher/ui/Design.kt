@@ -36,7 +36,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
     CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments"),
     PLAYLIST("playlist", "Playlist", "Bibliothèque à gauche, cartes et lecteur, façon appli de musique"),
-    STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans");
+    STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans"),
+    NEON("neon", "Néon", "Tuiles carrées, cadre cyan, boutons ronds colorés");
 
     companion object {
         fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
@@ -124,6 +125,19 @@ fun Design.colors(): DesignColors = when (this) {
         focusFond = Color(0xFF1C1C1E), focusTexte = Color.White,
         voile = Color(0xFF1C1C1E).copy(alpha = 0.3f), fondBibliotheque = Color(0xFFF1F2F5),
         clair = true,
+    )
+    // Néon : fond uni #EBEBEB (clair) ou #2D2D2D (sombre, par défaut), sélection cyan #00C3E3
+    Design.NEON -> if (NeonTheme.clair) DesignColors(
+        panneau = Color(0xFAF4F4F4), carte = Color.White,
+        texte = Color(0xFF2D2D2D), texteDiscret = Color(0xFF6B6B6B), accent = Color(0xFF00A5C0),
+        focusFond = Color(0xFF00C3E3), focusTexte = Color(0xFF0B2328),
+        voile = Color(0xFF2D2D2D).copy(alpha = 0.35f), fondBibliotheque = Color(0xFAEBEBEB),
+        clair = true,
+    ) else DesignColors(
+        panneau = Color(0xFA262626), carte = Color.White.copy(alpha = 0.07f),
+        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.6f), accent = Color(0xFF00C3E3),
+        focusFond = Color(0xFF00C3E3), focusTexte = Color(0xFF0B2328),
+        voile = Color.Black.copy(alpha = 0.5f), fondBibliotheque = Color(0xFA2D2D2D),
     )
 }
 

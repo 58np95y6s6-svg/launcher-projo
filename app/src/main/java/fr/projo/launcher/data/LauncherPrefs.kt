@@ -32,6 +32,8 @@ data class PrefsState(
     val modules: List<String> = MODULES_PAR_DEFAUT,
     /** Réglages des modules : « idModule.clé » → valeur (voir modules.ReglagesModule). */
     val reglagesModules: Map<String, String> = emptyMap(),
+    /** Design « Néon » : fond clair (true) ou sombre (false, par défaut). */
+    val neonClair: Boolean = false,
 )
 
 /** Sans choix de l'utilisateur : le module Sport (NBA seule), comme l'ancien bandeau NBA. */
@@ -51,6 +53,7 @@ class LauncherPrefs(private val context: Context) {
         val DESIGN = stringPreferencesKey("design")
         val MODULES = stringPreferencesKey("modules")
         val REGLAGES_MODULES = stringSetPreferencesKey("reglages_modules")
+        val NEON_CLAIR = booleanPreferencesKey("neon_clair")
     }
 
     val state: Flow<PrefsState> = context.dataStore.data.map { p ->
@@ -69,6 +72,7 @@ class LauncherPrefs(private val context: Context) {
             reglagesModules = p[Cles.REGLAGES_MODULES].orEmpty().mapNotNull { ligne ->
                 ligne.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] }
             }.toMap(),
+            neonClair = p[Cles.NEON_CLAIR] ?: false,
         )
     }
 
@@ -89,6 +93,11 @@ class LauncherPrefs(private val context: Context) {
 
     suspend fun setDesign(id: String) {
         context.dataStore.edit { it[Cles.DESIGN] = id }
+    }
+
+    /** Design « Néon » : fond clair ou sombre. */
+    suspend fun setNeonClair(clair: Boolean) {
+        context.dataStore.edit { it[Cles.NEON_CLAIR] = clair }
     }
 
     suspend fun setFavorites(list: List<String>) {

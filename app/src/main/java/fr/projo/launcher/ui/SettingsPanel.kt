@@ -77,6 +77,8 @@ class SettingsActions(
     val modules: () -> Unit = {},
     /** Design Studio : clé TMDB des suggestions de films et séries. */
     val suggestions: () -> Unit = {},
+    /** Design « Néon » : choix du fond clair ou sombre. */
+    val fondNeon: () -> Unit = {},
     /** Télécommande smartphone : appairage, téléphones appairés, aide clavier et navigation. */
     val appairer: () -> Unit = {},
     val telephones: () -> Unit = {},
@@ -141,6 +143,8 @@ fun SettingsPanel(
             Spacer(Modifier.height(12.u))
 
             val estStudio = LocalDesign.current == Design.STUDIO
+            // Design « Néon » : tuile du fond clair ou sombre
+            val designNeon = LocalDesign.current == Design.NEON
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.u, end = 22.u, top = 6.u, bottom = 30.u),
                 verticalArrangement = Arrangement.spacedBy(8.u),
@@ -231,6 +235,17 @@ fun SettingsPanel(
                         sousTitre = d.resume + " · changer",
                         onClick = actions.design,
                     )
+                }
+                // Design « Néon » seulement : fond clair ou sombre
+                if (designNeon) {
+                    item(key = "fond-neon") {
+                        Tuile(
+                            icone = ProjoIcons.Accueil,
+                            titre = "Fond · " + if (NeonTheme.clair) "Clair" else "Sombre",
+                            sousTitre = "Fond clair ou sombre de l'accueil · changer",
+                            onClick = actions.fondNeon,
+                        )
+                    }
                 }
                 item(key = "modules") {
                     val hote = LocalHoteModules.current ?: HoteModules()

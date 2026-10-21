@@ -37,7 +37,8 @@ class CapturesTest(nomDesign: String) : BancAccueil(nomDesign) {
     @Test
     fun mesAppsPremier() {
         afficher()
-        donnerFocus(app(0))
+        // Néon : « Mes apps » suit les favoris dans la même rangée, hors écran au départ : ▶ jusqu'à elle
+        if (design == Design.NEON) repeat(ui.favorites.size) { appuyer(Key.DirectionRight) } else donnerFocus(app(0))
         val f = capturer("2_mesapps_app1")
         if (design.avecLueur) zoomer(f, "2z_zoom_mesapps_app1")
     }
