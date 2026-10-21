@@ -6,7 +6,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -46,6 +45,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -145,9 +145,10 @@ fun HomeStudio(ctx: HomeContext) {
     }
 
     Box(Modifier.fillMaxSize().fondStudio()) {
-        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
-            val unite = 1.u.value
-            val hauteur = maxHeight.value / unite
+        // Hauteur de l'écran en unités .u (540 en 16:9). Pas de BoxWithConstraints : sa
+        // sous-composition retarderait la barre des apps et le focus initial (premierFocus)
+        Box(Modifier.fillMaxSize().clipToBounds()) {
+            val hauteur = LocalConfiguration.current.screenHeightDp / LocalScale.current
             val hautEcran1 = hauteur - S_DOCK - S_DOCK_BAS
             // Défilement de l'écran 2 : la barre des apps arrive à S_DOCK_HAUT du haut
             val decalage = hautEcran1 - S_DOCK_HAUT

@@ -8,7 +8,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.printToString
 import fr.projo.launcher.HomeUi
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.data.AppInfo
@@ -155,24 +154,6 @@ abstract class BancStudio : BancAccueil("STUDIO") {
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
 class StudioTest : BancStudio() {
-
-    /** Diagnostic temporaire : où est le focus après l'affichage, et que donne une demande directe ? */
-    @Test
-    fun diagnostic() {
-        val notes = StringBuilder()
-        try { afficher() } catch (e: AssertionError) { notes.append("afficher : ${e.message}\n") }
-        val arbre = compose.onRoot(useUnmergedTree = true).printToString(maxDepth = 60)
-        notes.append(arbre.lines().filter { "Focused = 'true'" in it || "favori:com.netflix" in it || "TestTag" in it }.take(60).joinToString("\n"))
-        val fav = bornesDe(favori(0))
-        notes.append("\nfavori0 bornes=$fav\n")
-        try { donnerFocus(favori(0)); notes.append("donnerFocus OK : ${decrire(focus())}\n") } catch (e: AssertionError) { notes.append("donnerFocus : ${e.message}\n") }
-        try { compose.runOnIdle { ctxPremier() } } catch (e: Throwable) { notes.append("premierFocus : $e\n") }
-        avancer(500)
-        notes.append("après premierFocus : ${decrire(focus())}\n")
-        fail(notes.toString())
-    }
-
-    private fun ctxPremier() {}
 
     /** Écran 1 au démarrage : suggestions et barre des apps visibles, écran 2 caché sous le bord. */
     @Test
