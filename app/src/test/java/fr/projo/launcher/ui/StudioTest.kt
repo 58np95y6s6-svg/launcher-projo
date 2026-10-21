@@ -531,9 +531,9 @@ class StudioSuggestionsTest : BancStudio() {
         val s = suggestions()
         if (s.size < 3) fail("[STUDIO] au moins 3 suggestions attendues : $s")
         fun largeur(e: String) = (bornesDe(e)?.width ?: 0f) / pxParU
-        // Centre attendu de la grande carte calée à gauche (400 u de large, levée comprise)
+        // Bord gauche de la rangée (1re carte au repos) : la carte sélectionnée, levée comprise,
+        // s'aligne dessus
         val gauche = bornesDe(s[0])!!.left
-        val centreCalee = gauche + 200f * pxParU
         if (largeur(s[0]) < 380f) fail("[STUDIO] au départ, la 1re carte est la grande : ${bornesDe(s[0])?.enU()}")
         appuyer(Key.DirectionUp)
         attendre(s[0], "▲ depuis la barre")
@@ -543,7 +543,9 @@ class StudioSuggestionsTest : BancStudio() {
             val g = bornesDe(s[i])!!
             if (largeur(s[i]) < 380f) fail("[STUDIO] suggestion ${i + 1} sélectionnée : elle doit être la grande (${g.enU()})")
             if (largeur(s[i - 1]) > 240f) fail("[STUDIO] la suggestion $i doit rapetisser : ${bornesDe(s[i - 1])?.enU()}")
-            if (abs(g.center.x - centreCalee) > 6f * pxParU) fail("[STUDIO] la grande carte doit se caler à gauche : ${g.enU()}")
+            if (abs(g.left - gauche) > 4f * pxParU) {
+                fail("[STUDIO] la grande carte doit se caler à gauche (${(gauche / pxParU).toInt()} u) : ${g.enU()}")
+            }
         }
         capturer("s0b_grande_suit_la_selection")
         // ▼ vers la barre : la dernière sélectionnée reste grande, à sa place
