@@ -478,7 +478,7 @@ fun AideTelecommandeDialog(
                 )
                 if (note != null) {
                     Spacer(Modifier.height(10.u))
-                    Text(note, color = c.accent, fontSize = 12.us)
+                    Text(note, color = h.accent, fontSize = 12.us)
                 }
             }
         }
