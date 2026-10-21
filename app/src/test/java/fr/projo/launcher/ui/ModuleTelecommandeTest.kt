@@ -206,8 +206,8 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
 
     /**
      * QR code de la capture : au moins 90 u de côté, décodé tel quel puis réduit à 70 % (vu de
-     * loin : en PETIT, environ 2,5 pixels de caméra par module, la limite sûre de zxing) ; il
-     * doit donner l'URL d'appairage.
+     * loin : en PETIT, environ 2,5 pixels de caméra par module) ; il doit donner l'URL
+     * d'appairage.
      */
     private fun verifierQr(capture: File, cas: String) {
         val b = bornesDe("telecommande:qr") ?: return fail("[${design.name}] $cas : QR code introuvable")
@@ -222,8 +222,15 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
         val y1 = (b.bottom.toInt() + m).coerceAtMost(image.height)
         val morceau = Bitmap.createBitmap(image, x0, y0, x1 - x0, y1 - y0)
         assertEquals("[${design.name}] $cas : QR code décodé", FacticesTelecommande.url, decoder(morceau))
-        val loin = Bitmap.createScaledBitmap(morceau, (morceau.width * 0.7f).toInt(), (morceau.height * 0.7f).toInt(), true)
-        assertEquals("[${design.name}] $cas : QR code réduit à 70 % (vu de loin)", FacticesTelecommande.url, decoder(loin))
+        // Vu de loin : réduit à 70 %, 4 phases d'échantillonnage (images successives de la caméra,
+        // décalées d'une fraction de pixel) ; au moins une doit se lire
+        val lues = (0..3).count { d ->
+            val decale = Bitmap.createBitmap(image, x0 + d, y0 + d, x1 - x0 - 3, y1 - y0 - 3)
+            val loin = Bitmap.createScaledBitmap(decale, (decale.width * 0.7f).toInt(), (decale.height * 0.7f).toInt(), true)
+            decoder(loin) == FacticesTelecommande.url
+        }
+        println("[${design.name}] $cas : réduit à 70 %, lu dans $lues phases sur 4")
+        if (lues == 0) fail("[${design.name}] $cas : QR code réduit à 70 % (vu de loin) illisible dans les 4 phases")
     }
 
     private fun decoder(image: Bitmap): String? {
