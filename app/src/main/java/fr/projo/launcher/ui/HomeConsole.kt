@@ -107,9 +107,9 @@ import kotlinx.coroutines.delay
 /** Bleu nuit profond du fond. */
 private val ConsoleNavy = Color(0xFF050817)
 /** Voiles de lisibilité (gauche, haut, bas). */
-private val ConsoleVoile = Color(0xFF040716)
+internal val ConsoleVoile = Color(0xFF040716)
 /** Encre des textes, puis ses variantes secondaire et tertiaire. */
-private val ConsoleEncre = Color(0xFFF4F6FB)
+internal val ConsoleEncre = Color(0xFFF4F6FB)
 private val ConsoleEncre2 = ConsoleEncre.copy(alpha = 0.72f)
 private val ConsoleEncre3 = ConsoleEncre.copy(alpha = 0.55f)
 /** Bleu clair (bouton « Mise à jour »). */
@@ -177,7 +177,9 @@ private const val CONSOLE_BOUTON = 34
  *    son nom et sa rubrique s'affichent à côté ;
  *  - au centre, le nom de l'app en très grand et très fin, et les scores NBA dans une
  *    carte de verre à droite ;
- *  - en bas, « Mes apps » en cartes larges (icône + nom), puis « Toutes les apps (N) ».
+ *  - en bas, « Mes apps » en cartes larges (icône + nom), puis « Toutes les apps (N) » ;
+ *  - app de streaming sélectionnée : la photo d'une de ses nouveautés remplace le fond cinéma,
+ *    en plein écran, sous les mêmes voiles (ConsolePhotos.kt).
  */
 @Composable
 fun HomeConsole(ctx: HomeContext) {
@@ -213,13 +215,28 @@ fun HomeConsole(ctx: HomeContext) {
         else -> null
     }
 
+    // Photo de fond (ConsolePhotos.kt) : seulement quand une app des favoris ou de « Mes apps »
+    // a le focus (pas les boutons, la NBA, l'aide ni « Toutes les apps »), après 150 ms
+    // d'immobilité (flèche maintenue : pas de chargements en rafale)
+    var focusFavoris by remember { mutableStateOf(false) }
+    var focusApps by remember { mutableStateOf(false) }
+    val appSurvolee = if (focusFavoris || focusApps) selection else null
+    var appPhoto by remember { mutableStateOf<AppInfo?>(null) }
+    LaunchedEffect(appSurvolee) {
+        if (appPhoto != null) delay(150)
+        appPhoto = appSurvolee
+    }
+    val largeurPhoto = with(LocalDensity.current) { 960.u.toPx() }.toInt().coerceIn(320, 1280)
+    val photos = rememberPhotosUne(appPhoto, largeurPhoto)
+
     Box(Modifier.fillMaxSize()) {
         ConsoleFond(ctx.couleur)
+        ConsolePhotoFond(photos)
 
         Column(Modifier.fillMaxSize()) {
             ConsoleBarre(ctx)
             Spacer(Modifier.height(4.u))
-            ConsoleBande(ctx, nav, anneau, focusNba)
+            ConsoleBande(ctx, nav, anneau, focusNba, surFocus = { focusFavoris = it })
 
             // --- Héros : grand titre à gauche, carte NBA en verre à droite
             Row(
@@ -245,7 +262,7 @@ fun HomeConsole(ctx: HomeContext) {
                 }
             }
 
-            ConsoleMesApps(ctx, nav, anneau, focusNba, surBiblio = { biblioFocus = it })
+            ConsoleMesApps(ctx, nav, anneau, focusNba, photos, surFocus = { focusApps = it }, surBiblio = { biblioFocus = it })
             Spacer(Modifier.height(22.u))
         }
     }
@@ -372,53 +389,68 @@ private fun ConsoleFond(couleur: Color) {
                     radius = 0.40f * w,
                 )
                 // Voiles bleu nuit : texte du héros à gauche, barre du haut, « Mes apps » en bas
-                val voileGauche = Brush.horizontalGradient(
-                    0f to ConsoleVoile.copy(alpha = 0.92f),
-                    0.26f to ConsoleVoile.copy(alpha = 0.74f),
-                    0.48f to ConsoleVoile.copy(alpha = 0.30f),
-                    0.64f to ConsoleVoile.copy(alpha = 0f),
-                    startX = 0f,
-                    endX = w,
-                )
-                val voileHaut = Brush.verticalGradient(
-                    0f to ConsoleVoile.copy(alpha = 0.55f),
-                    0.20f to ConsoleVoile.copy(alpha = 0.10f),
-                    0.32f to ConsoleVoile.copy(alpha = 0f),
-                    startY = 0f,
-                    endY = h,
-                )
-                val centreCoin = Offset(0.80f * w, 0.09f * h)
-                val rayonCoin = 0.30f * w
-                val voileCoin = Brush.radialGradient(
-                    0f to ConsoleVoile.copy(alpha = 0.55f),
-                    1f to ConsoleVoile.copy(alpha = 0f),
-                    center = centreCoin,
-                    radius = rayonCoin,
-                )
-                val voileBas = Brush.verticalGradient(
-                    0.50f to ConsoleVoile.copy(alpha = 0f),
-                    0.66f to ConsoleVoile.copy(alpha = 0.50f),
-                    0.80f to ConsoleVoile.copy(alpha = 0.95f),
-                    1f to ConsoleVoile,
-                    startY = 0f,
-                    endY = h,
-                )
+                val voiles = ConsoleVoiles(w, h)
                 onDrawBehind {
                     val t = filtre.pour(teinte)
                     drawRect(ConsoleNavy)
                     drawRect(lumiere, colorFilter = t)
                     drawRect(reflet, colorFilter = t)
                     for (r in rubans) r.dessiner(this, t)
-                    drawRect(voileGauche)
-                    drawRect(voileHaut)
-                    // Ombre ovale derrière les boutons et l'heure
-                    scale(1f, 0.32f, pivot = centreCoin) {
-                        drawCircle(voileCoin, radius = rayonCoin, center = centreCoin)
-                    }
-                    drawRect(voileBas)
+                    voiles.dessiner(this)
                 }
             },
     )
+}
+
+/**
+ * Voiles de lisibilité bleu nuit pour un écran [w] × [h] (créés une fois par taille) : texte du
+ * héros à gauche, barre du haut, ombre ovale derrière les boutons et l'heure, « Mes apps » en
+ * bas. Communs au fond cinéma et aux photos des nouveautés (ConsolePhotos.kt).
+ */
+internal class ConsoleVoiles(w: Float, h: Float) {
+    private val gauche = Brush.horizontalGradient(
+        0f to ConsoleVoile.copy(alpha = 0.92f),
+        0.26f to ConsoleVoile.copy(alpha = 0.74f),
+        0.48f to ConsoleVoile.copy(alpha = 0.30f),
+        0.64f to ConsoleVoile.copy(alpha = 0f),
+        startX = 0f,
+        endX = w,
+    )
+    private val haut = Brush.verticalGradient(
+        0f to ConsoleVoile.copy(alpha = 0.55f),
+        0.20f to ConsoleVoile.copy(alpha = 0.10f),
+        0.32f to ConsoleVoile.copy(alpha = 0f),
+        startY = 0f,
+        endY = h,
+    )
+    private val centreCoin = Offset(0.80f * w, 0.09f * h)
+    private val rayonCoin = 0.30f * w
+    private val coin = Brush.radialGradient(
+        0f to ConsoleVoile.copy(alpha = 0.55f),
+        1f to ConsoleVoile.copy(alpha = 0f),
+        center = centreCoin,
+        radius = rayonCoin,
+    )
+    private val bas = Brush.verticalGradient(
+        0.50f to ConsoleVoile.copy(alpha = 0f),
+        0.66f to ConsoleVoile.copy(alpha = 0.50f),
+        0.80f to ConsoleVoile.copy(alpha = 0.95f),
+        1f to ConsoleVoile,
+        startY = 0f,
+        endY = h,
+    )
+
+    /** [alpha] : opacité de l'ensemble (fondu des photos). */
+    fun dessiner(d: DrawScope, alpha: Float = 1f) = with(d) {
+        if (alpha <= 0f) return@with
+        drawRect(gauche, alpha = alpha)
+        drawRect(haut, alpha = alpha)
+        // Ombre ovale derrière les boutons et l'heure
+        scale(1f, 0.32f, pivot = centreCoin) {
+            drawCircle(coin, radius = rayonCoin, center = centreCoin, alpha = alpha)
+        }
+        drawRect(bas, alpha = alpha)
+    }
 }
 
 // ------------------------------------------------------------------ barre du haut
@@ -559,9 +591,18 @@ private fun ConsoleBoutonMaj(onClick: () -> Unit) {
 
 // ------------------------------------------------------------------ bande des favoris
 
-/** Bande de tuiles carrées (favoris), ou la carte d'aide s'il n'y en a aucun. */
+/**
+ * Bande de tuiles carrées (favoris), ou la carte d'aide s'il n'y en a aucun.
+ * [surFocus] : la rangée contient (ou non) l'élément sélectionné (photo de fond).
+ */
 @Composable
-private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnneau, focusNba: FocusRequester) {
+private fun ConsoleBande(
+    ctx: HomeContext,
+    nav: NavRangees,
+    anneau: ConsoleAnneau,
+    focusNba: FocusRequester,
+    surFocus: (Boolean) -> Unit,
+) {
     val ui = ctx.ui
     val actions = ctx.actions
     val derniere = ui.favorites.lastOrNull()?.let { "fav:" + it.packageName } ?: "aide"
@@ -572,6 +613,7 @@ private fun ConsoleBande(ctx: HomeContext, nav: NavRangees, anneau: ConsoleAnnea
             // Hauteur fixe (tuile agrandie + anneau) : le héros ne bouge pas avec le focus
             .testTag("rangee:favoris")
             .height((CONSOLE_TUILE_GRANDE + 28).u)
+            .onFocusChanged { surFocus(it.hasFocus) }
             // ▼ : directement à « Mes apps » (centre de la tuile seule, sans son nom)
             .navFavoris(nav)
             .onPreviewKeyEvent { e ->
@@ -841,13 +883,18 @@ private fun consoleNombreApps(n: Int): String = if (n > 1) "$n apps" else "$n ap
 
 // ------------------------------------------------------------------ mes apps
 
-/** « Mes apps » : cartes larges (icône + nom), puis « Toutes les apps (N) ». */
+/**
+ * « Mes apps » : cartes larges (icône + nom), puis « Toutes les apps (N) ». À droite du titre,
+ * la légende de la photo de fond ; [surFocus] : la rangée contient (ou non) l'élément sélectionné.
+ */
 @Composable
 private fun ConsoleMesApps(
     ctx: HomeContext,
     nav: NavRangees,
     anneau: ConsoleAnneau,
     focusNba: FocusRequester,
+    photos: PhotosUne,
+    surFocus: (Boolean) -> Unit,
     surBiblio: (Boolean) -> Unit,
 ) {
     val ui = ctx.ui
@@ -860,16 +907,20 @@ private fun ConsoleMesApps(
         Stroke(width = trait, pathEffect = PathEffect.dashPathEffect(floatArrayOf(tiret, espace)))
     }
     Column(Modifier.fillMaxWidth()) {
-        Text(
-            "Mes apps", color = ConsoleEncre, fontSize = 14.us, fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = CONSOLE_MARGE.u, bottom = 4.u),
-        )
+        Box(Modifier.fillMaxWidth().padding(start = CONSOLE_MARGE.u, end = CONSOLE_MARGE.u, bottom = 4.u)) {
+            Text("Mes apps", color = ConsoleEncre, fontSize = 14.us, fontWeight = FontWeight.Medium)
+            // Légende de la photo, sur la ligne du titre : la hauteur reste celle du titre
+            Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
+                LegendeConsolePhotos(photos, Modifier)
+            }
+        }
         LazyRow(
             state = ctx.rangeeApps,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("rangee:apps")
                 .height((CONSOLE_CARTE_H + 26).u)
+                .onFocusChanged { surFocus(it.hasFocus) }
                 // ▲ : directement à la tuile du dessus
                 .navApps(nav)
                 .onPreviewKeyEvent { e ->
