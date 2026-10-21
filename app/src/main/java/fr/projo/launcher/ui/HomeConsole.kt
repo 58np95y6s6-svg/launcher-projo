@@ -107,7 +107,7 @@ import kotlinx.coroutines.delay
 /** Bleu nuit profond du fond. */
 private val ConsoleNavy = Color(0xFF050817)
 /** Voiles de lisibilité (gauche, haut, bas). */
-private val ConsoleVoile = Color(0xFF040716)
+internal val ConsoleVoile = Color(0xFF040716)
 /** Encre des textes, puis ses variantes secondaire et tertiaire. */
 internal val ConsoleEncre = Color(0xFFF4F6FB)
 private val ConsoleEncre2 = ConsoleEncre.copy(alpha = 0.72f)

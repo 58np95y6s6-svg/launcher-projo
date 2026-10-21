@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
@@ -32,6 +33,7 @@ import java.util.Calendar
  *    encore le soir (19 h – 7 h) : jamais éblouissante dans le noir ;
  *  - sous les mêmes voiles bleu nuit que le fond cinéma (ConsoleVoiles) : grand titre à
  *    gauche, barre du haut, ombre ovale derrière les boutons et l'heure, « Mes apps » en bas ;
+ *    plus un léger vignettage du bord droit (la photo est cadrée, ses bords n'éblouissent pas) ;
  *  - le grand titre, les tuiles (logos) et la carte NBA restent par-dessus, inchangés ;
  *  - légende discrète à droite de « Mes apps » (« Nouveau sur Netflix · … · Données : TMDB »).
  * Sinon (autre app, bouton, module, bibliothèque, sans clé, hors ligne, réglage coupé), le fond
@@ -125,7 +127,17 @@ internal fun ConsolePhotoFond(p: PhotosUne) {
             // Calque à part : le fondu ne redessine que cette couche (le fond cinéma reste en cache)
             .graphicsLayer()
             .drawWithCache {
-                val voiles = ConsoleVoiles(size.width, size.height)
+                val w = size.width
+                val voiles = ConsoleVoiles(w, size.height)
+                // Vignettage doux du bord droit (le gauche est déjà sous le voile du grand titre)
+                val bordDroit = Brush.horizontalGradient(
+                    0f to ConsoleVoile.copy(alpha = 0f),
+                    0.35f to ConsoleVoile.copy(alpha = 0.10f),
+                    0.7f to ConsoleVoile.copy(alpha = 0.26f),
+                    1f to ConsoleVoile.copy(alpha = 0.38f),
+                    startX = 0.8f * w,
+                    endX = w,
+                )
                 onDrawBehind {
                     val cour = p.courante
                     val prec = p.precedente
@@ -133,7 +145,9 @@ internal fun ConsolePhotoFond(p: PhotosUne) {
                     val f = p.fondu.value
                     if (prec != null) photoConsole(prec.image, if (cour == null) 1f - f else 1f, filtre)
                     if (cour != null) photoConsole(cour.image, f, filtre)
-                    voiles.dessiner(this, p.presenceConsole())
+                    val presence = p.presenceConsole()
+                    drawRect(bordDroit, alpha = presence)
+                    voiles.dessiner(this, presence)
                 }
             },
     )
