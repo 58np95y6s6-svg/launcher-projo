@@ -38,7 +38,7 @@ Téléphone (PWA, GitHub Pages, HTTPS)          TV (iBiProjo, Android)
 
 ## Appairage
 
-1. Sur la TV, Réglages → « Appairer un téléphone ».
+1. Sur la TV, Réglages → « Appairer un téléphone », ou le module « Télécommande » de l'accueil (voir plus bas).
 2. La TV crée un **secret d'appairage** de 16 octets aléatoires, valable 5 minutes et à usage unique. Elle affiche :
    - le QR code `https://58np95y6s6-svg.github.io/launcher-projo/#pair=<idTV>.<secret base64url>.<empreinte clé TV>` (fragment `#` : jamais envoyé au serveur web) ;
    - un **code de secours** de 8 caractères : alphabet sans ambiguïté `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, affiché `XXXX-XXXX`.
@@ -56,6 +56,16 @@ Téléphone (PWA, GitHub Pages, HTTPS)          TV (iBiProjo, Android)
    Puis elle affiche « Autoriser le téléphone de Marie ? » avec Autoriser / Refuser.
 6. Si l'utilisateur autorise : la TV enregistre l'appareil (identifiant, nom, clé publique, date) et répond `paired`. Le secret est consommé.
 7. Le téléphone enregistre la TV : identifiant, nom, clé publique, empreinte.
+
+### Module « Télécommande » : QR code permanent sur l'accueil
+
+Le module (Réglages → Modules → « Télécommande », `modules/telecommande/ModuleTelecommande.kt`) affiche le même QR code que le dialogue (même URL), le code de secours `XXXX-XXXX`, « Scannez avec votre téléphone » et, en MOYEN / GRAND, les téléphones appairés (pastille verte : connecté). OK sur le module ouvre le dialogue d'appairage en grand.
+
+- **Renouvellement** (`remote/RenouvellementQr.kt`) : le secret dure toujours 5 minutes. Tant que le module est affiché (accueil au premier plan **et** écran allumé), la TV en crée un nouveau à l'échéance (ou dès qu'il est consommé) et le QR code se met à jour. Accueil caché, autre module, écran éteint : aucun secret n'est créé, et celui en cours est retiré 1 s après la disparition du module.
+- **Jamais pendant une confirmation** : une demande vérifiée qui attend « Autoriser / Refuser » réserve son secret (`GestionAppairage.reserver` / `liberer`). Le renouvellement attend la réponse (ou la fermeture du canal) ; accepter ne consomme que le secret de cette demande, jamais un secret créé entre-temps. Après un appairage, « ✓ » reste affiché 6 s (et tant que le dialogue en grand est ouvert), puis nouveau QR code.
+- **QR code scanné juste avant un renouvellement** : le secret remplacé répond `expire` (et non `invalide`) et ne compte pas dans la limite de tentatives. Renouveler ne remet pas la limite à zéro.
+- **Sécurité** : un QR code exposé en permanence ne suffit pas à piloter la TV : tout appairage est confirmé à l'écran de la TV, avec la limite de tentatives. Contrepartie : tant que le module est affiché, la TV reste joignable (WebSocket PeerJS principale et identifiant temporaire `ibiprojo-c-XXXX`, qui change à chaque renouvellement).
+- **Lisibilité à 3 m** : noir sur blanc, dans un cadre blanc avec la zone de silence de 4 modules, quel que soit le design ; cadre d'environ 100 u en PETIT (QR code de 97 u) ; bords des modules alignés sur les pixels. Correction d'erreur **L** pour le module (un écran n'a rien à reconstituer ; l'URL de 141 caractères tient en version 7, 45 × 45 modules, au lieu de 49 × 49 en M), **M** pour le grand dialogue.
 
 ## Authentification mutuelle à chaque connexion
 
@@ -225,13 +235,13 @@ Compatibles avec « Précisions d'implémentation (v1) » ci-dessus, qui font r�
 - **Version** : `v` absent ou différent de 1 dans `hello` → `erreur {code:"version", vMax:1}` puis fermeture. Après les `hello`, un message dont `v` n'est pas 1 est ignoré.
 - **Appairage, ordre des vérifications** :
   1. blocage en cours → `trop_d_essais` (le secret n'est pas examiné) ;
-  2. aucun secret valable (jamais créé, dialogue fermé, expiré ou déjà utilisé) → `expire` ;
+  2. aucun secret valable (jamais créé, dialogue fermé, expiré ou déjà utilisé) → `expire` ; de même pour le dernier secret remplacé par un nouveau (QR code permanent renouvelé), sans compter d'échec ;
   3. secret faux, ou `empreinteTV` différente de l'empreinte de la clé de la TV, ou `cle` différente de celle du `hello` → `invalide`. Les deux premiers comptent comme un échec ; le **5e échec en 60 s** répond `trop_d_essais` et bloque 60 s ;
   4. une autre demande attend déjà la réponse de l'utilisateur → `refuse` ; sinon confirmation à l'écran. Refus → `refuse`, le secret reste valable.
 - **Secret** : la TV accepte le secret du QR code et le secret court (4 derniers caractères ; aussi les 8, avec ou sans tiret, sans distinction de casse) sur ses deux identifiants (principal et `ibiprojo-c-XXXX`).
 - `pair_request` d'un téléphone déjà authentifié (PWA qui a oublié la TV) → `paired` directement.
 - **Nom** : `pair_request.nom` (sinon `hello.nom`), réduit à 40 caractères sans caractères de contrôle.
-- **Connexions** : la TV n'est joignable que si l'écran est allumé **et** qu'au moins un téléphone est appairé (ou qu'un appairage est en cours). Au plus 3 connexions ; une nouvelle `OFFER` d'un même téléphone remplace l'ancienne ; `hello` attendu dans les 20 s. `LEAVE`/`EXPIRE` du téléphone ferment sa connexion.
+- **Connexions** : la TV n'est joignable que si l'écran est allumé **et** qu'au moins un téléphone est appairé (ou qu'un appairage est en cours, dont le module « Télécommande » affiché sur l'accueil). Au plus 3 connexions ; une nouvelle `OFFER` d'un même téléphone remplace l'ancienne ; `hello` attendu dans les 20 s. `LEAVE`/`EXPIRE` du téléphone ferment sa connexion.
 - **Commandes** : `text.s` ≤ 10 000 caractères ; `curseur` ramené dans le texte, absent = fin. `focus_text` est aussi envoyé dès qu'un téléphone s'authentifie si un champ a déjà le focus ; `focus_lost` part 200 ms après la sortie du champ. `focus_text.type` : `recherche` pour un champ texte dont l'action est « Rechercher », `nombre` aussi pour téléphone et date ; `action` = `done` quand l'éditeur n'en déclare pas.
 
 ### Vecteurs de test de la TV

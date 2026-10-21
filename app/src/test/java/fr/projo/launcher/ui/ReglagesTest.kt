@@ -1,6 +1,7 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +23,9 @@ import com.github.takahirom.roborazzi.captureScreenRoboImage
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.NbaRepository
+import fr.projo.launcher.data.ReglageNouveautes
+import fr.projo.launcher.remote.EtatAppairage
+import fr.projo.launcher.remote.RemoteConfig
 import fr.projo.launcher.system.DeviceSnapshot
 import fr.projo.launcher.system.UpdateInfo
 import kotlinx.coroutines.delay
@@ -35,10 +39,12 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * Panneau Réglages, pour CHAQUE design (chacun a sa forme : feuille, fenêtre, grille…) :
- * focus initial sur le volume, toutes les tuiles atteignables à la télécommande sans que le
- * focus s'échappe, ◀ et Retour ferment, réglage du volume (◀ ▶ règlent sans fermer).
- * Captures : panneau ouvert, volume en cours de réglage, bas de la liste.
+ * Panneau Réglages, pour CHACUN des 6 designs (chacun a sa forme : feuille, fenêtre, grille…) :
+ * focus initial sur le volume, toutes les tuiles présentes (Suggestions pour Studio seulement)
+ * et atteignables à la télécommande sans que le focus s'échappe, ◀ et Retour ferment, réglage
+ * du volume (◀ ▶ règlent sans fermer), actions des tuiles « Affiches des nouveautés » et
+ * « Suggestions ». Captures : panneau ouvert, volume en cours de réglage, bas de la liste, et
+ * dialogues ouverts depuis le panneau (Design, Modules, clé TMDB, appairage) aux couleurs du design.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -54,6 +60,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     /** Appels reçus par le panneau. */
     private var fermetures = 0
     private val volumes = mutableListOf<Int>()
+    private var suggestions = 0
     private var ouvert by mutableStateOf(false)
 
     // ------------------------------------------------------------------ tests
@@ -114,6 +121,52 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         if (cle() != "reglage:volume") fail("[${design.name}] ▲ jusqu'en haut : obtenu ${cle()}")
     }
 
+    /** Toutes les tuiles de l'app, celles ajoutées depuis comprises ; « Suggestions » pour Studio seulement. */
+    @Test
+    fun tuilesDuPanneau() {
+        ouvrir()
+        attendreFocus("reglage:volume", "ouverture")
+        val attendues = listOfNotNull(
+            "volume", "maj", "wifi", "bluetooth", "stockage",
+            "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design == Design.STUDIO }, "masquees", "nouveautes",
+            "appairer", "telephones", "aide-telecommande",
+            "langue", "date", "son", "tous",
+        ).map { "reglage:$it" }.toSet()
+        val composees = etiquettesTuiles()
+        if (composees != attendues) {
+            fail("[${design.name}] tuiles en trop : ${composees - attendues}, manquantes : ${attendues - composees}")
+        }
+    }
+
+    /**
+     * OK sur « Affiches des nouveautés » bascule le réglage (et son libellé) sans fermer le
+     * panneau ; Studio : OK sur « Suggestions de films et séries » ouvre la saisie de la clé TMDB.
+     */
+    @Test
+    fun actionsDesNouvellesTuiles() {
+        val contexte = RuntimeEnvironment.getApplication()
+        ReglageNouveautes.ecrire(contexte, true)
+        try {
+            ouvrir()
+            attendreFocus("reglage:volume", "ouverture")
+            donnerFocus("reglage:nouveautes")
+            touche(Key.DirectionCenter)
+            if (ReglageNouveautes.actif) fail("[${design.name}] OK sur « Affiches des nouveautés » : le réglage devait se désactiver")
+            if (!texteAffiche("Désactivées · pas de photo")) fail("[${design.name}] « Affiches des nouveautés » : libellé « Désactivées » absent")
+            attendreFocus("reglage:nouveautes", "après OK")
+            touche(Key.DirectionCenter)
+            if (!ReglageNouveautes.actif) fail("[${design.name}] 2e OK sur « Affiches des nouveautés » : le réglage devait se réactiver")
+            if (design == Design.STUDIO) {
+                donnerFocus("reglage:suggestions")
+                touche(Key.DirectionCenter)
+                if (suggestions != 1) fail("[${design.name}] OK sur « Suggestions » : saisie de la clé TMDB attendue (appels : $suggestions)")
+            }
+            if (fermetures != 0) fail("[${design.name}] le panneau ne devait pas se fermer")
+        } finally {
+            ReglageNouveautes.ecrire(contexte, true)
+        }
+    }
+
     @Test
     fun gaucheFerme() {
         ouvrir()
@@ -154,26 +207,59 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     }
 
     /** Dialogue ouvert depuis le panneau (Design) : fond, forme et sélection du style du design. */
-    @OptIn(ExperimentalRoborazziApi::class)
     @Test
     fun captureDialogue() {
+        capturerDialogue("r4_dialogue_design", "Design de l'accueil") {
+            DesignDialog(current = design, onChoose = {}, onDismiss = {})
+        }
+    }
+
+    /** Réglages → Modules : liste à sous-titres, aux couleurs du design. */
+    @Test
+    fun captureDialogueModules() {
+        capturerDialogue("r5_dialogue_modules", "Modules de l'accueil") {
+            ModulesDialog(ModulesFactices.hote("meteo", "sport"), onChoisir = {}, onDismiss = {})
+        }
+    }
+
+    /** Studio → Suggestions : saisie de la clé TMDB (champ, boutons), aux couleurs du design. */
+    @Test
+    fun captureDialogueCleTmdb() {
+        capturerDialogue("r6_dialogue_cle_tmdb", "Suggestions de films et séries") {
+            StudioCleDialog(onDismiss = {})
+        }
+    }
+
+    /** Télécommande → Appairer : QR code, code de secours et bouton, aux couleurs du design. */
+    @Test
+    fun captureDialogueAppairage() {
+        val t0 = 1_760_000_000_000L
+        capturerDialogue("r7_dialogue_appairage", "Appairer un téléphone") {
+            AppairageDialog(
+                EtatAppairage.EnCours(RemoteConfig.URL_PWA + "#pair=essai", "K7QM-3XPA", t0 + 272_000),
+                onNouveauCode = {}, onFermer = {}, horloge = { t0 },
+            )
+        }
+    }
+
+    // ------------------------------------------------------------------ outils
+
+    /** Affiche seul un dialogue aux couleurs du design, vérifie son titre et le capture. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    private fun capturerDialogue(nom: String, titre: String, contenu: @Composable () -> Unit) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
             CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design) {
-                MaterialTheme(colorScheme = darkColorScheme()) {
-                    DesignDialog(current = design, onChoose = {}, onDismiss = {})
-                }
+                MaterialTheme(colorScheme = darkColorScheme()) { contenu() }
             }
         }
         avancer(1500)
-        if (!texteAffiche("Design de l'accueil")) fail("[${design.name}] dialogue Design non affiché")
-        val fichier = File("build/captures/${design.name.lowercase()}_r4_dialogue_design.png")
+        if (!texteAffiche(titre)) fail("[${design.name}] dialogue « $titre » non affiché")
+        val fichier = File("build/captures/${design.name.lowercase()}_$nom.png")
         fichier.parentFile?.mkdirs()
         captureScreenRoboImage(fichier.path)
     }
-
-    // ------------------------------------------------------------------ outils
 
     /** Accueil du design, puis le panneau Réglages ouvert par-dessus (comme MainActivity). */
     private fun ouvrir(maj: Boolean = true) {
@@ -199,7 +285,8 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
                 delay(500)
                 ouvert = true
             }
-            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design) {
+            // Studio : suggestions factices (repli, sans réseau), comme dans StudioTest
+            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design, LocalStudioSource provides SourceStudioFactice()) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Box {
                         HomeScreen(
@@ -225,6 +312,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
                                     checkUpdate = {}, hiddenApps = {}, sources = {}, homeApp = {}, language = {},
                                     date = {}, sound = {}, allSettings = {},
                                     close = { fermetures++; ouvert = false },
+                                    suggestions = { suggestions++ },
                                 ),
                             )
                         }

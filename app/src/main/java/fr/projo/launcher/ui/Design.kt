@@ -28,16 +28,22 @@ import java.util.Locale
  * Chacun a sa propre mise en page (fichiers HomeXxx.kt) et ses couleurs de panneaux.
  */
 enum class Design(val id: String, val nom: String, val resume: String) {
-    AURORE("aurore", "Aurore", "Lueur de la couleur de l'app"),
     VERRE("verre", "Verre", "Verre dépoli, lumière douce"),
     PASTEL("pastel", "Pastel", "Formes rondes, tons doux"),
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
-    GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan"),
     UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
-    CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments");
+    CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments"),
+    STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans");
 
     companion object {
-        fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
+        /** Design par défaut : « Verre ». */
+        val PAR_DEFAUT = VERRE
+
+        /**
+         * Design enregistré (préférence « design ») ; sans choix ou pour un identifiant inconnu,
+         * notamment celui d'un design supprimé (aurore, graphite, playlist, neon) : [PAR_DEFAUT].
+         */
+        fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: PAR_DEFAUT
     }
 }
 
@@ -62,12 +68,6 @@ data class DesignColors(
 )
 
 fun Design.colors(): DesignColors = when (this) {
-    Design.AURORE -> DesignColors(
-        panneau = Color(0xFB101318), carte = Color.White.copy(alpha = 0.06f),
-        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.55f), accent = Color(0xFF5AB0FF),
-        focusFond = Color.White, focusTexte = Color(0xFF0B0D12),
-        voile = Color.Black.copy(alpha = 0.45f), fondBibliotheque = Color(0xFA07080B),
-    )
     Design.VERRE -> DesignColors(
         panneau = Color(0xF21B1638), carte = Color.White.copy(alpha = 0.09f),
         texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f), accent = Color(0xFF0A84FF),
@@ -87,12 +87,6 @@ fun Design.colors(): DesignColors = when (this) {
         focusFond = Color(0xFFF4F6FB), focusTexte = Color(0xFF050817),
         voile = Color(0xFF040716).copy(alpha = 0.55f), fondBibliotheque = Color(0xFA050817),
     )
-    Design.GRAPHITE -> DesignColors(
-        panneau = Color(0xF7121419), carte = Color.White.copy(alpha = 0.045f),
-        texte = Color(0xFFECEDF1), texteDiscret = Color(0xFF8D919E), accent = Color(0xFF5B6CFF),
-        focusFond = Color(0xFFECEDF1), focusTexte = Color(0xFF0D0E12),
-        voile = Color(0xFF0D0E12).copy(alpha = 0.7f), fondBibliotheque = Color(0xFA0D0E12),
-    )
     // Maquette « Une » : panneau #0E0E12, tuiles #17171D, interrupteur actif #10B981, voile #050508 à 55 %
     Design.UNE -> DesignColors(
         panneau = Color(0xFA0E0E12), carte = Color(0xFF17171D),
@@ -108,10 +102,18 @@ fun Design.colors(): DesignColors = when (this) {
         voile = Color(0xFF6E757C).copy(alpha = 0.35f), fondBibliotheque = Color(0xFFF2F3F5),
         clair = true,
     )
+    // « Studio » : clair, verre blanc, encre #1C1C1E ; sélection en encre (contraste au projecteur)
+    Design.STUDIO -> DesignColors(
+        panneau = Color(0xFCF4F5F8), carte = Color(0xFFE5E7EC),
+        texte = Color(0xFF1C1C1E), texteDiscret = Color(0xFF5F5F66), accent = Color(0xFF0A84FF),
+        focusFond = Color(0xFF1C1C1E), focusTexte = Color.White,
+        voile = Color(0xFF1C1C1E).copy(alpha = 0.3f), fondBibliotheque = Color(0xFFF1F2F5),
+        clair = true,
+    )
 }
 
 /** Design actif, accessible partout (panneaux, dialogues…). */
-val LocalDesign = staticCompositionLocalOf { Design.AURORE }
+val LocalDesign = staticCompositionLocalOf { Design.PAR_DEFAUT }
 
 /**
  * Tout ce dont une mise en page d'accueil a besoin : données, actions, états de défilement
@@ -147,6 +149,8 @@ class HomeContext(
     val sansSelection: () -> Unit,
     /** Sortie du bandeau NBA (◀ ou Retour) : revient au premier favori. */
     val sortieNba: () -> Unit,
+    /** Incrémenté à chaque appui sur Maison : un design peut remettre son état visuel au départ. */
+    val retourAccueil: Int = 0,
 )
 
 /** Bouton rapide (Sources, Wi-Fi, Bluetooth, Réglages) avec son action. */

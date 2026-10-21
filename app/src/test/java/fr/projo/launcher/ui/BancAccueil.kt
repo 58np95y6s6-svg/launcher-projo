@@ -49,8 +49,8 @@ const val ECRAN_TV = "w960dp-h540dp-land-xhdpi"
  * Banc d'essai de l'écran d'accueil : affiche HomeScreen comme MainActivity (échelle,
  * design, thème), avec des données factices, puis pilote le focus comme une télécommande.
  *
- * L'horloge de Compose avance à la main (autoAdvance = false) : la lueur tourne sans fin
- * et empêcherait sinon le test d'attendre que l'écran soit « au repos ».
+ * L'horloge de Compose avance à la main (autoAdvance = false) : une animation sans fin
+ * empêcherait sinon le test d'attendre que l'écran soit « au repos ».
  */
 @OptIn(ExperimentalTestApi::class)
 abstract class BancAccueil(nomDesign: String) {
@@ -85,6 +85,19 @@ abstract class BancAccueil(nomDesign: String) {
 
     /** Paquets dont le menu a été demandé (appui long ou touche Menu). */
     protected val menus = mutableListOf<String>()
+
+    /** Paquets lancés (OK sur une app). */
+    protected val lances = mutableListOf<String>()
+
+    /** Appuis sur Maison : l'incrémenter ramène l'accueil en haut (comme MainActivity). */
+    /** Même compteur que [appuisMaison] (nom utilisé par les tests Studio). */
+    protected val pressionsMaison get() = appuisMaison
+
+    /** Source des suggestions de Studio ; null : celle d'Android (repli dans Robolectric). */
+    protected var sourceStudio: StudioSource? = null
+
+    /** Contenu affiché par-dessus l'accueil (ex. panneau Réglages), à poser après [afficher]. */
+    protected val pardessus = androidx.compose.runtime.mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
 
     /**
      * Modules affichés à la place du bandeau NBA (voir ModulesTest) ; null : comme avant,
@@ -124,7 +137,7 @@ abstract class BancAccueil(nomDesign: String) {
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
         val actions = HomeActions(
-            launch = {}, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
+            launch = { lances += it.packageName }, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
             wifi = {}, bluetooth = {}, settings = {}, settingsLong = {}, update = {},
         )
         compose.mainClock.autoAdvance = false
@@ -135,8 +148,10 @@ abstract class BancAccueil(nomDesign: String) {
                 LocalScale provides echelle,
                 LocalDesign provides design,
                 LocalHoteModules provides hoteModules,
+                LocalStudioSource provides sourceStudio,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
+                  androidx.compose.foundation.layout.Box {
                     HomeScreen(
                         ui = ui,
                         icons = icons,
@@ -151,6 +166,8 @@ abstract class BancAccueil(nomDesign: String) {
                         majDisponible = majDisponible,
                         design = design,
                     )
+                    pardessus.value?.invoke()
+                  }
                 }
             }
         }
@@ -190,10 +207,22 @@ abstract class BancAccueil(nomDesign: String) {
             return
         }
         // « Toutes les apps » pas encore composée (hors écran) : on y va avec ▶ depuis la 1re app
-        // (performScrollToNode attendrait sans fin : la lueur anime en continu)
+        // (performScrollToNode attendrait sans fin si une animation tourne en continu)
         if (etiquette == "biblio" && compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
             donnerFocus(app(0))
             repeat(ui.homeApps.size + 2) { if (focus()?.etiquette != "biblio") appuyer(Key.DirectionRight) }
+        }
+        // Idem pour un favori ou une app pas encore composé (rangée étroite) : ▶ depuis le début de sa rangée
+        val rangee = when {
+            etiquette.startsWith("app:") -> ui.homeApps.indices.map { app(it) }
+            etiquette.startsWith("favori:") -> ui.favorites.indices.map { favori(it) }
+            else -> emptyList()
+        }
+        if (rangee.size > 1 && etiquette != rangee[0] &&
+            compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+        ) {
+            donnerFocus(rangee[0])
+            repeat(rangee.size) { if (focus()?.etiquette != etiquette) appuyer(Key.DirectionRight) }
         }
         compose.onAllNodes(
             (hasTestTag(etiquette) or hasAnyAncestor(hasTestTag(etiquette))) and

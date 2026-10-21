@@ -48,12 +48,10 @@ enum class FormeTuiles {
 
 /** Apparence de la tuile sélectionnée. */
 enum class Selection {
-    /** Plateau opaque (clair sur fond sombre) qui se soulève. */
+    /** Plateau opaque qui se soulève (clair sur fond sombre, encre sur fond clair). */
     PLATEAU,
     /** Anneau décollé de la tuile (couleur StyleReglages.couleurs.anneau). */
     ANNEAU,
-    /** Anneau en dégradé violet → cyan qui tourne, avec halo (lueur de Graphite). */
-    LUEUR,
     /** Tuile remplie de sa propre teinte, avec un anneau blanc décollé. */
     TEINTE,
     /** Liseré bleu épaissi et lumineux (boutons façon console de salon). */
@@ -66,8 +64,6 @@ enum class Pastille {
     RONDE,
     /** Carré arrondi plein de la teinte du réglage (façon iOS). */
     CARREE_COULEUR,
-    /** Carré arrondi teinté légèrement, contour et icône de la teinte. */
-    CARREE_TEINTEE,
     /** Carré arrondi de la teinte assombrie (« soir »), noir sur la tuile sélectionnée. */
     CARREE_SOIR,
     /** Rond tonal clair (Material You). */
@@ -78,14 +74,12 @@ enum class Pastille {
 
 /** En-tête du panneau. */
 enum class EnTete {
-    /** « Réglages » + version, alignés à gauche. */
+    /** « Réglages » en gras et version dessous, alignés à gauche. */
     SIMPLE,
     /** Titre centré, bouton × à gauche. */
     CENTRE,
     /** Grand titre gras à gauche, bouton × à droite. */
     TITRE_FERMER,
-    /** Icône, titre en dégradé et compteur « 01 / 17 ». */
-    COMPTEUR,
     /** Très grand titre fin à gauche, aides de la télécommande à droite. */
     AIDES,
     /** Affiche : aplat de la couleur du réglage sélectionné, son nom en géant et sa valeur. */
@@ -104,8 +98,6 @@ enum class Jauge {
     EXPRESSIVE,
     /** Remplissage ondulé puis piste fine (indicateur Material 3). */
     ONDULEE,
-    /** Curseur gradué en dégradé violet → cyan. */
-    GRADUEE,
     /** Barres pleines de la couleur d'accent, en blocs arrondis. */
     BLOCS,
 }
@@ -144,6 +136,8 @@ class CouleursReglages(
     val alerte: Color,
     /** Voile posé sur l'accueil. */
     val voile: Color,
+    /** Intitulés de section (sinon : texte discret en capitales, accent en minuscules). */
+    val section: Color? = null,
 )
 
 /** Tailles des textes (unités .us) et poids. */
@@ -154,8 +148,6 @@ class TypoReglages(
     val chiffre: Int = 14,
     val enTete: Int = 28,
     val titreGras: Boolean = true,
-    /** Chiffres (« 70 % ») en chasse fixe. */
-    val chiffresFixes: Boolean = false,
     /** Intitulés de section en capitales espacées (sinon « Connexions », couleur d'accent). */
     val sectionsCapitales: Boolean = true,
 )
@@ -208,18 +200,17 @@ class StyleReglages(
     val agrandissement: Float = 1.03f,
     val jaugeVolume: Jauge = Jauge.FINE,
     val jaugeStockage: Jauge = Jauge.FINE,
-    /** Aides de la télécommande en bas du panneau. */
-    val pied: Boolean = false,
-    /** Matière : reflet clair en haut à gauche et liseré lumineux (verre). */
+    /** Matière : reflet clair en haut à gauche et liseré lumineux (verre sombre). */
     val reflet: Boolean = false,
-    /** Matière : filet en dégradé violet → cyan sur le bord haut. */
-    val filetLumineux: Boolean = false,
+    /**
+     * Matière : verre clair (Studio) — fond laiteux et lumières douces, liseré blanc et contour
+     * fin ; tuiles en verre posées sur une ombre douce qui s'élargit à la sélection.
+     */
+    val verreClair: Boolean = false,
     /** Matière : hauteur (unités) du fondu transparent en haut du panneau (feuille sans bord net). */
     val fonduHaut: Int = 0,
     /** Matière : fines rayures horizontales (fond de console de salon). */
     val rayures: Boolean = false,
-    /** Lueur douce de la teinte du réglage sélectionné, derrière la tuile. */
-    val lueurTeinte: Boolean = false,
     /** Ombre portée du panneau (unités). */
     val ombre: Int = 0,
     /** Teintes propres au design (sinon celles de l'objet Teintes). */
@@ -228,49 +219,16 @@ class StyleReglages(
 
 /**
  * Style du panneau Réglages pour chaque design : LE SEUL ENDROIT où ajouter celui d'un
- * nouveau design. Un design sans style y prend celui d'Aurore.
+ * nouveau design (le compilateur exige une branche par design).
  */
-@Suppress("REDUNDANT_ELSE_IN_WHEN")
 fun Design.styleReglages(): StyleReglages = when (this) {
-    Design.AURORE -> StyleAurore
     Design.VERRE -> StyleVerre
     Design.PASTEL -> StylePastel
     Design.CONSOLE -> StyleConsole
-    Design.GRAPHITE -> StyleGraphite
     Design.UNE -> StyleUne
     Design.CHAINES -> StyleChaines
-    // Designs ajoutés depuis (le temps de leur écrire un style)
-    else -> StyleAurore
+    Design.STUDIO -> StyleStudio
 }
-
-// ------------------------------------------------------------------ Aurore
-
-/** Aurore : feuille sombre à droite, plateau blanc, lueur de la couleur du réglage. */
-private val StyleAurore = StyleReglages(
-    disposition = Disposition.FEUILLE_DROITE,
-    tuiles = FormeTuiles.LIGNES,
-    selection = Selection.PLATEAU,
-    pastille = Pastille.RONDE,
-    enTete = EnTete.SIMPLE,
-    ouverture = Ouverture.GLISSE_DROITE,
-    couleurs = CouleursReglages(
-        fond = listOf(Color(0xFF12151B), Color(0xFF0C0E13)),
-        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.58f),
-        carte = Color.White.copy(alpha = 0.06f),
-        carteFocus = listOf(Color.White, Color(0xFFEEF1F6)),
-        texteFocus = Color(0xFF0B0D12), texteDiscretFocus = Color(0xFF0B0D12).copy(alpha = 0.66f),
-        accent = Color(0xFF5AB0FF), accentFond = Color(0xFF5AB0FF).copy(alpha = 0.20f),
-        filet = Color.White.copy(alpha = 0.08f), anneau = Color.White,
-        pastille = Color.White.copy(alpha = 0.08f), alerte = Color(0xFFFFB86B),
-        voile = Color.Black.copy(alpha = 0.5f),
-    ),
-    mesures = MesuresReglages(largeur = 380, rayon = 26, marge = 22, rayonTuile = 16, ecart = 8, padH = 14, padV = 11, pastille = 32),
-    typo = TypoReglages(titre = 14, valeur = 11, section = 10, chiffre = 14, enTete = 28),
-    agrandissement = 1.03f,
-    jaugeVolume = Jauge.FINE,
-    jaugeStockage = Jauge.FINE,
-    lueurTeinte = true,
-)
 
 // ------------------------------------------------------------------ Verre
 
@@ -381,46 +339,6 @@ private val StyleConsole = StyleReglages(
     fonduHaut = 26,
 )
 
-// ------------------------------------------------------------------ Graphite
-
-/** Graphite (maquette t8) : panneau latéral façon Linear, groupes à filets, lueur, pied d'aides. */
-private val StyleGraphite = StyleReglages(
-    disposition = Disposition.FEUILLE_DROITE,
-    tuiles = FormeTuiles.GROUPES,
-    selection = Selection.LUEUR,
-    pastille = Pastille.CARREE_TEINTEE,
-    enTete = EnTete.COMPTEUR,
-    ouverture = Ouverture.GLISSE_DROITE,
-    couleurs = CouleursReglages(
-        fond = listOf(Color(0xFF16171D), Color(0xFF0F1014)),
-        texte = Color(0xFFECEDF1), texteDiscret = Color(0xFF8D919E),
-        carte = Color(0xFF1A1B22),
-        carteFocus = listOf(Color(0xFF1F2130), Color(0xFF1A1B26)),
-        texteFocus = Color(0xFFF4F5F8), texteDiscretFocus = Color(0xFFA3A7B4),
-        accent = Color(0xFF5B6CFF), accentFond = Color(0xFF5B6CFF).copy(alpha = 0.14f),
-        filet = Color.White.copy(alpha = 0.075f), anneau = Color(0xFF5B6CFF),
-        pastille = Color.White.copy(alpha = 0.06f), alerte = Color(0xFFFFB86B),
-        voile = Color(0xFF0D0E12).copy(alpha = 0.78f),
-    ),
-    mesures = MesuresReglages(
-        largeur = 398, haut = 24, bas = 24, cote = 48, rayon = 11, marge = 17, rayonTuile = 8, ecart = 10,
-        padH = 12, padV = 10, pastille = 24,
-    ),
-    typo = TypoReglages(titre = 14, valeur = 12, section = 10, chiffre = 20, enTete = 22, titreGras = false, chiffresFixes = true),
-    valeurADroite = true,
-    chevron = true,
-    agrandissement = 1.0f,
-    jaugeVolume = Jauge.GRADUEE,
-    jaugeStockage = Jauge.GRADUEE,
-    pied = true,
-    filetLumineux = true,
-    ombre = 18,
-    teintes = mapOf(
-        "volume" to Color(0xFF8B7CFF), "wifi" to Color(0xFF4C8DFF), "bluetooth" to Color(0xFF22D3EE),
-        "stockage" to Color(0xFF9AA0AE), "hdmi" to Color(0xFF34D399), "design" to Color(0xFFA78BFA),
-    ),
-)
-
 // ------------------------------------------------------------------ À la une
 
 /** « Une » (maquette t9) : affiche de la couleur du réglage, nom géant, grille de cartes 4 × n. */
@@ -483,4 +401,44 @@ private val StyleChaines = StyleReglages(
     jaugeVolume = Jauge.BLOCS,
     jaugeStockage = Jauge.BLOCS,
     rayures = true,
+)
+
+// ------------------------------------------------------------------ Studio
+
+/**
+ * Studio : feuille de verre clair flottante à droite, comme les panneaux de son accueil
+ * (StudioVerre.kt) — titre gras à l'encre, cartes de verre séparées, icônes monochromes,
+ * intitulés gris en minuscules ; la tuile sélectionnée devient une plaque d'encre qui se
+ * soulève (comme les pastilles de l'en-tête), sur une ombre douce plutôt qu'un halo.
+ */
+private val StyleStudio = StyleReglages(
+    disposition = Disposition.FEUILLE_DROITE,
+    tuiles = FormeTuiles.LIGNES,
+    selection = Selection.PLATEAU,
+    pastille = Pastille.RONDE,
+    enTete = EnTete.SIMPLE,
+    ouverture = Ouverture.GLISSE_DROITE,
+    couleurs = CouleursReglages(
+        // Blanc laiteux → gris très clair, comme le fond de l'accueil (fondStudio), sans transparence
+        fond = listOf(Color(0xFFFAFBFC), Color(0xFFF1F2F5), Color(0xFFE8EAEE)),
+        texte = StudioEncre, texteDiscret = StudioGris,
+        carte = Color.White.copy(alpha = 0.66f),
+        carteFocus = listOf(Color(0xFF2C2C2E), StudioEncre),
+        texteFocus = Color.White, texteDiscretFocus = Color.White.copy(alpha = 0.72f),
+        accent = Color(0xFF0A84FF), accentFond = Color(0xFF0A84FF).copy(alpha = 0.12f),
+        filet = StudioContour, anneau = StudioEncre,
+        pastille = StudioEncre.copy(alpha = 0.06f), alerte = Color(0xFFC4251C),
+        voile = StudioEncre.copy(alpha = 0.26f),
+        section = StudioGris,
+    ),
+    mesures = MesuresReglages(
+        largeur = 384, haut = 20, bas = 20, cote = 20, rayon = 28, marge = 20, rayonTuile = 14, ecart = 9,
+        padH = 14, padV = 11, pastille = 32,
+    ),
+    typo = TypoReglages(titre = 14, valeur = 11, section = 12, chiffre = 15, enTete = 28, sectionsCapitales = false),
+    agrandissement = 1.035f,
+    jaugeVolume = Jauge.CURSEUR,
+    jaugeStockage = Jauge.CURSEUR,
+    verreClair = true,
+    ombre = 22,
 )

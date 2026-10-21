@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,6 +93,7 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.PI
@@ -109,12 +111,29 @@ import kotlin.math.sin
  * sur les pilules, seul l'élément sélectionné prend le violet plein.
  * Fond un ton plus soutenu que la maquette : un aplat presque blanc éblouit au projecteur
  * et délave les teintes des cartes.
+ * App de streaming sélectionnée : photo d'une nouveauté en fondu dans le fond lilas, derrière
+ * le nom de l'app et les favoris, légende au bout de la ligne du nom (PastelPhotos.kt).
  */
 @Composable
 fun HomePastel(ctx: HomeContext) {
     val maintenant = rememberMaintenant()
+    // Photo de fond (PastelPhotos.kt) : seulement quand un favori ou une app de « Mes apps » a le
+    // focus (pas les réglages rapides, la NBA, l'aide ni « Toutes les apps »), après 150 ms
+    // d'immobilité (flèche maintenue : pas de chargements en rafale)
+    var focusFavoris by remember { mutableStateOf(false) }
+    var focusApps by remember { mutableStateOf(false) }
+    val appSurvolee = if (focusFavoris || focusApps) ctx.selection else null
+    var appPhoto by remember { mutableStateOf<AppInfo?>(null) }
+    LaunchedEffect(appSurvolee) {
+        if (appPhoto != null) delay(150)
+        appPhoto = appSurvolee
+    }
+    val largeurPhoto = with(LocalDensity.current) { 960.u.toPx() }.toInt().coerceIn(320, 1280)
+    val photos = rememberPhotosUne(appPhoto, largeurPhoto)
+
     Box(Modifier.fillMaxSize()) {
         PastelFond()
+        PastelPhotoFond(photos)
 
         Column(Modifier.fillMaxSize().padding(top = 32.u)) {
             // --- Bande haute : horloge, salutation + réglages rapides, NBA
@@ -132,20 +151,20 @@ fun HomePastel(ctx: HomeContext) {
             }
 
             Spacer(Modifier.height(12.u))
-            // --- Nom de l'app sélectionnée + sa rubrique (fondu enchaîné)
-            PastelTitre(
-                ctx.selection,
-                Modifier.fillMaxWidth().height(48.u).padding(start = PASTEL_BORD.u),
-            )
+            // --- Nom de l'app sélectionnée + sa rubrique (fondu enchaîné) ; au bout, légende de la photo
+            Box(Modifier.fillMaxWidth().height(48.u)) {
+                PastelTitre(ctx.selection, Modifier.fillMaxSize().padding(start = PASTEL_BORD.u))
+                LegendePhotosPastel(photos, Modifier.align(Alignment.CenterEnd).padding(end = PASTEL_BORD.u))
+            }
 
-            PastelRangeeFavoris(ctx)
+            PastelRangeeFavoris(ctx) { focusFavoris = it }
 
             Spacer(Modifier.height(4.u))
             PastelTexte(
                 "Mes apps", 14.us, Modifier.padding(start = (PASTEL_BORD + 2).u),
                 couleur = PastelEncreDouce, poids = FontWeight.Bold,
             )
-            PastelRangeeApps(ctx)
+            PastelRangeeApps(ctx) { focusApps = it }
         }
     }
 }
@@ -167,7 +186,7 @@ private const val PASTEL_MARGE = 110
 // ------------------------------------------------------------------ palette
 
 // Palette tonale (graine lilas #8B6FD6, tertiaire pêche), un cran plus soutenue que la maquette
-private val PastelPrimaire = Color(0xFF6A4FB3)
+internal val PastelPrimaire = Color(0xFF6A4FB3)
 private val PastelPrimaireAppuye = Color(0xFF59409E)
 private val PastelSurPrimaire = Color.White
 private val PastelPrimaireConteneur = Color(0xFFDFD0FF)
@@ -180,9 +199,9 @@ private val PastelTertiaire = Color(0xFF9A4A2E)
 private val PastelTertiaireConteneur = Color(0xFFFFD3BF)
 private val PastelSurTertiaireConteneur = Color(0xFF4F1B06)
 private val PastelTertiaireClair = Color(0xFFFFEEE6)
-private val PastelEncre = Color(0xFF1D1A22)
-private val PastelEncreDouce = Color(0xFF4A4453)
-private val PastelBlanc = Color(0xFFFCF9FD)
+internal val PastelEncre = Color(0xFF1D1A22)
+internal val PastelEncreDouce = Color(0xFF4A4453)
+internal val PastelBlanc = Color(0xFFFCF9FD)
 private val PastelContour = Color(0xFFD9CFE2)
 private val PastelFondPilule = Color(0xFFF7F2F9)
 private val PastelCookieFond = Color(0xFFD9C8FA)
@@ -550,13 +569,14 @@ private fun PastelTitre(app: AppInfo?, modifier: Modifier) {
     }
 }
 
-/** Rangée des favoris (ou carte d'aide s'il n'y en a aucun). */
+/** Rangée des favoris (ou carte d'aide s'il n'y en a aucun) ; [surFocus] : elle contient (ou non) le focus. */
 @Composable
-private fun PastelRangeeFavoris(ctx: HomeContext) {
+private fun PastelRangeeFavoris(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth().navFavoris(ctx.nav)
+        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth()
+            .onFocusChanged { surFocus(it.hasFocus) }.navFavoris(ctx.nav)
             .fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
         // Haut/bas : place pour l'agrandissement et l'anneau. Fin : la dernière carte peut
         // venir hors du fondu.
@@ -578,12 +598,13 @@ private fun PastelRangeeFavoris(ctx: HomeContext) {
     }
 }
 
-/** Rangée « Mes apps » : pilules des apps choisies, puis « Toutes les apps ». */
+/** Rangée « Mes apps » : pilules des apps choisies, puis « Toutes les apps » ; [surFocus] : comme les favoris. */
 @Composable
-private fun PastelRangeeApps(ctx: HomeContext) {
+private fun PastelRangeeApps(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.testTag("rangee:apps").fillMaxWidth().navApps(ctx.nav).fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
+        modifier = Modifier.testTag("rangee:apps").fillMaxWidth()
+            .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 7.u, bottom = 7.u),
         horizontalArrangement = Arrangement.spacedBy(10.u),
         verticalAlignment = Alignment.CenterVertically,

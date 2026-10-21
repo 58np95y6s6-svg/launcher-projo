@@ -32,7 +32,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -64,6 +63,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -162,7 +162,6 @@ internal fun PanneauStyle(style: StyleReglages, p: PanneauReglages, gaucheFerme:
     val ouverture = remember { Animatable(0f) }
     LaunchedEffect(Unit) { ouverture.animateTo(1f, tween(s.ouverture.duree, easing = FastOutSlowInEasing)) }
     val forme = formePanneau(s)
-    val lueur by animateColorAsState(p.selection?.let { s.teinte(it) } ?: c.accent, tween(300), label = "lueur")
     val unite = 1.u
 
     Box(Modifier.fillMaxSize().drawBehind { drawRect(c.voile, alpha = ouverture.value) }) {
@@ -192,7 +191,7 @@ internal fun PanneauStyle(style: StyleReglages, p: PanneauReglages, gaucheFerme:
                 }
                 .then(if (s.ombre > 0) Modifier.shadow(s.ombre.u, forme, clip = false, ambientColor = Color.Black, spotColor = Color.Black) else Modifier)
                 .clip(forme)
-                .drawBehind { matiere(s, lueur, unite.toPx()) }
+                .drawBehind { matiere(s, unite.toPx()) }
                 // Le focus ne peut pas s'échapper vers l'accueil caché derrière
                 .focusProperties { exit = { FocusRequester.Cancel } }
                 .focusGroup()
@@ -243,8 +242,8 @@ private fun formePanneau(s: StyleReglages): Shape {
     }
 }
 
-/** Matière du panneau : fond, reflet, liseré, filet lumineux, rayures, lueur. Aucun flou. */
-private fun DrawScope.matiere(s: StyleReglages, lueur: Color, u: Float) {
+/** Matière du panneau : fond, reflet, liseré, verre clair, rayures. Aucun flou. */
+private fun DrawScope.matiere(s: StyleReglages, u: Float) {
     val c = s.couleurs
     val w = size.width
     val h = size.height
@@ -254,12 +253,6 @@ private fun DrawScope.matiere(s: StyleReglages, lueur: Color, u: Float) {
         drawRect(Brush.verticalGradient(0f to c.fond.first().copy(alpha = 0f), f to c.fond.first(), 1f to c.fond.last()))
     } else {
         drawRect(brosse(c.fond))
-    }
-    if (s.lueurTeinte) {
-        // Aurore : lueur douce de la couleur du réglage sélectionné, en haut du panneau
-        drawRect(
-            Brush.radialGradient(listOf(lueur.copy(alpha = 0.30f), lueur.copy(alpha = 0f)), center = Offset(w * 0.25f, 0f), radius = w * 0.95f),
-        )
     }
     if (s.rayures) {
         // Fines rayures horizontales, comme le fond de l'accueil Chaînes
@@ -283,18 +276,17 @@ private fun DrawScope.matiere(s: StyleReglages, lueur: Color, u: Float) {
             topLeft = Offset(e / 2, e / 2), size = Size(w - e, h - e), cornerRadius = CornerRadius(r - e / 2), style = Stroke(e),
         )
     }
-    if (s.filetLumineux) {
-        // Graphite : contour fin et filet violet → cyan sur le bord haut
+    if (s.verreClair) {
+        // Studio : lumière blanche en haut à gauche, reflet froid en bas à droite (comme le fond
+        // de l'accueil), puis liseré lumineux (bord haut plus clair) et contour gris très fin
+        drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.9f), Color.White.copy(alpha = 0f)), center = Offset(w * 0.2f, 0f), radius = w * 0.9f))
+        drawRect(Brush.radialGradient(listOf(Color(0xFFD7DCE6).copy(alpha = 0.6f), Color(0xFFD7DCE6).copy(alpha = 0f)), center = Offset(w, h), radius = w * 0.9f))
         val r = s.mesures.rayon * u
-        drawRoundRect(c.filet, topLeft = Offset(u / 2, u / 2), size = Size(w - u, h - u), cornerRadius = CornerRadius(r), style = Stroke(u))
-        drawRect(
-            Brush.horizontalGradient(
-                0f to Color.Transparent, 0.3f to Color(0xFF7C5CFF).copy(alpha = 0.8f), 0.55f to Color(0xFF22D3EE),
-                0.8f to Color(0xFF3B82F6).copy(alpha = 0.6f), 1f to Color.Transparent,
-            ),
-            topLeft = Offset(r, 0f), size = Size(w - 2 * r, 1.2f * u),
+        drawRoundRect(
+            Brush.verticalGradient(0f to Color.White, 0.5f to Color.White.copy(alpha = 0.35f), 1f to Color.White.copy(alpha = 0.7f)),
+            topLeft = Offset(u, u), size = Size(w - 2 * u, h - 2 * u), cornerRadius = CornerRadius(r - u), style = Stroke(1.2f * u),
         )
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF7C5CFF).copy(alpha = 0.10f), Color.Transparent), endY = 90f * u))
+        drawRoundRect(StudioContour, topLeft = Offset(u / 2, u / 2), size = Size(w - u, h - u), cornerRadius = CornerRadius(r), style = Stroke(u))
     }
 }
 
@@ -306,9 +298,9 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
     val m = s.mesures
     val ty = s.typo
     when (s.enTete) {
-        EnTete.SIMPLE -> Column(Modifier.padding(start = (m.marge + 4).u, end = m.marge.u, top = 30.u, bottom = 12.u)) {
-            T("Réglages", ty.enTete.toFloat(), c.texte, poids = FontWeight.Light)
-            T("Projo ${p.version}", 11f, c.texteDiscret, Modifier.padding(top = 2.u))
+        EnTete.SIMPLE -> Column(Modifier.padding(start = (m.marge + 4).u, end = m.marge.u, top = 26.u, bottom = 8.u)) {
+            T("Réglages", ty.enTete.toFloat(), c.texte, poids = FontWeight.Bold, espacement = -0.4f)
+            T("Projo ${p.version}", 12f, c.texteDiscret, Modifier.padding(top = 2.u), poids = FontWeight.Medium)
         }
         EnTete.CENTRE -> Box(
             Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 16.u, bottom = 4.u).height(30.u),
@@ -322,30 +314,6 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
         ) {
             T("Réglages", ty.enTete.toFloat(), c.texte, Modifier.weight(1f), poids = FontWeight.Bold, espacement = -0.6f)
             BoutonFermer(32, Color(0xFFE9E1EE), c.texte)
-        }
-        EnTete.COMPTEUR -> Row(
-            Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 16.u, bottom = 12.u),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(26.u).background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.u))
-                    .border(1.u, Color.White.copy(alpha = 0.10f), RoundedCornerShape(6.u)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(ProjoIcons.Reglages, null, Modifier.size(14.u), tint = Color(0xFFC9CCD6)) }
-            Spacer(Modifier.width(10.u))
-            BasicText(
-                "Réglages",
-                style = TextStyle(
-                    brush = Brush.verticalGradient(listOf(Color.White, Color(0xFF9DA1AE))),
-                    fontSize = ty.enTete.toFloat().uss, lineHeight = (ty.enTete * 1.2f).uss, fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.4f).uss,
-                ),
-            )
-            Spacer(Modifier.weight(1f))
-            T(
-                String.format(Locale.FRENCH, "%02d / %02d", p.rang, p.reglages.size), 11f, c.texteDiscret,
-                police = FontFamily.Monospace, espacement = 0.5f,
-            )
         }
         EnTete.AIDES -> Row(
             Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 30.u, bottom = 8.u),
@@ -377,9 +345,9 @@ private fun BoutonFermer(taille: Int, fond: Color, encre: Color, modifier: Modif
     )
 }
 
-private enum class FormeTouche { ROND, CARRE, CONTOUR }
+private enum class FormeTouche { ROND, CONTOUR }
 
-/** Aides de la télécommande : ce que font les touches ici (en-tête Console, pied Graphite, affiche Une). */
+/** Aides de la télécommande : ce que font les touches ici (en-tête Console, affiche Une). */
 @Composable
 private fun AidesTelecommande(s: StyleReglages, p: PanneauReglages, forme: FormeTouche, taille: Float = 11f) {
     val sel = p.selection
@@ -407,9 +375,6 @@ private fun Touche(texte: String, s: StyleReglages, forme: FormeTouche, taille: 
     val h = (taille * 1.65f).uu
     val mod = when (forme) {
         FormeTouche.ROND -> Modifier.border(1.25f.uu, c.texte.copy(alpha = 0.55f), CircleShape)
-        FormeTouche.CARRE -> Modifier
-            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.11f), Color.White.copy(alpha = 0.05f))), RoundedCornerShape(4.u))
-            .border(1.u, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.u))
         FormeTouche.CONTOUR -> Modifier.border(1.5f.uu, c.texte, RoundedCornerShape(4.u))
     }
     Box(mod.heightIn(min = h).width(IntrinsicSize.Max).padding(horizontal = (taille * 0.45f).uu), contentAlignment = Alignment.Center) {
@@ -580,13 +545,6 @@ private fun PiedReglages(s: StyleReglages, p: PanneauReglages) {
     val c = s.couleurs
     val m = s.mesures
     when {
-        s.pied -> Column {
-            Box(Modifier.fillMaxWidth().height(1.u).background(c.filet))
-            Row(Modifier.fillMaxWidth().padding(horizontal = m.marge.u, vertical = 11.u), verticalAlignment = Alignment.CenterVertically) {
-                T(p.selection?.titre?.substringBefore(" · ") ?: "", 11f, c.texteDiscret, Modifier.weight(1f))
-                AidesTelecommande(s, p, FormeTouche.CARRE)
-            }
-        }
         s.enTete == EnTete.BANDEAU -> Row(
             Modifier.fillMaxWidth().padding(horizontal = m.marge.u, vertical = 12.u),
             verticalAlignment = Alignment.CenterVertically,
@@ -681,7 +639,7 @@ private fun TitreSection(s: StyleReglages, titre: String, modifier: Modifier = M
     val texte = if (s.typo.sectionsCapitales) titre else titre.lowercase(Locale.FRENCH).replaceFirstChar { it.titlecase(Locale.FRENCH) }
     T(
         texte, s.typo.section.toFloat(),
-        if (s.typo.sectionsCapitales) s.couleurs.texteDiscret else s.couleurs.accent,
+        s.couleurs.section ?: if (s.typo.sectionsCapitales) s.couleurs.texteDiscret else s.couleurs.accent,
         modifier.padding(start = 6.u, top = 14.u, bottom = 6.u),
         poids = FontWeight.SemiBold,
         espacement = if (s.typo.sectionsCapitales) s.typo.section * 0.25f else 0.1f,
@@ -702,9 +660,7 @@ private fun ListeReglages(s: StyleReglages, p: PanneauReglages) {
                 FormeTuiles.GROUPES -> {
                     val forme = RoundedCornerShape(m.rayonTuile.u)
                     Column(
-                        Modifier.fillMaxWidth().padding(bottom = 4.u)
-                            .background(c.carte, forme)
-                            .then(if (s.filetLumineux) Modifier.border(1.u, c.filet, forme) else Modifier),
+                        Modifier.fillMaxWidth().padding(bottom = 4.u).background(c.carte, forme),
                     ) {
                         section.reglages.forEachIndexed { j, r ->
                             key(r.cle) {
@@ -782,15 +738,7 @@ private fun LigneReglage(
                 val cote = s.valeurADroite && r.chiffre == null && r.jauge == null
                 TitreEtValeur(
                     titre = { T(r.titre, s.typo.titre.toFloat(), texte, poids = if (s.typo.titreGras) FontWeight.SemiBold else FontWeight.Medium) },
-                    valeur = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (cote && r.signal != null && s.filetLumineux) {
-                                Barres(r.signal, lerp(c.accent, Color(0xFF22D3EE), 0.5f), discret.copy(alpha = 0.3f))
-                                Spacer(Modifier.width(7.u))
-                            }
-                            T(r.valeur, s.typo.valeur.toFloat(), discret, alignement = if (cote) TextAlign.End else null)
-                        }
-                    },
+                    valeur = { T(r.valeur, s.typo.valeur.toFloat(), discret, alignement = if (cote) TextAlign.End else null) },
                     cote = cote,
                     modifier = Modifier.weight(1f),
                 )
@@ -819,11 +767,7 @@ private fun DroiteLigne(s: StyleReglages, r: Reglage, t: Float, valeurACote: Boo
     if (r.chiffre != null) {
         Spacer(Modifier.width(10.u))
         val couleur = if (s.jaugeVolume == Jauge.EXPRESSIVE) c.accent else texte
-        T(
-            r.chiffre, s.typo.chiffre.toFloat(), couleur,
-            poids = FontWeight.Bold,
-            police = if (s.typo.chiffresFixes) FontFamily.Monospace else null,
-        )
+        T(r.chiffre, s.typo.chiffre.toFloat(), couleur, poids = FontWeight.Bold)
     } else if (r.signal != null && !valeurACote && s.tuiles != FormeTuiles.BOUTONS) {
         Spacer(Modifier.width(8.u))
         Barres(r.signal, if (s.couleurs.carteFocus.first().luminance() > 0.5f) lerp(c.accent, c.texteFocus, t * 0.3f) else c.accent, texte.copy(alpha = 0.2f))
@@ -1076,15 +1020,14 @@ private fun CaseReglage(
                 scaleX = k
                 scaleY = k
             }
-            .then(if (s.selection == Selection.LUEUR) Modifier.lueurFocus(t, rayon) else Modifier)
             .drawBehind {
                 val k = unite.toPx()
                 val rp = rayon.toPx()
                 // Lueurs et anneaux (hors de la tuile)
                 when (s.selection) {
                     Selection.PLATEAU -> {
-                        // Aurore : halo de la teinte du réglage autour du plateau ; sinon halo blanc discret
-                        if (s.lueurTeinte) halo(teinte, t * 0.45f, rp, k * 1.7f, 5)
+                        // Verre clair : ombre douce qui s'élargit et descend ; sinon halo clair discret
+                        if (s.verreClair) ombreDouce(rp, 0.45f + 0.55f * t, t)
                         else halo(c.anneau, t * 0.16f, rp, k, 3)
                     }
                     Selection.ANNEAU -> {
@@ -1094,7 +1037,6 @@ private fun CaseReglage(
                     }
                     Selection.TEINTE -> anneau(c.anneau.copy(alpha = t), rp, 3f * k, 2.5f * k)
                     Selection.LISERE -> halo(ChainesBleuLueur, t * 0.30f, rp, k * 1.5f, 4)
-                    Selection.LUEUR -> Unit
                 }
                 // Fond au repos, puis fond de sélection
                 if (fond.alpha > 0f) drawOutline(forme.createOutline(size, layoutDirection, this), fond, alpha = 1f - t * 0.999f)
@@ -1103,6 +1045,15 @@ private fun CaseReglage(
                     else -> brosse(c.carteFocus)
                 }
                 if (t > 0f) drawOutline(formeFocus.createOutline(size, layoutDirection, this), fondFocus, alpha = t)
+                if (s.verreClair) {
+                    // Tuile de verre : liseré blanc (effacé à la sélection) puis contour gris très fin
+                    val e = 1.2f * k
+                    drawRoundRect(
+                        Color.White.copy(alpha = 0.9f * (1f - t)), topLeft = Offset(e, e), size = Size(size.width - 2 * e, size.height - 2 * e),
+                        cornerRadius = CornerRadius(rp - e), style = Stroke(e),
+                    )
+                    drawRoundRect(c.filet, topLeft = Offset(k / 2, k / 2), size = Size(size.width - k, size.height - k), cornerRadius = CornerRadius(rp), style = Stroke(k))
+                }
                 if (s.selection == Selection.LISERE) {
                     val e = (2f + 1.5f * t) * k
                     drawRoundRect(
@@ -1144,6 +1095,25 @@ private fun DrawScope.halo(couleur: Color, force: Float, rayon: Float, pas: Floa
     }
 }
 
+/**
+ * Ombre douce sous une tuile (verre clair de Studio, comme ombreStudio) : quelques calques de
+ * plus en plus larges, transparents et décalés vers le bas. [force] : 0 à 1 ; [levee] : 0 au
+ * repos, 1 sélectionnée (ombre plus large et plus basse).
+ */
+private fun DrawScope.ombreDouce(rayon: Float, force: Float, levee: Float) {
+    if (force <= 0.001f) return
+    val pas = (1.3f + 0.9f * levee) * density
+    for (i in 1..5) {
+        val e = i * pas
+        drawRoundRect(
+            Color.Black.copy(alpha = 0.022f * force),
+            topLeft = Offset(-e * 0.6f, -e * 0.3f + i * pas * 0.8f),
+            size = Size(size.width + e * 1.2f, size.height + e * 0.7f),
+            cornerRadius = CornerRadius(rayon + e * 0.6f),
+        )
+    }
+}
+
 /** Anneau décollé de la tuile de [ecart], d'épaisseur [epaisseur]. */
 private fun DrawScope.anneau(couleur: Color, rayon: Float, ecart: Float, epaisseur: Float) {
     if (couleur.alpha <= 0.001f) return
@@ -1164,23 +1134,28 @@ private fun PastilleReglage(s: StyleReglages, r: Reglage, t: Float) {
     val icone = (taille * 0.54f)
     when (s.pastille) {
         Pastille.RONDE -> {
-            // Plateau clair (Aurore) : la pastille prend la teinte du réglage ; carte sombre (Console) : disque blanc
+            // Plateau clair : la pastille prend la teinte du réglage ; plateau sombre (Console, Studio) : disque blanc
             val surSombre = s.couleurs.carteFocus.first().luminance() < 0.5f
-            val fond = if (surSombre) lerp(c.pastille, Color.White, t) else lerp(c.pastille, teinte, t)
-            val encre = if (surSombre) lerp(c.texte, Color(0xFF050817), t) else lerp(c.texte, Color.White, t)
-            IconeSur(r.icone, taille.toFloat(), icone, CircleShape, androidx.compose.ui.graphics.SolidColor(if (r.accent && t == 0f) c.accentFond.copy(alpha = 1f) else fond), encre)
+            // Tuile mise en avant, au repos : pastille pleine de l'accent (icône blanche sur un accent foncé)
+            val enAvant = r.accent && t == 0f
+            val plein = c.accentFond.copy(alpha = 1f)
+            val fond = when {
+                enAvant -> plein
+                surSombre -> lerp(c.pastille, Color.White, t)
+                else -> lerp(c.pastille, teinte, t)
+            }
+            val encre = when {
+                enAvant && plein.luminance() < 0.45f -> Color.White
+                enAvant -> c.texte
+                surSombre -> lerp(c.texte, Color(0xFF050817), t)
+                else -> lerp(c.texte, Color.White, t)
+            }
+            IconeSur(r.icone, taille.toFloat(), icone, CircleShape, androidx.compose.ui.graphics.SolidColor(fond), encre)
         }
         Pastille.CARREE_COULEUR -> IconeSur(
             r.icone, taille.toFloat(), icone, RoundedCornerShape((taille * 0.26f).uu),
             Brush.verticalGradient(listOf(lerp(teinte, Color.White, 0.18f), teinte)), Color.White,
         )
-        Pastille.CARREE_TEINTEE -> {
-            val forme = RoundedCornerShape((taille * 0.24f).uu)
-            Box(
-                Modifier.size(taille.u).background(teinte.copy(alpha = 0.16f + 0.08f * t), forme).border(1.u, teinte.copy(alpha = 0.45f), forme),
-                contentAlignment = Alignment.Center,
-            ) { Icon(r.icone, null, Modifier.size(icone.uu), tint = lerp(teinte, Color.White, 0.35f)) }
-        }
         Pastille.CARREE_SOIR -> IconeSur(
             r.icone, taille.toFloat(), icone * 0.95f, RoundedCornerShape((taille * 0.25f).uu),
             androidx.compose.ui.graphics.SolidColor(lerp(soir(teinte), Color(0xFF0B0B0D), t)), Color.White,
@@ -1228,10 +1203,10 @@ private fun JaugeVolume(s: StyleReglages, r: Reglage, t: Float) {
     val v = (r.jauge ?: 0f).coerceIn(0f, 1f)
     val discret = lerp(c.texteDiscret, c.texteDiscretFocus, t)
     when (s.jaugeVolume) {
-        Jauge.CURSEUR, Jauge.GRADUEE -> Row(verticalAlignment = Alignment.CenterVertically) {
+        Jauge.CURSEUR -> Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(ProjoIcons.Muet, null, Modifier.size(13.u), tint = discret)
             Spacer(Modifier.width(9.u))
-            Box(Modifier.weight(1f)) { Curseur(s, v, t, gradue = s.jaugeVolume == Jauge.GRADUEE) }
+            Box(Modifier.weight(1f)) { Curseur(s, v, t) }
             Spacer(Modifier.width(9.u))
             Icon(ProjoIcons.Volume, null, Modifier.size(15.u), tint = discret)
             if (t > 0.5f) {
@@ -1246,7 +1221,7 @@ private fun JaugeVolume(s: StyleReglages, r: Reglage, t: Float) {
         else -> if (s.tuiles == FormeTuiles.CARTES) {
             // Console : piste fine, bouton blanc, « Muet » et « Max » dessous
             Column {
-                Curseur(s, v, t, gradue = false, fin = true)
+                Curseur(s, v, t, fin = true)
                 Row(Modifier.fillMaxWidth().padding(top = 3.u)) {
                     T("Muet", 10f, discret)
                     Spacer(Modifier.weight(1f))
@@ -1268,42 +1243,28 @@ private fun FlecheReglage(fleche: String, s: StyleReglages, t: Float, actif: Boo
     }
 }
 
-/** Piste, remplissage en dégradé et bouton rond (graduations si [gradue]). */
+/** Piste, remplissage (en dégradé pour Verre) et bouton rond ; [fin] : piste fine (Console). */
 @Composable
-private fun Curseur(s: StyleReglages, v: Float, t: Float, gradue: Boolean, fin: Boolean = false) {
+private fun Curseur(s: StyleReglages, v: Float, t: Float, fin: Boolean = false) {
     val c = s.couleurs
     val unite = 1.u
     val claire = c.carteFocus.first().luminance() > 0.5f
-    val remplissage = when {
-        gradue -> listOf(Color(0xFF7C5CFF), Color(0xFF3B82F6), Color(0xFF22D3EE))
-        s.reflet -> listOf(Color(0xFF5E5CE6), Color(0xFF0A84FF))
-        else -> listOf(c.accent, c.accent)
-    }
-    val piste = if (claire) lerp(c.texte.copy(alpha = 0.16f), Color.Black.copy(alpha = 0.10f), t) else c.texte.copy(alpha = 0.16f)
-    val hauteur = if (gradue) 28f else if (fin) 14f else 20f
+    val remplissage = if (s.reflet) listOf(Color(0xFF5E5CE6), Color(0xFF0A84FF)) else listOf(c.accent, c.accent)
+    // Piste : sur un plateau sombre, elle prend la couleur du texte sélectionné (encre claire de Studio)
+    val piste = lerp(c.texte.copy(alpha = 0.16f), if (claire) Color.Black.copy(alpha = 0.10f) else c.texteFocus.copy(alpha = 0.16f), t)
+    val hauteur = if (fin) 14f else 20f
     Box(
         Modifier.fillMaxWidth().height(hauteur.uu).drawBehind {
             val k = unite.toPx()
-            val e = (if (gradue) 6f else if (fin) 3f else 8f) * k
-            val cy = if (gradue) 9f * k else size.height / 2
-            val bouton = (if (gradue) 8f else if (fin) 5.5f else 9.5f) * k
+            val e = (if (fin) 3f else 8f) * k
+            val cy = size.height / 2
+            val bouton = (if (fin) 5.5f else 9.5f) * k
             val x = bouton + (size.width - 2 * bouton) * v
             drawRoundRect(piste, topLeft = Offset(0f, cy - e / 2), size = Size(size.width, e), cornerRadius = CornerRadius(e / 2))
             drawRoundRect(
                 Brush.horizontalGradient(remplissage, startX = 0f, endX = size.width),
                 topLeft = Offset(0f, cy - e / 2), size = Size(x, e), cornerRadius = CornerRadius(e / 2),
             )
-            if (gradue) {
-                for (i in 0..10) {
-                    val gx = bouton + (size.width - 2 * bouton) * i / 10f
-                    val allume = i / 10f <= v + 0.001f
-                    drawRect(
-                        if (allume) Color(0xFF8D919E) else Color(0xFF8D919E).copy(alpha = 0.35f),
-                        topLeft = Offset(gx - 0.5f * k, cy + 9f * k), size = Size(k, 5f * k),
-                    )
-                }
-                drawCircle(Color(0xFF22D3EE).copy(alpha = 0.25f), bouton + 4f * k, Offset(x, cy))
-            }
             drawCircle(Color.Black.copy(alpha = 0.18f), bouton + 1f * k, Offset(x, cy + 1.5f * k))
             drawCircle(Color.White, bouton, Offset(x, cy))
         },
@@ -1371,8 +1332,8 @@ private fun JaugeSimple(jauge: Jauge, v: Float, s: StyleReglages, t: Float, epai
                 drawCircle(c.accent, 2.2f * k, Offset(size.width - 2.5f * k, cy))
             },
         )
-        Jauge.CURSEUR, Jauge.GRADUEE -> {
-            val remplissage = if (jauge == Jauge.GRADUEE) listOf(Color(0xFF7C5CFF), Color(0xFF22D3EE)) else listOf(Color(0xFF8E8E93), Color(0xFFB4B4BB))
+        Jauge.CURSEUR -> {
+            val remplissage = listOf(Color(0xFF8E8E93), Color(0xFFB4B4BB))
             Box(
                 Modifier.fillMaxWidth().height(7.u).drawBehind {
                     val k = unite.toPx()
@@ -1426,15 +1387,27 @@ private fun Blocs(v: Float, n: Int) {
 
 // ------------------------------------------------------------------ dialogues
 
-/** Habillage des dialogues (menus, listes à cocher) : matière et sélection du style du design. */
+/**
+ * Habillage des dialogues ouverts depuis le panneau (menus, listes à cocher, saisie de la clé
+ * TMDB, appairage…) : matière, textes et sélection du style du design.
+ */
 internal class HabillageDialogue(
     val fond: Brush,
     val forme: Shape,
     val texte: Color,
+    /** Texte secondaire, assez contrasté pour être lu de loin. */
     val discret: Color,
     val focusFond: Color,
     val focusTexte: Color,
     val formeLigne: Shape,
+    /** Boutons et champs de saisie au repos (léger voile du texte sur le fond). */
+    val carte: Color,
+    /** Liens, curseur, jauges. */
+    val accent: Color,
+    /** Bouton principal au repos. */
+    val accentFond: Color,
+    /** Messages d'erreur. */
+    val alerte: Color,
 )
 
 @Composable
@@ -1444,20 +1417,43 @@ internal fun habillageDialogue(): HabillageDialogue {
     val m = s.mesures
     val rayon = (if (m.rayon > 0) m.rayon else m.rayonTuile).coerceIn(10, 26)
     val (focusFond, focusTexte) = when (s.selection) {
-        // Graphite : pas de plateau, la sélection prend l'accent violet
-        Selection.LUEUR -> lerp(c.fond.first(), c.accent, 0.42f) to Color.White
         Selection.TEINTE -> c.carteFocus.first() to c.texteFocus
         // Console : anneau blanc sur les cartes ; dans une liste, plateau blanc
         Selection.ANNEAU -> if (c.carteFocus.last().luminance() < 0.3f) Color.White to c.fond.last().copy(alpha = 1f) else c.carteFocus.last() to c.texteFocus
         else -> c.carteFocus.last() to c.texteFocus
     }
+    val fondMoyen = c.fond[c.fond.size / 2].copy(alpha = 1f)
     return HabillageDialogue(
         fond = brosse(c.fond.map { it.copy(alpha = 1f) }),
         forme = RoundedCornerShape(rayon.u),
         texte = c.texte,
-        discret = c.texteDiscret,
+        discret = lisible(c.texteDiscret, c.texte, fondMoyen),
         focusFond = focusFond,
         focusTexte = focusTexte,
         formeLigne = RoundedCornerShape(m.rayonTuile.coerceIn(8, 16).u),
+        carte = c.texte.copy(alpha = 0.09f),
+        accent = c.accent,
+        accentFond = c.accent.copy(alpha = 0.24f),
+        alerte = c.alerte,
     )
+}
+
+/** [couleur] rapprochée de [texte] tant que son contraste sur [fond] reste sous 4,5:1. */
+private fun lisible(couleur: Color, texte: Color, fond: Color): Color {
+    fun lum(c: Color): Float {
+        fun lin(v: Float) = if (v <= 0.04045f) v / 12.92f else ((v + 0.055f) / 1.055f).pow(2.4f)
+        return 0.2126f * lin(c.red) + 0.7152f * lin(c.green) + 0.0722f * lin(c.blue)
+    }
+    fun contraste(a: Color): Float {
+        val la = lum(a.compositeOver(fond))
+        val lf = lum(fond)
+        return (max(la, lf) + 0.05f) / (min(la, lf) + 0.05f)
+    }
+    var c = couleur
+    var k = 0f
+    while (contraste(c) < 4.5f && k < 1f) {
+        k += 0.1f
+        c = lerp(couleur, texte, k)
+    }
+    return c
 }

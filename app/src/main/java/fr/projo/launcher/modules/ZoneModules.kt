@@ -40,13 +40,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import fr.projo.launcher.data.MODULES_PAR_DEFAUT
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import fr.projo.launcher.ui.NbaStyle
-import fr.projo.launcher.ui.graphitePanneau
-import fr.projo.launcher.ui.graphiteUnPixel
 import fr.projo.launcher.ui.u
 
 /**
@@ -78,9 +72,6 @@ val LocalHoteModules = compositionLocalOf<HoteModules?> { null }
 const val ZONE_HAUTEUR = 143
 /** Marge intérieure du cadre. */
 private const val ZONE_MARGE = 8
-/** Graphite : hauteur du bandeau NBA de la maquette (en-tête 46 + 3 lignes de 49) et marge latérale. */
-const val ZONE_HAUTEUR_GRAPHITE = 193
-private const val ZONE_MARGE_GRAPHITE = 16
 /** Écart entre deux modules (filet de séparation compris). */
 private const val ZONE_ECART = 13
 
@@ -139,7 +130,7 @@ fun ZoneModules(
     repli: HoteModules = HoteModules(),
     /** Point d'entrée du focus : posé sur le 1er élément du 1er module. */
     entree: FocusRequester? = null,
-    /** ◀ depuis le 1er module (Graphite : retour à Réglages) ; par défaut [onExit]. */
+    /** ◀ depuis le 1er module (ex. Studio : vers le module de gauche) ; par défaut [onExit]. */
     onGauche: (() -> Unit)? = null,
 ) {
     val hote = LocalHoteModules.current ?: repli
@@ -147,18 +138,14 @@ fun ZoneModules(
     val forme = RoundedCornerShape(style.rayon.u)
     val entrees = remember(entree) { listOf(entree ?: FocusRequester(), FocusRequester()) }
     val sortieGauche = onGauche ?: onExit
-    // Graphite : panneau à filets de la maquette, marges latérales de 16
-    val margeL = if (style.graphite) ZONE_MARGE_GRAPHITE else ZONE_MARGE
-    val un = graphiteUnPixel()
     BoxWithConstraints(modifier) {
         val unite = 1.u.value
         val maxL = if (constraints.hasBoundedWidth) maxWidth.value / unite else Float.MAX_VALUE
         val maxH = if (constraints.hasBoundedHeight) maxHeight.value / unite else Float.MAX_VALUE
         val deux = modules.size > 1
         val largeur = minOf(if (deux) (style.zoneLargeur ?: style.largeur).toFloat() else style.largeur.toFloat(), maxL)
-        val hauteurParDefaut = if (style.graphite) ZONE_HAUTEUR_GRAPHITE else ZONE_HAUTEUR
-        val hauteur = minOf((style.zoneHauteur ?: hauteurParDefaut).toFloat(), maxH)
-        val interieurL = largeur - 2 * margeL
+        val hauteur = minOf((style.zoneHauteur ?: ZONE_HAUTEUR).toFloat(), maxH)
+        val interieurL = largeur - 2 * ZONE_MARGE
         val interieurH = hauteur - 2 * ZONE_MARGE
         val dispo = disposer(modules.size, interieurL, interieurH)
         val affiches = modules.take(dispo.tailles.size)
@@ -173,15 +160,9 @@ fun ZoneModules(
             // Titre du module focalisé (FocusModules) effacé quand le focus quitte la zone
             .onFocusChanged { if (!it.hasFocus) FocusModules.titre = null }
             .width(largeur.u)
-            .then(
-                if (affiches.size > 1 || style.graphite) Modifier.height(hauteur.u + if (style.graphite) un * 2 else 0.u)
-                else Modifier
-            )
-            .then(
-                if (style.graphite) Modifier.graphitePanneau(style.rayon.u).filetGraphite()
-                else Modifier.clip(forme).background(style.fond).border(BorderStroke(1.u, style.bordure), forme)
-            )
-            .padding(horizontal = margeL.u, vertical = ZONE_MARGE.u)
+            .then(if (affiches.size > 1) Modifier.height(hauteur.u) else Modifier)
+            .clip(forme).background(style.fond).border(BorderStroke(1.u, style.bordure), forme)
+            .padding(ZONE_MARGE.u)
 
         CompositionLocalProvider(LocalStyleModule provides style) {
             val emplacement: @Composable (Int, Modifier) -> Unit = { i, mod ->
@@ -268,26 +249,6 @@ private fun EmplacementModule(
             .focusGroup()
     ) {
         m.Contenu(ctx, Modifier.fillMaxWidth())
-    }
-}
-
-/** Graphite : filet violet → cyan sur le bord haut du panneau (de 40 à largeur − 40). */
-@Composable
-private fun Modifier.filetGraphite(): Modifier {
-    val marge = 40.u
-    return drawWithCache {
-        val m = marge.toPx()
-        val filet = Brush.horizontalGradient(
-            0f to Color.Transparent,
-            0.35f to Color(0xFFC4B5FD).copy(alpha = 0.9f),
-            0.7f to Color(0xFF67E8F9).copy(alpha = 0.8f),
-            1f to Color.Transparent,
-            startX = m, endX = size.width - m,
-        )
-        onDrawWithContent {
-            drawContent()
-            drawLine(filet, Offset(m, 0.5f), Offset(size.width - m, 0.5f), strokeWidth = 1f)
-        }
     }
 }
 

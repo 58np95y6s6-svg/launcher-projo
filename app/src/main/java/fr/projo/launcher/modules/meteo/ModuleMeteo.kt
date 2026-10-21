@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import fr.projo.launcher.modules.CarteModule
 import fr.projo.launcher.modules.DonneesModules
@@ -58,6 +59,8 @@ import fr.projo.launcher.modules.u
 import fr.projo.launcher.ui.LigneListe
 import fr.projo.launcher.ui.ListeDialog
 import fr.projo.launcher.ui.NbaStyle
+import fr.projo.launcher.ui.couleursLigne
+import fr.projo.launcher.ui.habillageDialogue
 import fr.projo.launcher.ui.u
 import fr.projo.launcher.ui.us
 import kotlinx.coroutines.Dispatchers
@@ -307,9 +310,13 @@ private fun MeteoPetit(m: MeteoDonnees, style: NbaStyle) {
 
 // ------------------------------------------------------------------ recherche d'une ville
 
-/** Saisie d'un nom de ville au clavier de l'appareil, puis choix parmi les résultats. */
+/**
+ * Saisie d'un nom de ville au clavier de l'appareil, puis choix parmi les résultats ; aux
+ * couleurs du design, comme les autres dialogues de Réglages (habillageDialogue).
+ */
 @Composable
 private fun RechercheVille(onChoisir: (Lieu) -> Unit, onRetour: () -> Unit) {
+    val h = habillageDialogue()
     var texte by remember { mutableStateOf("") }
     var resultats by remember { mutableStateOf<List<Pair<Lieu, String>>>(emptyList()) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -335,36 +342,39 @@ private fun RechercheVille(onChoisir: (Lieu) -> Unit, onRetour: () -> Unit) {
         Column(
             Modifier
                 .width(460.u)
-                .background(Color(0xF2161A22), RoundedCornerShape(20.u))
+                .background(h.fond, h.forme)
                 .padding(22.u)
         ) {
-            Text("Rechercher une ville", color = Color.White, fontSize = 22.us, fontWeight = FontWeight.Medium)
+            Text("Rechercher une ville", color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(4.u))
-            Text("Tape le nom, puis « Rechercher » sur le clavier", color = Color.White.copy(alpha = 0.6f), fontSize = 12.us)
+            Text("Tape le nom, puis « Rechercher » sur le clavier", color = h.discret, fontSize = 12.us)
             Spacer(Modifier.height(12.u))
             BasicTextField(
                 value = texte,
                 onValueChange = { texte = it },
                 singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontSize = 18.us),
-                cursorBrush = SolidColor(Color.White),
+                textStyle = TextStyle(color = h.texte, fontSize = 18.us),
+                cursorBrush = SolidColor(h.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { lancer() }, onDone = { lancer() }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(champ)
                     .onFocusChanged { champFocus = it.isFocused }
-                    .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.u))
-                    .border(2.u, if (champFocus) Color.White else Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.u))
+                    .background(h.carte, RoundedCornerShape(12.u))
+                    .border(2.u, if (champFocus) h.texte else h.texte.copy(alpha = 0.2f), RoundedCornerShape(12.u))
                     .padding(horizontal = 14.u, vertical = 10.u),
             )
             Spacer(Modifier.height(8.u))
             message?.let {
-                Text(it, color = Color.White.copy(alpha = 0.7f), fontSize = 12.us, modifier = Modifier.padding(4.u))
+                Text(it, color = h.discret, fontSize = 12.us, modifier = Modifier.padding(4.u))
             }
             LazyColumn(Modifier.heightIn(max = 300.u), verticalArrangement = Arrangement.spacedBy(4.u)) {
                 item(key = "chercher") {
-                    ListItem(selected = false, onClick = { lancer() }, headlineContent = { Text("Rechercher « ${texte.trim()} »", fontSize = 15.us) })
+                    ListItem(
+                        selected = false, onClick = { lancer() }, headlineContent = { Text("Rechercher « ${texte.trim()} »", fontSize = 15.us) },
+                        colors = couleursLigne(h), shape = ListItemDefaults.shape(shape = h.formeLigne),
+                    )
                 }
                 items(resultats, key = { "${it.first.lat},${it.first.lon}" }) { (lieu, detail) ->
                     ListItem(
@@ -372,10 +382,14 @@ private fun RechercheVille(onChoisir: (Lieu) -> Unit, onRetour: () -> Unit) {
                         onClick = { onChoisir(lieu) },
                         headlineContent = { Text(lieu.nom, fontSize = 15.us) },
                         supportingContent = { Text(detail, fontSize = 12.us, maxLines = 1) },
+                        colors = couleursLigne(h), shape = ListItemDefaults.shape(shape = h.formeLigne),
                     )
                 }
                 item(key = "retour") {
-                    ListItem(selected = false, onClick = onRetour, headlineContent = { Text("Retour", fontSize = 15.us) })
+                    ListItem(
+                        selected = false, onClick = onRetour, headlineContent = { Text("Retour", fontSize = 15.us) },
+                        colors = couleursLigne(h), shape = ListItemDefaults.shape(shape = h.formeLigne),
+                    )
                 }
             }
         }

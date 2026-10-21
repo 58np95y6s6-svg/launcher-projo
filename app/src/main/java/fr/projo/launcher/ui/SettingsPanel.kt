@@ -22,8 +22,11 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import fr.projo.launcher.LauncherViewModel
+import fr.projo.launcher.data.CleTmdb
+import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.IconesModules
 import fr.projo.launcher.modules.LocalHoteModules
@@ -61,6 +64,8 @@ class SettingsActions(
     val design: () -> Unit = {},
     /** Réglages → Modules : ce qu'affiche l'emplacement des scores NBA. */
     val modules: () -> Unit = {},
+    /** Design Studio : clé TMDB des suggestions de films et séries. */
+    val suggestions: () -> Unit = {},
     /** Télécommande smartphone : appairage, téléphones appairés, aide clavier et navigation. */
     val appairer: () -> Unit = {},
     val telephones: () -> Unit = {},
@@ -78,7 +83,7 @@ class Reglage(
     val titre: String,
     /** État ou description (sous le titre, ou à sa droite si la place le permet). */
     val valeur: String,
-    /** Couleur propre du réglage : pastilles colorées, tuiles de « Une », lueur d'Aurore… */
+    /** Couleur propre du réglage : pastilles colorées, tuiles et affiche de « Une »… */
     val teinte: Color,
     /** Mise en avant : mise à jour disponible, clavier à activer, volume en cours de réglage. */
     val accent: Boolean = false,
@@ -215,6 +220,13 @@ private fun contenuReglages(
 ): List<SectionReglages> {
     val design = LocalDesign.current
     val hote = LocalHoteModules.current ?: HoteModules()
+    val contexte = LocalContext.current
+    // « Affiches des nouveautés » : réglage enregistré, lu une fois
+    LaunchedEffect(Unit) { ReglageNouveautes.charger(contexte) }
+    val nouveautes = ReglageNouveautes.actif
+    // Studio : résumé de la clé TMDB, relu quand elle change (dialogue ouvert depuis le panneau)
+    val versionCle = CleTmdb.version
+    val resumeCle = if (design == Design.STUDIO) remember(versionCle) { resumeCleTmdb(contexte) } else ""
     val majDispo = maj.info?.available == true || maj.telechargement != null
 
     // ---------------- Volume (et mise à jour, mise en avant si disponible)
@@ -341,6 +353,15 @@ private fun contenuReglages(
                 teinte = Teintes.modules,
                 onClick = actions.modules,
             ),
+            // Studio seulement : clé TMDB de ses suggestions (jamais la clé elle-même, voir resumeCleTmdb)
+            if (design != Design.STUDIO) null else Reglage(
+                cle = "suggestions",
+                icone = ProjoIcons.Film,
+                titre = "Suggestions de films et séries",
+                valeur = resumeCle,
+                teinte = Teintes.suggestions,
+                onClick = actions.suggestions,
+            ),
             Reglage(
                 cle = "masquees",
                 icone = ProjoIcons.Apps,
@@ -348,6 +369,15 @@ private fun contenuReglages(
                 valeur = if (hiddenCount == 0) "Aucune" else "$hiddenCount app(s) · les ré-afficher",
                 teinte = Teintes.masquees,
                 onClick = actions.hiddenApps,
+            ),
+            // Photos des films et séries récents en fond de l'accueil (Verre, Pastel, Console, Une, Studio)
+            Reglage(
+                cle = "nouveautes",
+                icone = ProjoIcons.Photo,
+                titre = "Affiches des nouveautés",
+                valeur = if (nouveautes) "Activées · photos des films et séries récents en fond" else "Désactivées · pas de photo",
+                teinte = Teintes.nouveautes,
+                onClick = { ReglageNouveautes.ecrire(contexte, !nouveautes) },
             ),
             if (majDispo) null else Reglage(
                 cle = "maj",
@@ -428,7 +458,9 @@ object Teintes {
     val hdmi = Color(0xFF10B981)
     val design = Color(0xFF8B5CF6)
     val modules = Color(0xFFEC4899)
+    val suggestions = Color(0xFFE11D48)
     val masquees = Color(0xFF64748B)
+    val nouveautes = Color(0xFF14B8A6)
     val appairer = Color(0xFF0EA5E9)
     val telephones = Color(0xFF22C55E)
     val clavier = Color(0xFFA855F7)

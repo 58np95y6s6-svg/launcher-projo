@@ -18,6 +18,8 @@ import org.robolectric.annotation.GraphicsMode
  * Chaînes n'a pas deux rangées mais une grille paginée (favoris, puis « Mes apps », puis
  * « Toutes les apps ») : chaque test y vérifie l'équivalent dans la grille (voisin prévu par
  * GrilleChaines, même colonne pour ▲ ▼, allers-retours) ; les autres designs ne changent pas.
+ *
+ * Studio n'a qu'une barre d'apps : ses équivalents sont dans StudioTest (voir Design.deuxRangees).
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -27,7 +29,7 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     // ------------------------------------------------------------------ ▼ depuis les favoris
@@ -205,17 +207,13 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
         attendreApres(Key.DirectionRight, app(2), "${app(1)} puis ▶")
     }
 
-    /**
-     * Sortie du bandeau NBA par ◀ puis par Retour : retour au 1er favori (rangée remise au début).
-     * Graphite : ◀ revient sur Réglages, d'où l'on y entre par ▶.
-     */
+    /** Sortie du bandeau NBA par ◀ puis par Retour : retour au 1er favori (rangée remise au début). */
     @Test
     fun sortieDuBandeauNba() {
         afficher()
         allerAuFavori(3)
         donnerFocus("nba")
-        val gauche = if (design == Design.GRAPHITE) "rapide:Réglages" else favori(0)
-        attendreApres(Key.DirectionLeft, gauche, "bandeau NBA puis ◀")
+        attendreApres(Key.DirectionLeft, favori(0), "bandeau NBA puis ◀")
         donnerFocus("nba")
         attendreApres(Key.Back, favori(0), "bandeau NBA puis Retour")
     }
@@ -350,7 +348,7 @@ class NavigationSansFavoriTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -398,7 +396,7 @@ class NavigationSeuleBibliothequeTest(nomDesign: String) : BancAccueil(nomDesign
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = designsDeuxRangees()
     }
 
     override fun preparer(u: HomeUi): HomeUi =
@@ -467,7 +465,7 @@ class NavigationConsoleTest : BancAccueil("CONSOLE") {
 }
 
 /**
- * Rangées de tailles variées (1 app, 2 apps, 30 apps, 30 favoris), pour chacun des 5 designs :
+ * Rangées de tailles variées (1 app, 2 apps, 30 apps, 30 favoris), pour chaque design à deux rangées :
  * ▼ / ▲ sautent toujours vers l'élément visible le plus aligné de l'autre rangée,
  * ▼ ne bouge plus une fois dans « Mes apps », et ▼ ▲ / ▲ ▼ ramènent au départ.
  */
@@ -479,7 +477,7 @@ class NavigationVariantesTest(nomDesign: String, private val variante: String) :
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0} {1}")
-        fun cas(): List<Array<Any>> = Design.entries.flatMap { d ->
+        fun cas(): List<Array<Any>> = Design.entries.filter { it.deuxRangees }.flatMap { d ->
             listOf("1 app", "2 apps", "30 apps", "30 favoris").map { arrayOf<Any>(d.name, it) }
         }
 

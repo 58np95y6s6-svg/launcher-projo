@@ -33,6 +33,8 @@ jobs:
       - name: Compilation (APK de test + vérification de la version release)
         env:
           VERSION_NAME: test-${{ github.run_number }}
+          # Clé TMDB (suggestions du design Studio) : secret du dépôt, jamais affichée
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
         run: ./gradlew --no-daemon assembleDebug assembleRelease
 
       - name: Taille des APK
@@ -79,6 +81,10 @@ jobs:
           key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Tests d'interface (navigation + captures)
+        env:
+          # Clé TMDB des tests « réels » (UnePhotosTest, NouveautesTest), sous un autre nom que TMDB_KEY :
+          # elle n'est pas compilée dans l'app des tests, les autres tests restent hors ligne
+          TMDB_KEY_TESTS: ${{ secrets.TMDB_KEY }}
         run: |
           set -o pipefail
           ./gradlew --no-daemon testDebugUnitTest --continue 2>&1 | tee tests.log

@@ -32,9 +32,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.SourceCandidate
@@ -289,7 +291,7 @@ fun ListeDialog(
 
 /** Lignes des dialogues aux couleurs du design (fond transparent, sélection du style). */
 @Composable
-private fun couleursLigne(h: HabillageDialogue) = ListItemDefaults.colors(
+internal fun couleursLigne(h: HabillageDialogue) = ListItemDefaults.colors(
     containerColor = Color.Transparent,
     contentColor = h.texte,
     focusedContainerColor = h.focusFond,
@@ -297,6 +299,31 @@ private fun couleursLigne(h: HabillageDialogue) = ListItemDefaults.colors(
     pressedContainerColor = h.focusFond,
     pressedContentColor = h.focusTexte,
 )
+
+/**
+ * Bouton des dialogues (appairage, clé TMDB, saisie d'un nom…) aux couleurs du design :
+ * voile du texte au repos (accent pour le bouton principal), sélection du style du panneau.
+ */
+@Composable
+internal fun BoutonDialogue(texte: String, modifier: Modifier = Modifier, accent: Boolean = false, onClick: () -> Unit) {
+    val h = habillageDialogue()
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = ClickableSurfaceDefaults.shape(h.formeLigne),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (accent) h.accentFond else h.carte,
+            contentColor = h.texte,
+            focusedContainerColor = h.focusFond,
+            focusedContentColor = h.focusTexte,
+            pressedContainerColor = h.focusFond,
+            pressedContentColor = h.focusTexte,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+    ) {
+        Text(texte, fontSize = 15.us, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 22.u, vertical = 10.u))
+    }
+}
 
 /** Case à cocher dessinée (pas de caractère spécial : certaines polices d'Android 9 n'en ont pas). */
 @Composable
