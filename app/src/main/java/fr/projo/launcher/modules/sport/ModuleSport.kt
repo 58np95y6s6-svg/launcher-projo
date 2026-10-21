@@ -102,7 +102,7 @@ object ModuleSport : Module(
     fun nbaSeule(hote: HoteModules): Boolean =
         hote.modules.singleOrNull() == this && competitions(hote.reglagesDe(id)).map { it.id } == listOf("nba")
 
-    /** Matchs NBA du cache des modules (pour un bandeau dessiné hors de la zone, ex. Graphite). */
+    /** Matchs NBA du cache des modules (pour un bandeau dessiné hors de la zone, ex. « À la une »). */
     @Composable
     fun rememberNba(donnees: DonneesModules): EtatDonnees<MatchsCompetition> {
         val context = LocalContext.current

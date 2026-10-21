@@ -118,7 +118,7 @@ class ModulesPratiquesTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = listOf(Design.PASTEL, Design.AURORE).map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = listOf(Design.PASTEL, Design.VERRE).map { arrayOf<Any>(it.name) }
     }
 
     private val app: Context get() = RuntimeEnvironment.getApplication()

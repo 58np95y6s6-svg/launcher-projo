@@ -45,8 +45,6 @@ import fr.projo.launcher.system.NetworkInfo
 import fr.projo.launcher.ui.DiagnosticDialog
 import fr.projo.launcher.ui.Design
 import fr.projo.launcher.ui.DesignDialog
-import fr.projo.launcher.ui.FondNeonDialog
-import fr.projo.launcher.ui.NeonTheme
 import fr.projo.launcher.ui.LocalDesign
 import fr.projo.launcher.ui.HiddenAppsDialog
 import fr.projo.launcher.ui.IconChoiceDialog
@@ -104,8 +102,6 @@ class MainActivity : ComponentActivity() {
             val hoteModules = remember(modules, reglagesModules) {
                 HoteModules(modules, reglagesModules, vm.donneesModules, vm::setReglageModule)
             }
-            // Design « Néon » : fond clair ou sombre (lu aussi par ses DesignColors)
-            if (NeonTheme.clair != etat.prefs.neonClair) NeonTheme.clair = etat.prefs.neonClair
             CompositionLocalProvider(
                 LocalScale provides echelle,
                 LocalDesign provides Design.from(etat.prefs.design),
@@ -133,7 +129,6 @@ class MainActivity : ComponentActivity() {
         var montrerDesign by remember { mutableStateOf(false) }
         var montrerModules by remember { mutableStateOf(false) }
         var montrerCleTmdb by remember { mutableStateOf(false) }
-        var montrerFondNeon by remember { mutableStateOf(false) }
         // Télécommande smartphone (Réglages → Télécommande)
         var montrerAppairage by remember { mutableStateOf(false) }
         var montrerTelephones by remember { mutableStateOf(false) }
@@ -251,7 +246,6 @@ class MainActivity : ComponentActivity() {
                     design = { montrerDesign = true },
                     modules = { montrerModules = true },
                     suggestions = { montrerCleTmdb = true },
-                    fondNeon = { montrerFondNeon = true },
                     appairer = { Telecommande.commencerAppairage(); montrerAppairage = true },
                     telephones = { montrerTelephones = true },
                     aideTelecommande = { montrerAideTelecommande = true },
@@ -318,13 +312,6 @@ class MainActivity : ComponentActivity() {
                 current = Design.from(ui.prefs.design),
                 onChoose = { vm.setDesign(it.id) },
                 onDismiss = { montrerDesign = false },
-            )
-        }
-        if (montrerFondNeon) {
-            FondNeonDialog(
-                clair = ui.prefs.neonClair,
-                onChoose = { vm.setNeonClair(it) },
-                onDismiss = { montrerFondNeon = false },
             )
         }
         if (montrerModules) {

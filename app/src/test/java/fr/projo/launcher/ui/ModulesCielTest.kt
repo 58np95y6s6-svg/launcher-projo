@@ -63,8 +63,8 @@ object ModulesCielFactices {
 
 /**
  * Modules Soleil et lune, Qualité de l'air et Horloges du monde : captures en MOYEN (module
- * seul) et en PETIT (deux modules côte à côte) dans 3 designs dont Pastel (clair), textes
- * jamais coupés, et sortie de la zone par ◀ et Retour.
+ * seul) et en PETIT (deux modules côte à côte) dans un design clair (Pastel) et un foncé
+ * (Verre), textes jamais coupés, et sortie de la zone par ◀ et Retour.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -75,7 +75,7 @@ class ModulesCielTest(nomDesign: String) : BancAccueil(nomDesign) {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun designs(): List<Array<Any>> =
-            listOf(Design.PASTEL, Design.AURORE, Design.GRAPHITE).map { arrayOf<Any>(it.name) }
+            listOf(Design.PASTEL, Design.VERRE).map { arrayOf<Any>(it.name) }
     }
 
     @Test
@@ -126,13 +126,13 @@ class ModulesCielTest(nomDesign: String) : BancAccueil(nomDesign) {
         appuyer(Key.DirectionLeft)
         attendreFocus("module:soleil", "◀ depuis Air")
         appuyer(Key.DirectionLeft)
-        verifierSortie("◀ depuis Soleil (1er module)", gauche = true)
+        verifierSortie("◀ depuis Soleil (1er module)")
         focusDans("module:air")
         appuyer(Key.Back)
-        verifierSortie("Retour depuis Air", gauche = false)
+        verifierSortie("Retour depuis Air")
         focusDans("module:soleil")
         appuyer(Key.Back)
-        verifierSortie("Retour depuis Soleil", gauche = false)
+        verifierSortie("Retour depuis Soleil")
     }
 
     @Test
@@ -141,10 +141,10 @@ class ModulesCielTest(nomDesign: String) : BancAccueil(nomDesign) {
         afficher()
         focusDans("module:horloges")
         appuyer(Key.DirectionLeft)
-        verifierSortie("◀ depuis Horloges", gauche = true)
+        verifierSortie("◀ depuis Horloges")
         focusDans("module:horloges")
         appuyer(Key.Back)
-        verifierSortie("Retour depuis Horloges", gauche = false)
+        verifierSortie("Retour depuis Horloges")
     }
 
     // ------------------------------------------------------------------ outils
@@ -177,10 +177,10 @@ class ModulesCielTest(nomDesign: String) : BancAccueil(nomDesign) {
         }
     }
 
-    /** Le focus a quitté la zone : 1er favori (Graphite, ◀ : bouton Réglages). */
-    private fun verifierSortie(etape: String, gauche: Boolean) {
+    /** Le focus a quitté la zone (par ◀ ou par Retour) : 1er favori. */
+    private fun verifierSortie(etape: String) {
         val f = focus()
-        val attendu = if (gauche && design == Design.GRAPHITE) "rapide:Réglages" else favori(0)
+        val attendu = favori(0)
         if (f?.etiquette != attendu || "nba" in f.chaine) {
             fail("[${design.name}] $etape : attendu $attendu, obtenu ${decrire(f)} (étiquettes ${f?.chaine})")
         }

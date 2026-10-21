@@ -3,9 +3,12 @@
 Écran d'accueil personnalisé, au design inspiré de l'Apple TV, pour le projecteur
 **COOLiD C3** (Android 11, 1 Go de RAM). Léger, fluide, piloté à 100 % à la télécommande.
 
-- Fond sombre avec une lueur colorée qui prend la couleur de l'app sélectionnée
-- Salutation, grande horloge et date ; pastilles **Sources**, **Wi-Fi**, **Bluetooth**, **Réglages**
-- Rangée **Favoris** (grandes cartes) et rangée **Toutes les apps**
+- 6 designs d'accueil au choix (Réglages → Design) : **À la une** (par défaut : nom géant,
+  l'écran aux couleurs de l'app sélectionnée), **Verre**, **Pastel**, **Console**, **Chaînes**
+  et **Studio**
+- Grande horloge et date ; boutons **Sources**, **Wi-Fi**, **Bluetooth**, **Réglages**
+- Rangée **Favoris** et rangée **Mes apps**, puis **Toutes les apps** ; modules (météo,
+  sport…) à la place des scores NBA
 - Appui long (ou touche Menu) sur une app : favoris, déplacer, masquer, infos de l'app
 - Tout est enregistré sur le projecteur ; aucune connexion à un serveur
 
@@ -139,7 +142,8 @@ app/src/main/java/fr/projo/launcher/
   LauncherViewModel.kt     état de l'accueil (apps, favoris, masquées)
   data/                    liste des apps, logos + couleurs, préférences, favoris par défaut
   system/                  ouverture des réglages / sources, nom du Wi-Fi
-  ui/                      écran d'accueil, cartes, pastilles, horloge, lueur, menus
+  modules/                 zone de modules de l'accueil (météo, sport, minuteur…)
+  ui/                      écrans d'accueil (un fichier HomeXxx.kt par design), réglages, menus
 .github/workflows/
   build.yml                compile à chaque push ; publie l'APK de test (branche de test)
   release.yml              tag v* → APK signé « launcher.apk » dans GitHub Releases

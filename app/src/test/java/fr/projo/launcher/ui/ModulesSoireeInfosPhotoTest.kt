@@ -143,7 +143,7 @@ object FacticesSoireeInfosPhoto {
 }
 
 /**
- * Modules Ce soir à la TV, Infos et Photo du jour dans deux designs (Aurore, sombre, et Pastel,
+ * Modules Ce soir à la TV, Infos et Photo du jour dans deux designs (Verre, sombre, et Pastel,
  * clair) : seuls (taille MOYEN) et à deux (taille PETIT), états d'erreur, et navigation.
  * Chaque capture est accompagnée d'un agrandissement ×2 de la zone de modules (« …_zone »).
  */
@@ -155,7 +155,7 @@ class ModulesSoireeInfosPhotoTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = listOf(Design.AURORE, Design.PASTEL).map { arrayOf<Any>(it.name) }
+        fun designs(): List<Array<Any>> = listOf(Design.VERRE, Design.PASTEL).map { arrayOf<Any>(it.name) }
     }
 
     @Test
@@ -307,7 +307,7 @@ class ModulesSoireeInfosPhotoTest(nomDesign: String) : BancAccueil(nomDesign) {
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class CapturesReglagesSoireeInfosTest : BancAccueil("AURORE") {
+class CapturesReglagesSoireeInfosTest : BancAccueil("UNE") {
 
     @OptIn(ExperimentalRoborazziApi::class)
     private fun dialogue(nom: String, contenu: @Composable () -> Unit) {

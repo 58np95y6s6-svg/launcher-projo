@@ -27,7 +27,7 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class CapturesTelecommandeTest : BancAccueil("AURORE") {
+class CapturesTelecommandeTest : BancAccueil("UNE") {
 
     private val t0 = 1_760_000_000_000L
     private val url = RemoteConfig.URL_PWA + "#pair=ibiprojo-0123456789abcdef0123456789abcdef.q2Xk9_LmT0aZr1bYwE3uVg.YPXzIOhZAT92PqkIdIKfBw"

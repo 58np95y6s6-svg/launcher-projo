@@ -74,8 +74,8 @@ abstract class Module(
     open val aDesReglages: Boolean get() = false
 
     /**
-     * Titre affiché par un design quand le focus est dans le module (ex. le grand titre de
-     * Graphite) : « Météo · Lyon », « NBA »… Voir [FocusModules].
+     * Titre affiché par un design quand le focus est dans le module (ex. le nom géant
+     * d'« À la une ») : « Météo · Lyon », « NBA »… Voir [FocusModules].
      */
     open fun titre(reglages: ReglagesModule): String = nom
 
@@ -145,7 +145,7 @@ val Float.u: Dp
 
 /**
  * Module qui a le focus dans la zone de modules (null si le focus est ailleurs) : un design
- * peut l'afficher en titre (Graphite : « Météo · Lyon »). État Compose, lu à la recomposition.
+ * peut l'afficher en titre (« À la une » : « Météo · Lyon »). État Compose, lu à la recomposition.
  */
 object FocusModules {
     var titre: String? by mutableStateOf(null)

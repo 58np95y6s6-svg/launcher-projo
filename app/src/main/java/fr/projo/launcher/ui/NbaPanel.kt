@@ -8,9 +8,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import fr.projo.launcher.data.NbaData
 import fr.projo.launcher.data.NbaRepository
-import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.modules.ZoneModules
-import fr.projo.launcher.modules.sport.ModuleSport
 import fr.projo.launcher.modules.sport.SportReseau
 
 /**
@@ -39,11 +37,6 @@ data class NbaStyle(
      */
     val zoneLargeur: Int? = null,
     val zoneHauteur: Int? = null,
-    /**
-     * Mise en page « Graphite » (maquette t8) : bandeau NBA à sélecteur segmenté et pastilles
-     * d'équipes en couleur (NbaGraphite.kt), et panneau à filets pour les autres modules.
-     */
-    val graphite: Boolean = false,
 )
 
 /**
@@ -65,24 +58,17 @@ fun NbaPanel(
     style: NbaStyle = NbaStyle(),
     /** Point d'entrée du focus (1er élément du 1er module), pour y venir depuis un autre élément. */
     entree: FocusRequester? = null,
-    /** ◀ depuis le 1er module (Graphite : retour à Réglages) ; par défaut, comme [onExit]. */
+    /** ◀ depuis le 1er module (ex. Studio : vers le module de gauche) ; par défaut, comme [onExit]. */
     onGauche: (() -> Unit)? = null,
 ) {
     // Les logos d'équipes partagent le cache du dépôt NBA fourni
     SportReseau.adopter(repo)
     val repli = remember(data, erreur) { SportReseau.hoteNba(data, erreur) }
-    val hote = LocalHoteModules.current ?: repli
     CompositionLocalProvider(LocalScale provides LocalScale.current * style.echelle) {
-        if (style.graphite && ModuleSport.nbaSeule(hote)) {
-            // Graphite, NBA seule (par défaut) : le bandeau de la maquette, à l'identique
-            val etat = ModuleSport.rememberNba(hote.donnees)
-            NbaGraphite(etat.valeur?.nba, etat.erreur, modifier, onExit, style, entree, onGauche)
-        } else {
-            ZoneModules(
-                style = style, onExit = onExit, modifier = modifier, repli = repli,
-                entree = entree, onGauche = onGauche,
-            )
-        }
+        ZoneModules(
+            style = style, onExit = onExit, modifier = modifier, repli = repli,
+            entree = entree, onGauche = onGauche,
+        )
     }
 }
 

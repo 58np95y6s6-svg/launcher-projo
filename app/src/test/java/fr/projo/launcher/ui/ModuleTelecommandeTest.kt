@@ -94,9 +94,8 @@ object FacticesTelecommande {
 }
 
 /**
- * Module Télécommande (QR code d'appairage sur l'accueil) : captures seul (MOYEN ; GRAND dans
- * Playlist) et avec la Météo (PETIT côte à côte ; MOYEN empilés dans Playlist), dans un
- * design clair (Pastel) et un foncé (Aurore). Contrôles : rien n'est coupé, QR code d'au moins
+ * Module Télécommande (QR code d'appairage sur l'accueil) : captures seul (MOYEN) et avec la
+ * Météo (PETIT côte à côte), dans un design clair (Pastel) et un foncé (Verre). Contrôles : rien n'est coupé, QR code d'au moins
  * 90 u, décodé depuis la capture (et réduite comme vue de loin par un téléphone) : il donne
  * l'URL d'appairage. OK ouvre le dialogue en grand ; le module ne demande un secret que
  * pendant que l'accueil est au premier plan.
@@ -110,7 +109,7 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun designs(): List<Array<Any>> =
-            listOf(Design.PASTEL, Design.AURORE, Design.PLAYLIST).map { arrayOf<Any>(it.name) }
+            listOf(Design.PASTEL, Design.VERRE).map { arrayOf<Any>(it.name) }
     }
 
     private fun preparer(source: SourceTelecommandeFactice, vararg ids: String) {
