@@ -77,7 +77,7 @@ private const val S_TUILE_L = 112
 private const val S_TUILE_H = 63
 /** Entrées et raccourcis : libellé + tuiles. */
 private const val S_BANDE = 86
-private const val S_ECART_BANDE = 14
+private const val S_ECART_BANDE = 24
 private const val S_ECART_MODULES = 18
 private const val S_BAS_MODULES = 20
 /** Écart entre les deux panneaux de modules. */
@@ -617,6 +617,7 @@ private fun StudioModules(ctx: HomeContext, nav: StudioNav, hautDispo: Float, ve
                     Modifier
                         .width(largeur.u)
                         .fillMaxHeight()
+                        .testTag("studio:panneau")
                         .verreStudio(22.u, opacite = 1.1f)
                         .then(rememberCibleStudio(nav, StudioBande.MODULES, "zone:$i", fr = entrees[i], attacher = false))
                         .onFocusChanged { if (it.hasFocus) ctx.sansSelection() },

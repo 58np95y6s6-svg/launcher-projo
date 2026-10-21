@@ -2,6 +2,7 @@ package fr.projo.launcher.ui
 
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -66,7 +67,11 @@ abstract class BancStudio : BancAccueil("STUDIO") {
             t != null && bandeDe(t) == b
         }
         return compose.onAllNodes(m, useUnmergedTree = true).fetchSemanticsNodes()
-            .map { it.config[SemanticsProperties.TestTag] to it.boundsInRoot }
+            .map { n ->
+                // Position réelle, même hors de l'écran (l'écran 2 est sous le bord au départ)
+                val c = n.layoutInfo.coordinates
+                n.config[SemanticsProperties.TestTag] to c.findRootCoordinates().localBoundingBoxOf(c, clipBounds = false)
+            }
             .filter { (_, r) -> r.center.x > 0f && r.center.x < largeur }
             .distinctBy { it.first + it.second.left }
             .sortedBy { it.second.left }
@@ -273,12 +278,17 @@ class StudioTest : BancStudio() {
     @Test
     fun maisonRevientEnHaut() {
         afficher()
-        donnerFocus("nba")
-        verifierEcran(2, "modules")
-        compose.runOnIdle { pressionsMaison.intValue++ }
-        avancer(1500)
-        attendre(favori(0), "Maison")
-        verifierEcran(1, "Maison")
+        val notes = mutableListOf<String>()
+        for (depart in listOf("biblio", "nba")) {
+            donnerFocus(depart)
+            verifierEcran(2, depart)
+            compose.runOnIdle { pressionsMaison.intValue++ }
+            for (pas in listOf(0L, 16L, 50L, 100L, 300L, 1000L)) {
+                avancer(pas)
+                notes += "$depart +$pas ms : écran ${ecran()} focus ${decrire(focus())}"
+            }
+            if (focus()?.etiquette != favori(0) || ecran() != 1) fail("[STUDIO] Maison : ${notes.joinToString(" | ")}")
+        }
     }
 
     /** OK lance l'app (barre et suggestions) ; appui long / Menu ouvre son menu. */
@@ -348,8 +358,9 @@ class StudioTest : BancStudio() {
 @Config(sdk = [33], qualifiers = ECRAN_TV)
 class StudioModulesTest : BancStudio() {
 
+    /** Panneaux de verre des modules (un par module). */
     private fun zones(): List<Rect> =
-        compose.onAllNodes(hasTestTag("nba"), useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot }.sortedBy { it.left }
+        compose.onAllNodes(hasTestTag("studio:panneau"), useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot }.sortedBy { it.left }
 
     @Test
     fun unModule() {
