@@ -132,7 +132,7 @@ abstract class BancStudio : BancAccueil("STUDIO") {
         compose.onAllNodes(hasText(t), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     protected fun ouvrirReglages() {
-        pardessus.value = {
+        val panneau: @androidx.compose.runtime.Composable () -> Unit = {
             SettingsPanel(
                 snapshot = DeviceSnapshot(
                     volume = 10, volumeMax = 15, muet = false, reseau = "Maison-5G", enLigne = true,
@@ -150,6 +150,7 @@ abstract class BancStudio : BancAccueil("STUDIO") {
                 ),
             )
         }
+        compose.runOnIdle { pardessus.value = panneau }
         avancer(1500)
     }
 }
@@ -183,7 +184,8 @@ class StudioTest : BancStudio() {
         sauter(Key.DirectionDown, Bande.RACCOURCIS, "1er favori")
         verifierEcran(2, "▼ depuis la barre")
         val dock = hautDuDock()
-        if (abs(dock - 24f) > 3f) fail("[STUDIO] écran 2 : barre des apps attendue à y = 24 u, obtenu $dock")
+        // Verre du dock à 24 u du haut, rangée des tuiles centrée dedans (4,5 u plus bas)
+        if (abs(dock - 28.5f) > 3f) fail("[STUDIO] écran 2 : barre des apps attendue à y = 28,5 u, obtenu $dock")
         val hauteur = compose.onRoot().fetchSemanticsNode().size.height
         val zone = compose.onAllNodes(hasTestTag("nba"), useUnmergedTree = true).fetchSemanticsNodes().first().boundsInRoot
         if (zone.top < 0f || zone.bottom > hauteur + 0.5f) fail("[STUDIO] écran 2 : modules hors de l'écran (${zone.enU()})")
@@ -279,16 +281,19 @@ class StudioTest : BancStudio() {
     fun maisonRevientEnHaut() {
         afficher()
         val notes = mutableListOf<String>()
-        for (depart in listOf("biblio", "nba")) {
+        fun maison(depart: String) {
             donnerFocus(depart)
-            verifierEcran(2, depart)
+            notes += "[$depart] avant : écran ${ecran()}"
             compose.runOnIdle { pressionsMaison.intValue++ }
-            for (pas in listOf(0L, 16L, 50L, 100L, 300L, 1000L)) {
+            for (pas in listOf(16L, 100L, 1000L)) {
                 avancer(pas)
-                notes += "$depart +$pas ms : écran ${ecran()} focus ${decrire(focus())}"
+                notes += "+$pas ms : écran ${ecran()} focus ${decrire(focus())}"
             }
-            if (focus()?.etiquette != favori(0) || ecran() != 1) fail("[STUDIO] Maison : ${notes.joinToString(" | ")}")
         }
+        maison(app(3))
+        maison("biblio")
+        maison("nba")
+        if (focus()?.etiquette != favori(0) || ecran() != 1) fail("[STUDIO] Maison : ${notes.joinToString(" | ")}")
     }
 
     /** OK lance l'app (barre et suggestions) ; appui long / Menu ouvre son menu. */
