@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -305,7 +304,10 @@ private fun StudioRangeeSuggestions(
     onglet: StudioOnglet,
     versEcran: (StudioBande) -> Unit,
 ) {
-    val etat = rememberLazyListState()
+    // État « Mes apps » du contrat (HomeScreen le remet au début à chaque Maison) : ici les
+    // suggestions, car les apps de « Mes apps » sont dans la barre. Il DOIT être attaché à une
+    // rangée : scrollToItem attend sinon une mise en page qui n'arrive jamais.
+    val etat = ctx.rangeeApps
     LaunchedEffect(onglet) { etat.scrollToItem(0) }
     val context = LocalContext.current
     LazyRow(
