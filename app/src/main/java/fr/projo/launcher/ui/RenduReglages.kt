@@ -980,7 +980,6 @@ private fun TuileReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colon
 /** Chaînes : gros boutons arrondis en colonnes, intitulés de section au-dessus. */
 @Composable
 private fun BoutonsReglages(s: StyleReglages, p: PanneauReglages) {
-    val c = s.couleurs
     val m = s.mesures
     p.sections.forEachIndexed { i, section ->
         key(section.cle) {
@@ -1239,7 +1238,7 @@ private fun JaugeVolume(s: StyleReglages, r: Reglage, t: Float) {
             }
         }
         Jauge.EXPRESSIVE -> Expressive(s, v, t)
-        Jauge.BLOCS -> Blocs(s, v, 20)
+        Jauge.BLOCS -> Blocs(v, 20)
         else -> if (s.tuiles == FormeTuiles.CARTES) {
             // Console : piste fine, bouton blanc, « Muet » et « Max » dessous
             Column {
@@ -1381,7 +1380,7 @@ private fun JaugeSimple(jauge: Jauge, v: Float, s: StyleReglages, t: Float, epai
                 },
             )
         }
-        Jauge.BLOCS -> Blocs(s, valeur, 20)
+        Jauge.BLOCS -> Blocs(valeur, 20)
         else -> Box(
             Modifier.fillMaxWidth().height(epaisseur.uu).drawBehind {
                 val e = size.height
@@ -1394,7 +1393,7 @@ private fun JaugeSimple(jauge: Jauge, v: Float, s: StyleReglages, t: Float, epai
 
 /** Jauge en blocs arrondis (façon console de salon). */
 @Composable
-private fun Blocs(s: StyleReglages, v: Float, n: Int) {
+private fun Blocs(v: Float, n: Int) {
     val unite = 1.u
     Box(
         Modifier.fillMaxWidth().height(12.u).drawBehind {
