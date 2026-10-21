@@ -246,6 +246,18 @@ fun SettingsPanel(
                         onClick = actions.hiddenApps,
                     )
                 }
+                // Cartes des services de streaming illustrées par leur dernière nouveauté (VisuelNouveaute)
+                item(key = "nouveautes") {
+                    val contexte = androidx.compose.ui.platform.LocalContext.current
+                    LaunchedEffect(Unit) { fr.projo.launcher.data.ReglageNouveautes.charger(contexte) }
+                    val actif = fr.projo.launcher.data.ReglageNouveautes.actif
+                    Tuile(
+                        icone = ProjoIcons.Apps,
+                        titre = "Affiches des nouveautés",
+                        sousTitre = if (actif) "Activées · films et séries récents sur les cartes" else "Désactivées · logos des apps",
+                        onClick = { fr.projo.launcher.data.ReglageNouveautes.ecrire(contexte, !actif) },
+                    )
+                }
                 if (maj.info?.available != true && maj.telechargement == null) {
                     item(key = "maj") {
                         Tuile(

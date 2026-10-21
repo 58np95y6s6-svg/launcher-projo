@@ -102,6 +102,7 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
+import fr.projo.launcher.data.Nouveautes
 import fr.projo.launcher.data.Rubrique
 import fr.projo.launcher.modules.FocusModules
 import kotlinx.coroutines.launch
@@ -1447,13 +1448,20 @@ private fun PlImageIcone(icone: ImageVector, couleurs: List<Color>) {
     }
 }
 
-/** Carte carrée d'une app : pochette, nom, rubrique. */
+/**
+ * Carte carrée d'une app : pochette, nom, rubrique. Service de streaming : la photo de sa
+ * dernière nouveauté, stylisée (VisuelNouveaute, partagé), et son titre sous le nom.
+ */
 @Composable
 private fun PlCarte(app: AppInfo, ctx: HomeContext, sousTitre: String, lancer: (AppInfo) -> Unit, modifier: Modifier) {
-    val visuel = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons, FormatVisuel.CARRE)
+    val paquet = ctx.ui.iconSourceOf(app.packageName)
+    val visuel = rememberAppVisual(paquet, ctx.icons, FormatVisuel.CARRE)
     val couleur = visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     var focus by remember { mutableStateOf(false) }
     LaunchedEffect(couleur) { if (focus) ctx.surFocus(app, couleur) }
+    val catalogue = Nouveautes.aUnCatalogue(app)
+    val nouveaute = if (catalogue) rememberNouveaute(app, largeurImageNouveaute(PL_IMAGE.u, FormeNouveaute.CARRE)) else null
+    val style = StylesNouveautes.courant
     PlCadreCarte(
         onClick = { lancer(app) },
         onLongClick = { ctx.actions.openMenu(app) },
@@ -1463,9 +1471,20 @@ private fun PlCarte(app: AppInfo, ctx: HomeContext, sousTitre: String, lancer: (
         },
         titre = app.label,
         sousTitre = sousTitre,
+        // Fondu : le titre est déjà écrit sur l'image
+        nouveau = nouveaute?.titre?.takeIf { style != StyleNouveaute.FONDU },
         modifier = modifier.uneToucheMenu { ctx.actions.openMenu(app) },
     ) {
-        PlPochette(app, visuel, PL_IMAGE.u, RoundedCornerShape(6.u))
+        if (catalogue) {
+            VisuelNouveaute(
+                app, ctx.icons, paquet, FormeNouveaute.CARRE, PL_IMAGE.u,
+                rayon = 6.u, style = style, nouveaute = nouveaute,
+            ) {
+                PlPochette(app, visuel, PL_IMAGE.u, RoundedCornerShape(6.u))
+            }
+        } else {
+            PlPochette(app, visuel, PL_IMAGE.u, RoundedCornerShape(6.u))
+        }
     }
 }
 
@@ -1482,6 +1501,8 @@ private fun PlCadreCarte(
     sousTitre: String,
     modifier: Modifier,
     lignesSousTitre: Int = 1,
+    /** Titre d'une nouveauté : remplace le sous-titre, précédé d'un point vert. */
+    nouveau: String? = null,
     image: @Composable () -> Unit,
 ) {
     var focus by remember { mutableStateOf(false) }
@@ -1518,7 +1539,20 @@ private fun PlCadreCarte(
             Spacer(Modifier.height(8.u))
             PlTexte(titre, 14, FontWeight.Bold, Color.White)
             Spacer(Modifier.height(2.u))
-            PlTexte(sousTitre, 12, FontWeight.Medium, PlGris, lignes = lignesSousTitre)
+            if (nouveau != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(7.u)
+                            .clip(CircleShape)
+                            .background(PlVert)
+                    )
+                    Spacer(Modifier.width(5.u))
+                    PlTexte(nouveau, 12, FontWeight.Medium, PlGris)
+                }
+            } else {
+                PlTexte(sousTitre, 12, FontWeight.Medium, PlGris, lignes = lignesSousTitre)
+            }
         }
     }
 }
