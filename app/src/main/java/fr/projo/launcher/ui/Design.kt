@@ -33,7 +33,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     PASTEL("pastel", "Pastel", "Formes rondes, tons doux"),
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
     GRAPHITE("graphite", "Graphite", "Gris graphite, lueur violet-cyan"),
-    UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app");
+    UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
+    CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments");
 
     companion object {
         fun from(id: String?): Design = entries.firstOrNull { it.id == id } ?: AURORE
@@ -98,6 +99,14 @@ fun Design.colors(): DesignColors = when (this) {
         texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f), accent = Color(0xFF10B981),
         focusFond = Color.White, focusTexte = Color(0xFF0A0A0D),
         voile = Color(0xFF050508).copy(alpha = 0.55f), fondBibliotheque = Color(0xFA0A0A0D),
+    )
+    // « Chaînes » : blanc grisé, liserés gris, sélection bleu clair (design clair)
+    Design.CHAINES -> DesignColors(
+        panneau = Color(0xFFF5F6F7), carte = Color(0xFFE4E7EA),
+        texte = Color(0xFF34393F), texteDiscret = Color(0xFF656B72), accent = Color(0xFF1FA9DE),
+        focusFond = Color(0xFFCDEEFC), focusTexte = Color(0xFF0E4A63),
+        voile = Color(0xFF6E757C).copy(alpha = 0.35f), fondBibliotheque = Color(0xFFF2F3F5),
+        clair = true,
     )
 }
 
