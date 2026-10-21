@@ -37,7 +37,7 @@ internal fun tuilesChaines(ui: HomeUi): List<TuileChaine> = buildList {
 }
 
 /** Flèche de la télécommande. */
-internal enum class Sens { GAUCHE, DROITE, HAUT, BAS }
+enum class Sens { GAUCHE, DROITE, HAUT, BAS }
 
 /**
  * Navigation déterministe dans la grille (indices globaux, toutes pages confondues) :
