@@ -80,13 +80,16 @@ import kotlin.math.ceil
 
 /** Traitement de la photo. */
 enum class StyleNouveaute {
-    /** La photo se fond en dégradé dans la couleur de l'app ; « Nouveau » et le titre dessous. */
+    /** La photo se fond dans la couleur de l'app le long d'une vague douce ; « Nouveau » et le titre dessous. */
     FONDU,
 
-    /** La photo est découpée par une forme (grand disque, bande inclinée) sur un aplat de la couleur de l'app. */
+    /**
+     * La photo est découpée par une forme (grand disque, bande inclinée) sur un aplat de la
+     * couleur de l'app. Non retenu par l'utilisateur : gardé dans le code, non proposé.
+     */
     DECOUPE,
 
-    /** La photo est recolorée en deux tons : noir teinté et couleur de l'app. */
+    /** La photo est recolorée en deux tons : noir teinté et couleur de l'app. Non retenu : gardé, non proposé. */
     DUOTONE,
 }
 
@@ -94,7 +97,7 @@ enum class StyleNouveaute {
 enum class FormeNouveaute { BANNIERE, CARRE }
 
 object StylesNouveautes {
-    /** Traitement retenu pour tous les designs (à changer ici une fois choisi). */
+    /** Traitement retenu par l'utilisateur pour tous les designs : le fondu en vague. */
     val PAR_DEFAUT = StyleNouveaute.FONDU
 
     /** Traitement affiché (les captures de comparaison le changent). */
@@ -292,34 +295,107 @@ private fun DrawScope.photo(image: ImageBitmap, dst: Rect) {
     )
 }
 
-/** (A) Fondu : la photo en haut (carré) ou à droite (16:9), fondue dans la couleur de l'app. */
+/**
+ * (A) Fondu en vague : la photo en haut (carré) ou à droite (16:9) se fond dans la couleur de
+ * l'app le long d'une vague douce (1,5 ondulation, amplitude ~10 %), sans limite nette.
+ * Le fondu est un masque précalculé (MasquesVague), étiré à la taille de la carte.
+ */
 @Composable
 private fun FonduNouveaute(image: ImageBitmap, marque: Color, carre: Boolean) {
+    val masque = remember(marque, carre) { MasquesVague.obtenir(marque, carre) }
     Box(
         Modifier
             .fillMaxSize()
             .drawWithCache {
                 val w = size.width
                 val h = size.height
-                val zone = if (carre) Rect(0f, 0f, w, h * 0.7f) else Rect(w * 0.3f, 0f, w, h)
-                val fondu = if (carre) {
-                    Brush.verticalGradient(0f to Color.Transparent, 1f to marque, startY = h * 0.28f, endY = h * 0.7f)
-                } else {
-                    Brush.horizontalGradient(0f to marque, 1f to Color.Transparent, startX = w * 0.3f, endX = w * 0.62f)
-                }
-                // Ombre douce sous le logo (coin haut gauche)
+                // La photo couvre toute la zone que la vague peut laisser voir
+                val zone = if (carre) Rect(0f, 0f, w, h * 0.86f) else Rect(w * 0.22f, 0f, w, h)
+                // Ombre douce sous le logo ou l'étiquette (coin haut gauche)
                 val ombre = Brush.radialGradient(
                     listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent),
                     center = Offset(0f, 0f), radius = w * 0.45f,
                 )
+                val cible = IntSize(w.toInt().coerceAtLeast(1), h.toInt().coerceAtLeast(1))
                 onDrawBehind {
                     drawRect(marque)
                     photo(image, zone)
-                    drawRect(fondu, topLeft = zone.topLeft, size = zone.size)
+                    if (masque != null) {
+                        drawImage(masque, dstSize = cible, filterQuality = FilterQuality.Medium)
+                    } else {
+                        // Repli (mémoire épuisée) : fondu droit
+                        drawRect(
+                            if (carre) Brush.verticalGradient(0f to Color.Transparent, 1f to marque, startY = h * 0.4f, endY = h * 0.78f)
+                            else Brush.horizontalGradient(0f to marque, 1f to Color.Transparent, startX = w * 0.3f, endX = w * 0.6f),
+                        )
+                    }
                     if (carre) drawRect(ombre)
                 }
             }
     )
+}
+
+/**
+ * Masques du fondu en vague : la couleur de l'app, transparente au-dessus d'une courbe
+ * sinusoïdale et opaque en dessous, avec un dégradé doux (smoothstep) de part et d'autre de la
+ * courbe. Petits (128 px de large, ~64 Ko), calculés une fois par couleur et par forme, puis
+ * étirés (filtrage bilinéaire : la vague reste lisse).
+ */
+private object MasquesVague {
+    private val cache = object : LruCache<String, ImageBitmap>(512 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
+    }
+
+    fun obtenir(marque: Color, carre: Boolean): ImageBitmap? {
+        val cle = marque.toArgb().toString() + if (carre) "c" else "b"
+        cache.get(cle)?.let { return it }
+        return try {
+            calculer(marque, carre).also { cache.put(cle, it) }
+        } catch (e: Exception) {
+            null
+        } catch (e: OutOfMemoryError) {
+            null
+        }
+    }
+
+    private fun lisse(t: Float): Float {
+        val x = t.coerceIn(0f, 1f)
+        return x * x * (3f - 2f * x)
+    }
+
+    private fun calculer(marque: Color, carre: Boolean): ImageBitmap {
+        val w = 128
+        val h = if (carre) 128 else 72
+        val rgb = marque.toArgb() and 0xFFFFFF
+        val px = IntArray(w * h)
+        val deuxPi = (2.0 * Math.PI).toFloat()
+        if (carre) {
+            // Courbe horizontale : y = 0,56 h + 0,10 h · sin(…), fondu sur 0,24 h
+            val base = 0.56f * h
+            val amplitude = 0.10f * h
+            val fondu = 0.24f * h
+            for (x in 0 until w) {
+                val yv = base + amplitude * kotlin.math.sin(deuxPi * 1.5f * x / (w - 1) + 0.6f)
+                for (y in 0 until h) {
+                    val a = lisse((y - (yv - fondu / 2f)) / fondu)
+                    px[y * w + x] = ((a * 255f).toInt() shl 24) or rgb
+                }
+            }
+        } else {
+            // Courbe verticale (couleur à gauche, photo à droite) : x = 0,40 w + 0,05 w · sin(…)
+            val base = 0.40f * w
+            val amplitude = 0.05f * w
+            val fondu = 0.22f * w
+            for (y in 0 until h) {
+                val xv = base + amplitude * kotlin.math.sin(deuxPi * 1.5f * y / (h - 1) + 0.6f)
+                for (x in 0 until w) {
+                    val a = 1f - lisse((x - (xv - fondu / 2f)) / fondu)
+                    px[y * w + x] = ((a * 255f).toInt() shl 24) or rgb
+                }
+            }
+        }
+        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
+    }
 }
 
 /** (B) Découpe : aplat de la couleur de l'app avec un reflet, photo dans un grand disque ou une bande inclinée. */
