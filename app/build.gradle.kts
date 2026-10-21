@@ -25,6 +25,10 @@ android {
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
         }
+        // Clé TMDB du design « Studio » (suggestions) : secret GitHub TMDB_KEY, jamais dans le
+        // dépôt ; chaîne vide si absente (la clé peut aussi être saisie dans Réglages)
+        val cleTmdb = (System.getenv("TMDB_KEY") ?: "").trim().filter { it.isLetterOrDigit() || it in "._-" }
+        buildConfigField("String", "TMDB_KEY", "\"" + cleTmdb + "\"")
         // Règles R8 de la télécommande (fichier séparé : pas de conflit avec les autres branches)
         proguardFile("proguard-telecommande.pro")
     }
@@ -72,6 +76,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests {

@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
         var montrerReglages by remember { mutableStateOf(false) }
         var montrerDesign by remember { mutableStateOf(false) }
         var montrerModules by remember { mutableStateOf(false) }
+        var montrerCleTmdb by remember { mutableStateOf(false) }
         // Télécommande smartphone (Réglages → Télécommande)
         var montrerAppairage by remember { mutableStateOf(false) }
         var montrerTelephones by remember { mutableStateOf(false) }
@@ -255,6 +256,7 @@ class MainActivity : ComponentActivity() {
                     close = { montrerReglages = false; focusApres = focusReglages },
                     design = { montrerDesign = true },
                     modules = { montrerModules = true },
+                    suggestions = { montrerCleTmdb = true },
                     appairer = { Telecommande.commencerAppairage(); montrerAppairage = true },
                     telephones = { montrerTelephones = true },
                     aideTelecommande = { montrerAideTelecommande = true },
@@ -331,6 +333,9 @@ class MainActivity : ComponentActivity() {
                     onDismiss = { montrerModules = false },
                 )
             }
+        }
+        if (montrerCleTmdb) {
+            fr.projo.launcher.ui.StudioCleDialog(onDismiss = { montrerCleTmdb = false })
         }
         if (montrerMasquees) {
             HiddenAppsDialog(

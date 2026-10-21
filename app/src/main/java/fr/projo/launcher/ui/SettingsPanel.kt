@@ -79,6 +79,8 @@ class SettingsActions(
     val design: () -> Unit = {},
     /** Réglages → Modules : ce qu'affiche l'emplacement des scores NBA. */
     val modules: () -> Unit = {},
+    /** Design Studio : clé TMDB des suggestions de films et séries. */
+    val suggestions: () -> Unit = {},
     /** Télécommande smartphone : appairage, téléphones appairés, aide clavier et navigation. */
     val appairer: () -> Unit = {},
     val telephones: () -> Unit = {},
@@ -143,6 +145,7 @@ fun SettingsPanel(
             )
             Spacer(Modifier.height(12.u))
 
+            val estStudio = LocalDesign.current == Design.STUDIO
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.u, end = 22.u, top = 6.u, bottom = 30.u),
                 verticalArrangement = Arrangement.spacedBy(8.u),
@@ -260,6 +263,16 @@ fun SettingsPanel(
                         sousTitre = "Météo, sport… à la place des scores NBA · changer",
                         onClick = actions.modules,
                     )
+                }
+                if (estStudio) {
+                    item(key = "suggestions") {
+                        Tuile(
+                            icone = ProjoIcons.Apps,
+                            titre = "Suggestions de films et séries",
+                            sousTitre = resumeCleTmdb(androidx.compose.ui.platform.LocalContext.current),
+                            onClick = actions.suggestions,
+                        )
+                    }
                 }
                 item(key = "masquees") {
                     Tuile(

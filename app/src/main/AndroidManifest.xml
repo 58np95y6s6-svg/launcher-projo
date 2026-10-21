@@ -36,6 +36,14 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
+    <!-- Design « Studio » : app la plus récemment utilisée (accès aux données d'utilisation,
+         accordé dans les réglages ou par adb : appops set fr.projo.launcher GET_USAGE_STATS allow) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Design « Studio » : suggestions de films et séries lues sur TMDB (INTERNET, déjà déclaré) -->
+
     <!-- Projecteur : pas d'écran tactile, Leanback non obligatoire (marche aussi hors Android TV) -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />

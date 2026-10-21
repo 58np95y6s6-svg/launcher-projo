@@ -141,6 +141,7 @@ fun HomeScreen(
         Design.UNE -> HomeUne(ctx)
         Design.CHAINES -> HomeChaines(ctx)
         Design.PLAYLIST -> HomePlaylist(ctx)
+        Design.STUDIO -> HomeStudio(ctx)
     }
 }
 
