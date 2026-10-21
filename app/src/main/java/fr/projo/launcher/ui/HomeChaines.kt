@@ -379,6 +379,8 @@ private fun Relais(requete: FocusRequester, surFocus: () -> Unit) {
 @Composable
 private fun PageChaines(ctx: HomeContext, etat: EtatChaines, tuiles: List<TuileChaine>, p: Int) {
     val n = tuiles.size
+    // Box : la page garde sa largeur, centrée, même si AnimatedContent impose toute la largeur
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
     Column(
         Modifier.width(CH_GRILLE_L.u),
         verticalArrangement = Arrangement.spacedBy(CH_ECART.u),
@@ -397,6 +399,7 @@ private fun PageChaines(ctx: HomeContext, etat: EtatChaines, tuiles: List<TuileC
                 }
             }
         }
+    }
     }
 }
 

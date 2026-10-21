@@ -11,6 +11,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.HomeUi
@@ -117,6 +119,18 @@ class ChainesTest : BancAccueil("CHAINES") {
     }
 
     // ------------------------------------------------------------------ pages
+
+    /** TEMPORAIRE : diagnostic du focus initial. */
+    @Test
+    fun diagnosticFocus() {
+        try { afficher() } catch (e: AssertionError) { println("DIAG afficher : ${e.message}") }
+        println("DIAG arbre : " + compose.onRoot(useUnmergedTree = true).printToString(maxDepth = 12).take(6000))
+        try { donnerFocus(favori(0)) } catch (e: AssertionError) { println("DIAG donnerFocus : ${e.message}") }
+        println("DIAG focus après donnerFocus : ${decrire(focus())}")
+        appuyer(Key.DirectionRight)
+        println("DIAG focus après ▶ : ${decrire(focus())}")
+        fail("DIAG fin")
+    }
 
     @Test
     fun pagesEtFleches() {
