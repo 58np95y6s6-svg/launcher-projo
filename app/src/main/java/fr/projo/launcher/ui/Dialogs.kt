@@ -98,7 +98,13 @@ fun MenuDialog(
                 }
             }
         }
-        LaunchedEffect(Unit) { runCatching { premier.requestFocus() } }
+        // Première ligne sélectionnée (la liste « lazy » peut n'être prête qu'après une image)
+        LaunchedEffect(Unit) {
+            for (essai in 1..4) {
+                withFrameNanos {}
+                if (runCatching { premier.requestFocus() }.isSuccess) break
+            }
+        }
     }
 }
 
