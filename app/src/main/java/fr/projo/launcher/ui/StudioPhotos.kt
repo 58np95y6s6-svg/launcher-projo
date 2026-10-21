@@ -218,9 +218,11 @@ private fun DrawScope.couche(p: PhotosUne, zone: Rect, filtre: ColorFilter) {
 }
 
 /**
- * Arrière-plan photo de l'écran 1, sous l'en-tête et les cartes (à poser sur toute la largeur,
- * en haut de l'écran 1). Rien n'est composé sans photo. Les fondus ne recomposent rien : la
- * progression n'est lue qu'au dessin, dans un calque à part (le masque n'efface que la photo).
+ * Arrière-plan photo de l'écran 1, sous l'en-tête et les cartes : à aligner en haut à droite
+ * de l'écran 1 (il prend la taille de la zone de la photo). Rien n'est composé sans photo.
+ * Les fondus ne recomposent rien : la progression n'est lue qu'au dessin, dans un calque à
+ * part (le masque n'efface que la photo), limité à la zone : ~2,9 Mo de mémoire graphique
+ * en 1080p, seulement pendant qu'une photo est affichée, redessiné seulement pendant les fondus.
  */
 @Composable
 internal fun FondPhotosStudio(fond: FondStudio, modifier: Modifier) {
@@ -231,22 +233,24 @@ internal fun FondPhotosStudio(fond: FondStudio, modifier: Modifier) {
     val filtre = remember { filtrePhotosStudio() }
     Box(
         modifier
+            .size(P_LARGEUR.u, P_FIN_Y.toInt().u)
             .testTag("studio:fond-photo")
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithCache {
-                val zone = Rect(P_GAUCHE * k, P_HAUT * k, (P_GAUCHE + P_LARGEUR) * k, (P_HAUT + P_LARGEUR * 9f / 16f) * k)
+                // Repère local : x = 0 au bord gauche de la zone (P_GAUCHE)
+                val zone = Rect(0f, P_HAUT * k, P_LARGEUR * k, (P_HAUT + P_LARGEUR * 9f / 16f) * k)
                 // Courbes douces (ease) : aucun bord ne se devine
                 val gauche = Brush.horizontalGradient(
                     0f to Color.Transparent, 0.25f to Color.Black.copy(alpha = 0.1f), 0.5f to Color.Black.copy(alpha = 0.42f),
                     0.75f to Color.Black.copy(alpha = 0.8f), 1f to Color.Black,
-                    startX = P_GAUCHE * k, endX = P_PLEINE_X * k,
+                    startX = 0f, endX = (P_PLEINE_X - P_GAUCHE) * k,
                 )
                 val bas = Brush.verticalGradient(
                     0f to Color.Black, 0.25f to Color.Black.copy(alpha = 0.86f), 0.5f to Color.Black.copy(alpha = 0.52f),
                     0.75f to Color.Black.copy(alpha = 0.16f), 1f to Color.Transparent,
                     startY = P_PLEINE_Y * k, endY = P_FIN_Y * k,
                 )
-                val centreOmbre = Offset(O_X * k, O_Y * k)
+                val centreOmbre = Offset((O_X - P_GAUCHE) * k, O_Y * k)
                 val ombre = Brush.radialGradient(
                     0f to Color.Black.copy(alpha = 0.5f), 0.4f to Color.Black.copy(alpha = 0.44f),
                     0.7f to Color.Black.copy(alpha = 0.22f), 1f to Color.Transparent,

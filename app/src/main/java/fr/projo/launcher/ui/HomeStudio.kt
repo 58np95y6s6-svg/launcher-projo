@@ -193,7 +193,7 @@ fun HomeStudio(ctx: HomeContext) {
                 // ------------------------------------------------ écran 1
                 Box(Modifier.fillMaxWidth().height(hautEcran1.u)) {
                     // Photo sur le grand fond, sous l'en-tête et les cartes
-                    FondPhotosStudio(fond, Modifier.matchParentSize())
+                    FondPhotosStudio(fond, Modifier.align(Alignment.TopEnd))
                     Column(Modifier.fillMaxSize()) {
                         StudioEnTete(
                             ctx, nav, onglets, onglet, { ongletChoisi = it }, reglagesBas, { reglagesBas = it }, versEcran,
