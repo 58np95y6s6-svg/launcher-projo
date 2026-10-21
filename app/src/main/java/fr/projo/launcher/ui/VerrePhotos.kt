@@ -7,6 +7,7 @@ import android.graphics.Matrix
 import android.graphics.PorterDuff
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.os.Build
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,11 +54,11 @@ import java.util.Calendar
  *  - fondue dans le papier peint vers le bas et les bords par un masque elliptique : les taches
  *    de couleur de Verre restent visibles autour et transparaissent un peu à travers ;
  *  - ombre douce derrière l'horloge ;
- *  - derrière les fenêtres de verre, la même photo en DÉPOLI (flou sans GPU : miniature de
- *    80 px agrandie) sous un voile sombre : on devine l'image, le texte reste net.
+ *  - derrière les fenêtres de verre, la même photo en DÉPOLI (flou sans GPU : réduite à 40 px
+ *    puis agrandie) sous un voile sombre : on devine l'image, le texte reste net.
  * Aucun flou GPU, aucun calque hors écran de plus : un dessin par photo (shader de l'image
  * combiné au dégradé du masque). Mémoire : les deux photos du chargeur partagé, plus leurs
- * miniatures (80 × 45 px, ~7 Ko chacune).
+ * miniatures floues (160 × 90 px, ~28 Ko chacune).
  */
 
 /** Mode Soir imposé (tests et captures) ; null : selon l'heure (19 h – 7 h). */
@@ -111,8 +112,11 @@ private val FiltreVerreSoir = filtrePhotosVerre(true)
 /** Opacité maximale de la photo : le papier peint transparaît un peu (teinte de Verre). */
 private const val VERRE_PHOTO_OPACITE = 0.9f
 
-/** Largeur des miniatures du dépoli (px) : ~24 px d'écran par pixel, flou doux. */
-private const val VERRE_MINIATURE = 80
+/** Largeur de réduction du dépoli (px) : ~48 px d'écran par pixel, flou de verre dépoli. */
+private const val VERRE_FLOU = 40
+
+/** Largeur des miniatures floues gardées (px) : réagrandies en bilinéaire, dégradés sans marches. */
+private const val VERRE_MINIATURE = 160
 
 /** Voile sombre posé sur le dépoli, sous le verre (lisibilité). */
 private val VerreGivre = Color(0xFF100C2A).copy(alpha = 0.42f)
@@ -129,7 +133,11 @@ private fun pinceauPhotoVerre(image: ImageBitmap, w: Float, h: Float): Brush {
         setScale(s, s)
         postTranslate((w - bmp.width * s) / 2f, (h - bmp.height * s) * 0.3f)
     }
-    val photo = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { setLocalMatrix(m) }
+    val photo = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+        setLocalMatrix(m)
+        // Agrandie en bilinéaire (avant Android 12 : selon le pinceau, filtrage déjà actif)
+        if (Build.VERSION.SDK_INT >= 31) filterMode = BitmapShader.FILTER_MODE_LINEAR
+    }
     // Ellipse centrée en haut, entre l'horloge et la fenêtre NBA
     val cx = w * 0.54f
     val cy = h * 0.16f
@@ -146,17 +154,21 @@ private fun pinceauPhotoVerre(image: ImageBitmap, w: Float, h: Float): Brush {
 
 /**
  * Miniature floue de [image] : divisions successives par 2 (chacune fait la moyenne de 4 pixels,
- * sans crénelage) jusqu'à [VERRE_MINIATURE] px de large. Hors du fil principal.
+ * sans crénelage) jusqu'à [VERRE_FLOU] px de large, puis réagrandie en bilinéaire à
+ * [VERRE_MINIATURE] px (dégradés doux). Hors du fil principal.
  */
 private fun miniatureVerre(image: ImageBitmap): ImageBitmap {
     val source = image.asAndroidBitmap()
     var b = source
-    while (b.width > VERRE_MINIATURE) {
+    while (b.width > VERRE_FLOU) {
         val r = Bitmap.createScaledBitmap(b, (b.width / 2).coerceAtLeast(1), (b.height / 2).coerceAtLeast(1), true)
         if (b !== source) b.recycle()
         b = r
     }
-    return if (b === source) image else b.asImageBitmap()
+    val h = (b.height * VERRE_MINIATURE / b.width.toFloat()).toInt().coerceAtLeast(1)
+    val grande = Bitmap.createScaledBitmap(b, VERRE_MINIATURE, h, true)
+    if (b !== source && grande !== b) b.recycle()
+    return grande.asImageBitmap()
 }
 
 /**
