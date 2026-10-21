@@ -8,6 +8,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -31,6 +34,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +71,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -135,7 +140,7 @@ private class PaletteNeon(val clair: Boolean) {
 
 // Dimensions (unités .u, écran de référence 960 × 540)
 private const val N_MARGE = 56
-private const val N_TUILE = 176
+private const val N_TUILE = 196
 /** Marge autour de la tuile, où se dessine le cadre (épaisseur + écart). */
 private const val N_CADRE = 7
 private const val N_ITEM = N_TUILE + 2 * N_CADRE
@@ -306,7 +311,9 @@ fun HomeNeon(ctx: HomeContext) {
             EnTeteNeon(ctx, pal)
             Spacer(Modifier.height(30.u))
 
-            // --- Rangée de tuiles carrées (nom de la tuile sélectionnée au-dessus, en cyan)
+            // --- Rangée de tuiles carrées (nom de la tuile sélectionnée au-dessus, en cyan) ;
+            // elle glisse en gardant la tuile sélectionnée et son cadre à distance des bords
+            CompositionLocalProvider(LocalBringIntoViewSpec provides rememberDefilementNeon(N_MARGE.u)) {
             LazyRow(
                 state = ctx.rangeeFavoris,
                 modifier = Modifier
@@ -359,6 +366,7 @@ fun HomeNeon(ctx: HomeContext) {
                         }
                     }
                 }
+            }
             }
             // Rangée « Mes apps » du contrat : vide ici (tout est dans la rangée de tuiles),
             // mais mise en page pour que Maison et le focus initial n'attendent pas
@@ -459,6 +467,28 @@ private fun styleModulesNeon(pal: PaletteNeon) = if (pal.clair) NbaStyle(
 )
 
 // ------------------------------------------------------------------ navigation
+
+/** Défilement de la rangée : la tuile sélectionnée reste à [marge] des bords de l'écran. */
+@OptIn(ExperimentalFoundationApi::class)
+private class DefilementNeon(private val marge: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val avant = offset - marge
+        val apres = offset + size - (containerSize - marge)
+        return when {
+            size > containerSize - 2 * marge -> avant
+            avant >= 0f && apres <= 0f -> 0f
+            avant < 0f -> avant
+            else -> apres
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun rememberDefilementNeon(marge: Dp): BringIntoViewSpec {
+    val densite = LocalDensity.current
+    return remember(densite, marge) { with(densite) { DefilementNeon(marge.toPx()) } }
+}
 
 /** Touches d'une tuile : ▼ vers les boutons ronds ; rien au-dessus ; bords de rangée bloqués. */
 private fun toucheTuile(k: KeyEvent, nav: NavNeon, premiere: Boolean, derniere: Boolean): Boolean {
