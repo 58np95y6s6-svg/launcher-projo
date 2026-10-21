@@ -625,14 +625,18 @@ private class DefilementReglages(private val marge: Float) : BringIntoViewSpec {
 @Composable
 private fun CorpsReglages(s: StyleReglages, p: PanneauReglages, modifier: Modifier) {
     val m = s.mesures
-    val marge = with(LocalDensity.current) { 22.u.toPx() }
+    // Grilles : fondu plus long (une rangée à moitié défilée s'efface au lieu d'être coupée),
+    // et la rangée sélectionnée reste hors du fondu
+    val grille = s.tuiles == FormeTuiles.CARTES || s.tuiles == FormeTuiles.TUILES
+    val fondu = if (grille) 34 else 20
+    val marge = with(LocalDensity.current) { (fondu + 4).u.toPx() }
     val spec = remember(marge) { DefilementReglages(marge) }
     val defilement = rememberScrollState()
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
         Column(
             modifier
                 .fillMaxWidth()
-                .fonduVertical(defilement, 20.u)
+                .fonduVertical(defilement, fondu.u)
                 .verticalScroll(defilement)
                 .padding(
                     start = m.marge.u, end = m.marge.u,

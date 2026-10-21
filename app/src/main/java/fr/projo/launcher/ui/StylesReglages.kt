@@ -359,7 +359,7 @@ private val StyleConsole = StyleReglages(
     ouverture = Ouverture.GLISSE_BAS,
     couleurs = CouleursReglages(
         // Voile de lisibilité : fondu en haut (fonduHaut), bleu nuit opaque sous les cartes
-        fond = listOf(Color(0xF7050817), Color(0xFF050817)),
+        fond = listOf(Color(0xFF050817)),
         texte = Color(0xFFF4F6FB), texteDiscret = Color(0xFFF4F6FB).copy(alpha = 0.72f),
         carte = Color(0xFF161928),
         carteFocus = listOf(Color(0xFF1F2333)),

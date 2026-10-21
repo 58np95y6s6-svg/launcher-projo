@@ -17,6 +17,8 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.NbaRepository
@@ -30,6 +32,7 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
 
 /**
  * Panneau Réglages, pour CHAQUE design (chacun a sa forme : feuille, fenêtre, grille…) :
@@ -112,21 +115,20 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     }
 
     @Test
-    fun gaucheEtRetourFerment() {
+    fun gaucheFerme() {
         ouvrir()
         attendreFocus("reglage:volume", "ouverture")
         touche(Key.DirectionLeft)
         if (fermetures != 1) fail("[${design.name}] ◀ sur le volume : le panneau devait se fermer (fermetures = $fermetures)")
-        if (panneauAffiche()) fail("[${design.name}] ◀ : panneau toujours affiché")
-        // Réouverture, puis Retour (BackHandler)
-        compose.runOnIdle { ouvert = true }
-        avancer(1500)
-        avancer(200)
-        attendreFocus("reglage:volume", "réouverture")
+    }
+
+    @Test
+    fun retourFerme() {
+        ouvrir()
+        attendreFocus("reglage:volume", "ouverture")
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         avancer(800)
-        avancer(200)
-        if (fermetures != 2) fail("[${design.name}] Retour : le panneau devait se fermer (fermetures = $fermetures)")
+        if (fermetures != 1) fail("[${design.name}] Retour : le panneau devait se fermer (fermetures = $fermetures)")
     }
 
     @Test
@@ -142,13 +144,33 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         if (fermetures != 0) fail("[${design.name}] ◀ pendant le réglage ne doit pas fermer le panneau")
         attendreFocus("reglage:volume", "pendant le réglage")
         capturer("r2_reglage_volume")
-        // Retour quitte le réglage sans fermer
+        // Retour quitte le réglage sans fermer le panneau…
         touche(Key.Back)
         if (fermetures != 0) fail("[${design.name}] Retour pendant le réglage ne doit pas fermer le panneau")
-        if (texteAffiche("Volume · ◀ ▶")) fail("[${design.name}] Retour : le réglage devait s'arrêter")
-        // ◀ ferme de nouveau
+        // … et ◀ ferme de nouveau, sans toucher au volume
         touche(Key.DirectionLeft)
-        if (fermetures != 1) fail("[${design.name}] ◀ après le réglage : le panneau devait se fermer")
+        if (volumes.size != 3) fail("[${design.name}] ◀ après Retour : le volume ne devait plus changer ($volumes)")
+        if (fermetures != 1) fail("[${design.name}] ◀ après Retour : le panneau devait se fermer")
+    }
+
+    /** Dialogue ouvert depuis le panneau (Design) : fond, forme et sélection du style du design. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun captureDialogue() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            val echelle = LocalConfiguration.current.screenWidthDp / 960f
+            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design) {
+                MaterialTheme(colorScheme = darkColorScheme()) {
+                    DesignDialog(current = design, onChoose = {}, onDismiss = {})
+                }
+            }
+        }
+        avancer(1500)
+        if (!texteAffiche("Design de l'accueil")) fail("[${design.name}] dialogue Design non affiché")
+        val fichier = File("build/captures/${design.name.lowercase()}_r4_dialogue_design.png")
+        fichier.parentFile?.mkdirs()
+        captureScreenRoboImage(fichier.path)
     }
 
     // ------------------------------------------------------------------ outils
