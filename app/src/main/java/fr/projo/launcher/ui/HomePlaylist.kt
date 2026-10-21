@@ -1471,14 +1471,14 @@ private fun PlCarte(app: AppInfo, ctx: HomeContext, sousTitre: String, lancer: (
         },
         titre = app.label,
         sousTitre = sousTitre,
-        // Fondu : le titre est déjà écrit sur l'image
-        nouveau = nouveaute?.titre?.takeIf { style != StyleNouveaute.FONDU },
+        // Titre de la nouveauté sous le nom (sur l'image, le bouton « lecture » le cacherait)
+        nouveau = nouveaute?.titre,
         modifier = modifier.uneToucheMenu { ctx.actions.openMenu(app) },
     ) {
         if (catalogue) {
             VisuelNouveaute(
                 app, ctx.icons, paquet, FormeNouveaute.CARRE, PL_IMAGE.u,
-                rayon = 6.u, style = style, nouveaute = nouveaute,
+                rayon = 6.u, style = style, legende = false, nouveaute = nouveaute,
             ) {
                 PlPochette(app, visuel, PL_IMAGE.u, RoundedCornerShape(6.u))
             }

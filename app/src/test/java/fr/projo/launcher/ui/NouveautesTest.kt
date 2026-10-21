@@ -37,6 +37,7 @@ class NouveautesTest : BancAccueil("PLAYLIST") {
 
     private val netflix = "com.netflix.ninja"
     private val prime = "com.amazon.amazonvideo.livingroom"
+    private val canal = "com.canal.android.canal"
 
     @Before
     fun avant() = Nouveautes.vider()
@@ -134,16 +135,24 @@ class NouveautesTest : BancAccueil("PLAYLIST") {
         StylesNouveautes.courant = style
         afficher()
         // Chargements réels (réseau, décodage) : jusqu'à 40 s
+        // (Canal+ aussi s'il a une nouveauté : il est à l'écran)
         var essais = 0
         while (essais++ < 80) {
-            val ok = listOf(netflix, prime).all {
+            val ok = listOf(netflix, prime, canal).all {
                 compose.onAllNodes(hasTestTag("nouveaute:$it"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
-            if (ok) break
+            if (ok || (essais > 40 && listOf(netflix, prime).all { p ->
+                    compose.onAllNodes(hasTestTag("nouveaute:$p"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+                })
+            ) break
             Thread.sleep(250)
             avancer(250)
         }
-        avancer(1500)
+        // Traitements calculés hors du fil principal (duotone) : laissés finir
+        repeat(8) {
+            Thread.sleep(250)
+            avancer(250)
+        }
         verifierCartes()
     }
 

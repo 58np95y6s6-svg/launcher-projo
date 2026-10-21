@@ -2,6 +2,7 @@ package fr.projo.launcher.ui
 
 import android.graphics.Bitmap
 import android.util.LruCache
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,7 +158,8 @@ fun rememberNouveaute(app: AppInfo, largeurPx: Int): Nouveaute? {
  * Visuel « nouveauté » de [app] : [forme] de [largeur] (hauteur 9/16 ou carrée), traitement
  * [style], logo de l'app ([paquetIcone] : son visuel CARRÉ) dans un coin. Sans nouveauté :
  * [repli] (l'illustration actuelle), à la même taille.
- * [legende] : en FONDU, « Nouveau » et le titre sont écrits sur la zone de couleur.
+ * [legende] : en FONDU, « Nouveau » et le titre sont écrits sur la zone de couleur ; false :
+ * seulement le logo et « Nouveau » (le design affiche le titre ailleurs, ex. sous la carte).
  */
 @Composable
 fun VisuelNouveaute(
@@ -200,9 +202,25 @@ fun VisuelNouveaute(
         }
         val logo = largeur * (if (carre) 0.24f else 0.16f)
         when (style) {
-            StyleNouveaute.FONDU -> {
+            StyleNouveaute.FONDU -> if (!legende) {
+                // Logo sur la zone de couleur (en bas à gauche), étiquette « NOUVEAU » sur la photo
+                LogoNouveaute(
+                    visuel, logo,
+                    Modifier
+                        .align(if (carre) Alignment.BottomStart else Alignment.CenterStart)
+                        .padding(8.u * r),
+                )
+                Box(
+                    Modifier
+                        .align(if (carre) Alignment.TopStart else Alignment.TopEnd)
+                        .padding(7.u * r)
+                        .clip(RoundedCornerShape(3.u * r))
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 5.u * r, vertical = 2.u * r)
+                ) { MotNouveau(r) }
+            } else {
                 LogoNouveaute(visuel, logo, Modifier.align(Alignment.TopStart).padding(7.u * r))
-                if (legende) {
+                run {
                     LegendeNouveaute(
                         n.titre, r, carre,
                         if (carre) {
@@ -232,16 +250,23 @@ private fun LogoNouveaute(visuel: AppVisual?, taille: Dp, modifier: Modifier) {
     )
 }
 
+/** Mot « NOUVEAU », petites capitales espacées. */
+@Composable
+private fun MotNouveau(r: Float) {
+    val k = LocalScale.current
+    Text(
+        "NOUVEAU", color = Color.White.copy(alpha = 0.9f), fontSize = (8f * r * k).sp, fontWeight = FontWeight.Bold,
+        fontFamily = FontFamily.SansSerif, letterSpacing = 0.14.em, lineHeight = (10f * r * k).sp, maxLines = 1,
+    )
+}
+
 /** « NOUVEAU » et le titre (2 lignes), en blanc sur la zone de couleur. */
 @Composable
 private fun LegendeNouveaute(titre: String, r: Float, carre: Boolean, modifier: Modifier) {
     val k = LocalScale.current
     fun taille(u: Float): TextUnit = (u * r * k).sp
     Column(modifier) {
-        Text(
-            "NOUVEAU", color = Color.White.copy(alpha = 0.85f), fontSize = taille(8f), fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.SansSerif, letterSpacing = 0.14.em, lineHeight = taille(10f), maxLines = 1,
-        )
+        MotNouveau(r)
         Text(
             titre, color = Color.White, fontSize = taille(if (carre) 12f else 15f), fontWeight = FontWeight.ExtraBold,
             fontFamily = FontFamily.SansSerif, letterSpacing = (-0.01).em, lineHeight = taille(if (carre) 13.5f else 17f),
@@ -341,7 +366,13 @@ private fun DecoupeNouveaute(image: ImageBitmap, marque: Color, carre: Boolean, 
 @Composable
 private fun DuotoneNouveaute(n: Nouveaute, marque: Color) {
     val sombre = lerp(marque, Color.Black, 0.86f)
-    val clair = lerp(marque, Color.White, 0.28f).let { if (it.luminance() < 0.12f) lerp(it, Color.White, 0.25f) else it }
+    // Lumières assez claires pour que la photo se lise, même pour une marque très sombre (Canal+…)
+    val clair = remember(marque) {
+        var c = lerp(marque, Color.White, 0.28f)
+        var n = 0
+        while (c.luminance() < 0.25f && n++ < 8) c = lerp(c, Color.White, 0.2f)
+        c
+    }
     val duo by produceState(DuotonesNouveautes.enCache(n, sombre, clair), n.adresse, n.image.width, marque) {
         value = withContext(Dispatchers.Default) { DuotonesNouveautes.obtenir(n, sombre, clair) }
     }
