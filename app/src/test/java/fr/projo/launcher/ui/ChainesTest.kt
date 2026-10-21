@@ -12,7 +12,8 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.printToString
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.HomeUi
@@ -120,16 +121,44 @@ class ChainesTest : BancAccueil("CHAINES") {
 
     // ------------------------------------------------------------------ pages
 
-    /** TEMPORAIRE : diagnostic du focus initial. */
+    /** TEMPORAIRE : diagnostic (résultat dans le message d'échec). */
+    @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
     @Test
     fun diagnosticFocus() {
-        try { afficher() } catch (e: AssertionError) { println("DIAG afficher : ${e.message}") }
-        println("DIAG arbre : " + compose.onRoot(useUnmergedTree = true).printToString(maxDepth = 12).take(6000))
-        try { donnerFocus(favori(0)) } catch (e: AssertionError) { println("DIAG donnerFocus : ${e.message}") }
-        println("DIAG focus après donnerFocus : ${decrire(focus())}")
+        val l = mutableListOf<String>()
+        afficher()
+        val e = etiquettesChaines()
+        fun etat(nom: String) {
+            l += "$nom: focus=${focus()?.etiquette} p1=${composee(e[0])} p2=${composee(e[12])} prec=${composee("chaines:page-precedente")} panneau=${composee("chaines:panneau")}"
+        }
+        // B. Maison depuis la tuile 2
         appuyer(Key.DirectionRight)
-        println("DIAG focus après ▶ : ${decrire(focus())}")
-        fail("DIAG fin")
+        compose.runOnIdle { appuisMaison.intValue++ }
+        avancer(1500)
+        etat("B maison")
+        // A. ▶ au bord
+        allerAuFavori(3)
+        etat("A avant")
+        compose.onRoot().performKeyInput { pressKey(Key.DirectionRight) }
+        avancer(50); etat("A 50")
+        avancer(200); etat("A 250")
+        avancer(800); etat("A 1050")
+        // E. focus relais premierFocus via Maison depuis la page 2 (si on y est)
+        compose.runOnIdle { appuisMaison.intValue++ }
+        avancer(1500)
+        etat("E maison")
+        // C. panneau + Maison
+        ouvrirZoneModules()
+        etat("C ouvert")
+        compose.runOnIdle { appuisMaison.intValue++ }
+        avancer(1500)
+        etat("C maison")
+        // D. panneau + focusReglages
+        ouvrirZoneModules()
+        compose.runOnIdle { focusReglages.requestFocus() }
+        avancer(800)
+        etat("D reglages")
+        fail("DIAG " + l.joinToString(" | "))
     }
 
     @Test

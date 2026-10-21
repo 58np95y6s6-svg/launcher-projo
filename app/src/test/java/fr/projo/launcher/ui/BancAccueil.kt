@@ -180,7 +180,11 @@ abstract class BancAccueil(nomDesign: String) {
     protected fun donnerFocus(etiquette: String) {
         // Chaînes : la zone de modules s'ouvre par l'enveloppe ; une tuile d'une autre page
         // n'est pas composée : on y va à la télécommande, page après page
-        if (chaines && etiquette == "nba") ouvrirZoneModules()
+        if (chaines && etiquette == "nba") {
+            // Ouverte par l'enveloppe, la zone reçoit le focus sur son point d'entrée (1er module)
+            ouvrirZoneModules()
+            return
+        }
         if (chaines && etiquette in etiquettesChaines() && !estComposee(etiquette)) {
             allerALaTuile(etiquette)
             return
