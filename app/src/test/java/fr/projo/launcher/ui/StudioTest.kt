@@ -356,11 +356,11 @@ class StudioTest : BancStudio() {
                 avancer(pas)
                 notes += "+$pas ms : écran ${ecran()} focus ${decrire(focus())}"
             }
+            if (focus()?.etiquette != favori(0) || ecran() != 1) fail("[STUDIO] Maison depuis $depart : ${notes.joinToString(" | ")}")
         }
         maison(app(1))
         maison("biblio")
         maison("nba")
-        if (focus()?.etiquette != favori(0) || ecran() != 1) fail("[STUDIO] Maison : ${notes.joinToString(" | ")}")
     }
 
     /** OK lance l'app (barre et suggestions) ; appui long / Menu ouvre son menu. */

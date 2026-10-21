@@ -28,7 +28,6 @@ import fr.projo.launcher.BuildConfig
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppRepository
-import fr.projo.launcher.data.DefaultFavorites
 import fr.projo.launcher.data.Illustrations
 import fr.projo.launcher.data.Rubrique
 import kotlinx.coroutines.Dispatchers
@@ -538,6 +537,3 @@ fun ouvrirProgramme(context: Context, p: StudioProgramme, repli: () -> Unit) {
     }
     if (!ok) repli()
 }
-
-/** « TF1+ » → « tf1plus » (comme les règles d'Illustrations). */
-internal fun normaliserNom(s: String) = DefaultFavorites.normaliser(s)
