@@ -1,6 +1,5 @@
 package fr.projo.launcher.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -29,10 +28,11 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
@@ -52,10 +52,12 @@ import fr.projo.launcher.remote.EtatAppairage
 import fr.projo.launcher.remote.QrCode
 import fr.projo.launcher.remote.RemoteConfig
 import fr.projo.launcher.remote.TelephoneAppaire
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Résumé de la télécommande pour le panneau Réglages. */
 data class ResumeTelecommande(
@@ -109,22 +111,40 @@ private fun FocusInitial(cible: FocusRequester, cle: Any? = Unit) {
     }
 }
 
-/** QR code dessiné module par module, sur fond blanc avec sa marge (4 modules). */
+/**
+ * QR code noir sur fond blanc, avec sa zone de silence (4 modules), centré dans [modifier].
+ * Bords des modules arrondis au pixel (nets, sans flou ni liseré entre deux modules), suites
+ * de modules noirs d'une ligne réunies en un rectangle : le chemin est calculé une seule fois
+ * par taille (drawWithCache), puis dessiné d'un coup à chaque image.
+ */
 @Composable
-fun QrCodeImage(texte: String, modifier: Modifier = Modifier) {
-    val modules = remember(texte) { QrCode.matrice(texte) }
-    Canvas(modifier.background(Color.White)) {
-        val n = modules.size + 8
-        val pas = size.minDimension / n
-        for (y in modules.indices) {
-            val ligne = modules[y]
-            for (x in ligne.indices) {
-                if (ligne[x]) {
-                    drawRect(Color.Black, Offset((x + 4) * pas, (y + 4) * pas), Size(pas + 0.5f, pas + 0.5f))
+fun QrCodeImage(texte: String, modifier: Modifier = Modifier, niveau: ErrorCorrectionLevel = ErrorCorrectionLevel.M) {
+    val modules = remember(texte, niveau) { QrCode.matrice(texte, niveau) }
+    Spacer(
+        modifier
+            .background(Color.White)
+            .drawWithCache {
+                val marge = QrCode.ZONE_DE_SILENCE
+                val n = modules.size + 2 * marge
+                val cote = size.minDimension
+                val pas = cote / n
+                val x0 = (size.width - cote) / 2
+                val y0 = (size.height - cote) / 2
+                fun bord(origine: Float, i: Int) = (origine + (i + marge) * pas).roundToInt().toFloat()
+                val chemin = Path()
+                for (y in modules.indices) {
+                    val ligne = modules[y]
+                    var x = 0
+                    while (x < ligne.size) {
+                        if (!ligne[x]) { x++; continue }
+                        val debut = x
+                        while (x < ligne.size && ligne[x]) x++
+                        chemin.addRect(Rect(bord(x0, debut), bord(y0, y), bord(x0, x), bord(y0, y + 1)))
+                    }
                 }
-            }
-        }
-    }
+                onDrawBehind { drawPath(chemin, Color.Black) }
+            },
+    )
 }
 
 private fun minutesSecondes(ms: Long): String {

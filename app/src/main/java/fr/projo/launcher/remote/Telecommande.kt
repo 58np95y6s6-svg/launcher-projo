@@ -25,7 +25,7 @@ import org.json.JSONObject
 import java.io.File
 import java.lang.ref.WeakReference
 
-/** État de l'appairage affiché dans Réglages → « Appairer un téléphone ». */
+/** État de l'appairage affiché dans Réglages → « Appairer un téléphone » et par le module Télécommande. */
 sealed class EtatAppairage {
     data object Inactif : EtatAppairage()
 
@@ -86,6 +86,8 @@ object Telecommande : HoteSession {
     override val registre: RegistreTelecommande get() = _registre
     override val identite: IdentiteTv get() = _identite
     override val appairage = GestionAppairage()
+    /** QR code permanent du module Télécommande (même horloge que [appairage]). */
+    private val qr = RenouvellementQr(appairage)
     private lateinit var _injecteur: Injecteur
     override val injecteur: Injecteur get() = _injecteur
     private var _nomTv = "iBiProjo"
@@ -129,6 +131,7 @@ object Telecommande : HoteSession {
                 } catch (e: Exception) { "?" }
                 _telephones.value = _registre.telephones()
                 ecranAllume = (app.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive
+                qr.ecranAllume = ecranAllume
                 ContextCompat.registerReceiver(app, surEcran, IntentFilter().apply {
                     addAction(Intent.ACTION_SCREEN_ON)
                     addAction(Intent.ACTION_SCREEN_OFF)
@@ -156,8 +159,10 @@ object Telecommande : HoteSession {
             fil.post {
                 if (ecranAllume == allume) return@post
                 ecranAllume = allume
+                qr.ecranAllume = allume
                 Log.i(TAG, if (allume) "Écran allumé : reprise" else "Écran éteint : pause")
                 evaluer()
+                maintenirQr()
             }
         }
     }
@@ -272,6 +277,8 @@ object Telecommande : HoteSession {
         if (attente?.first === session) {
             attente = null
             _confirmation.value = null
+            // Renouvellement du QR code permanent, s'il attendait la fin de cette confirmation
+            fil.post { maintenirQr() }
         }
     }
 
@@ -284,7 +291,9 @@ object Telecommande : HoteSession {
     override fun surAppaire(telephone: TelephoneAppaire) {
         _telephones.value = registre.telephones()
         _appairage.value = EtatAppairage.Reussi(telephone.nom)
-        fil.removeCallbacks(finAppairage)
+        // Module Télécommande : « ✓ » quelques secondes, puis un nouveau QR code (maintenirQr)
+        qr.appaire()
+        planifier(qr.prochainRappel())
         evaluer()
     }
 
@@ -305,32 +314,102 @@ object Telecommande : HoteSession {
 
     // ------------------------------------------------------------------ actions de l'interface
 
-    private val finAppairage = Runnable {
-        if (appairage.actif() == null && _appairage.value is EtatAppairage.EnCours) {
+    /**
+     * Échéance : du secret (dialogue seul : « Code expiré » ; module affiché : nouveau secret),
+     * ou de l'affichage « ✓ appairé » du module.
+     */
+    private val echeance = Runnable {
+        if (qr.actif) {
+            maintenirQr()
+        } else if (appairage.actif() == null && _appairage.value is EtatAppairage.EnCours) {
             _appairage.value = EtatAppairage.Expire
             evaluer()
         }
     }
 
-    /** Réglages → « Appairer un téléphone » : nouveau secret, QR code et code de secours. */
-    fun commencerAppairage() = surFil {
-        val s = appairage.demarrer()
+    /** Arrêt différé quand le dernier module disparaît (un changement de design le recrée aussitôt). */
+    private val arretQr = Runnable { if (!qr.actif && !qr.dialogueOuvert) fermerAppairage() }
+
+    private fun planifier(instant: Long?) {
+        fil.removeCallbacks(echeance)
+        if (instant != null) fil.postDelayed(echeance, (instant - System.currentTimeMillis()).coerceAtLeast(0) + 50)
+    }
+
+    /** Affiche un secret : QR code (URL complète), code de secours et fin de validité. */
+    private fun publier(s: SecretAppairage) {
         val empreinte = CryptoTelecommande.empreinteCle(identite.spki)
-        val url = RemoteConfig.URL_PWA + "#pair=" + registre.idTv() + "." + s.secret + "." + empreinte
-        val restant = s.expire - System.currentTimeMillis()
-        _appairage.value = EtatAppairage.EnCours(url, s.codeAffiche, System.currentTimeMillis() + restant)
-        Log.i(TAG, "Appairage ouvert")
-        fil.removeCallbacks(finAppairage)
-        fil.postDelayed(finAppairage, restant + 50)
+        _appairage.value = EtatAppairage.EnCours(RemoteConfig.urlAppairage(registre.idTv(), s.secret, empreinte), s.codeAffiche, s.expire)
+        planifier(s.expire)
+    }
+
+    /**
+     * QR code permanent (module Télécommande) : nouveau secret si besoin (voir RenouvellementQr),
+     * jamais si l'accueil est caché ou l'écran éteint, ni pendant une confirmation.
+     */
+    private fun maintenirQr() {
+        // Module caché ou écran éteint : rien à créer (l'échéance d'un dialogue ouvert reste planifiée)
+        if (!pret || !qr.actif) return
+        val nouveau = qr.maintenir()
+        if (nouveau != null) {
+            publier(nouveau)
+            Log.i(TAG, "QR code de l'accueil renouvelé")
+            evaluer()
+            return
+        }
+        if (appairage.actif() == null && _appairage.value is EtatAppairage.EnCours) {
+            // Expiré pendant une confirmation : le nouveau QR code attend la réponse
+            _appairage.value = EtatAppairage.Expire
+            evaluer()
+        }
+        planifier(qr.prochainRappel())
+    }
+
+    /** Plus rien n'affiche le QR code : le secret ne sert plus. */
+    private fun fermerAppairage() {
+        fil.removeCallbacks(echeance)
+        fil.removeCallbacks(arretQr)
+        appairage.arreter()
+        _appairage.value = EtatAppairage.Inactif
         evaluer()
     }
 
-    /** Dialogue d'appairage fermé. */
-    fun arreterAppairage() = surFil {
-        appairage.arreter()
-        fil.removeCallbacks(finAppairage)
-        _appairage.value = EtatAppairage.Inactif
+    /** Réglages → « Appairer un téléphone » (ou « Nouveau code ») : nouveau secret, QR code et code de secours. */
+    fun commencerAppairage() = surFil {
+        qr.dialogueOuvert = true
+        fil.removeCallbacks(arretQr)
+        publier(appairage.demarrer())
+        Log.i(TAG, "Appairage ouvert")
         evaluer()
+    }
+
+    /** OK sur le module Télécommande : dialogue en grand, avec le QR code déjà affiché par le module. */
+    fun ouvrirAppairage() = surFil {
+        qr.dialogueOuvert = true
+        if (appairage.actif() != null && _appairage.value is EtatAppairage.EnCours) return@surFil
+        if (qr.actif) maintenirQr() else publier(appairage.demarrer())
+        evaluer()
+    }
+
+    /** Dialogue d'appairage fermé : le secret reste valable si le module Télécommande l'affiche. */
+    fun arreterAppairage() = surFil {
+        qr.dialogueOuvert = false
+        if (qr.actif) maintenirQr() else fermerAppairage()
+    }
+
+    /** Un module Télécommande s'affiche (accueil au premier plan) : QR code valable, renouvelé à l'échéance. */
+    fun afficherQr(cle: Any) = surFil {
+        fil.removeCallbacks(arretQr)
+        qr.afficher(cle)
+        maintenirQr()
+    }
+
+    /** Le module disparaît (accueil caché, module retiré) : plus de renouvellement. */
+    fun masquerQr(cle: Any) = surFil {
+        if (qr.masquer(cle) && !qr.actif && !qr.dialogueOuvert) {
+            planifier(null)
+            fil.removeCallbacks(arretQr)
+            fil.postDelayed(arretQr, 1_000)
+        }
     }
 
     fun repondreConfirmation(autorise: Boolean) = surFil {
@@ -338,6 +417,8 @@ object Telecommande : HoteSession {
         attente = null
         _confirmation.value = null
         a.second(autorise)
+        // Le renouvellement du QR code permanent attendait peut-être cette réponse
+        maintenirQr()
     }
 
     fun renommer(id: String, nom: String) = surFil {

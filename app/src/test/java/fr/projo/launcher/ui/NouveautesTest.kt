@@ -146,10 +146,11 @@ class NouveautesTest : BancAccueil("PLAYLIST") {
         preparerTmdb()
         StylesNouveautes.courant = style
         afficher()
-        // Chargements réels (réseau, décodage) : jusqu'à 40 s
+        // Chargements réels (réseau, décodage) : 240 essais de 250 ms, au moins 60 s (plusieurs requêtes
+        // TMDB à la suite, chacune jusqu'à 13 s si le réseau est lent ; on sort dès que les cartes sont là)
         // (Canal+ aussi s'il a une nouveauté : il est à l'écran)
         var essais = 0
-        while (essais++ < 80) {
+        while (essais++ < 240) {
             val ok = listOf(netflix, prime, canal).all {
                 compose.onAllNodes(hasTestTag("nouveaute:$it"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
