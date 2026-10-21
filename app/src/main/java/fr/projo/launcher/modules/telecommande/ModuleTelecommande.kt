@@ -112,7 +112,7 @@ object SourceTelecommandeReelle : SourceTelecommande {
  * limite de tentatives : un QR code affiché en permanence ne suffit pas à piloter la TV.
  *
  * Lisibilité à 3 m : noir sur blanc dans un cadre blanc (zone de silence comprise) quel que
- * soit le design, au moins 90 u environ en PETIT. OK : le dialogue d'appairage en grand.
+ * soit le design, environ 100 u en PETIT. OK : le dialogue d'appairage en grand.
  */
 object ModuleTelecommande : Module(
     id = "telecommande",
@@ -227,7 +227,7 @@ private fun CadreQr(etat: EtatAppairage, cote: Float) {
             .size(cote.u)
             .background(Color.White, forme)
             .border(1.u, style.filet, forme)
-            .padding(2.u),
+            .padding(1.5f.u),
         contentAlignment = Alignment.Center,
     ) {
         when (etat) {
@@ -325,10 +325,10 @@ private fun ListeTelephones(v: Vue, lignes: Int, k: Float, avecEtat: Boolean) {
 private fun TelecommandePetit(v: Vue, ctx: ModuleContexte) {
     val style = ctx.style
     val margeH = 4f
-    val margeV = 2f
-    val hCode = 16f
-    val hAide = 10.5f
-    val ecart = 1.5f
+    val margeV = 1f
+    val hCode = 14.5f
+    val hAide = 9.5f
+    val ecart = 1f
     val cote = minOf(ctx.largeur - 2 * margeH, ctx.hauteur - 2 * margeV - hCode - hAide - ecart).coerceAtLeast(40f)
     Column(
         Modifier.fillMaxSize().padding(horizontal = margeH.u, vertical = margeV.u),
@@ -338,10 +338,10 @@ private fun TelecommandePetit(v: Vue, ctx: ModuleContexte) {
         CadreQr(v.etat, cote)
         Spacer(Modifier.height(ecart.u))
         Ligne(
-            v.code, if (v.codeLisible) 14.5f else 11f, hCode, style.texte, Modifier.testTag("telecommande:code"),
+            v.code, if (v.codeLisible) 13.5f else 11f, hCode, style.texte, Modifier.testTag("telecommande:code"),
             poids = FontWeight.SemiBold, mono = v.codeLisible, espacement = if (v.codeLisible) 0.5f else 0f, centre = true,
         )
-        Ligne(v.aide, 8f, hAide, style.texteDiscret, centre = true)
+        Ligne(v.aide, 7.5f, hAide, style.texteDiscret, centre = true)
     }
 }
 

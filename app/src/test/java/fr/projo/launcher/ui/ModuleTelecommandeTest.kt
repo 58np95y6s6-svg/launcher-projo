@@ -97,7 +97,7 @@ object FacticesTelecommande {
  * Module Télécommande (QR code d'appairage sur l'accueil) : captures seul (MOYEN ; GRAND dans
  * Playlist) et avec la Météo (PETIT côte à côte ; MOYEN empilés dans Playlist), dans un
  * design clair (Pastel) et un foncé (Aurore). Contrôles : rien n'est coupé, QR code d'au moins
- * 88 u, décodé depuis la capture (et réduite comme vue d'un téléphone à 3 m) : il donne
+ * 90 u, décodé depuis la capture (et réduite comme vue de loin par un téléphone) : il donne
  * l'URL d'appairage. OK ouvre le dialogue en grand ; le module ne demande un secret que
  * pendant que l'accueil est au premier plan.
  */
@@ -205,15 +205,15 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
     }
 
     /**
-     * QR code de la capture : au moins 88 u de côté, décodé tel quel puis réduit à 60 % (TV de
-     * 140 cm vue d'un téléphone à 3 m : environ 2 pixels de caméra par module) ; il doit donner
-     * l'URL d'appairage.
+     * QR code de la capture : au moins 90 u de côté, décodé tel quel puis réduit à 70 % (vu de
+     * loin : en PETIT, environ 2,5 pixels de caméra par module, la limite sûre de zxing) ; il
+     * doit donner l'URL d'appairage.
      */
     private fun verifierQr(capture: File, cas: String) {
         val b = bornesDe("telecommande:qr") ?: return fail("[${design.name}] $cas : QR code introuvable")
         val cote = minOf(b.width, b.height) / pxParU
         println("[${design.name}] $cas : QR code ${cote.roundToInt()} u (${b.enU()})")
-        if (cote < 88f) fail("[${design.name}] $cas : QR code trop petit (${cote.roundToInt()} u, 88 au moins)")
+        if (cote < 90f) fail("[${design.name}] $cas : QR code trop petit (${cote.roundToInt()} u, 90 au moins)")
         val image = BitmapFactory.decodeFile(capture.path) ?: return fail("capture illisible : $capture")
         val m = (6 * pxParU).toInt()
         val x0 = (b.left.toInt() - m).coerceAtLeast(0)
@@ -222,8 +222,8 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
         val y1 = (b.bottom.toInt() + m).coerceAtMost(image.height)
         val morceau = Bitmap.createBitmap(image, x0, y0, x1 - x0, y1 - y0)
         assertEquals("[${design.name}] $cas : QR code décodé", FacticesTelecommande.url, decoder(morceau))
-        val loin = Bitmap.createScaledBitmap(morceau, (morceau.width * 0.6f).toInt(), (morceau.height * 0.6f).toInt(), true)
-        assertEquals("[${design.name}] $cas : QR code réduit à 60 % (3 m)", FacticesTelecommande.url, decoder(loin))
+        val loin = Bitmap.createScaledBitmap(morceau, (morceau.width * 0.7f).toInt(), (morceau.height * 0.7f).toInt(), true)
+        assertEquals("[${design.name}] $cas : QR code réduit à 70 % (vu de loin)", FacticesTelecommande.url, decoder(loin))
     }
 
     private fun decoder(image: Bitmap): String? {
