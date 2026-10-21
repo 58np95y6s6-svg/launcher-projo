@@ -327,7 +327,7 @@ private fun TelecommandePetit(v: Vue, ctx: ModuleContexte) {
     val margeH = 4f
     val margeV = 0.5f
     val hCode = 14f
-    val hAide = 9.5f
+    val hAide = 10.5f
     val ecart = 1f
     // 1 u de réserve : l'arrondi au pixel ne doit pas rogner la dernière ligne
     val reserve = 1f

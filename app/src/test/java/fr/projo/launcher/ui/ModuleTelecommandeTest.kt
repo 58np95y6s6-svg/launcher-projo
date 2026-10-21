@@ -123,8 +123,8 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun seul() {
         val source = FacticesTelecommande.source()
         preparer(source, "telecommande")
-        controler("module:telecommande")
         val capture = capturer("q1_telecommande_seul")
+        controler("module:telecommande")
         verifierQr(capture, "seul")
         assertEquals("le module demande un QR code valable (accueil affiché)", 1, source.affiches.size)
     }
@@ -133,8 +133,8 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun avecLaMeteo() {
         val source = FacticesTelecommande.source()
         preparer(source, "telecommande", "meteo")
-        controler("module:telecommande")
         val capture = capturer("q2_telecommande_meteo")
+        controler("module:telecommande")
         verifierQr(capture, "avec la Météo")
     }
 
@@ -142,8 +142,8 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun meteoPuisTelecommande() {
         val source = FacticesTelecommande.source()
         preparer(source, "meteo", "telecommande")
-        controler("module:telecommande")
         val capture = capturer("q3_meteo_telecommande")
+        controler("module:telecommande")
         verifierQr(capture, "2e module")
     }
 
@@ -270,7 +270,11 @@ class ModuleTelecommandeTest(nomDesign: String) : BancAccueil(nomDesign) {
             val r = resultats.firstOrNull()
             if (r != null) {
                 val ellipse = (0 until r.lineCount).any { r.isLineEllipsized(it) }
-                if (r.hasVisualOverflow || ellipse) erreurs += "« $texte » coupé"
+                if (r.hasVisualOverflow || ellipse) {
+                    erreurs += "« $texte » coupé (texte ${r.size.width} × ${r.size.height} px, " +
+                        "contraintes ${r.layoutInput.constraints}, débord hauteur ${r.didOverflowHeight}, " +
+                        "largeur ${r.didOverflowWidth}, points de suspension $ellipse)"
+                }
             }
             val b = n.bornesCompletes()
             if (b.left < m.left - tol || b.right > m.right + tol || b.top < m.top - tol || b.bottom > m.bottom + tol) {
