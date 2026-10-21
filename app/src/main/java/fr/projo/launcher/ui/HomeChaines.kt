@@ -3,6 +3,15 @@ package fr.projo.launcher.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -131,7 +140,7 @@ private val ChainesStyleModules = NbaStyle(
     focusTexte = Color(0xFF0E4A63),
     pastilleFond = Color(0xFFEFF1F3),
     zoneLargeur = 720,
-    zoneHauteur = 290,
+    zoneHauteur = 260,
 )
 
 // ------------------------------------------------------------------ état
@@ -145,6 +154,20 @@ private class EtatChaines {
     var tuileFocus by mutableIntStateOf(-1)
     var panneau by mutableStateOf(false)
     val entreeModules = FocusRequester()
+
+    /**
+     * Main-curseur : bout de l'index (px, repère de la fenêtre) sur l'élément sélectionné,
+     * null s'il n'y a rien à pointer (panneau des modules). Lu seulement par la main.
+     */
+    var main by mutableStateOf<Offset?>(null)
+    /** Coin haut gauche de l'écran d'accueil dans la fenêtre (px). */
+    var origine = Offset.Zero
+
+    /** Pose la main sur un élément : vers le bas, à droite du centre. */
+    fun pointer(r: Rect, rond: Boolean) {
+        main = if (rond) Offset(r.center.x + r.width * 0.12f, r.center.y + r.height * 0.14f)
+        else Offset(r.center.x + r.width * 0.10f, r.center.y + r.height * 0.16f)
+    }
 
     private val tuiles = HashMap<Int, FocusRequester>()
     fun tuile(i: Int): FocusRequester = tuiles.getOrPut(i) { FocusRequester() }
@@ -166,7 +189,6 @@ private class EtatChaines {
     /** Sélectionne la tuile [i], en changeant de page si besoin (glissement). */
     fun allerTuile(i: Int) {
         val p = GrilleChaines.page(i)
-        DiagChaines.log += "allerTuile($i) p=$p page=$page"
         if (p != page) {
             page = p
             cible = i
@@ -255,7 +277,6 @@ fun HomeChaines(ctx: HomeContext) {
     val pages = GrilleChaines.pages(n)
     val etat = remember { EtatChaines() }
     val page = etat.page.coerceIn(0, pages - 1)
-    DiagChaines.log += "compo page=$page"
     LaunchedEffect(pages) { if (etat.page > pages - 1) etat.page = pages - 1 }
 
     // Focus à donner après un changement de page : la tuile n'existe qu'une fois la page composée
@@ -263,9 +284,8 @@ fun HomeChaines(ctx: HomeContext) {
         val c = etat.cible ?: return@LaunchedEffect
         for (essai in 1..4) {
             withFrameNanos {}
-            val r = runCatching { etat.tuile(c).requestFocus() }
-            DiagChaines.log += "cible $c essai $essai ${r.exceptionOrNull()?.javaClass?.simpleName ?: "ok"}"
-            if (r.isSuccess) break
+            if (etat.cible != c) return@LaunchedEffect
+            if (runCatching { etat.tuile(c).requestFocus() }.isSuccess) break
         }
         etat.cible = null
     }
@@ -293,6 +313,7 @@ fun HomeChaines(ctx: HomeContext) {
     Box(
         Modifier
             .fillMaxSize()
+            .onGloballyPositioned { etat.origine = it.positionInRoot() }
             .fondChaines()
     ) {
         // --- Rangées du contrat (HomeContext) : pas de rangée dans ce design, mais HomeScreen
@@ -303,9 +324,9 @@ fun HomeChaines(ctx: HomeContext) {
 
         // --- Relais du focus : premierFocus (Maison, sortie des modules) et focusBiblio
         // (retour de la bibliothèque) visent des tuiles qui ne sont composées que sur leur page.
-        if (page != 0) Relais(ctx.premierFocus) { DiagChaines.log += "relais premier"; etat.page = 0; etat.cible = 0 }
+        if (page != 0) Relais(ctx.premierFocus) { etat.page = 0; etat.cible = 0 }
         val pageBiblio = GrilleChaines.page(n - 1)
-        if (page != pageBiblio) Relais(ctx.focusBiblio) { DiagChaines.log += "relais biblio"; etat.page = pageBiblio; etat.cible = n - 1 }
+        if (page != pageBiblio) Relais(ctx.focusBiblio) { etat.page = pageBiblio; etat.cible = n - 1 }
 
         // --- Grille paginée
         Box(
@@ -352,6 +373,36 @@ fun HomeChaines(ctx: HomeContext) {
 
         // --- Panneau des modules (enveloppe)
         if (etat.panneau) PanneauModules(ctx, etat, sortieModules)
+
+        // --- Main-curseur, au-dessus de tout
+        MainCurseur(etat)
+    }
+}
+
+/**
+ * Une seule main pour tout l'écran : elle glisse (180 ms) vers l'élément sélectionné et
+ * respire doucement au repos. Position et respiration ne sont lues qu'au dessin : ni la
+ * grille ni la bande ne sont recomposées.
+ */
+@Composable
+private fun MainCurseur(etat: EtatChaines) {
+    val position = remember { Animatable(Offset.Unspecified, Offset.VectorConverter) }
+    val cible = etat.main
+    LaunchedEffect(cible) {
+        if (cible == null) return@LaunchedEffect
+        if (!position.value.isSpecified) position.snapTo(cible)
+        else position.animateTo(cible, tween(180, easing = FastOutSlowInEasing))
+    }
+    val respiration by rememberInfiniteTransition(label = "main").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "respiration",
+    )
+    val visible by animateFloatAsState(if (cible != null) 1f else 0f, tween(150), label = "main")
+    val taille = 38.u
+    val bercement = 2.5f.uf
+    Canvas(Modifier.fillMaxSize().testTag("chaines:main").graphicsLayer { alpha = visible }) {
+        val p = position.value
+        if (!p.isSpecified) return@Canvas
+        mainCurseur(p - etat.origine + Offset(0f, respiration * bercement.toPx()), taille.toPx())
     }
 }
 
@@ -439,6 +490,12 @@ private fun TuileChaines(ctx: HomeContext, etat: EtatChaines, tuile: TuileChaine
     val couleur = visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     val rayon = CH_RAYON.u
     val trait = 3.u
+    // Tuile visée par un changement de page : elle prend le focus dès qu'elle est en place
+    val requete = etat.tuile(i)
+    LaunchedEffect(etat.cible == i) {
+        if (etat.cible == i && runCatching { requete.requestFocus() }.isSuccess) etat.cible = null
+    }
+    var bornes by remember { mutableStateOf(Rect.Zero) }
 
     Box(
         Modifier
@@ -469,13 +526,18 @@ private fun TuileChaines(ctx: HomeContext, etat: EtatChaines, tuile: TuileChaine
             onLongClick = app?.let { a -> { ctx.actions.openMenu(a) } },
             modifier = Modifier
                 .fillMaxSize()
-                .focusRequester(etat.tuile(i))
+                .focusRequester(requete)
                 .then(if (i == 0) Modifier.focusRequester(ctx.premierFocus) else Modifier)
+                .onGloballyPositioned {
+                    bornes = it.boundsInRoot()
+                    if (focus) etat.pointer(bornes, rond = false)
+                }
                 .then(if (tuile == TuileChaine.Biblio) Modifier.focusRequester(ctx.focusBiblio) else Modifier)
                 .onFocusChanged {
                     focus = it.isFocused
                     if (it.isFocused) {
                         etat.tuileFocus = i
+                        etat.pointer(bornes, rond = false)
                         if (app != null) ctx.surFocus(app, couleur) else ctx.sansSelection()
                     } else if (etat.tuileFocus == i) {
                         etat.tuileFocus = -1
@@ -515,18 +577,6 @@ private fun TuileChaines(ctx: HomeContext, etat: EtatChaines, tuile: TuileChaine
                         .padding(2.u)
                         .border(1.u, Color.White.copy(alpha = 0.45f), RoundedCornerShape((CH_RAYON - 2).u))
                 )
-            }
-        }
-        // Petite main-curseur posée sur la tuile sélectionnée
-        if (focus) {
-            Canvas(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = (-30).u, y = 10.u)
-                    .size(34.u)
-                    .graphicsLayer { alpha = f }
-            ) {
-                mainCurseur(Offset(size.width * 0.35f, 0f), size.height)
             }
         }
     }
@@ -730,12 +780,12 @@ private fun HorlogeChaines(modifier: Modifier) {
             .replaceFirstChar { it.titlecase(Locale.FRENCH) }
     }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(Modifier.size(170.u, 50.u).testTag("chaines:heure")) {
+        Canvas(Modifier.size(190.u, 54.u).testTag("chaines:heure")) {
             val h = size.height * 0.9f
             val l = largeurHorloge(heure, h)
             horlogeSegments(heure, Offset((size.width - l) / 2f, (size.height - h) / 2f), h, ChainesGris, Color.White)
         }
-        Spacer(Modifier.height(18.u))
+        Spacer(Modifier.height(24.u))
         Text(
             date, color = ChainesGris, fontSize = 22.us, fontWeight = FontWeight.Bold,
             style = TextStyle.Default, maxLines = 1,
@@ -751,6 +801,7 @@ private fun BoutonRond(b: BoutonBande, etat: EtatChaines, ctx: HomeContext, n: I
     val f by animateFloatAsState(if (focus) 1f else 0f, tween(180), label = "focus")
     val requete = remember(b.cle) { FocusRequester() }
     etat.bande[b.cle] = requete
+    var bornes by remember { mutableStateOf(Rect.Zero) }
     val trait = 3.u
     Box(
         Modifier
@@ -779,9 +830,13 @@ private fun BoutonRond(b: BoutonBande, etat: EtatChaines, ctx: HomeContext, n: I
                 .fillMaxSize()
                 .focusRequester(requete)
                 .then(if (b.requete != null) Modifier.focusRequester(b.requete) else Modifier)
+                .onGloballyPositioned { bornes = it.boundsInRoot() }
                 .onFocusChanged {
                     focus = it.isFocused
-                    if (it.isFocused) ctx.sansSelection()
+                    if (it.isFocused) {
+                        ctx.sansSelection()
+                        etat.pointer(bornes, rond = true)
+                    }
                 }
                 .onPreviewKeyEvent { etat.toucheBande(it, b.cle, n) },
             shape = ClickableSurfaceDefaults.shape(CircleShape),
@@ -825,7 +880,7 @@ private fun PanneauModules(ctx: HomeContext, etat: EtatChaines, sortie: () -> Un
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.White.copy(alpha = 0.72f))
+            .background(Color.White.copy(alpha = 0.9f))
             .testTag("chaines:panneau"),
         contentAlignment = Alignment.Center,
     ) {
@@ -833,7 +888,12 @@ private fun PanneauModules(ctx: HomeContext, etat: EtatChaines, sortie: () -> Un
             Modifier
                 .onFocusChanged {
                     // Le focus est parti ailleurs (touche Maison…) : le panneau se ferme
-                    if (it.hasFocus) euLeFocus = true else if (euLeFocus) etat.panneau = false
+                    if (it.hasFocus) {
+                        euLeFocus = true
+                        etat.main = null
+                    } else if (euLeFocus) {
+                        etat.panneau = false
+                    }
                 }
                 .focusProperties {
                     exit = { d ->
@@ -866,9 +926,4 @@ private fun PanneauModules(ctx: HomeContext, etat: EtatChaines, sortie: () -> Un
             )
         }
     }
-}
-
-/** TEMPORAIRE : journal de diagnostic. */
-internal object DiagChaines {
-    val log = mutableListOf<String>()
 }

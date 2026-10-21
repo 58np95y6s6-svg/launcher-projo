@@ -11,9 +11,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performKeyInput
-import androidx.compose.ui.test.pressKey
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.HomeUi
@@ -120,27 +117,6 @@ class ChainesTest : BancAccueil("CHAINES") {
     }
 
     // ------------------------------------------------------------------ pages
-
-    /** TEMPORAIRE : diagnostic (résultat dans le message d'échec). */
-    @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
-    @Test
-    fun diagnosticFocus() {
-        val l = mutableListOf<String>()
-        afficher()
-        val e = etiquettesChaines()
-        fun etat(nom: String) {
-            l += "$nom: focus=${focus()?.etiquette} p1=${composee(e[0])} p2=${composee(e[12])} journal=${DiagChaines.log.takeLast(12)}"
-            DiagChaines.log.clear()
-        }
-        DiagChaines.log.clear()
-        for (k in 1..3) appuyer(Key.DirectionRight)
-        etat("tuile 4")
-        compose.onRoot().performKeyInput { pressKey(Key.DirectionRight) }
-        avancer(50); etat("A 50")
-        avancer(200); etat("A 250")
-        avancer(800); etat("A 1050")
-        fail("DIAG " + l.joinToString(" | "))
-    }
 
     @Test
     fun pagesEtFleches() {
