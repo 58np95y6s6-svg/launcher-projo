@@ -325,11 +325,13 @@ private fun ListeTelephones(v: Vue, lignes: Int, k: Float, avecEtat: Boolean) {
 private fun TelecommandePetit(v: Vue, ctx: ModuleContexte) {
     val style = ctx.style
     val margeH = 4f
-    val margeV = 1f
-    val hCode = 14.5f
+    val margeV = 0.5f
+    val hCode = 14f
     val hAide = 9.5f
     val ecart = 1f
-    val cote = minOf(ctx.largeur - 2 * margeH, ctx.hauteur - 2 * margeV - hCode - hAide - ecart).coerceAtLeast(40f)
+    // 1 u de réserve : l'arrondi au pixel ne doit pas rogner la dernière ligne
+    val reserve = 1f
+    val cote = minOf(ctx.largeur - 2 * margeH, ctx.hauteur - 2 * margeV - hCode - hAide - ecart - reserve).coerceAtLeast(40f)
     Column(
         Modifier.fillMaxSize().padding(horizontal = margeH.u, vertical = margeV.u),
         horizontalAlignment = Alignment.CenterHorizontally,
