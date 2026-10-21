@@ -110,6 +110,46 @@ object Nouveautes {
         return null
     }
 
+    // --- plusieurs titres et grandes photos (arrière-plan d'« À la une »)
+
+    private class EntreeTitres(val titres: List<TitreTmdb>?, val date: Long, val version: Int)
+
+    private val titres = ConcurrentHashMap<String, EntreeTitres>()
+
+    /**
+     * Jusqu'à [max] nouveautés récentes du service de [app] (titre + adresse de la photo), sans
+     * décoder d'image ; null : pas un service, pas de clé, réseau injoignable. Cache de 6 h.
+     */
+    suspend fun titresRecents(context: Context, app: AppInfo, max: Int = 3): List<TitreTmdb>? {
+        if (!aUnCatalogue(app)) return null
+        val e = titres[app.packageName]
+        val duree = if (e?.titres.isNullOrEmpty()) DUREE_ECHEC else DUREE
+        if (e != null && e.version == CleTmdb.version && System.currentTimeMillis() - e.date < duree) return e.titres?.take(max)
+        val appli = context.applicationContext
+        val version = CleTmdb.version
+        val lus = withContext(Dispatchers.IO) {
+            runCatching { Tmdb(appli).dernieresSorties(app, 8) }.getOrNull()
+        }?.filter { it.image.isNotEmpty() }
+        titres[app.packageName] = EntreeTitres(lus, System.currentTimeMillis(), version)
+        return lus?.take(max)
+    }
+
+    /**
+     * Photo [adresse] (backdrop TMDB) décodée à [largeur] px au plus, via le cache disque de
+     * Tmdb.kt mais SANS cache mémoire : l'appelant garde au plus les images qu'il affiche.
+     * Au-delà de 800 px, la version w1280 est demandée. Bloquant : hors du fil principal.
+     */
+    fun photo(context: Context, adresse: String, largeur: Int): ImageBitmap? {
+        val url = if (largeur > 800) adresse.replace("/w780/", "/w1280/") else adresse
+        val tmdb = Tmdb(context.applicationContext)
+        val octets = tmdb.octets(url) ?: (if (url != adresse) tmdb.octets(adresse) else null) ?: return null
+        return try {
+            ImagesTmdb.decoder(octets, largeur.coerceAtMost(1280))
+        } catch (e: OutOfMemoryError) {
+            null
+        }
+    }
+
     /** Tests et aperçus : nouveauté imposée pour un paquet (sans réseau). */
     fun imposer(paquet: String, nouveaute: Nouveaute?) {
         memoire[paquet] = Entree(nouveaute, Int.MAX_VALUE / 2, System.currentTimeMillis(), CleTmdb.version)
@@ -118,5 +158,6 @@ object Nouveautes {
     /** Oublie tout (changement de clé, tests). */
     fun vider() {
         memoire.clear()
+        titres.clear()
     }
 }

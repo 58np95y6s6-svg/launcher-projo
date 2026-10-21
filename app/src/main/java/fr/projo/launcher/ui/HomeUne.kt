@@ -241,7 +241,7 @@ private fun uneDepuisOklab(lum: Float, a: Float, b: Float): Color {
 }
 
 /** Mode Soir automatique de 19 h à 7 h. */
-private fun uneSoir(t: Long): Boolean =
+private fun uneSoir(t: Long): Boolean = SoirUne.impose ?:
     Calendar.getInstance().apply { timeInMillis = t }.get(Calendar.HOUR_OF_DAY).let { it >= 19 || it < 7 }
 
 // ------------------------------------------------------------------ unités
@@ -328,12 +328,23 @@ fun HomeUne(ctx: HomeContext) {
         affiche.fond, if (retenu == null) snap() else tween(280), label = "aplatUne",
     )
 
+    // Arrière-plan photo (nouveautés du service, UnePhotos.kt) : même délai de 150 ms
+    // d'immobilité que l'aplat (flèche maintenue : pas de chargements en rafale)
+    var appPhoto by remember { mutableStateOf<AppInfo?>(null) }
+    val appSujet = sujet?.app
+    LaunchedEffect(appSujet) {
+        if (appPhoto != null) delay(150)
+        appPhoto = appSujet
+    }
+    val largeurPhoto = with(LocalDensity.current) { (960.u * 0.64f).toPx() }.toInt().coerceIn(320, 1280)
+    val photos = rememberPhotosUne(appPhoto, largeurPhoto)
+
     Box(
         Modifier
             .fillMaxSize()
             .background(UneFond)
     ) {
-        UneAffiche(ctx, nav, sujetAffiche, soir, aplat, t, montrer)
+        UneAffiche(ctx, nav, sujetAffiche, soir, aplat, t, montrer, photos)
         UneIndex(ctx, nav, aplat, montrer)
     }
 }
@@ -348,7 +359,9 @@ private fun UneAffiche(
     aplat: State<Color>,
     t: Long,
     montrer: (UneSujet) -> Unit,
+    photos: PhotosUne,
 ) {
+    val filtre = remember(soir) { filtrePhotosUne(soir) }
     Box(
         Modifier
             .fillMaxWidth()
@@ -356,6 +369,7 @@ private fun UneAffiche(
             .clipToBounds()
             .drawBehind {
                 drawRect(aplat.value)
+                dessinerPhotosUne(photos, aplat.value, soir, filtre)
                 drawRect(UneVoile)
             }
     ) {
@@ -379,6 +393,12 @@ private fun UneAffiche(
                 .background(Color.White.copy(alpha = 0.3f))
         )
         UneManchette(ctx, sujet)
+        LegendePhotosUne(
+            photos,
+            Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 48.u, bottom = 9.u),
+        )
     }
 }
 
