@@ -60,6 +60,7 @@ import fr.projo.launcher.ui.LigneListe
 import fr.projo.launcher.ui.ListeDialog
 import fr.projo.launcher.ui.NbaStyle
 import fr.projo.launcher.ui.couleursLigne
+import fr.projo.launcher.ui.fondDialogue
 import fr.projo.launcher.ui.habillageDialogue
 import fr.projo.launcher.ui.u
 import fr.projo.launcher.ui.us
@@ -342,7 +343,7 @@ private fun RechercheVille(onChoisir: (Lieu) -> Unit, onRetour: () -> Unit) {
         Column(
             Modifier
                 .width(460.u)
-                .background(h.fond, h.forme)
+                .fondDialogue(h)
                 .padding(22.u)
         ) {
             Text("Rechercher une ville", color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)

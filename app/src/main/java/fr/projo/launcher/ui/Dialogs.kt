@@ -74,7 +74,7 @@ fun MenuDialog(
                     }
                 }
                 .width(420.u)
-                .background(h.fond, h.forme)
+                .fondDialogue(h)
                 .padding(22.u)
         ) {
             Text(title, color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
@@ -244,7 +244,7 @@ fun ListeDialog(
         Column(
             Modifier
                 .width(460.u)
-                .background(h.fond, h.forme)
+                .fondDialogue(h)
                 .padding(22.u)
         ) {
             Text(titre, color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)

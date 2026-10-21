@@ -1,6 +1,7 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -52,6 +54,7 @@ fun StudioCleDialog(onDismiss: () -> Unit) {
     val h = habillageDialogue()
     var texte by remember { mutableStateOf("") }
     var erreur by remember { mutableStateOf<String?>(null) }
+    var champFocus by remember { mutableStateOf(false) }
     val enregistrer: () -> Unit = {
         if (CleTmdb.valide(texte)) {
             CleTmdb.ecrire(context, texte)
@@ -68,7 +71,7 @@ fun StudioCleDialog(onDismiss: () -> Unit) {
                 if (runCatching { focus.requestFocus() }.isSuccess) break
             }
         }
-        Column(Modifier.width(520.u).background(h.fond, h.forme).padding(22.u)) {
+        Column(Modifier.width(520.u).fondDialogue(h).padding(22.u)) {
             Text("Suggestions de films et séries", color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(6.u))
             Text(
@@ -87,7 +90,10 @@ fun StudioCleDialog(onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
+                    .onFocusChanged { champFocus = it.isFocused }
                     .background(h.carte, RoundedCornerShape(10.u))
+                    // Champ sélectionné à la télécommande : contour de l'encre du texte
+                    .border(2.u, h.texte.copy(alpha = if (champFocus) 0.9f else 0.15f), RoundedCornerShape(10.u))
                     .padding(12.u),
             )
             erreur?.let {

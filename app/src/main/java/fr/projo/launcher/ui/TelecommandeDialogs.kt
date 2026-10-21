@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -148,12 +149,14 @@ fun AppairageDialog(
         Row(
             Modifier
                 .width(820.u)
-                .background(h.fond, h.forme)
+                .fondDialogue(h)
                 .padding(28.u),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(320.u).background(Color.White, RoundedCornerShape(18.u)).padding(6.u),
+                Modifier.size(320.u).background(Color.White, RoundedCornerShape(18.u))
+                    // Liseré discret : le cadre blanc reste délimité sur un design clair
+                    .border(1.dp, h.texte.copy(alpha = 0.10f), RoundedCornerShape(18.u)).padding(6.u),
                 contentAlignment = Alignment.Center,
             ) {
                 when (etat) {
@@ -246,7 +249,7 @@ fun ConfirmationAppairageDialog(nom: String, onAutoriser: () -> Unit, onRefuser:
         Column(
             Modifier
                 .width(520.u)
-                .background(h.fond, h.forme)
+                .fondDialogue(h)
                 .border(1.dp, h.accent.copy(alpha = 0.5f), h.forme)
                 .padding(28.u),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -349,10 +352,11 @@ fun TelephonesDialog(
 private fun SaisieNomDialog(initial: String, onValider: (String) -> Unit, onDismiss: () -> Unit) {
     val h = habillageDialogue()
     var texte by remember { mutableStateOf(initial) }
+    var champFocus by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         val focus = remember { FocusRequester() }
         FocusInitial(focus)
-        Column(Modifier.width(460.u).background(h.fond, h.forme).padding(22.u)) {
+        Column(Modifier.width(460.u).fondDialogue(h).padding(22.u)) {
             Text("Nom du téléphone", color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(14.u))
             BasicTextField(
@@ -366,7 +370,10 @@ private fun SaisieNomDialog(initial: String, onValider: (String) -> Unit, onDism
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
+                    .onFocusChanged { champFocus = it.isFocused }
                     .background(h.carte, RoundedCornerShape(10.u))
+                    // Champ sélectionné à la télécommande : contour de l'encre du texte
+                    .border(2.u, h.texte.copy(alpha = if (champFocus) 0.9f else 0.15f), RoundedCornerShape(10.u))
                     .padding(12.u),
             )
             Spacer(Modifier.height(16.u))
@@ -413,7 +420,7 @@ fun AideTelecommandeDialog(
         Row(
             Modifier
                 .width(880.u)
-                .background(h.fond, h.forme)
+                .fondDialogue(h)
                 .padding(28.u),
         ) {
             Column(Modifier.weight(1f)) {

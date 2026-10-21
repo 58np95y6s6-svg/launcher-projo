@@ -1408,7 +1408,13 @@ internal class HabillageDialogue(
     val accentFond: Color,
     /** Messages d'erreur. */
     val alerte: Color,
+    /** Contour fin : détache le dialogue d'un accueil de la même couleur. */
+    val bord: Color,
 )
+
+/** Fond et contour d'un dialogue aux couleurs du design. */
+internal fun Modifier.fondDialogue(h: HabillageDialogue): Modifier =
+    background(h.fond, h.forme).border(1.dp, h.bord, h.forme)
 
 @Composable
 internal fun habillageDialogue(): HabillageDialogue {
@@ -1435,6 +1441,7 @@ internal fun habillageDialogue(): HabillageDialogue {
         accent = c.accent,
         accentFond = c.accent.copy(alpha = 0.24f),
         alerte = c.alerte,
+        bord = c.filet.copy(alpha = c.filet.alpha.coerceAtLeast(0.08f)),
     )
 }
 
