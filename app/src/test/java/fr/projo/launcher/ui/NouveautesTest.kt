@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Shader
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.hasTestTag
 import fr.projo.launcher.data.CleTmdb
 import fr.projo.launcher.data.GenreTmdb
@@ -85,10 +86,21 @@ class NouveautesTest : BancAccueil("PLAYLIST") {
         }
     }
 
+    /** Fondu en vague (retenu) : carte Netflix sélectionnée (photo), zoom, puis au repos (logos). */
     @Test
     fun fondu() {
         afficherAvecPhotos(StyleNouveaute.FONDU)
-        capturer("n_A_fondu")
+        val f = capturer("n_A_fondu")
+        zoomer(f, "n_A_zoom_netflix")
+        auRepos()
+        capturer("n_A_repos")
+    }
+
+    /** Focus hors des cartes (barre latérale) : toutes les cartes montrent leur logo. */
+    private fun auRepos() {
+        appuyer(Key.DirectionLeft)
+        if (focus()?.etiquette?.startsWith("ligne:") != true) fail("[PLAYLIST] ◀ depuis la 1re carte : obtenu ${decrire(focus())}")
+        avancer(500)
     }
 
     @Test
@@ -156,16 +168,23 @@ class NouveautesTest : BancAccueil("PLAYLIST") {
         verifierCartes()
     }
 
+    /** Netflix puis Prime Video sélectionnés (photo réelle), puis au repos (logos). */
     @Test
     fun reelNetflixPrime() {
         afficherReel(StylesNouveautes.PAR_DEFAUT)
         capturer("reel_netflix_prime")
+        appuyer(Key.DirectionRight)
+        capturer("reel_prime_focus")
     }
 
+    /** Fondu en vague (retenu) : Netflix sélectionné, zoom sur la carte, accueil au repos. */
     @Test
     fun reelFondu() {
         afficherReel(StyleNouveaute.FONDU)
-        capturer("reel_A")
+        val f = capturer("reel_A")
+        zoomer(f, "reel_A_zoom_netflix")
+        auRepos()
+        capturer("reel_repos")
     }
 
     @Test

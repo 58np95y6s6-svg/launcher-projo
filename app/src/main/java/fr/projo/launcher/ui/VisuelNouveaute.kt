@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -96,6 +97,9 @@ enum class StyleNouveaute {
 /** Forme de la carte : 16:9 ou carrée. */
 enum class FormeNouveaute { BANNIERE, CARRE }
 
+/** Place de « Nouveau » et du titre (style FONDU). */
+enum class PlaceLegende { BAS, HAUT }
+
 object StylesNouveautes {
     /** Traitement retenu par l'utilisateur pour tous les designs : le fondu en vague. */
     val PAR_DEFAUT = StyleNouveaute.FONDU
@@ -161,8 +165,8 @@ fun rememberNouveaute(app: AppInfo, largeurPx: Int): Nouveaute? {
  * Visuel « nouveauté » de [app] : [forme] de [largeur] (hauteur 9/16 ou carrée), traitement
  * [style], logo de l'app ([paquetIcone] : son visuel CARRÉ) dans un coin. Sans nouveauté :
  * [repli] (l'illustration actuelle), à la même taille.
- * [legende] : en FONDU, « Nouveau » et le titre sont écrits sur la zone de couleur ; false :
- * seulement le logo et « Nouveau » (le design affiche le titre ailleurs, ex. sous la carte).
+ * [legende] : en FONDU, où écrire « Nouveau » et le titre : sur la zone de couleur (BAS), ou
+ * en haut de la photo (HAUT, carré : le bas à droite reste libre, ex. pour un bouton « lecture »).
  */
 @Composable
 fun VisuelNouveaute(
@@ -174,7 +178,7 @@ fun VisuelNouveaute(
     modifier: Modifier = Modifier,
     rayon: Dp = 6.u,
     style: StyleNouveaute = StylesNouveautes.courant,
-    legende: Boolean = true,
+    legende: PlaceLegende = PlaceLegende.BAS,
     nouveaute: Nouveaute? = rememberNouveaute(app, largeurImageNouveaute(largeur, forme)),
     repli: @Composable () -> Unit,
 ) {
@@ -205,34 +209,30 @@ fun VisuelNouveaute(
         }
         val logo = largeur * (if (carre) 0.24f else 0.16f)
         when (style) {
-            StyleNouveaute.FONDU -> if (!legende) {
-                // Logo sur la zone de couleur (en bas à gauche), étiquette « NOUVEAU » sur la photo
-                LogoNouveaute(
-                    visuel, logo,
-                    Modifier
-                        .align(if (carre) Alignment.BottomStart else Alignment.CenterStart)
-                        .padding(8.u * r),
-                )
+            StyleNouveaute.FONDU -> if (legende == PlaceLegende.HAUT && carre) {
+                // « NOUVEAU » et le titre en haut, sur un voile sombre de la photo ; logo sur la
+                // zone de couleur en bas à gauche (le bas à droite reste libre : bouton « lecture »)
                 Box(
                     Modifier
-                        .align(if (carre) Alignment.TopStart else Alignment.TopEnd)
-                        .padding(7.u * r)
-                        .clip(RoundedCornerShape(3.u * r))
-                        .background(Color.Black.copy(alpha = 0.55f))
-                        .padding(horizontal = 5.u * r, vertical = 2.u * r)
-                ) { MotNouveau(r) }
+                        .fillMaxWidth()
+                        .height(hauteur * 0.5f)
+                        .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.62f), Color.Transparent)))
+                )
+                LegendeNouveaute(
+                    n.titre, r, carre,
+                    Modifier.align(Alignment.TopStart).fillMaxWidth().padding(horizontal = 8.u * r, vertical = 7.u * r),
+                )
+                LogoNouveaute(visuel, logo, Modifier.align(Alignment.BottomStart).padding(8.u * r))
             } else {
                 LogoNouveaute(visuel, logo, Modifier.align(Alignment.TopStart).padding(7.u * r))
-                run {
-                    LegendeNouveaute(
-                        n.titre, r, carre,
-                        if (carre) {
-                            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 8.u * r, vertical = 7.u * r)
-                        } else {
-                            Modifier.align(Alignment.CenterStart).width(largeur * 0.42f).padding(start = 12.u * r)
-                        },
-                    )
-                }
+                LegendeNouveaute(
+                    n.titre, r, carre,
+                    if (carre) {
+                        Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 8.u * r, vertical = 7.u * r)
+                    } else {
+                        Modifier.align(Alignment.CenterStart).width(largeur * 0.42f).padding(start = 12.u * r)
+                    },
+                )
             }
             else -> LogoNouveaute(visuel, logo, Modifier.align(Alignment.BottomStart).padding(8.u * r))
         }
