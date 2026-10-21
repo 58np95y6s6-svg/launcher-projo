@@ -195,7 +195,7 @@ internal data class UneAplat(val fond: Color, val geant: Color)
 
 /**
  * Aplat « calibré » : la couleur de marque, en plus sombre et surtout moins saturée (espace
- * OKLab : clarté plafonnée à 0,40 le jour / 0,32 le soir, chroma à 0,10 / 0,075), en gardant
+ * OKLab : clarté plafonnée à 0,36 le jour / 0,29 le soir, chroma à 0,07 / 0,055), en gardant
  * la teinte. On reconnaît l'app sans être ébloui (le rouge Netflix pur fatiguait les yeux au
  * projecteur) et l'encre blanche reste lisible. Les jaunes et ambres, qui deviendraient kaki,
  * sont « inversés » : aplat noir chaud et nom géant à la couleur de la marque.
@@ -204,8 +204,8 @@ internal fun uneAplat(marque: Color, soir: Boolean): UneAplat {
     val y = uneLuminance(marque)
     val teinte = uneTeinte(marque)
     if (y > 0.35f && teinte in 35f..70f) return UneAplat(UneAplatInverse, marque.copy(alpha = 1f))
-    val clarteMax = if (soir) 0.32f else 0.40f
-    val chromaMax = if (soir) 0.075f else 0.10f
+    val clarteMax = if (soir) 0.29f else 0.36f
+    val chromaMax = if (soir) 0.055f else 0.07f
     val (l, a, b) = uneOklab(marque)
     val chroma = hypot(a, b)
     if (l <= clarteMax && chroma <= chromaMax) return UneAplat(marque.copy(alpha = 1f), Color.White)
