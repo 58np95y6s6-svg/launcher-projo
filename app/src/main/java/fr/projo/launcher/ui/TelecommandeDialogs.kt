@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -45,8 +46,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.remote.EtatAppairage
 import fr.projo.launcher.remote.QrCode
@@ -78,26 +77,6 @@ object IconesTelecommande {
         ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
             .addPath(pathData = PathParser().parsePathString(path).toNodes(), fill = SolidColor(Color.White))
             .build()
-}
-
-/** Bouton des dialogues de la télécommande (couleurs du design choisi). */
-@Composable
-private fun Bouton(texte: String, modifier: Modifier = Modifier, accent: Boolean = false, onClick: () -> Unit) {
-    val c = LocalDesign.current.colors()
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.u)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (accent) c.accent.copy(alpha = 0.28f) else c.carte,
-            contentColor = c.texte,
-            focusedContainerColor = c.focusFond,
-            focusedContentColor = c.focusTexte,
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
-    ) {
-        Text(texte, fontSize = 15.us, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 22.u, vertical = 10.u))
-    }
 }
 
 /** Premier focus d'un dialogue (la fenêtre peut n'être prête qu'après une image). */
@@ -163,19 +142,21 @@ fun AppairageDialog(
     onFermer: () -> Unit,
     horloge: () -> Long = { System.currentTimeMillis() },
 ) {
-    val c = LocalDesign.current.colors()
+    val h = habillageDialogue()
     Dialog(onDismissRequest = onFermer, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val focus = remember { FocusRequester() }
         FocusInitial(focus, etat::class)
         Row(
             Modifier
                 .width(820.u)
-                .background(c.panneau, RoundedCornerShape(26.u))
+                .fondDialogue(h)
                 .padding(28.u),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(320.u).background(Color.White, RoundedCornerShape(18.u)).padding(6.u),
+                Modifier.size(320.u).background(Color.White, RoundedCornerShape(18.u))
+                    // Liseré discret : le cadre blanc reste délimité sur un design clair
+                    .border(1.dp, h.texte.copy(alpha = 0.10f), RoundedCornerShape(18.u)).padding(6.u),
                 contentAlignment = Alignment.Center,
             ) {
                 when (etat) {
@@ -187,7 +168,7 @@ fun AppairageDialog(
             }
             Spacer(Modifier.width(30.u))
             Column(Modifier.weight(1f)) {
-                Text("Appairer un téléphone", color = c.texte, fontSize = 26.us, fontWeight = FontWeight.Light)
+                Text("Appairer un téléphone", color = h.texte, fontSize = 26.us, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(14.u))
                 when (etat) {
                     is EtatAppairage.EnCours -> {
@@ -199,50 +180,50 @@ fun AppairageDialog(
                             }
                         }
                         val restant = (etat.expire - maintenant).coerceAtLeast(0)
-                        Text("1. Scanne le QR code avec l'appareil photo du téléphone.", color = c.texte, fontSize = 14.us)
+                        Text("1. Scanne le QR code avec l'appareil photo du téléphone.", color = h.texte, fontSize = 14.us)
                         Spacer(Modifier.height(10.u))
-                        Text("2. Ou ouvre cette adresse sur le téléphone :", color = c.texte, fontSize = 14.us)
-                        Text(RemoteConfig.URL_PWA_COURTE, color = c.accent, fontSize = 15.us, fontWeight = FontWeight.SemiBold)
-                        Text("et saisis le code :", color = c.texte, fontSize = 14.us)
+                        Text("2. Ou ouvre cette adresse sur le téléphone :", color = h.texte, fontSize = 14.us)
+                        Text(RemoteConfig.URL_PWA_COURTE, color = h.accent, fontSize = 15.us, fontWeight = FontWeight.SemiBold)
+                        Text("et saisis le code :", color = h.texte, fontSize = 14.us)
                         Spacer(Modifier.height(6.u))
                         Text(
-                            etat.code, color = c.texte, fontSize = 40.us, fontWeight = FontWeight.SemiBold,
+                            etat.code, color = h.texte, fontSize = 40.us, fontWeight = FontWeight.SemiBold,
                             fontFamily = FontFamily.Monospace, letterSpacing = 4.us, modifier = Modifier.testTag("code"),
                         )
                         Spacer(Modifier.height(12.u))
-                        Text("Valable encore ${minutesSecondes(restant)}", color = c.texteDiscret, fontSize = 12.us, modifier = Modifier.testTag("rebours"))
+                        Text("Valable encore ${minutesSecondes(restant)}", color = h.discret, fontSize = 12.us, modifier = Modifier.testTag("rebours"))
                         Spacer(Modifier.height(5.u))
-                        Box(Modifier.fillMaxWidth().height(4.u).background(c.texte.copy(alpha = 0.14f), RoundedCornerShape(2.u))) {
+                        Box(Modifier.fillMaxWidth().height(4.u).background(h.texte.copy(alpha = 0.14f), RoundedCornerShape(2.u))) {
                             Box(
                                 Modifier
                                     .fillMaxWidth((restant.toFloat() / RemoteConfig.DUREE_SECRET_MS).coerceIn(0f, 1f))
                                     .height(4.u)
-                                    .background(c.accent, RoundedCornerShape(2.u)),
+                                    .background(h.accent, RoundedCornerShape(2.u)),
                             )
                         }
                         Spacer(Modifier.height(10.u))
-                        Text("Le téléphone et la TV doivent être sur le même Wi-Fi.", color = c.texteDiscret, fontSize = 11.us)
+                        Text("Le téléphone et la TV doivent être sur le même Wi-Fi.", color = h.discret, fontSize = 11.us)
                         Spacer(Modifier.height(16.u))
-                        Bouton("Fermer", Modifier.focusRequester(focus), onClick = onFermer)
+                        BoutonDialogue("Fermer", Modifier.focusRequester(focus), onClick = onFermer)
                     }
                     is EtatAppairage.Reussi -> {
-                        Text("${etat.nom} est appairé.", color = c.texte, fontSize = 18.us, fontWeight = FontWeight.Medium)
+                        Text("${etat.nom} est appairé.", color = h.texte, fontSize = 18.us, fontWeight = FontWeight.Medium)
                         Spacer(Modifier.height(8.u))
-                        Text("Il pilote maintenant la TV, sans refaire cette étape.", color = c.texteDiscret, fontSize = 13.us)
+                        Text("Il pilote maintenant la TV, sans refaire cette étape.", color = h.discret, fontSize = 13.us)
                         Spacer(Modifier.height(20.u))
-                        Bouton("Terminé", Modifier.focusRequester(focus), accent = true, onClick = onFermer)
+                        BoutonDialogue("Terminé", Modifier.focusRequester(focus), accent = true, onClick = onFermer)
                     }
                     is EtatAppairage.Inactif -> {
-                        Text("Préparation du code…", color = c.texte, fontSize = 15.us)
+                        Text("Préparation du code…", color = h.texte, fontSize = 15.us)
                         Spacer(Modifier.height(20.u))
-                        Bouton("Fermer", Modifier.focusRequester(focus), onClick = onFermer)
+                        BoutonDialogue("Fermer", Modifier.focusRequester(focus), onClick = onFermer)
                     }
                     else -> {
-                        Text("Le code a expiré au bout de 5 minutes.", color = c.texte, fontSize = 15.us)
+                        Text("Le code a expiré au bout de 5 minutes.", color = h.texte, fontSize = 15.us)
                         Spacer(Modifier.height(20.u))
                         Row(horizontalArrangement = Arrangement.spacedBy(12.u)) {
-                            Bouton("Nouveau code", Modifier.focusRequester(focus), accent = true, onClick = onNouveauCode)
-                            Bouton("Fermer", onClick = onFermer)
+                            BoutonDialogue("Nouveau code", Modifier.focusRequester(focus), accent = true, onClick = onNouveauCode)
+                            BoutonDialogue("Fermer", onClick = onFermer)
                         }
                     }
                 }
@@ -261,36 +242,36 @@ fun questionAutorisation(nom: String): String {
 /** Confirmation d'appairage, par-dessus n'importe quel écran d'iBiProjo. */
 @Composable
 fun ConfirmationAppairageDialog(nom: String, onAutoriser: () -> Unit, onRefuser: () -> Unit) {
-    val c = LocalDesign.current.colors()
+    val h = habillageDialogue()
     Dialog(onDismissRequest = onRefuser, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val focus = remember { FocusRequester() }
         FocusInitial(focus)
         Column(
             Modifier
                 .width(520.u)
-                .background(c.panneau, RoundedCornerShape(26.u))
-                .border(1.dp, c.accent.copy(alpha = 0.5f), RoundedCornerShape(26.u))
+                .fondDialogue(h)
+                .border(1.dp, h.accent.copy(alpha = 0.5f), h.forme)
                 .padding(28.u),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
-                Modifier.size(56.u).background(c.accent.copy(alpha = 0.25f), RoundedCornerShape(28.u)),
+                Modifier.size(56.u).background(h.accentFond, RoundedCornerShape(28.u)),
                 contentAlignment = Alignment.Center,
             ) {
-                androidx.tv.material3.Icon(IconesTelecommande.Telephone, contentDescription = null, tint = c.texte, modifier = Modifier.size(30.u))
+                androidx.tv.material3.Icon(IconesTelecommande.Telephone, contentDescription = null, tint = h.texte, modifier = Modifier.size(30.u))
             }
             Spacer(Modifier.height(14.u))
-            Text(questionAutorisation(nom), color = c.texte, fontSize = 22.us, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+            Text(questionAutorisation(nom), color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.u))
             Text(
                 "Ce téléphone pourra piloter la TV et y écrire du texte. " +
                     "Refuse si tu ne viens pas de scanner le code.",
-                color = c.texteDiscret, fontSize = 13.us, textAlign = TextAlign.Center,
+                color = h.discret, fontSize = 13.us, textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(22.u))
             Row(horizontalArrangement = Arrangement.spacedBy(14.u)) {
-                Bouton("Refuser", onClick = onRefuser)
-                Bouton("Autoriser", Modifier.focusRequester(focus), accent = true, onClick = onAutoriser)
+                BoutonDialogue("Refuser", onClick = onRefuser)
+                BoutonDialogue("Autoriser", Modifier.focusRequester(focus), accent = true, onClick = onAutoriser)
             }
         }
     }
@@ -369,32 +350,36 @@ fun TelephonesDialog(
 /** Saisie d'un nom au clavier (clavier de la TV, ou du téléphone par le clavier iBiProjo). */
 @Composable
 private fun SaisieNomDialog(initial: String, onValider: (String) -> Unit, onDismiss: () -> Unit) {
-    val c = LocalDesign.current.colors()
+    val h = habillageDialogue()
     var texte by remember { mutableStateOf(initial) }
+    var champFocus by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         val focus = remember { FocusRequester() }
         FocusInitial(focus)
-        Column(Modifier.width(460.u).background(c.panneau, RoundedCornerShape(20.u)).padding(22.u)) {
-            Text("Nom du téléphone", color = c.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
+        Column(Modifier.width(460.u).fondDialogue(h).padding(22.u)) {
+            Text("Nom du téléphone", color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(14.u))
             BasicTextField(
                 value = texte,
                 onValueChange = { texte = it.take(40) },
                 singleLine = true,
-                textStyle = TextStyle(color = c.texte, fontSize = 18.us),
-                cursorBrush = SolidColor(c.accent),
+                textStyle = TextStyle(color = h.texte, fontSize = 18.us),
+                cursorBrush = SolidColor(h.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { if (texte.isNotBlank()) onValider(texte) }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
-                    .background(c.carte, RoundedCornerShape(10.u))
+                    .onFocusChanged { champFocus = it.isFocused }
+                    .background(h.carte, RoundedCornerShape(10.u))
+                    // Champ sélectionné à la télécommande : contour de l'encre du texte
+                    .border(2.u, h.texte.copy(alpha = if (champFocus) 0.9f else 0.15f), RoundedCornerShape(10.u))
                     .padding(12.u),
             )
             Spacer(Modifier.height(16.u))
             Row(horizontalArrangement = Arrangement.spacedBy(12.u)) {
-                Bouton("Enregistrer", accent = true) { if (texte.isNotBlank()) onValider(texte) }
-                Bouton("Annuler", onClick = onDismiss)
+                BoutonDialogue("Enregistrer", accent = true) { if (texte.isNotBlank()) onValider(texte) }
+                BoutonDialogue("Annuler", onClick = onDismiss)
             }
         }
     }
@@ -436,18 +421,18 @@ fun AideTelecommandeDialog(
     /** Remarque propre à l'appareil (Fire TV : service commun, redémarrage après mise à jour). */
     note: String? = null,
 ) {
-    val c = LocalDesign.current.colors()
+    val h = habillageDialogue()
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val focus = remember { FocusRequester() }
         FocusInitial(focus)
         Row(
             Modifier
                 .width(880.u)
-                .background(c.panneau, RoundedCornerShape(26.u))
+                .fondDialogue(h)
                 .padding(28.u),
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Clavier et navigation", color = c.texte, fontSize = 24.us, fontWeight = FontWeight.Light)
+                Text("Clavier et navigation", color = h.texte, fontSize = 24.us, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(12.u))
                 Etat(
                     fait = resume.clavierChoisi,
@@ -463,33 +448,33 @@ fun AideTelecommandeDialog(
                     "À faire une seule fois. Le clavier écrit dans les applis le texte tapé sur le téléphone ; " +
                         "la navigation fait marcher les flèches et OK hors d'iBiProjo. Sans téléphone connecté, " +
                         "le clavier rend la main au clavier habituel.",
-                    color = c.texteDiscret, fontSize = 12.us,
+                    color = h.discret, fontSize = 12.us,
                 )
                 Spacer(Modifier.height(16.u))
                 Column(verticalArrangement = Arrangement.spacedBy(8.u)) {
-                    Bouton("Activer le clavier (page système)", Modifier.fillMaxWidth().focusRequester(focus), onClick = onReglagesClavier)
-                    Bouton("Choisir le clavier", Modifier.fillMaxWidth(), onClick = onChoisirClavier)
-                    Bouton("Activer la navigation (Accessibilité)", Modifier.fillMaxWidth(), onClick = onAccessibilite)
-                    Bouton("Fermer", Modifier.fillMaxWidth(), onClick = onDismiss)
+                    BoutonDialogue("Activer le clavier (page système)", Modifier.fillMaxWidth().focusRequester(focus), onClick = onReglagesClavier)
+                    BoutonDialogue("Choisir le clavier", Modifier.fillMaxWidth(), onClick = onChoisirClavier)
+                    BoutonDialogue("Activer la navigation (Accessibilité)", Modifier.fillMaxWidth(), onClick = onAccessibilite)
+                    BoutonDialogue("Fermer", Modifier.fillMaxWidth(), onClick = onDismiss)
                 }
             }
             Spacer(Modifier.width(24.u))
             Column(Modifier.width(400.u)) {
-                Text("Fire TV, ou appareil sans ces pages", color = c.texte, fontSize = 14.us, fontWeight = FontWeight.SemiBold)
-                Text("Depuis un ordinateur avec adb (débogage ADB activé) :", color = c.texteDiscret, fontSize = 12.us)
+                Text("Fire TV, ou appareil sans ces pages", color = h.texte, fontSize = 14.us, fontWeight = FontWeight.SemiBold)
+                Text("Depuis un ordinateur avec adb (débogage ADB activé) :", color = h.discret, fontSize = 12.us)
                 Spacer(Modifier.height(10.u))
                 Column(
-                    Modifier.fillMaxWidth().background(c.carte, RoundedCornerShape(12.u)).padding(12.u),
+                    Modifier.fillMaxWidth().background(h.carte, RoundedCornerShape(12.u)).padding(12.u),
                     verticalArrangement = Arrangement.spacedBy(8.u),
                 ) {
                     for (commande in commandes) {
-                        Text(commande, color = c.texte, fontSize = 10.us, fontFamily = FontFamily.Monospace, lineHeight = 13.us)
+                        Text(commande, color = h.texte, fontSize = 10.us, fontFamily = FontFamily.Monospace, lineHeight = 13.us)
                     }
                 }
                 Spacer(Modifier.height(8.u))
                 Text(
                     "La dernière commande est facultative : elle permet au clavier iBiProjo de se re-choisir tout seul quand un téléphone se connecte.",
-                    color = c.texteDiscret, fontSize = 11.us,
+                    color = h.discret, fontSize = 11.us,
                 )
                 if (note != null) {
                     Spacer(Modifier.height(10.u))
@@ -503,10 +488,10 @@ fun AideTelecommandeDialog(
 /** Ligne d'état : pastille verte (fait) ou orange (à faire). */
 @Composable
 private fun Etat(fait: Boolean, texte: String) {
-    val c = LocalDesign.current.colors()
+    val h = habillageDialogue()
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.u)) {
         Box(Modifier.size(10.u).background(if (fait) Color(0xFF3DDC84) else Color(0xFFFFB86B), RoundedCornerShape(5.u)))
         Spacer(Modifier.width(10.u))
-        Text(texte, color = c.texte, fontSize = 14.us)
+        Text(texte, color = h.texte, fontSize = 14.us)
     }
 }

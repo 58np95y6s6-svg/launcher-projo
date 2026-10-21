@@ -41,6 +41,10 @@ object ProjoIcons {
         "M4,8h4V4H4V8zM10,20h4v-4h-4V20zM4,20h4v-4H4V20zM4,14h4v-4H4V14zM10,14h4v-4h-4V14zM16,4v4h4V4H16zM10,8h4V4h-4V8zM16,14h4v-4h-4V14zM16,20h4v-4h-4V20z"
     )
     val Accueil = icone("M10,20v-6h4v6h5v-8h3L12,3 2,12h3v8z")
+    /** Clap (« movie ») : suggestions de films et séries. */
+    val Film = icone("M18,4l2,4h-3l-2,-4h-2l2,4h-3l-2,-4H8l2,4H7L5,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4h-4z")
+    /** Photo (« image ») : affiches des nouveautés. */
+    val Photo = icone("M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z")
 
     private fun icone(path: String): ImageVector =
         ImageVector.Builder(
