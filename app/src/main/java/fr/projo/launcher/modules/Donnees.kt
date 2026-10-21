@@ -56,6 +56,12 @@ class DonneesModules(private val factices: ((String) -> Any?)? = null) {
         }
     }
 
+    /**
+     * Tests : objet que [factices] donne pour [cle] (ex. la source de données du module
+     * Télécommande, voir CLE_SOURCE_TELECOMMANDE) ; toujours null en fonctionnement normal.
+     */
+    fun factice(cle: String): Any? = factices?.invoke(cle)
+
     /** Force le rechargement des clés qui commencent par [prefixe] (ex. après un changement de ville). */
     fun invalider(prefixe: String) {
         for ((cle, f) in etats) {

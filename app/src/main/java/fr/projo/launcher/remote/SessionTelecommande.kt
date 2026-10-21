@@ -77,6 +77,8 @@ class SessionTelecommande(
     private var cleTelephone: ByteArray? = null
     private var nomPropose = ""
     private var confirmationEnCours = false
+    /** Secret présenté par la demande en attente de confirmation (voir GestionAppairage.reserver). */
+    private var secretReserve: SecretAppairage? = null
 
     val authentifiee: Boolean get() = etat == Etat.AUTHENTIFIEE
 
@@ -118,6 +120,7 @@ class SessionTelecommande(
         etat = Etat.FERMEE
         if (confirmationEnCours) {
             confirmationEnCours = false
+            libererSecret(accepte = false)
             hote.annulerConfirmation(this)
         }
         fermer()
@@ -220,17 +223,21 @@ class SessionTelecommande(
         }
         val nom = RegistreTelecommande.nettoyerNom(m.optString("nom")).ifEmpty { nomPropose }.ifEmpty { "Téléphone" }
         confirmationEnCours = true
+        // Pas de renouvellement du secret (QR code permanent) tant que l'utilisateur n'a pas répondu
+        secretReserve = hote.appairage.reserver()
         val affichee = hote.demanderConfirmation(this, nom) { autorise ->
             if (!confirmationEnCours || etat != Etat.CLE_VERIFIEE) return@demanderConfirmation
             confirmationEnCours = false
             if (!autorise) {
+                libererSecret(accepte = false)
                 hote.journal("appairage refusé (refuse)")
                 envoyer(Protocole.pairRefused(RaisonRefus.REFUSE))
                 return@demanderConfirmation
             }
             val telephone = TelephoneAppaire(id, nom, Base64Url.encoder(spki), hote.maintenant())
             hote.registre.ajouter(telephone)
-            hote.appairage.consommer()
+            // Usage unique : consomme le secret de CETTE demande (pas un secret renouvelé entre-temps)
+            libererSecret(accepte = true)
             envoyer(Protocole.paired(hote.nomTv, hote.registre.idTv(), Base64Url.encoder(hote.identite.spki)))
             etat = Etat.AUTHENTIFIEE
             hote.journal("appairage accepté")
@@ -240,8 +247,15 @@ class SessionTelecommande(
         if (!affichee) {
             // Une autre demande attend déjà la réponse de l'utilisateur
             confirmationEnCours = false
+            libererSecret(accepte = false)
             envoyer(Protocole.pairRefused(RaisonRefus.REFUSE))
         }
+    }
+
+    private fun libererSecret(accepte: Boolean) {
+        val s = secretReserve ?: return
+        secretReserve = null
+        hote.appairage.liberer(s, accepte)
     }
 
     // ------------------------------------------------------------------ commandes

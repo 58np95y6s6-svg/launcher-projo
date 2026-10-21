@@ -64,6 +64,17 @@ object RemoteConfig {
     /** Durée de validité du secret d'appairage (QR code et code de secours). */
     const val DUREE_SECRET_MS = 5 * 60_000L
 
+    /** Adresse encodée dans le QR code d'appairage (fragment `#` : jamais envoyé au serveur web). */
+    fun urlAppairage(idTv: String, secret: String, empreinteTv: String): String =
+        "$URL_PWA#pair=$idTv.$secret.$empreinteTv"
+
+    /**
+     * Module Télécommande (QR code permanent sur l'accueil) : après un appairage, « ✓ Marie est
+     * appairé » reste affiché ce temps (et tant que le dialogue en grand est ouvert) avant le
+     * nouveau QR code.
+     */
+    const val PAUSE_APRES_APPAIRAGE_MS = 6_000L
+
     /** Limite de tentatives : N échecs dans la fenêtre, puis blocage. */
     const val ESSAIS_MAX = 5
     const val FENETRE_ESSAIS_MS = 60_000L
