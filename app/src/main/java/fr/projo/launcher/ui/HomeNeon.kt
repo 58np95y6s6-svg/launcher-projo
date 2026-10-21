@@ -213,6 +213,7 @@ private class NavNeon(val rangee: LazyListState) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeNeon(ctx: HomeContext) {
     val ui = ctx.ui
