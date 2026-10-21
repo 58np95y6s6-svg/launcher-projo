@@ -54,8 +54,9 @@ import kotlinx.coroutines.withContext
  *  - sinon (autre app, raccourci, écran 2, sans clé, hors ligne, réglage coupé) : le fond
  *    clair ne change pas. Retour en fondu.
  * Rendu clair : photo mate (noirs relevés, blancs sous le blanc du fond : rien n'éblouit),
- * un peu désaturée, fondue par un masque (calque à part, aucun flou), et un halo du fond
- * derrière l'heure et la légende pour garder l'encre grise lisible.
+ * un peu désaturée, fondue par un masque (calque à part, aucun flou). En haut à droite, une
+ * ombre douce posée sur la photo seule (vignettage) : les pastilles blanches, l'heure et la
+ * légende, passées au blanc pendant le fondu, restent lisibles.
  * Mémoire : au plus deux images décodées pour les nouveautés (à la largeur de la zone),
  * celles des suggestions sont partagées avec les cartes.
  */
@@ -72,14 +73,11 @@ private const val P_PLEINE_X = 640f
 private const val P_PLEINE_Y = 132f
 private const val P_FIN_Y = 300f
 
-/** Halo derrière l'heure et la légende (centre, demi-largeur, demi-hauteur). */
-private const val H_X = 846f
-private const val H_Y = 82f
-private const val H_RX = 150f
-private const val H_RY = 42f
-
-/** Couleur du fond clair à cet endroit (dégradé de fondStudio, en haut). */
-private val FondHalo = Color(0xFFF2F3F6)
+/** Ombre sous les pastilles, l'heure et la légende (centre, demi-largeur, demi-hauteur). */
+private const val O_X = 910f
+private const val O_Y = 50f
+private const val O_RX = 340f
+private const val O_RY = 150f
 
 /** Suggestion sélectionnée et son image (déjà chargée par la carte). */
 internal class HerosStudio(val cle: String, val image: ImageBitmap)
@@ -200,7 +198,7 @@ private fun DrawScope.photoStudio(image: ImageBitmap, zone: Rect, alpha: Float, 
     )
 }
 
-/** Présence (0 → 1) d'une couche de photos : sert au halo. */
+/** Présence (0 → 1) d'une couche de photos. */
 private fun presenceCouche(p: PhotosUne): Float {
     val f = p.fondu.value
     return when {
@@ -248,25 +246,18 @@ internal fun FondPhotosStudio(fond: FondStudio, modifier: Modifier) {
                     0.75f to Color.Black.copy(alpha = 0.16f), 1f to Color.Transparent,
                     startY = P_PLEINE_Y * k, endY = P_FIN_Y * k,
                 )
-                val centreHalo = Offset(H_X * k, H_Y * k)
+                val centreOmbre = Offset(O_X * k, O_Y * k)
+                val ombre = Brush.radialGradient(
+                    0f to Color.Black.copy(alpha = 0.5f), 0.4f to Color.Black.copy(alpha = 0.44f),
+                    0.7f to Color.Black.copy(alpha = 0.22f), 1f to Color.Transparent,
+                    center = centreOmbre, radius = O_RY * k,
+                )
                 onDrawBehind {
                     couche(a, zone, filtre)
                     couche(h, zone, filtre)
-                    // Halo de la couleur du fond derrière l'heure et la légende (ellipse sans flou)
-                    val presence = 1f - (1f - presenceCouche(a)) * (1f - presenceCouche(h))
-                    if (presence > 0f) {
-                        scale(H_RX / H_RY, 1f, pivot = centreHalo) {
-                            drawCircle(
-                                Brush.radialGradient(
-                                    0f to FondHalo.copy(alpha = 0.92f * presence),
-                                    0.5f to FondHalo.copy(alpha = 0.78f * presence),
-                                    0.8f to FondHalo.copy(alpha = 0.3f * presence),
-                                    1f to FondHalo.copy(alpha = 0f),
-                                    center = centreHalo, radius = H_RY * k,
-                                ),
-                                radius = H_RY * k, center = centreHalo,
-                            )
-                        }
+                    // Ombre douce (ellipse sans flou) sur la photo seule (SrcAtop : jamais sur le fond)
+                    scale(O_RX / O_RY, 1f, pivot = centreOmbre) {
+                        drawCircle(ombre, radius = O_RY * k, center = centreOmbre, blendMode = BlendMode.SrcAtop)
                     }
                     drawRect(gauche, blendMode = BlendMode.DstIn)
                     drawRect(bas, blendMode = BlendMode.DstIn)
@@ -278,14 +269,14 @@ internal fun FondPhotosStudio(fond: FondStudio, modifier: Modifier) {
     if (h.courante != null && cle != null) Box(Modifier.size(1.dp).testTag("studio:heros:$cle"))
 }
 
-/** Légende de la nouveauté affichée (« Nouveau sur Netflix · The Storm »), sous l'heure. */
+/** Légende de la nouveauté affichée (« Nouveau sur Netflix · The Storm »), sous l'heure, sur la photo. */
 @Composable
 internal fun LegendePhotosStudio(fond: FondStudio, modifier: Modifier) {
     val p = fond.apps
     val photo = p.courante ?: p.precedente ?: return
     val entrante = p.courante != null
     Text(
-        photo.legende, color = StudioGris, fontSize = 10.us, fontWeight = FontWeight.SemiBold,
+        photo.legende, color = Color.White.copy(alpha = 0.86f), fontSize = 10.us, fontWeight = FontWeight.SemiBold,
         style = ligne(13.us), maxLines = 1, overflow = TextOverflow.Ellipsis,
         modifier = modifier
             .testTag(if (entrante) "studio:photo" else "studio:photo-sortante")
@@ -293,6 +284,9 @@ internal fun LegendePhotosStudio(fond: FondStudio, modifier: Modifier) {
             .graphicsLayer { alpha = if (entrante) p.fondu.value else 1f - p.fondu.value },
     )
 }
+
+/** Présence (0 → 1) d'une photo sur le fond : encre de l'heure (lue au dessin seulement). */
+internal fun FondStudio.presence(): Float = 1f - (1f - presenceCouche(apps)) * (1f - presenceCouche(heros))
 
 /** Une nouveauté est-elle affichée (pour l'attribution TMDB, même sans suggestions) ? */
 internal fun FondStudio.nouveauteAffichee(): Boolean = apps.courante != null || apps.precedente != null

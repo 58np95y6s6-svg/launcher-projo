@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -197,6 +198,7 @@ fun HomeStudio(ctx: HomeContext) {
                         StudioEnTete(
                             ctx, nav, onglets, onglet, { ongletChoisi = it }, reglagesBas, { reglagesBas = it }, versEcran,
                             sansCle = etat.resultat.etat == StudioEtat.SANS_CLE,
+                            photo = { fond.presence() },
                         )
                         StudioRangeeSuggestions(ctx, nav, suggestions, onglet, versEcran, selectionFond)
                         // Attribution demandée par TMDB (suggestions ou photo affichées)
@@ -241,6 +243,8 @@ private fun StudioEnTete(
     setReglagesBas: (Boolean) -> Unit,
     versEcran: (StudioBande) -> Unit,
     sansCle: Boolean,
+    /** Présence d'une photo sur le fond (0 → 1) : l'heure passe du gris au blanc, sans recomposer. */
+    photo: () -> Float,
 ) {
     val a = ctx.actions
     Row(
@@ -300,11 +304,17 @@ private fun StudioEnTete(
                 )
             }
             val t = rememberMaintenant()
-            Text(
-                "${heureTexte(t)} · ${dateTexte(t).replaceFirstChar { it.uppercase() }}",
-                color = StudioGrisClair, fontSize = 10.us, fontWeight = FontWeight.Medium,
-                style = ligne(13.us), modifier = Modifier.padding(top = 9.u, end = 2.u),
-            )
+            val date = "${heureTexte(t)} · ${dateTexte(t).replaceFirstChar { it.uppercase() }}"
+            Box(Modifier.padding(top = 9.u, end = 2.u)) {
+                Text(
+                    date, color = StudioGrisClair, fontSize = 10.us, fontWeight = FontWeight.Medium, style = ligne(13.us),
+                    modifier = Modifier.graphicsLayer { alpha = 1f - photo() },
+                )
+                Text(
+                    date, color = Color.White.copy(alpha = 0.9f), fontSize = 10.us, fontWeight = FontWeight.Medium, style = ligne(13.us),
+                    modifier = Modifier.graphicsLayer { alpha = photo() },
+                )
+            }
         }
     }
 }
