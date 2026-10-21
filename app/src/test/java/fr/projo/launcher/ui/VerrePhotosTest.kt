@@ -25,8 +25,8 @@ import java.io.File
  * « Verre » : photo d'une nouveauté du service sélectionné incrustée dans le papier peint.
  *  - sans clé (ou hors ligne) : le papier peint seul, comme avant ;
  *  - avec la clé TMDB (variable TMDB_KEY_TESTS ou TMDB_KEY, job tests de la CI) : Netflix,
- *    Prime Video, Disney+ dans « Mes apps », une app sans catalogue, l'ornement, et des zooms
- *    sur les zones chargées en texte (fenêtre NBA, ligne du nom de l'app et de la légende).
+ *    Prime Video, Disney+ dans « Mes apps », Netflix le soir, une app sans catalogue, l'ornement,
+ *    et des zooms sur les zones chargées en texte (fenêtre NBA, nom de l'app et légende).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -34,10 +34,16 @@ import java.io.File
 class VerrePhotosTest : BancAccueil("VERRE") {
 
     @Before
-    fun avant() = Nouveautes.vider()
+    fun avant() {
+        Nouveautes.vider()
+        SoirVerre.impose = false
+    }
 
     @After
-    fun apres() = Nouveautes.vider()
+    fun apres() {
+        Nouveautes.vider()
+        SoirVerre.impose = null
+    }
 
     /** Légende de la photo affichée (« Nouveau sur Netflix · … »), null : pas de photo. */
     private fun photoAffichee(): String? =
@@ -116,6 +122,17 @@ class VerrePhotosTest : BancAccueil("VERRE") {
         zoom(f, "vp1z_zoom_nba", 515, 22, 940, 208)
         zoom(f, "vp1z_zoom_horloge_titre", 40, 18, 520, 250)
         zoom(f, "vp1z_zoom_legende", 520, 200, 960, 250)
+    }
+
+    /** Le soir (19 h – 7 h) : photo plus sombre. */
+    @Test
+    fun netflixSoir() {
+        SoirVerre.impose = true
+        preparerTmdb()
+        afficher()
+        attendrePhoto("Netflix")
+        val f = capturer("vp7_netflix_soir")
+        zoom(f, "vp7z_zoom_nba_soir", 515, 22, 940, 208)
     }
 
     @Test

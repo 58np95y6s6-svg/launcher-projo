@@ -102,8 +102,6 @@ private val VerreFondBouton = Color.White.copy(alpha = 0.14f)
 private val VerreLueur = Color(0xFFFFE3F0).copy(alpha = 0.55f)
 /** Ombre portée violet très sombre (élément soulevé). */
 private val VerreOmbre = Color(0xFF06031C)
-/** Voile « givré » ajouté aux fenêtres de verre quand une photo est derrière (lisibilité). */
-private val VerreGivre = Color(0xFF100C2A).copy(alpha = 0.5f)
 
 /** Liseré lumineux des cartes : vif en haut à gauche, presque éteint au milieu. */
 private val VerreLisereCarte: Brush = Brush.linearGradient(
@@ -164,8 +162,8 @@ private const val VERRE_ECHELLE = 1.12f
  *    (le nom du bouton sélectionné s'affiche à la place du nom de l'app) ;
  *  - favoris en cartes 5:3 qui se soulèvent au focus (liseré blanc, halo, reflet) ;
  *  - « Mes apps » en icônes rondes dans une fenêtre de verre, puis « Toutes les apps » ;
- *  - app de streaming sélectionnée : photo d'une nouveauté incrustée dans le papier peint
- *    (VerrePhotos.kt), les fenêtres de verre se givrent pour rester lisibles.
+ *  - app de streaming sélectionnée : photo d'une nouveauté incrustée dans le papier peint,
+ *    dépolie derrière les fenêtres de verre (VerrePhotos.kt).
  */
 @Composable
 fun HomeVerre(ctx: HomeContext) {
@@ -194,12 +192,11 @@ fun HomeVerre(ctx: HomeContext) {
     }
     val largeurPhoto = with(LocalDensity.current) { 960.u.toPx() }.toInt().coerceIn(320, 1280)
     val photos = rememberPhotosUne(appPhoto, largeurPhoto)
-    val filtre = remember { filtrePhotosVerre() }
-    val givre = remember(photos) { { photos.presenceVerre() } }
+    val fond = rememberFondVerre(photos)
 
     Box(Modifier.fillMaxSize()) {
         VerreFond()
-        VerrePhotoFond(photos, filtre)
+        VerrePhotoFond(fond)
 
         Column(Modifier.fillMaxSize()) {
             // --- Haut : horloge (la fenêtre NBA flotte à droite, par-dessus)
@@ -231,7 +228,7 @@ fun HomeVerre(ctx: HomeContext) {
                     VerreOrnement(
                         boutons = boutons,
                         focusReglages = ctx.focusReglages,
-                        givre = givre,
+                        fond = fond,
                         surFocus = { icone, focus ->
                             if (focus) {
                                 boutonFocus = icone
@@ -281,7 +278,7 @@ fun HomeVerre(ctx: HomeContext) {
             //     ~131 : pas de nom d'app rogné ; l'horloge au-dessus absorbe la différence)
             Spacer(Modifier.height(2.u))
             VerreMesApps(
-                ctx, givre, { focusApps = it },
+                ctx, fond, { focusApps = it },
                 Modifier.padding(start = 96.u, end = 30.u).fillMaxWidth(),
             )
             Spacer(Modifier.height(26.u))
@@ -292,7 +289,8 @@ fun HomeVerre(ctx: HomeContext) {
             Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 30.u, end = 30.u)
-                .verreVitre(VerreNba.rayon.u * VerreNba.echelle, 1.u, givre)
+                .verreDepoli(fond, VerreNba.rayon.u * VerreNba.echelle)
+                .verreVitre(VerreNba.rayon.u * VerreNba.echelle, 1.u)
         ) {
             NbaPanel(
                 data = ctx.nbaData,
@@ -378,14 +376,15 @@ private fun VerreHorloge(modifier: Modifier = Modifier) {
 private fun VerreOrnement(
     boutons: List<QuickAction>,
     focusReglages: FocusRequester,
-    givre: () -> Float,
+    fond: FondVerre,
     surFocus: (ImageVector, Boolean) -> Unit,
     modifier: Modifier,
 ) {
     Column(
         modifier
             .width(54.u)
-            .verreVitre(27.u, 1.u, givre)
+            .verreDepoli(fond, 27.u)
+            .verreVitre(27.u, 1.u)
             .padding(7.u),
         verticalArrangement = Arrangement.spacedBy(6.u),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -579,10 +578,10 @@ private fun VerreAide(onFocused: () -> Unit, modifier: Modifier = Modifier) {
  * [surFocus] : la rangée contient (ou non) l'élément sélectionné (photo de fond).
  */
 @Composable
-private fun VerreMesApps(ctx: HomeContext, givre: () -> Float, surFocus: (Boolean) -> Unit, modifier: Modifier) {
+private fun VerreMesApps(ctx: HomeContext, fond: FondVerre, surFocus: (Boolean) -> Unit, modifier: Modifier) {
     val ui = ctx.ui
     val actions = ctx.actions
-    Column(modifier.verreVitre(28.u, 1.u, givre).padding(top = 8.u)) {
+    Column(modifier.verreDepoli(fond, 28.u).verreVitre(28.u, 1.u).padding(top = 8.u)) {
         // Interligne explicite : sinon celui du thème (24 sp) s'applique aux petits textes
         Text(
             "Mes apps",
@@ -808,9 +807,8 @@ private fun Modifier.verreLevee(hauteur: () -> Float): Modifier = drawWithConten
 /**
  * Verre dépoli (sans flou) : teinte sombre, voile blanc dégradé, reflet en haut à gauche
  * et liseré lumineux de [bordure], vif en haut à gauche et doux en bas à droite.
- * [givre] (0 → 1, lu au dessin) : voile sombre en plus quand une photo est derrière.
  */
-private fun Modifier.verreVitre(rayon: Dp, bordure: Dp, givre: () -> Float = { 0f }): Modifier = drawWithCache {
+private fun Modifier.verreVitre(rayon: Dp, bordure: Dp): Modifier = drawWithCache {
     val r = rayon.toPx().coerceAtMost(size.minDimension / 2f)
     val e = bordure.toPx()
     val coin = CornerRadius(r)
@@ -834,8 +832,6 @@ private fun Modifier.verreVitre(rayon: Dp, bordure: Dp, givre: () -> Float = { 0
     val coinBord = CornerRadius((r - e / 2f).coerceAtLeast(0f))
     val trait = Stroke(width = e)
     onDrawBehind {
-        val g = givre()
-        if (g > 0.005f) drawRoundRect(VerreGivre, cornerRadius = coin, alpha = g)
         drawRoundRect(VerreTeinte, cornerRadius = coin)
         drawRoundRect(voile, cornerRadius = coin)
         drawRoundRect(reflet, cornerRadius = coin)
