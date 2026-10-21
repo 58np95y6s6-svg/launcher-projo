@@ -191,7 +191,7 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class CapturesModulesDialogTest : BancAccueil("UNE") {
+class CapturesModulesDialogTest : BancAccueil("VERRE") {
 
     @OptIn(ExperimentalRoborazziApi::class)
     private fun dialogue(nom: String, contenu: @androidx.compose.runtime.Composable () -> Unit) {

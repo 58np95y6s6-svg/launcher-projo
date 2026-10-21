@@ -307,7 +307,7 @@ class ModulesSoireeInfosPhotoTest(nomDesign: String) : BancAccueil(nomDesign) {
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class CapturesReglagesSoireeInfosTest : BancAccueil("UNE") {
+class CapturesReglagesSoireeInfosTest : BancAccueil("VERRE") {
 
     @OptIn(ExperimentalRoborazziApi::class)
     private fun dialogue(nom: String, contenu: @Composable () -> Unit) {

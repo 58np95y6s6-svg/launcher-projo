@@ -36,8 +36,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans");
 
     companion object {
-        /** Design par défaut : « À la une ». */
-        val PAR_DEFAUT = UNE
+        /** Design par défaut : « Verre ». */
+        val PAR_DEFAUT = VERRE
 
         /**
          * Design enregistré (préférence « design ») ; sans choix ou pour un identifiant inconnu,

@@ -3,9 +3,8 @@
 Écran d'accueil personnalisé, au design inspiré de l'Apple TV, pour le projecteur
 **COOLiD C3** (Android 11, 1 Go de RAM). Léger, fluide, piloté à 100 % à la télécommande.
 
-- 6 designs d'accueil au choix (Réglages → Design) : **À la une** (par défaut : nom géant,
-  l'écran aux couleurs de l'app sélectionnée), **Verre**, **Pastel**, **Console**, **Chaînes**
-  et **Studio**
+- 6 designs d'accueil au choix (Réglages → Design) : **Verre** (par défaut : verre dépoli,
+  lumière douce), **Pastel**, **Console**, **À la une**, **Chaînes** et **Studio**
 - Grande horloge et date ; boutons **Sources**, **Wi-Fi**, **Bluetooth**, **Réglages**
 - Rangée **Favoris** et rangée **Mes apps**, puis **Toutes les apps** ; modules (météo,
   sport…) à la place des scores NBA

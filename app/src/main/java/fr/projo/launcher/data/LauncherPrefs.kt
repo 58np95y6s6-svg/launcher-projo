@@ -28,7 +28,7 @@ data class PrefsState(
     val iconOverrides: Map<String, String> = emptyMap(),
     /**
      * Design de l'écran d'accueil (identifiant, voir ui.Design). Lu par Design.from : un
-     * identifiant inconnu (design supprimé) donne le design par défaut, « À la une ».
+     * identifiant inconnu (design supprimé) donne le design par défaut, « Verre ».
      */
     val design: String? = null,
     /** Modules affichés dans la zone de modules (1 ou 2 identifiants, dans l'ordre ; voir modules.RegistreModules). */

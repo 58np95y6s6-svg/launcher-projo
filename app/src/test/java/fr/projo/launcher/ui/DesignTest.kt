@@ -36,17 +36,17 @@ class DesignTest {
     }
 
     @Test
-    fun parDefautALaUne() {
-        assertEquals(Design.UNE, Design.PAR_DEFAUT)
-        assertEquals("aucune préférence", Design.UNE, Design.from(null))
-        assertEquals("préférence vide", Design.UNE, Design.from(""))
-        assertEquals("identifiant inconnu", Design.UNE, Design.from("inconnu"))
+    fun parDefautVerre() {
+        assertEquals(Design.VERRE, Design.PAR_DEFAUT)
+        assertEquals("aucune préférence", Design.VERRE, Design.from(null))
+        assertEquals("préférence vide", Design.VERRE, Design.from(""))
+        assertEquals("identifiant inconnu", Design.VERRE, Design.from("inconnu"))
     }
 
-    /** Préférence d'un design supprimé : retour sur « À la une », sans planter. */
+    /** Préférence d'un design supprimé : retour sur « Verre », sans planter. */
     @Test
     fun migrationDesignsSupprimes() {
-        for (id in IDS_SUPPRIMES) assertEquals("préférence « $id »", Design.UNE, Design.from(id))
+        for (id in IDS_SUPPRIMES) assertEquals("préférence « $id »", Design.VERRE, Design.from(id))
     }
 
     /** Les designs restants se relisent tels quels. */
@@ -67,23 +67,23 @@ class PreferenceDesignTest {
     @Test
     fun preferenceEnregistreeRelue() = runBlocking {
         val prefs = LauncherPrefs(RuntimeEnvironment.getApplication())
-        assertEquals("sans préférence", Design.UNE, Design.from(prefs.state.first().design))
+        assertEquals("sans préférence", Design.VERRE, Design.from(prefs.state.first().design))
         for (id in IDS_SUPPRIMES) {
             prefs.setDesign(id)
             val lu = prefs.state.first().design
             assertEquals("préférence enregistrée", id, lu)
-            assertEquals("préférence « $id » (design supprimé)", Design.UNE, Design.from(lu))
+            assertEquals("préférence « $id » (design supprimé)", Design.VERRE, Design.from(lu))
         }
-        prefs.setDesign(Design.VERRE.id)
-        assertEquals("design restant", Design.VERRE, Design.from(prefs.state.first().design))
+        prefs.setDesign(Design.UNE.id)
+        assertEquals("design restant", Design.UNE, Design.from(prefs.state.first().design))
     }
 }
 
-/** Réglages → Design : les 6 designs proposés, « À la une » coché ; capture « dialogue_design ». */
+/** Réglages → Design : les 6 designs proposés, « Verre » (par défaut) coché ; capture « dialogue_design ». */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
-class CapturesDesignTest : BancAccueil("UNE") {
+class CapturesDesignTest : BancAccueil("VERRE") {
 
     @OptIn(ExperimentalRoborazziApi::class)
     @Test
@@ -103,7 +103,7 @@ class CapturesDesignTest : BancAccueil("UNE") {
         for (d in Design.entries) {
             if (!present(d.nom + " — " + d.resume)) fail("Réglages → Design : « ${d.nom} » absent")
         }
-        if (!present("✓ " + Design.UNE.nom)) fail("Réglages → Design : « À la une » devrait être coché")
+        if (!present("✓ " + Design.VERRE.nom + " — ")) fail("Réglages → Design : « Verre » (par défaut) devrait être coché")
         for (nom in listOf("Aurore", "Graphite", "Playlist", "Néon")) {
             if (present(nom)) fail("Réglages → Design : « $nom » ne devrait plus être proposé")
         }
