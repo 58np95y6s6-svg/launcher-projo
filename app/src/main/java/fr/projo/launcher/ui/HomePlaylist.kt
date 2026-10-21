@@ -102,6 +102,7 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
+import fr.projo.launcher.data.Nouveautes
 import fr.projo.launcher.data.Rubrique
 import fr.projo.launcher.modules.FocusModules
 import kotlinx.coroutines.launch
@@ -132,10 +133,12 @@ private val PlPolice = FontFamily.SansSerif
 
 // Mesures (unités .u de l'écran de référence 960 × 540)
 private const val PL_MARGE = 8
+/** Marge de sécurité en haut et en bas de l'écran (les projecteurs rognent les bords). */
+private const val PL_SECURITE = 26
 /** Barre du haut (boutons ronds, recherche). */
-private const val PL_HAUT = 56
+private const val PL_HAUT = 52
 /** Barre « lecteur » du bas. */
-private const val PL_BAS = 72
+private const val PL_BAS = 64
 /** Largeur de la barre latérale « Bibliothèque » et du panneau « En ce moment ». */
 private const val PL_LATERALE = 208
 private const val PL_DROITE = 296
@@ -639,11 +642,15 @@ fun HomePlaylist(ctx: HomeContext) {
     val filtreActif = filtre?.takeIf { it in rubriques }
     val lignes = if (filtreActif == null) entrees else entrees.filter { rubriqueDe[it.first.packageName] == filtreActif }
 
-    // Raccourcis : dernières apps lancées, complétées par « Mes apps » puis les favoris
+    // Raccourcis : chaque app n'apparaît qu'une fois au centre. Les favoris sont dans « Vos apps »,
+    // « Mes apps » dans « Toutes les apps » : les tuiles montrent les AUTRES apps installées,
+    // les dernières lancées d'abord (depuis la bibliothèque, par exemple)
     var recentes by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val tuiles = remember(recentes, ui.homeApps, ui.favorites, ui.allApps) {
-        val parPaquet = (ui.allApps + ui.favorites + ui.homeApps).associateBy { it.packageName }
-        (recentes.mapNotNull { parPaquet[it] } + ui.homeApps + ui.favorites).distinctBy { it.packageName }.take(6)
+        val affichees = (ui.favorites + ui.homeApps).map { it.packageName }.toHashSet()
+        val autres = ui.allApps.filter { it.packageName !in affichees }
+        val parPaquet = autres.associateBy { it.packageName }
+        (recentes.mapNotNull { parPaquet[it] } + autres).distinctBy { it.packageName }.take(4)
     }
     val lancer: (AppInfo) -> Unit = { app ->
         recentes = (listOf(app.packageName) + recentes.filter { it != app.packageName }).take(6)
@@ -660,7 +667,11 @@ fun HomePlaylist(ctx: HomeContext) {
             .fillMaxSize()
             .background(PlNoir)
     ) {
-        Column(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(top = PL_SECURITE.u, bottom = PL_SECURITE.u)
+        ) {
             PlBarreHaut(ctx, nav) {
                 filtre = null
                 scope.launch { etatLignes.scrollToItem(0) }
@@ -1193,7 +1204,6 @@ private fun PlCentre(
     val t = rememberMaintenant()
     // Lu seulement au dessin : le fondu ne recompose rien
     val teinte = animateColorAsState(plTeinte(ctx.couleur), tween(400), label = "teintePlaylist")
-    val hauteurDegrade = 300.u
     fun rubrique(a: AppInfo) = rubriqueDe[a.packageName] ?: AppCategories.rubrique(a)
     Box(
         modifier
@@ -1201,9 +1211,17 @@ private fun PlCentre(
             .clip(RoundedCornerShape(8.u))
             .background(PlPanneau)
             .drawBehind {
-                val h = hauteurDegrade.toPx()
+                // Une teinte, pas un aplat : le haut du panneau seulement (38 %), opacité réduite,
+                // transition douce vers #121212
+                val h = size.height * 0.38f
+                val c = teinte.value
                 drawRect(
-                    Brush.verticalGradient(listOf(teinte.value, PlPanneau), startY = 0f, endY = h),
+                    Brush.verticalGradient(
+                        0f to c.copy(alpha = 0.5f),
+                        0.45f to c.copy(alpha = 0.22f),
+                        1f to c.copy(alpha = 0f),
+                        startY = 0f, endY = h,
+                    ),
                     size = Size(size.width, h),
                 )
             }
@@ -1224,7 +1242,10 @@ private fun PlCentre(
                 modifier = Modifier.padding(start = 16.u, end = 16.u, top = 12.u),
             )
             PlGrille(ctx, nav, tuiles, lancer)
-            PlTitreSection("Vos apps")
+            // Attribution TMDB obligatoire quand les cartes montrent des nouveautés
+            val contexte = LocalContext.current
+            val tmdb = remember(fr.projo.launcher.data.CleTmdb.version) { fr.projo.launcher.data.CleTmdb.lire(contexte) != null }
+            PlTitreSection("Vos apps", if (tmdb && fr.projo.launcher.data.ReglageNouveautes.actif) "Données : TMDB" else null)
             PlRangeeFavoris(ctx, nav, ::rubrique, lancer)
             PlTitreSection("Toutes les apps")
             PlRangeeApps(ctx, nav, ::rubrique, lancer)
@@ -1232,12 +1253,18 @@ private fun PlCentre(
     }
 }
 
+/** Titre de section, et à droite une mention discrète facultative. */
 @Composable
-private fun PlTitreSection(texte: String) {
-    PlTexte(
-        texte, 20, FontWeight.ExtraBold, Color.White, serre = true,
-        modifier = Modifier.padding(start = 16.u, end = 16.u, top = 16.u, bottom = 4.u),
-    )
+private fun PlTitreSection(texte: String, mention: String? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.u, end = 16.u, top = 16.u, bottom = 4.u),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        PlTexte(texte, 20, FontWeight.ExtraBold, Color.White, Modifier.weight(1f), serre = true)
+        if (mention != null) PlTexte(mention, 11, FontWeight.Medium, PlGris.copy(alpha = 0.8f), Modifier.padding(bottom = 3.u))
+    }
 }
 
 /** Raccourcis façon « écoutés récemment » : deux colonnes de tuiles horizontales. */
@@ -1447,13 +1474,21 @@ private fun PlImageIcone(icone: ImageVector, couleurs: List<Color>) {
     }
 }
 
-/** Carte carrée d'une app : pochette, nom, rubrique. */
+/**
+ * Carte carrée d'une app : pochette, nom, rubrique. Service de streaming : au repos, le logo ;
+ * sélectionnée, fondu enchaîné (250 ms) vers la photo de sa dernière nouveauté (VisuelNouveaute,
+ * partagé : fondu en vague, « Nouveau » et le titre). La photo est chargée d'avance.
+ */
 @Composable
 private fun PlCarte(app: AppInfo, ctx: HomeContext, sousTitre: String, lancer: (AppInfo) -> Unit, modifier: Modifier) {
-    val visuel = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons, FormatVisuel.CARRE)
+    val paquet = ctx.ui.iconSourceOf(app.packageName)
+    val visuel = rememberAppVisual(paquet, ctx.icons, FormatVisuel.CARRE)
     val couleur = visuel?.color ?: IconLoader.COULEUR_PAR_DEFAUT
     var focus by remember { mutableStateOf(false) }
     LaunchedEffect(couleur) { if (focus) ctx.surFocus(app, couleur) }
+    val catalogue = Nouveautes.aUnCatalogue(app)
+    val nouveaute = if (catalogue) rememberNouveaute(app, largeurImageNouveaute(PL_IMAGE.u, FormeNouveaute.CARRE)) else null
+    val style = StylesNouveautes.courant
     PlCadreCarte(
         onClick = { lancer(app) },
         onLongClick = { ctx.actions.openMenu(app) },
@@ -1464,8 +1499,17 @@ private fun PlCarte(app: AppInfo, ctx: HomeContext, sousTitre: String, lancer: (
         titre = app.label,
         sousTitre = sousTitre,
         modifier = modifier.uneToucheMenu { ctx.actions.openMenu(app) },
-    ) {
+    ) { selection ->
         PlPochette(app, visuel, PL_IMAGE.u, RoundedCornerShape(6.u))
+        if (nouveaute != null) {
+            // Lu seulement au dessin : le fondu enchaîné ne recompose rien
+            val part = animateFloatAsState(if (selection) 1f else 0f, tween(250), label = "nouveaute")
+            VisuelNouveaute(
+                app, ctx.icons, paquet, FormeNouveaute.CARRE, PL_IMAGE.u,
+                modifier = Modifier.graphicsLayer { alpha = part.value },
+                rayon = 6.u, style = style, legende = PlaceLegende.HAUT, nouveaute = nouveaute,
+            ) {}
+        }
     }
 }
 
@@ -1482,7 +1526,8 @@ private fun PlCadreCarte(
     sousTitre: String,
     modifier: Modifier,
     lignesSousTitre: Int = 1,
-    image: @Composable () -> Unit,
+    /** Image de la carte ; reçoit l'état de sélection. */
+    image: @Composable (selection: Boolean) -> Unit,
 ) {
     var focus by remember { mutableStateOf(false) }
     Surface(
@@ -1507,7 +1552,7 @@ private fun PlCadreCarte(
     ) {
         Column(Modifier.padding(8.u)) {
             Box(Modifier.size(PL_IMAGE.u)) {
-                image()
+                image(focus)
                 PlLecture(
                     focus, 40,
                     Modifier
@@ -1607,7 +1652,7 @@ private fun PlLecteur(ctx: HomeContext, app: AppInfo?, favori: Boolean) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             if (app != null) {
                 val visuel = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons, FormatVisuel.CARRE)
-                PlPochette(app, visuel, 52.u, RoundedCornerShape(4.u))
+                PlPochette(app, visuel, 48.u, RoundedCornerShape(4.u))
                 Spacer(Modifier.width(12.u))
                 Column(Modifier.weight(1f, fill = false)) {
                     PlTexte(app.label, 15, FontWeight.Bold, Color.White)
@@ -1621,11 +1666,11 @@ private fun PlLecteur(ctx: HomeContext, app: AppInfo?, favori: Boolean) {
             }
         }
         Column(Modifier.width(340.u), horizontalAlignment = Alignment.CenterHorizontally) {
-            PlTexte(heureTexte(t), 28, FontWeight.ExtraBold, Color.White, serre = true, chiffres = true)
+            PlTexte(heureTexte(t), 26, FontWeight.ExtraBold, Color.White, serre = true, chiffres = true)
             PlTexte(
-                dateTexte(t).replaceFirstChar { it.titlecase(Locale.FRENCH) }, 13, FontWeight.Medium, PlGris,
+                dateTexte(t).replaceFirstChar { it.titlecase(Locale.FRENCH) }, 12, FontWeight.Medium, PlGris,
             )
-            Spacer(Modifier.height(5.u))
+            Spacer(Modifier.height(4.u))
             PlBarre(partDuJour(t), Modifier.width(320.u))
         }
         Row(
