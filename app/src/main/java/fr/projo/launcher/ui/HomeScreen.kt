@@ -130,6 +130,7 @@ fun HomeScreen(
                 runCatching { premierFocus.requestFocus() }
             }
         },
+        retourAccueil = homePressCount,
     )
     when (design) {
         Design.AURORE -> HomeAurore(ctx)

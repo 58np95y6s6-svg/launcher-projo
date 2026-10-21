@@ -1,7 +1,11 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -319,6 +323,7 @@ private const val S_GRANDE_H = 225
 private const val S_PETITE_L = 220
 private const val S_PETITE_H = 124
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StudioRangeeSuggestions(
     ctx: HomeContext,
@@ -333,6 +338,14 @@ private fun StudioRangeeSuggestions(
     val etat = ctx.rangeeApps
     LaunchedEffect(onglet) { etat.scrollToItem(0) }
     val context = LocalContext.current
+    // La grande carte suit la sélection (comme Google TV) : la carte sélectionnée s'agrandit et
+    // se cale à gauche de la rangée, les autres restent petites. Hors de la rangée, la dernière
+    // sélectionnée reste grande (rien ne bouge) ; Maison ou changement d'onglet : la 1re.
+    var choisie by remember(onglet, ctx.retourAccueil) { mutableStateOf<String?>(null) }
+    val cleGrande = choisie?.takeIf { c -> suggestions.any { it.cle == c } } ?: suggestions.firstOrNull()?.cle
+    // Image décodée une fois à la taille de la grande carte : rien à recharger quand elle grandit
+    val largeurImage = with(LocalDensity.current) { S_GRANDE_L.u.roundToPx() }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides rememberDefilementSuggestions(S_MARGE.u)) {
     LazyRow(
         state = etat,
         modifier = Modifier
@@ -345,15 +358,16 @@ private fun StudioRangeeSuggestions(
         verticalAlignment = Alignment.Bottom,
     ) {
         items(suggestions, key = { it.cle }) { s ->
-            val grande = s === suggestions.first()
-            val l = if (grande) S_GRANDE_L else S_PETITE_L
-            val h = if (grande) S_GRANDE_H else S_PETITE_H
+            val grande = s.cle == cleGrande
+            val l by animateFloatAsState(if (grande) S_GRANDE_L.toFloat() else S_PETITE_L.toFloat(), tween(220), label = "largeur")
+            val h by animateFloatAsState(if (grande) S_GRANDE_H.toFloat() else S_PETITE_H.toFloat(), tween(220), label = "hauteur")
             val cible = rememberCibleStudio(nav, StudioBande.SUGGESTIONS, s.cle)
+            val choisir = { choisie = s.cle }
             when (s) {
                 is StudioSuggestion.AppUne -> StudioCarteSuggestion(
-                    titre = s.app.label, sousTitre = s.phrase, largeur = l.u, hauteur = h.u, grande = grande,
+                    titre = s.app.label, sousTitre = s.phrase, largeur = l.uf, hauteur = h.uf, grande = grande,
                     onClick = { ctx.actions.launch(s.app) }, onMenu = { ctx.actions.openMenu(s.app) },
-                    onFocus = { c -> ctx.surFocus(s.app, c ?: IconLoader.COULEUR_PAR_DEFAUT) },
+                    onFocus = { c -> choisir(); ctx.surFocus(s.app, c ?: IconLoader.COULEUR_PAR_DEFAUT) },
                     modifier = Modifier.testTag("suggestion:" + s.app.packageName).then(cible),
                     app = s.app, icons = ctx.icons, iconPackage = ctx.ui.iconSourceOf(s.app.packageName),
                 )
@@ -363,19 +377,36 @@ private fun StudioRangeeSuggestions(
                     StudioCarteSuggestion(
                         titre = p.titre,
                         sousTitre = sousTitreProgramme(p),
-                        largeur = l.u, hauteur = h.u, grande = grande,
+                        largeur = l.uf, hauteur = h.uf, grande = grande,
                         onClick = { ouvrirProgramme(context, p) { app?.let(ctx.actions.launch) } },
                         onMenu = app?.let { { ctx.actions.openMenu(it) } },
-                        onFocus = { c -> if (app != null) ctx.surFocus(app, c ?: IconLoader.COULEUR_PAR_DEFAUT) else ctx.sansSelection() },
+                        onFocus = { c ->
+                            choisir()
+                            if (app != null) ctx.surFocus(app, c ?: IconLoader.COULEUR_PAR_DEFAUT) else ctx.sansSelection()
+                        },
                         modifier = Modifier.testTag("suggestion:" + p.id).then(cible),
                         app = app, icons = ctx.icons, iconPackage = app?.let { ctx.ui.iconSourceOf(it.packageName) },
-                        imageProgramme = p.image, largeurImage = with(LocalDensity.current) { l.u.roundToPx() },
+                        imageProgramme = p.image, largeurImage = largeurImage,
                         logoService = true,
                     )
                 }
             }
         }
     }
+    }
+}
+
+/** Défilement des suggestions : la carte sélectionnée se cale à [marge] du bord gauche. */
+@OptIn(ExperimentalFoundationApi::class)
+private class DefilementSuggestions(private val marge: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset - marge
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun rememberDefilementSuggestions(marge: Dp): BringIntoViewSpec {
+    val densite = LocalDensity.current
+    return remember(densite, marge) { with(densite) { DefilementSuggestions(marge.toPx()) } }
 }
 
 /**
