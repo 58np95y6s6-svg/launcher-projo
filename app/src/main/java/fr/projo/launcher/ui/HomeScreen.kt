@@ -140,6 +140,7 @@ fun HomeScreen(
         Design.GRAPHITE -> HomeGraphite(ctx)
         Design.UNE -> HomeUne(ctx)
         Design.CHAINES -> HomeChaines(ctx)
+        Design.PLAYLIST -> HomePlaylist(ctx)
     }
 }
 
