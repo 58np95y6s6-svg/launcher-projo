@@ -75,6 +75,7 @@ import fr.projo.launcher.modules.minuteur.ModuleMinuteur
 import fr.projo.launcher.modules.photo.ModulePhoto
 import fr.projo.launcher.modules.soleil.ModuleSoleil
 import fr.projo.launcher.modules.sport.ModuleSport
+import fr.projo.launcher.modules.telecommande.ModuleTelecommande
 import fr.projo.launcher.modules.tv.ModuleTv
 
 /** Liste unique des modules disponibles. */
@@ -92,6 +93,7 @@ object RegistreModules {
         ModuleMinuteur,
         ModuleBourse,
         ModuleAppareil,
+        ModuleTelecommande,
     )
 
     /** Module affiché quand l'utilisateur n'a rien choisi (l'ancien bandeau NBA). */
