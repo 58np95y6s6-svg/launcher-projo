@@ -412,6 +412,7 @@ internal class PlaylistNav {
     }
 
     /** Sortie de la zone de modules par la recherche de focus : ▲ vers la barre du haut, sinon on reste. */
+    @OptIn(ExperimentalComposeUiApi::class)
     fun sortieZone(sens: FocusDirection): FocusRequester {
         if (sens != FocusDirection.Up) return FocusRequester.Cancel
         val cle = boutonLePlusProche(xZone) ?: return FocusRequester.Cancel
