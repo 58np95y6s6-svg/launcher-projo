@@ -129,10 +129,10 @@ internal fun rememberPhotosUne(app: AppInfo?, largeurPx: Int): PhotosUne {
     return photos
 }
 
-/** Assombrit (×0,58 le jour, ×0,44 le soir) et désature (70 %) la photo. */
+/** Assombrit (×0,5 le jour, ×0,38 le soir) et désature (60 %) la photo. */
 internal fun filtrePhotosUne(soir: Boolean): ColorFilter {
-    val k = if (soir) 0.44f else 0.58f
-    val s = 0.7f
+    val k = if (soir) 0.38f else 0.5f
+    val s = 0.6f
     val lr = 0.213f * (1f - s)
     val lg = 0.715f * (1f - s)
     val lb = 0.072f * (1f - s)
@@ -168,7 +168,7 @@ private fun DrawScope.photoUne(image: ImageBitmap, zone: Rect, alpha: Float, fil
 /**
  * Photos derrière l'affiche (après l'aplat, avant le voile) : sur les 64 % de droite, teintées
  * de la couleur de l'aplat, fondues vers l'aplat à gauche (salutation, heure, nom géant) et en
- * bas (bande d'index), légère ombre en haut (pilules, score).
+ * bas (bande d'index), ombre radiale douce en haut à droite (pilules, score).
  */
 internal fun DrawScope.dessinerPhotosUne(p: PhotosUne, aplat: Color, soir: Boolean, filtre: ColorFilter) {
     val cour = p.courante
@@ -187,12 +187,12 @@ internal fun DrawScope.dessinerPhotosUne(p: PhotosUne, aplat: Color, soir: Boole
     if (prec != null) photoUne(prec.image, zone, if (cour == null) 1f - f else 1f, filtre)
     if (cour != null) photoUne(cour.image, zone, f, filtre)
     // Teinte de l'aplat
-    drawRect(aplat, topLeft = zone.topLeft, size = zone.size, alpha = if (soir) 0.36f else 0.28f)
-    // Fondu vers l'aplat, à gauche puis en bas
+    drawRect(aplat, topLeft = zone.topLeft, size = zone.size, alpha = if (soir) 0.4f else 0.32f)
+    // Fondu vers l'aplat, à gauche (long et doux) puis en bas
     drawRect(
         Brush.horizontalGradient(
-            0f to aplat, 0.45f to aplat.copy(alpha = 0.6f), 1f to aplat.copy(alpha = 0f),
-            startX = w * 0.36f, endX = w * 0.64f,
+            0f to aplat, 0.3f to aplat.copy(alpha = 0.78f), 0.62f to aplat.copy(alpha = 0.32f), 1f to aplat.copy(alpha = 0f),
+            startX = w * 0.36f, endX = w * 0.7f,
         ),
         topLeft = zone.topLeft, size = zone.size,
     )
@@ -203,13 +203,14 @@ internal fun DrawScope.dessinerPhotosUne(p: PhotosUne, aplat: Color, soir: Boole
         ),
         topLeft = Offset(zone.left, h * 0.6f), size = androidx.compose.ui.geometry.Size(zone.width, h * 0.4f),
     )
-    // Ombre douce en haut (pilules et score NBA par-dessus)
+    // Ombre douce en haut à droite (pilules et score NBA par-dessus) : radiale, sans bord net
     drawRect(
-        Brush.verticalGradient(
-            0f to Color.Black.copy(alpha = 0.3f * presence), 1f to Color.Black.copy(alpha = 0f),
-            startY = 0f, endY = h * 0.5f,
+        Brush.radialGradient(
+            0f to Color.Black.copy(alpha = 0.34f * presence),
+            0.55f to Color.Black.copy(alpha = 0.16f * presence),
+            1f to Color.Black.copy(alpha = 0f),
+            center = Offset(w, 0f), radius = w * 0.75f,
         ),
-        topLeft = zone.topLeft, size = androidx.compose.ui.geometry.Size(zone.width, h * 0.5f),
     )
 }
 
