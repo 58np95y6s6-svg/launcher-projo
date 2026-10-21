@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
@@ -57,6 +58,7 @@ fun MenuDialog(
         // relâché puis ré-appuyé, on ignore ses événements (sinon le relâchement « cliquerait »
         // sur la première ligne et fermerait le menu aussitôt).
         var arme by remember { mutableStateOf(false) }
+        val h = habillageDialogue()
         Column(
             Modifier
                 .onPreviewKeyEvent { e ->
@@ -70,13 +72,13 @@ fun MenuDialog(
                     }
                 }
                 .width(420.u)
-                .background(Color(0xF2161A22), RoundedCornerShape(20.u))
+                .background(h.fond, h.forme)
                 .padding(22.u)
         ) {
-            Text(title, color = Color.White, fontSize = 22.us, fontWeight = FontWeight.Medium)
+            Text(title, color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             if (subtitle != null) {
                 Spacer(Modifier.height(4.u))
-                Text(subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 12.us)
+                Text(subtitle, color = h.discret, fontSize = 12.us)
             }
             Spacer(Modifier.height(14.u))
             LazyColumn(
@@ -90,6 +92,8 @@ fun MenuDialog(
                         onClick = { a.onClick(); onDismiss() },
                         headlineContent = { Text(a.label, fontSize = 15.us) },
                         modifier = if (i == 0) Modifier.focusRequester(premier) else Modifier,
+                        colors = couleursLigne(h),
+                        shape = ListItemDefaults.shape(shape = h.formeLigne),
                     )
                 }
             }
@@ -228,16 +232,17 @@ fun ListeDialog(
         val cible = remember { FocusRequester() }
         val indexFocus = lignes.getOrNull(focusInitial)?.takeIf { !it.section }?.let { focusInitial }
             ?: lignes.indexOfFirst { !it.section }
+        val h = habillageDialogue()
         Column(
             Modifier
                 .width(460.u)
-                .background(Color(0xF2161A22), RoundedCornerShape(20.u))
+                .background(h.fond, h.forme)
                 .padding(22.u)
         ) {
-            Text(titre, color = Color.White, fontSize = 22.us, fontWeight = FontWeight.Medium)
+            Text(titre, color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             if (sousTitre != null) {
                 Spacer(Modifier.height(4.u))
-                Text(sousTitre, color = Color.White.copy(alpha = 0.6f), fontSize = 12.us)
+                Text(sousTitre, color = h.discret, fontSize = 12.us)
             }
             Spacer(Modifier.height(14.u))
             LazyColumn(
@@ -249,7 +254,7 @@ fun ListeDialog(
                     val l = lignes[i]
                     if (l.section) {
                         Text(
-                            l.titre, color = Color.White.copy(alpha = 0.55f), fontSize = 10.us, letterSpacing = 3.us,
+                            l.titre, color = h.discret, fontSize = 10.us, letterSpacing = 3.us,
                             fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.u, top = 10.u, bottom = 2.u),
                         )
                     } else {
@@ -260,6 +265,8 @@ fun ListeDialog(
                             supportingContent = l.sousTitre?.let { st -> @Composable { Text(st, fontSize = 12.us, maxLines = 2) } },
                             trailingContent = l.coche?.let { c -> @Composable { CaseACocher(c) } },
                             modifier = if (i == indexFocus) Modifier.focusRequester(cible) else Modifier,
+                            colors = couleursLigne(h),
+                            shape = ListItemDefaults.shape(shape = h.formeLigne),
                         )
                     }
                 }
@@ -273,6 +280,17 @@ fun ListeDialog(
         }
     }
 }
+
+/** Lignes des dialogues aux couleurs du design (fond transparent, sélection du style). */
+@Composable
+private fun couleursLigne(h: HabillageDialogue) = ListItemDefaults.colors(
+    containerColor = Color.Transparent,
+    contentColor = h.texte,
+    focusedContainerColor = h.focusFond,
+    focusedContentColor = h.focusTexte,
+    pressedContainerColor = h.focusFond,
+    pressedContentColor = h.focusTexte,
+)
 
 /** Case à cocher dessinée (pas de caractère spécial : certaines polices d'Android 9 n'en ont pas). */
 @Composable

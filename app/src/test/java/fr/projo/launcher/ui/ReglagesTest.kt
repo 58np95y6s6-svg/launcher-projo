@@ -81,7 +81,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
             var pas = 0
             while (pas < 6) {
                 val avant = cle()
-                appuyer(Key.DirectionRight)
+                touche(Key.DirectionRight)
                 verifierDansLePanneau("▶ depuis $avant")
                 if (cle() == avant) break
                 visitees += cle()
@@ -90,12 +90,12 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
             }
             // ◀ autant de fois : retour au début de la rangée, sans fermer le panneau
             repeat(pas) {
-                appuyer(Key.DirectionLeft)
+                touche(Key.DirectionLeft)
                 verifierDansLePanneau("◀ dans la rangée de $debut")
             }
             if (cle() != debut) fail("[${design.name}] ◀ ×$pas : attendu le retour sur $debut, obtenu ${cle()}. Étapes : $etapes")
             // ▼ : rangée suivante
-            appuyer(Key.DirectionDown)
+            touche(Key.DirectionDown)
             verifierDansLePanneau("▼ depuis $debut")
             if (cle() == debut) break
             visitees += cle()
@@ -106,7 +106,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         if (manquantes.isNotEmpty()) fail("[${design.name}] tuiles jamais atteintes : $manquantes. Étapes : $etapes")
         capturer("r3_reglages_bas")
         // ▲ jusqu'en haut : retour sur le volume
-        repeat(40) { if (cle() != "reglage:volume") appuyer(Key.DirectionUp) }
+        repeat(40) { if (cle() != "reglage:volume") touche(Key.DirectionUp) }
         verifierDansLePanneau("▲ jusqu'en haut")
         if (cle() != "reglage:volume") fail("[${design.name}] ▲ jusqu'en haut : obtenu ${cle()}")
     }
@@ -115,15 +115,17 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun gaucheEtRetourFerment() {
         ouvrir()
         attendreFocus("reglage:volume", "ouverture")
-        appuyer(Key.DirectionLeft)
+        touche(Key.DirectionLeft)
         if (fermetures != 1) fail("[${design.name}] ◀ sur le volume : le panneau devait se fermer (fermetures = $fermetures)")
         if (panneauAffiche()) fail("[${design.name}] ◀ : panneau toujours affiché")
         // Réouverture, puis Retour (BackHandler)
         compose.runOnIdle { ouvert = true }
         avancer(1500)
+        avancer(200)
         attendreFocus("reglage:volume", "réouverture")
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         avancer(800)
+        avancer(200)
         if (fermetures != 2) fail("[${design.name}] Retour : le panneau devait se fermer (fermetures = $fermetures)")
     }
 
@@ -131,21 +133,21 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     fun reglageDuVolume() {
         ouvrir()
         attendreFocus("reglage:volume", "ouverture")
-        appuyer(Key.DirectionCenter)
+        touche(Key.DirectionCenter)
         if (!texteAffiche("Volume · ◀ ▶")) fail("[${design.name}] OK sur le volume : le réglage devait commencer")
-        appuyer(Key.DirectionLeft)
-        appuyer(Key.DirectionRight)
-        appuyer(Key.DirectionRight)
+        touche(Key.DirectionLeft)
+        touche(Key.DirectionRight)
+        touche(Key.DirectionRight)
         if (volumes != listOf(-1, 1, 1)) fail("[${design.name}] ◀ ▶ ▶ pendant le réglage : volume $volumes")
         if (fermetures != 0) fail("[${design.name}] ◀ pendant le réglage ne doit pas fermer le panneau")
         attendreFocus("reglage:volume", "pendant le réglage")
         capturer("r2_reglage_volume")
         // Retour quitte le réglage sans fermer
-        appuyer(Key.Back)
+        touche(Key.Back)
         if (fermetures != 0) fail("[${design.name}] Retour pendant le réglage ne doit pas fermer le panneau")
         if (texteAffiche("Volume · ◀ ▶")) fail("[${design.name}] Retour : le réglage devait s'arrêter")
         // ◀ ferme de nouveau
-        appuyer(Key.DirectionLeft)
+        touche(Key.DirectionLeft)
         if (fermetures != 1) fail("[${design.name}] ◀ après le réglage : le panneau devait se fermer")
     }
 
@@ -211,6 +213,17 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         avancer(2000)
         avancer(1500)
         if (!panneauAffiche()) fail("[${design.name}] OUTILLAGE : panneau Réglages non affiché")
+    }
+
+    /**
+     * Appui sur une touche, puis quelques images de plus : un état changé à l'appui ou au
+     * relâchement (fermeture, fin du réglage) est recomposé même sans animation en cours
+     * (horloge de test avancée à la main).
+     */
+    private fun touche(k: Key) {
+        appuyer(k)
+        avancer(200)
+        avancer(200)
     }
 
     /** Étiquette « reglage:… » de la tuile sélectionnée (ou description du focus). */

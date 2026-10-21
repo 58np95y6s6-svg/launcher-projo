@@ -292,7 +292,7 @@ private val StyleVerre = StyleReglages(
         accent = Color(0xFF0A84FF), accentFond = Color(0xFF0A84FF).copy(alpha = 0.22f),
         filet = Color.White.copy(alpha = 0.13f), anneau = Color.White,
         pastille = Color.White.copy(alpha = 0.12f), alerte = Color(0xFFFFB0A8),
-        voile = Color(0xFF060416).copy(alpha = 0.72f),
+        voile = Color(0xFF060416).copy(alpha = 0.82f),
     ),
     mesures = MesuresReglages(
         largeur = 508, haut = 31, bas = 62, rayon = 26, marge = 19, rayonTuile = 15, ecart = 11,
@@ -370,7 +370,7 @@ private val StyleConsole = StyleReglages(
         voile = Color(0xFF040716).copy(alpha = 0.45f),
     ),
     mesures = MesuresReglages(
-        hauteur = 352, marge = 48, rayon = 0, rayonTuile = 10, ecart = 10, padH = 14, padV = 12,
+        hauteur = 344, marge = 48, rayon = 0, rayonTuile = 10, ecart = 10, padH = 14, padV = 12,
         pastille = 28, hauteurTuile = 106,
     ),
     typo = TypoReglages(titre = 15, valeur = 12, section = 10, chiffre = 40, enTete = 36, titreGras = false),
@@ -378,7 +378,7 @@ private val StyleConsole = StyleReglages(
     agrandissement = 1.0f,
     jaugeVolume = Jauge.FINE,
     jaugeStockage = Jauge.FINE,
-    fonduHaut = 46,
+    fonduHaut = 26,
 )
 
 // ------------------------------------------------------------------ Graphite

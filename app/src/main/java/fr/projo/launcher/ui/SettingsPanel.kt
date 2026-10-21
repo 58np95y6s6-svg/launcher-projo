@@ -9,8 +9,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -111,9 +113,10 @@ class PanneauReglages(
     /**
      * Comportement d'une tuile (focus initial, réglage du volume, suivi du focus, étiquette de test) :
      * à poser par le rendu sur l'élément focalisable de chaque tuile. [colonne] : 0 pour la
-     * colonne de gauche (◀ y ferme le panneau), plus pour les autres colonnes d'une grille.
+     * colonne de gauche (◀ y ferme le panneau), plus pour les autres colonnes d'une grille ;
+     * [finDeRangee] : dernière tuile de sa rangée (▶ n'y mène nulle part, même vers une autre rangée).
      */
-    val comportement: (Reglage, colonne: Int) -> Modifier,
+    val comportement: (Reglage, colonne: Int, finDeRangee: Boolean) -> Modifier,
 ) {
     /** Toutes les tuiles, dans l'ordre. */
     val reglages: List<Reglage> = sections.flatMap { it.reglages }
@@ -129,6 +132,7 @@ private const val CLE_VOLUME = "volume"
  * stockage et réglages de Projo ; ce qu'Android ne permet pas de régler depuis une app ouvre
  * la page système. La forme du panneau dépend du design (voir StylesReglages.kt).
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SettingsPanel(
     snapshot: DeviceSnapshot?,
@@ -172,9 +176,10 @@ fun SettingsPanel(
             }
         }
     val premiereCle = sections.firstOrNull()?.reglages?.firstOrNull()?.cle
-    val panneau = PanneauReglages(sections, version, focus) { r, colonne ->
+    val panneau = PanneauReglages(sections, version, focus) { r, colonne, finDeRangee ->
         Modifier
             .testTag("reglage:${r.cle}")
+            .then(if (finDeRangee) Modifier.focusProperties { right = FocusRequester.Cancel } else Modifier)
             .then(if (r.cle == premiereCle) Modifier.focusRequester(premier) else Modifier)
             .onFocusChanged {
                 if (it.isFocused) {

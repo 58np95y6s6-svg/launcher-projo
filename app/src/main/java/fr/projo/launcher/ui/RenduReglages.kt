@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -347,7 +348,7 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
             )
         }
         EnTete.AIDES -> Row(
-            Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 36.u, bottom = 8.u),
+            Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 30.u, bottom = 8.u),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             T("Réglages", ty.enTete.toFloat(), c.texte, poids = FontWeight.ExtraLight, espacement = -1f, interligne = 1.1f)
@@ -412,8 +413,23 @@ private fun Touche(texte: String, s: StyleReglages, forme: FormeTouche, taille: 
         FormeTouche.CONTOUR -> Modifier.border(1.5f.uu, c.texte, RoundedCornerShape(4.u))
     }
     Box(mod.heightIn(min = h).width(IntrinsicSize.Max).padding(horizontal = (taille * 0.45f).uu), contentAlignment = Alignment.Center) {
-        T(texte, taille * 0.8f, c.texte, poids = FontWeight.Bold)
+        if (texte == "↩") {
+            // Le caractère ↩ est minuscule dans certaines polices d'Android : icône dessinée
+            Icon(IconeRetour, null, Modifier.size((taille * 1.05f).uu), tint = c.texte)
+        } else {
+            T(texte, taille * 0.8f, c.texte, poids = FontWeight.Bold)
+        }
     }
+}
+
+/** Touche Retour (icône Material « keyboard_return »). */
+private val IconeRetour: ImageVector by lazy {
+    ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+        .addPath(
+            pathData = PathParser().parsePathString("M19,7v4H5.83l3.58,-3.59L8,6l-6,6 6,6 1.41,-1.41L5.83,13H21V7z").toNodes(),
+            fill = androidx.compose.ui.graphics.SolidColor(Color.White),
+        )
+        .build()
 }
 
 /**
@@ -580,7 +596,7 @@ private fun PiedReglages(s: StyleReglages, p: PanneauReglages) {
                 Modifier.size(44.u).background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE6E9EC))), CircleShape)
                     .border(2.u, ChainesBleuFilet, CircleShape),
                 contentAlignment = Alignment.Center,
-            ) { T("↩", 18f, ChainesGris, poids = FontWeight.Bold) }
+            ) { Icon(IconeRetour, null, Modifier.size(22.u), tint = ChainesGris) }
             Spacer(Modifier.width(12.u))
             T("Retour", 15f, c.texte, poids = FontWeight.Medium)
             Spacer(Modifier.weight(1f))
@@ -742,7 +758,7 @@ private fun LigneReglage(
     val c = s.couleurs
     val m = s.mesures
     val unite = 1.u
-    CaseReglage(s, p, r, 0, forme, formeFocus, fond, modifier) { t ->
+    CaseReglage(s, p, r, 0, true, forme, formeFocus, fond, modifier) { t ->
         val texte = lerp(c.texte, c.texteFocus, t)
         val discret = lerp(c.texteDiscret, c.texteDiscretFocus, t)
         val decalage = (m.padH + m.pastille + 12).u
@@ -876,7 +892,8 @@ private fun GrilleReglages(s: StyleReglages, p: PanneauReglages) {
                 rangee.forEachIndexed { colonne, r ->
                     key(r.cle) {
                         val mod = Modifier.weight(1f).fillMaxHeight().heightIn(min = m.hauteurTuile.u)
-                        if (s.tuiles == FormeTuiles.CARTES) CarteReglage(s, p, r, colonne, mod) else TuileReglage(s, p, r, colonne, mod)
+                        val fin = colonne == rangee.size - 1
+                        if (s.tuiles == FormeTuiles.CARTES) CarteReglage(s, p, r, colonne, fin, mod) else TuileReglage(s, p, r, colonne, fin, mod)
                     }
                 }
                 repeat(s.colonnes - rangee.size) { Spacer(Modifier.weight(1f)) }
@@ -887,11 +904,11 @@ private fun GrilleReglages(s: StyleReglages, p: PanneauReglages) {
 
 /** Console : pastille et indicateur en haut, titre et valeur en bas. */
 @Composable
-private fun CarteReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colonne: Int, modifier: Modifier) {
+private fun CarteReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colonne: Int, fin: Boolean, modifier: Modifier) {
     val c = s.couleurs
     val m = s.mesures
     val forme = RoundedCornerShape(m.rayonTuile.u)
-    CaseReglage(s, p, r, colonne, forme, forme, if (r.accent) c.accentFond else c.carte, modifier, remplir = true) { t ->
+    CaseReglage(s, p, r, colonne, fin, forme, forme, if (r.accent) c.accentFond else c.carte, modifier, remplir = true) { t ->
         val texte = lerp(c.texte, c.texteFocus, t)
         val discret = lerp(c.texteDiscret, c.texteDiscretFocus, t)
         Column(Modifier.fillMaxSize().border(1.u, c.filet, forme).padding(horizontal = m.padH.u, vertical = m.padV.u)) {
@@ -921,12 +938,12 @@ private fun CarteReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colon
 
 /** Une : pastille et titre en haut, valeur (ou jauge) en bas. */
 @Composable
-private fun TuileReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colonne: Int, modifier: Modifier) {
+private fun TuileReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colonne: Int, fin: Boolean, modifier: Modifier) {
     val c = s.couleurs
     val m = s.mesures
     val forme = RoundedCornerShape(m.rayonTuile.u)
     val unite = 1.u
-    CaseReglage(s, p, r, colonne, forme, forme, if (r.accent) c.accentFond else c.carte, modifier, remplir = true) { t ->
+    CaseReglage(s, p, r, colonne, fin, forme, forme, if (r.accent) c.accentFond else c.carte, modifier, remplir = true) { t ->
         val discret = lerp(c.texteDiscret, c.texteDiscretFocus, t)
         Column(
             Modifier.fillMaxSize()
@@ -976,7 +993,9 @@ private fun BoutonsReglages(s: StyleReglages, p: PanneauReglages) {
                         horizontalArrangement = Arrangement.spacedBy((m.ecart + 6).u),
                     ) {
                         rangee.forEachIndexed { colonne, r ->
-                            key(r.cle) { BoutonReglage(s, p, r, colonne, Modifier.weight(1f).fillMaxHeight().heightIn(min = m.hauteurTuile.u)) }
+                            key(r.cle) {
+                                BoutonReglage(s, p, r, colonne, colonne == rangee.size - 1, Modifier.weight(1f).fillMaxHeight().heightIn(min = m.hauteurTuile.u))
+                            }
                         }
                         repeat(s.colonnes - rangee.size) { Spacer(Modifier.weight(1f)) }
                     }
@@ -987,11 +1006,11 @@ private fun BoutonsReglages(s: StyleReglages, p: PanneauReglages) {
 }
 
 @Composable
-private fun BoutonReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colonne: Int, modifier: Modifier) {
+private fun BoutonReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colonne: Int, fin: Boolean, modifier: Modifier) {
     val c = s.couleurs
     val m = s.mesures
     val forme = RoundedCornerShape(m.rayonTuile.u)
-    CaseReglage(s, p, r, colonne, forme, forme, c.carte, modifier, remplir = true) { t ->
+    CaseReglage(s, p, r, colonne, fin, forme, forme, c.carte, modifier, remplir = true) { t ->
         val texte = lerp(c.texte, c.texteFocus, t)
         val discret = lerp(c.texteDiscret, c.texteDiscretFocus, t)
         Column(Modifier.fillMaxSize().padding(horizontal = m.padH.u, vertical = m.padV.u), verticalArrangement = Arrangement.Center) {
@@ -1031,6 +1050,7 @@ private fun CaseReglage(
     p: PanneauReglages,
     r: Reglage,
     colonne: Int,
+    finDeRangee: Boolean,
     forme: Shape,
     formeFocus: Shape,
     fond: Color,
@@ -1092,7 +1112,7 @@ private fun CaseReglage(
         Surface(
             onClick = r.onClick,
             onLongClick = r.onLongClick,
-            modifier = p.comportement(r, colonne)
+            modifier = p.comportement(r, colonne, finDeRangee)
                 .onFocusChanged { focus = it.isFocused }
                 .then(if (remplir) Modifier.fillMaxSize() else Modifier.fillMaxWidth()),
             shape = ClickableSurfaceDefaults.shape(formeFocus),
@@ -1398,5 +1418,43 @@ private fun Blocs(s: StyleReglages, v: Float, n: Int) {
                 }
             }
         },
+    )
+}
+
+// ------------------------------------------------------------------ dialogues
+
+/** Habillage des dialogues (menus, listes à cocher) : matière et sélection du style du design. */
+internal class HabillageDialogue(
+    val fond: Brush,
+    val forme: Shape,
+    val texte: Color,
+    val discret: Color,
+    val focusFond: Color,
+    val focusTexte: Color,
+    val formeLigne: Shape,
+)
+
+@Composable
+internal fun habillageDialogue(): HabillageDialogue {
+    val s = LocalDesign.current.styleReglages()
+    val c = s.couleurs
+    val m = s.mesures
+    val rayon = (if (m.rayon > 0) m.rayon else m.rayonTuile).coerceIn(10, 26)
+    val (focusFond, focusTexte) = when (s.selection) {
+        // Graphite : pas de plateau, la sélection prend l'accent violet
+        Selection.LUEUR -> lerp(c.fond.first(), c.accent, 0.42f) to Color.White
+        Selection.TEINTE -> c.carteFocus.first() to c.texteFocus
+        // Console : anneau blanc sur les cartes ; dans une liste, plateau blanc
+        Selection.ANNEAU -> if (c.carteFocus.last().luminance() < 0.3f) Color.White to c.fond.last().copy(alpha = 1f) else c.carteFocus.last() to c.texteFocus
+        else -> c.carteFocus.last() to c.texteFocus
+    }
+    return HabillageDialogue(
+        fond = brosse(c.fond.map { it.copy(alpha = 1f) }),
+        forme = RoundedCornerShape(rayon.u),
+        texte = c.texte,
+        discret = c.texteDiscret,
+        focusFond = focusFond,
+        focusTexte = focusTexte,
+        formeLigne = RoundedCornerShape(m.rayonTuile.coerceIn(8, 16).u),
     )
 }
