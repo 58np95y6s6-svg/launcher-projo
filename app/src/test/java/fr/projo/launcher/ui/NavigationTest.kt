@@ -19,9 +19,7 @@ import org.robolectric.annotation.GraphicsMode
  * « Toutes les apps ») : chaque test y vérifie l'équivalent dans la grille (voisin prévu par
  * GrilleChaines, même colonne pour ▲ ▼, allers-retours) ; les autres designs ne changent pas.
  *
- * Néon n'a qu'une rangée de tuiles (favoris, puis « Mes apps », puis « Toutes les apps ») au-dessus
- * de boutons ronds : les mêmes vérifications, transposées (▼ vers le bouton le plus aligné, ▲ retour
- * sur la tuile, ◀ ▶ le long de la rangée, sans favori, 30 favoris…), sont dans NeonTest.
+ * Studio n'a qu'une barre d'apps : ses équivalents sont dans StudioTest (voir Design.deuxRangees).
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -209,17 +207,13 @@ class NavigationTest(nomDesign: String) : BancAccueil(nomDesign) {
         attendreApres(Key.DirectionRight, app(2), "${app(1)} puis ▶")
     }
 
-    /**
-     * Sortie du bandeau NBA par ◀ puis par Retour : retour au 1er favori (rangée remise au début).
-     * Graphite : ◀ revient sur Réglages, d'où l'on y entre par ▶.
-     */
+    /** Sortie du bandeau NBA par ◀ puis par Retour : retour au 1er favori (rangée remise au début). */
     @Test
     fun sortieDuBandeauNba() {
         afficher()
         allerAuFavori(3)
         donnerFocus("nba")
-        val gauche = if (design == Design.GRAPHITE) "rapide:Réglages" else favori(0)
-        attendreApres(Key.DirectionLeft, gauche, "bandeau NBA puis ◀")
+        attendreApres(Key.DirectionLeft, favori(0), "bandeau NBA puis ◀")
         donnerFocus("nba")
         attendreApres(Key.Back, favori(0), "bandeau NBA puis Retour")
     }
@@ -471,7 +465,7 @@ class NavigationConsoleTest : BancAccueil("CONSOLE") {
 }
 
 /**
- * Rangées de tailles variées (1 app, 2 apps, 30 apps, 30 favoris), pour chacun des 5 designs :
+ * Rangées de tailles variées (1 app, 2 apps, 30 apps, 30 favoris), pour chaque design à deux rangées :
  * ▼ / ▲ sautent toujours vers l'élément visible le plus aligné de l'autre rangée,
  * ▼ ne bouge plus une fois dans « Mes apps », et ▼ ▲ / ▲ ▼ ramènent au départ.
  */

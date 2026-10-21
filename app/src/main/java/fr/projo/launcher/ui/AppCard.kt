@@ -29,7 +29,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.key.Key
@@ -129,21 +128,12 @@ fun AppCard(
     val forme = RoundedCornerShape(height * 0.16f)
     var focus by remember { mutableStateOf(false) }
     val reflet by animateFloatAsState(if (focus) 1f else 0f, tween(250), label = "reflet")
-    // Designs « à lueur » : agrandissement géré ici pour que la lueur suive la carte
-    val lueur = LocalDesign.current.avecLueur
-    val zoom by animateFloatAsState(if (focus) 1f else 0f, tween(220), label = "zoom")
 
     Column(modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
             onClick = onClick,
             onLongClick = onMenu,
             modifier = Modifier
-                .then(
-                    if (lueur) Modifier
-                        .graphicsLayer { val s = 1f + 0.1f * zoom; scaleX = s; scaleY = s }
-                        .lueurFocus(zoom, height * 0.16f, tourne = focus)
-                    else Modifier
-                )
                 .size(width, height)
                 .onFocusChanged {
                     focus = it.isFocused
@@ -159,16 +149,13 @@ fun AppCard(
                 focusedContainerColor = Color.White.copy(alpha = 0.06f),
                 pressedContainerColor = Color.White.copy(alpha = 0.06f),
             ),
-            scale = if (lueur) ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f)
-            else ClickableSurfaceDefaults.scale(focusedScale = 1.1f, pressedScale = 1.04f),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f, pressedScale = 1.04f),
             border = ClickableSurfaceDefaults.border(
                 // Fin liseré permanent (relief des cartes sombres), contour clair au focus
                 border = Border(BorderStroke(1.u, Color.White.copy(alpha = 0.10f)), shape = forme),
-                focusedBorder = if (lueur) Border(BorderStroke(1.u, Color.White.copy(alpha = 0.25f)), shape = forme)
-                else Border(BorderStroke(2.u, Color.White.copy(alpha = 0.9f)), shape = forme),
+                focusedBorder = Border(BorderStroke(2.u, Color.White.copy(alpha = 0.9f)), shape = forme),
             ),
-            // Ombre noire seulement sans lueur : sous la lueur, elle salissait le halo (liseré sombre)
-            glow = if (lueur) ClickableSurfaceDefaults.glow() else ClickableSurfaceDefaults.glow(
+            glow = ClickableSurfaceDefaults.glow(
                 focusedGlow = Glow(elevationColor = Color.Black.copy(alpha = 0.7f), elevation = 14.u),
             ),
         ) {
@@ -249,20 +236,11 @@ fun TextCard(
 ) {
     val forme = RoundedCornerShape(height * 0.16f)
     val c = LocalDesign.current.colors()
-    val lueur = LocalDesign.current.avecLueur
-    var focus by remember { mutableStateOf(false) }
-    val zoom by animateFloatAsState(if (focus) 1f else 0f, tween(220), label = "zoom")
     Surface(
         onClick = onClick,
         modifier = modifier
-            .then(
-                if (lueur) Modifier
-                    .graphicsLayer { val s = 1f + 0.08f * zoom; scaleX = s; scaleY = s }
-                    .lueurFocus(zoom, height * 0.16f, tourne = focus)
-                else Modifier
-            )
             .size(width, height)
-            .onFocusChanged { focus = it.isFocused; if (it.isFocused) onFocused() },
+            .onFocusChanged { if (it.isFocused) onFocused() },
         shape = ClickableSurfaceDefaults.shape(forme),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = c.texte.copy(alpha = 0.07f),
@@ -270,7 +248,7 @@ fun TextCard(
             focusedContainerColor = c.focusFond,
             focusedContentColor = c.focusTexte,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = if (lueur) 1f else 1.08f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
         border = ClickableSurfaceDefaults.border(
             border = Border(BorderStroke(1.u, c.texte.copy(alpha = 0.12f)), shape = forme),
         ),

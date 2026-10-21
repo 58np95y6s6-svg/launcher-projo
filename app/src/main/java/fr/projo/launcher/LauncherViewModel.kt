@@ -286,10 +286,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         prefs.setDesign(id)
     }
 
-    fun setNeonClair(clair: Boolean) = viewModelScope.launch {
-        prefs.setNeonClair(clair)
-    }
-
     fun setSourcesComponent(component: String?) = viewModelScope.launch {
         prefs.setSourcesComponent(component)
     }

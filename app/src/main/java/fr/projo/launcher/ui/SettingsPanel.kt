@@ -81,8 +81,6 @@ class SettingsActions(
     val modules: () -> Unit = {},
     /** Design Studio : clé TMDB des suggestions de films et séries. */
     val suggestions: () -> Unit = {},
-    /** Design « Néon » : choix du fond clair ou sombre. */
-    val fondNeon: () -> Unit = {},
     /** Télécommande smartphone : appairage, téléphones appairés, aide clavier et navigation. */
     val appairer: () -> Unit = {},
     val telephones: () -> Unit = {},
@@ -148,8 +146,6 @@ fun SettingsPanel(
             Spacer(Modifier.height(12.u))
 
             val estStudio = LocalDesign.current == Design.STUDIO
-            // Design « Néon » : tuile du fond clair ou sombre
-            val designNeon = LocalDesign.current == Design.NEON
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.u, end = 22.u, top = 6.u, bottom = 30.u),
                 verticalArrangement = Arrangement.spacedBy(8.u),
@@ -259,17 +255,6 @@ fun SettingsPanel(
                         onClick = actions.design,
                     )
                 }
-                // Design « Néon » seulement : fond clair ou sombre
-                if (designNeon) {
-                    item(key = "fond-neon") {
-                        Tuile(
-                            icone = ProjoIcons.Accueil,
-                            titre = "Fond · " + if (NeonTheme.clair) "Clair" else "Sombre",
-                            sousTitre = "Fond clair ou sombre de l'accueil · changer",
-                            onClick = actions.fondNeon,
-                        )
-                    }
-                }
                 item(key = "modules") {
                     val hote = LocalHoteModules.current ?: HoteModules()
                     Tuile(
@@ -297,7 +282,7 @@ fun SettingsPanel(
                         onClick = actions.hiddenApps,
                     )
                 }
-                // Cartes des services de streaming illustrées par leur dernière nouveauté (VisuelNouveaute)
+                // « À la une » : photo de la dernière nouveauté du service sélectionné en fond (UnePhotos)
                 item(key = "nouveautes") {
                     val contexte = androidx.compose.ui.platform.LocalContext.current
                     LaunchedEffect(Unit) { fr.projo.launcher.data.ReglageNouveautes.charger(contexte) }
@@ -305,7 +290,7 @@ fun SettingsPanel(
                     Tuile(
                         icone = ProjoIcons.Apps,
                         titre = "Affiches des nouveautés",
-                        sousTitre = if (actif) "Activées · films et séries récents sur les cartes" else "Désactivées · logos des apps",
+                        sousTitre = if (actif) "Activées · photos des films et séries récents en fond" else "Désactivées · pas de photo",
                         onClick = { fr.projo.launcher.data.ReglageNouveautes.ecrire(contexte, !actif) },
                     )
                 }
