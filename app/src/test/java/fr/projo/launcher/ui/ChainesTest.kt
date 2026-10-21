@@ -129,35 +129,16 @@ class ChainesTest : BancAccueil("CHAINES") {
         afficher()
         val e = etiquettesChaines()
         fun etat(nom: String) {
-            l += "$nom: focus=${focus()?.etiquette} p1=${composee(e[0])} p2=${composee(e[12])} prec=${composee("chaines:page-precedente")} panneau=${composee("chaines:panneau")}"
+            l += "$nom: focus=${focus()?.etiquette} p1=${composee(e[0])} p2=${composee(e[12])} journal=${DiagChaines.log.takeLast(12)}"
+            DiagChaines.log.clear()
         }
-        // B. Maison depuis la tuile 2
-        appuyer(Key.DirectionRight)
-        compose.runOnIdle { appuisMaison.intValue++ }
-        avancer(1500)
-        etat("B maison")
-        // A. ▶ au bord
-        allerAuFavori(3)
-        etat("A avant")
+        DiagChaines.log.clear()
+        for (k in 1..3) appuyer(Key.DirectionRight)
+        etat("tuile 4")
         compose.onRoot().performKeyInput { pressKey(Key.DirectionRight) }
         avancer(50); etat("A 50")
         avancer(200); etat("A 250")
         avancer(800); etat("A 1050")
-        // E. focus relais premierFocus via Maison depuis la page 2 (si on y est)
-        compose.runOnIdle { appuisMaison.intValue++ }
-        avancer(1500)
-        etat("E maison")
-        // C. panneau + Maison
-        ouvrirZoneModules()
-        etat("C ouvert")
-        compose.runOnIdle { appuisMaison.intValue++ }
-        avancer(1500)
-        etat("C maison")
-        // D. panneau + focusReglages
-        ouvrirZoneModules()
-        compose.runOnIdle { focusReglages.requestFocus() }
-        avancer(800)
-        etat("D reglages")
         fail("DIAG " + l.joinToString(" | "))
     }
 

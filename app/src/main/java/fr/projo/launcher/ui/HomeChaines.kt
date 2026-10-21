@@ -166,6 +166,7 @@ private class EtatChaines {
     /** Sélectionne la tuile [i], en changeant de page si besoin (glissement). */
     fun allerTuile(i: Int) {
         val p = GrilleChaines.page(i)
+        DiagChaines.log += "allerTuile($i) p=$p page=$page"
         if (p != page) {
             page = p
             cible = i
@@ -254,6 +255,7 @@ fun HomeChaines(ctx: HomeContext) {
     val pages = GrilleChaines.pages(n)
     val etat = remember { EtatChaines() }
     val page = etat.page.coerceIn(0, pages - 1)
+    DiagChaines.log += "compo page=$page"
     LaunchedEffect(pages) { if (etat.page > pages - 1) etat.page = pages - 1 }
 
     // Focus à donner après un changement de page : la tuile n'existe qu'une fois la page composée
@@ -261,7 +263,9 @@ fun HomeChaines(ctx: HomeContext) {
         val c = etat.cible ?: return@LaunchedEffect
         for (essai in 1..4) {
             withFrameNanos {}
-            if (runCatching { etat.tuile(c).requestFocus() }.isSuccess) break
+            val r = runCatching { etat.tuile(c).requestFocus() }
+            DiagChaines.log += "cible $c essai $essai ${r.exceptionOrNull()?.javaClass?.simpleName ?: "ok"}"
+            if (r.isSuccess) break
         }
         etat.cible = null
     }
@@ -299,9 +303,9 @@ fun HomeChaines(ctx: HomeContext) {
 
         // --- Relais du focus : premierFocus (Maison, sortie des modules) et focusBiblio
         // (retour de la bibliothèque) visent des tuiles qui ne sont composées que sur leur page.
-        if (page != 0) Relais(ctx.premierFocus) { etat.page = 0; etat.cible = 0 }
+        if (page != 0) Relais(ctx.premierFocus) { DiagChaines.log += "relais premier"; etat.page = 0; etat.cible = 0 }
         val pageBiblio = GrilleChaines.page(n - 1)
-        if (page != pageBiblio) Relais(ctx.focusBiblio) { etat.page = pageBiblio; etat.cible = n - 1 }
+        if (page != pageBiblio) Relais(ctx.focusBiblio) { DiagChaines.log += "relais biblio"; etat.page = pageBiblio; etat.cible = n - 1 }
 
         // --- Grille paginée
         Box(
@@ -862,4 +866,9 @@ private fun PanneauModules(ctx: HomeContext, etat: EtatChaines, sortie: () -> Un
             )
         }
     }
+}
+
+/** TEMPORAIRE : journal de diagnostic. */
+internal object DiagChaines {
+    val log = mutableListOf<String>()
 }
