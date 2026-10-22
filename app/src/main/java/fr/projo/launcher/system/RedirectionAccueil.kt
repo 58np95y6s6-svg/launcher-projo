@@ -44,7 +44,10 @@ class RedirectionAccueil : NavigationTelecommande() {
     /** Ouverture d'iBiProjo demandée, pas encore affichée (0 = aucune). */
     private var lancement = 0L
 
-    /** Redirection automatique suspendue jusqu'à cet instant (appui long → accueil Amazon). */
+    /**
+     * Redirection automatique suspendue jusqu'à cet instant (appui long → accueil Amazon).
+     * Prolongée à chaque changement d'écran ; finie dès qu'iBiProjo s'affiche ou en veille.
+     */
     private var pauseJusqua = 0L
 
     /** Économiseur d'écran affiché : Maison doit d'abord le fermer, on la laisse au système. */
@@ -150,14 +153,23 @@ class RedirectionAccueil : NavigationTelecommande() {
         val paquet = event.packageName?.toString() ?: return
         val maintenant = SystemClock.uptimeMillis()
         if (paquet == packageName) {
-            // iBiProjo est affiché : ouverture terminée, fin de la pause éventuelle
-            lancement = 0
-            pauseJusqua = 0
+            // L'écran d'iBiProjo est affiché : ouverture terminée, fin de la pause éventuelle.
+            // Seulement son écran principal : notre clavier (télécommande smartphone), ouvert
+            // pour une recherche dans l'accueil Amazon, ne compte pas (sinon la pause était
+            // annulée et l'on était renvoyé vers iBiProjo en plein téléchargement).
+            if (event.className?.toString() == MainActivity::class.java.name) {
+                lancement = 0
+                pauseJusqua = 0
+            }
+            return
+        }
+        // Appui long sur Maison : on laisse l'univers Amazon (accueil, Appstore, recherche…)
+        // tant qu'on s'en sert. Chaque changement d'écran prolonge la pause.
+        if (maintenant < pauseJusqua) {
+            pauseJusqua = maintenant + PAUSE_AMAZON
             return
         }
         if (paquet !in accueils) return
-        // Appui long sur Maison : on laisse l'accueil Amazon
-        if (maintenant < pauseJusqua) return
         // Ouverture déjà demandée il y a moins de 1,5 s et pas encore affichée : inutile de redemander
         if (lancement != 0L && maintenant - lancement < 1_500) return
         ouvrirIBiProjo()
@@ -208,7 +220,7 @@ class RedirectionAccueil : NavigationTelecommande() {
         /** Au-delà, l'appui sur Maison est un appui long. */
         private const val DUREE_APPUI_LONG = 700L
 
-        /** Durée maximale de la pause après un appui long (10 min). */
+        /** Pause après un appui long : 10 min sans changement d'écran (prolongée à chaque écran). */
         private const val PAUSE_AMAZON = 10 * 60_000L
 
         /**
