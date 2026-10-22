@@ -95,6 +95,8 @@ class AppRepository(private val context: Context) {
 
     /** Ouvre une app (version TV d'abord sur un vrai Android TV, classique sinon). */
     fun launch(packageName: String): Boolean {
+        // App vidéo ou TV : la musique en arrière-plan (Spotify…) se met en pause
+        PauseMusique.avantOuverture(context, packageName)
         val tv = pm.getLeanbackLaunchIntentForPackage(packageName)
         val classique = pm.getLaunchIntentForPackage(packageName)
         val essais = if (estAndroidTv) listOfNotNull(tv, classique) else listOfNotNull(classique, tv)

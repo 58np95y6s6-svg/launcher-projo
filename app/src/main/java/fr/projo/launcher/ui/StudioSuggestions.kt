@@ -229,6 +229,8 @@ fun rememberImageProgramme(adresse: String?, largeur: Int): ImageBitmap? {
  * la déclare), sinon l'app elle-même ([repli]).
  */
 fun ouvrirProgramme(context: Context, p: StudioProgramme, repli: () -> Unit) {
+    // Un film ou une série : la musique en arrière-plan (Spotify…) se met en pause
+    fr.projo.launcher.data.PauseMusique.avantOuverture(context, p.paquet)
     val recherche = Intent(Intent.ACTION_SEARCH)
         .setPackage(p.paquet)
         .putExtra(SearchManager.QUERY, p.titre)
