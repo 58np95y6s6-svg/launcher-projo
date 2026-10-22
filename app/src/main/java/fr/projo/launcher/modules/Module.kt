@@ -22,10 +22,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import fr.projo.launcher.ui.LocalScale
 import fr.projo.launcher.ui.NbaStyle
 import fr.projo.launcher.ui.u
+import fr.projo.launcher.ui.SurfaceCliquable
 
 /**
  * Tailles d'affichage d'un module (dimensions INTÉRIEURES de la zone, en unités .u de
@@ -174,7 +174,7 @@ fun CarteModule(
 ) {
     val style = ctx.style
     val forme = RoundedCornerShape(10.u)
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = modifier.focusRequester(ctx.entree),
         shape = ClickableSurfaceDefaults.shape(forme),

@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,7 +85,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.IconLoader
@@ -305,6 +305,10 @@ fun HomeChaines(ctx: HomeContext) {
         ctx.sortieNba()
     }
 
+    // Pointeur : page voisine (glisser, molette, flèches de page), 1re tuile sélectionnée comme
+    // après ◀ ▶ au bord de la grille
+    val allerPage: (Int) -> Unit = { p -> if (p in 0 until pages && p != page) etat.allerTuile(p * GrilleChaines.PAR_PAGE) }
+
     val densite = LocalDensity.current
     val grilleL = CH_GRILLE_L.u
     val pas = (CH_TUILE_L + CH_ECART).u
@@ -334,6 +338,7 @@ fun HomeChaines(ctx: HomeContext) {
                 .fillMaxWidth()
                 .padding(top = CH_HAUT.u)
                 .height(CH_GRILLE_H.u + 24.u)
+                .gestesPages(Orientation.Horizontal, precedent = { allerPage(page - 1) }, suivant = { allerPage(page + 1) })
                 .testTag("chaines:grille"),
             contentAlignment = Alignment.TopCenter,
         ) {
@@ -365,8 +370,8 @@ fun HomeChaines(ctx: HomeContext) {
         }
 
         // --- Flèches de page, aux bords de l'écran
-        if (page > 0) OngletPage(droite = false, Modifier.align(Alignment.TopStart).padding(top = (CH_HAUT + CH_GRILLE_H / 2 - 44).u))
-        if (page < pages - 1) OngletPage(droite = true, Modifier.align(Alignment.TopEnd).padding(top = (CH_HAUT + CH_GRILLE_H / 2 - 44).u))
+        if (page > 0) OngletPage(droite = false, { allerPage(page - 1) }, Modifier.align(Alignment.TopStart).padding(top = (CH_HAUT + CH_GRILLE_H / 2 - 44).u))
+        if (page < pages - 1) OngletPage(droite = true, { allerPage(page + 1) }, Modifier.align(Alignment.TopEnd).padding(top = (CH_HAUT + CH_GRILLE_H / 2 - 44).u))
 
         // --- Bande du bas
         BandeChaines(ctx, etat, n, Modifier.align(Alignment.BottomCenter))
@@ -515,7 +520,7 @@ private fun TuileChaines(ctx: HomeContext, etat: EtatChaines, tuile: TuileChaine
                 }
             }
     ) {
-        Surface(
+        SurfaceCliquable(
             onClick = {
                 when (tuile) {
                     is TuileChaine.App -> ctx.actions.launch(tuile.app)
@@ -651,14 +656,15 @@ private fun ContenuTexte(texte: String) {
     }
 }
 
-/** Onglet blanc collé au bord de l'écran, avec la flèche bleue de page. */
+/** Onglet blanc collé au bord de l'écran, avec la flèche bleue de page (clic ou toucher : page voisine). */
 @Composable
-private fun OngletPage(droite: Boolean, modifier: Modifier) {
+private fun OngletPage(droite: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val forme = if (droite) RoundedCornerShape(topStart = 22.u, bottomStart = 22.u)
     else RoundedCornerShape(topEnd = 22.u, bottomEnd = 22.u)
     Box(
         modifier
             .testTag(if (droite) "chaines:page-suivante" else "chaines:page-precedente")
+            .cliquableSansFocus(onClick)
             .size(40.u, 88.u)
             .clip(forme)
             .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE9ECEF))))
@@ -823,7 +829,7 @@ private fun BoutonRond(b: BoutonBande, etat: EtatChaines, ctx: HomeContext, n: I
                 if (f > 0f) drawCircle(ChainesBleu.copy(alpha = f), radius = size.minDimension / 2f, style = Stroke(trait.toPx()))
             }
     ) {
-        Surface(
+        SurfaceCliquable(
             onClick = b.onClick,
             onLongClick = b.onLongClick,
             modifier = Modifier
@@ -881,6 +887,8 @@ private fun PanneauModules(ctx: HomeContext, etat: EtatChaines, sortie: () -> Un
         Modifier
             .fillMaxSize()
             .background(Color.White.copy(alpha = 0.9f))
+            // Pointeur : toucher le voile ferme le panneau (comme ◀ ou Retour)
+            .cliquableSansFocus(sortie)
             .testTag("chaines:panneau"),
         contentAlignment = Alignment.Center,
     ) {
@@ -901,7 +909,8 @@ private fun PanneauModules(ctx: HomeContext, etat: EtatChaines, sortie: () -> Un
                         else FocusRequester.Default
                     }
                 }
-                .focusGroup(),
+                .focusGroup()
+                .retenirClics(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 14.u)) {

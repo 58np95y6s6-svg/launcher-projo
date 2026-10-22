@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -60,7 +61,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.FormatVisuel
@@ -180,6 +180,14 @@ fun HomeStudio(ctx: HomeContext) {
             val largeurFond = with(LocalDensity.current) { P_LARGEUR.u.roundToPx() }.coerceIn(320, 1280)
             val fond = rememberFondStudio(selectionFond, largeurFond) { ctx.defilement.value < decalagePx / 2 }
 
+            // Pointeur : glisser vers le haut ou molette vers le bas → écran 2 (raccourcis), l'inverse
+            // → écran 1 (suggestions) ; le focus va à l'élément le plus aligné, la page suit comme à ▼ ▲
+            val surEcran2 = { ctx.defilement.value > decalagePx / 2 }
+            val pointeurPages = Modifier.gestesPages(
+                Orientation.Vertical,
+                precedent = { if (surEcran2()) nav.allerVers(StudioBande.SUGGESTIONS) || nav.allerVers(StudioBande.HAUT) },
+                suivant = { if (!surEcran2()) nav.allerVers(StudioBande.RACCOURCIS) || nav.allerVers(StudioBande.MODULES) },
+            )
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -187,6 +195,7 @@ fun HomeStudio(ctx: HomeContext) {
                     .height((hauteur + decalage).u)
                     // Page sur deux écrans, déplacée d'un bloc (pas de défilement automatique au focus)
                     .offset { IntOffset(0, -ctx.defilement.value) }
+                    .then(pointeurPages)
                     .testTag("studio:page"),
             ) {
                 // ------------------------------------------------ écran 1
@@ -324,7 +333,7 @@ private fun StudioEnTete(
 @Composable
 private fun StudioOngletBouton(titre: String, actif: Boolean, onFocus: () -> Unit, modifier: Modifier) {
     var focus by remember { mutableStateOf(false) }
-    Surface(
+    SurfaceCliquable(
         onClick = onFocus,
         modifier = modifier.height(24.u).onFocusChanged {
             focus = it.hasFocus
@@ -376,6 +385,7 @@ private fun StudioRangeeSuggestions(
     LazyRow(
         state = etat,
         modifier = Modifier
+            .moletteRangee(etat)
             .fillMaxWidth()
             .testTag("rangee:suggestions")
             .bandeStudio(nav, StudioBande.SUGGESTIONS, versEcran),
@@ -556,6 +566,7 @@ private fun StudioDock(
         LazyRow(
             state = ctx.rangeeFavoris,
             modifier = Modifier
+                .moletteRangee(ctx.rangeeFavoris)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(26.u))
                 .testTag("rangee:favoris")

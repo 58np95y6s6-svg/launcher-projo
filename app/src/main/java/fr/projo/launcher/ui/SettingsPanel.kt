@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -33,6 +34,7 @@ import fr.projo.launcher.modules.IconesModules
 import fr.projo.launcher.modules.LocalHoteModules
 import fr.projo.launcher.system.DeviceSnapshot
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /*
  * Panneau « Réglages » : CONTENU et COMPORTEMENT, écrits une seule fois pour tous les designs.
@@ -106,6 +108,10 @@ class Reglage(
     val options: List<String> = emptyList(),
     val optionActive: Int = -1,
     val onLongClick: (() -> Unit)? = null,
+    /** Pointeur : un clic ou un toucher sur la jauge (position de 0 à 1) règle directement la valeur (volume). */
+    val surJauge: ((Float) -> Unit)? = null,
+    /** Pointeur : clic sur les flèches ◀ ▶ dessinées à côté de la jauge (−1 / +1). */
+    val surFleche: ((Int) -> Unit)? = null,
     val onClick: () -> Unit,
 )
 
@@ -153,10 +159,28 @@ fun SettingsPanel(
 ) {
     BackHandler(onBack = actions.close)
     var volumeEnReglage by remember { mutableStateOf(false) }
+    // Pointeur : clic sur la jauge du volume → la tuile prend le focus et le niveau est réglé
+    // d'un coup (au plus près de la position cliquée). État et actions relus au moment du clic.
+    val focusCurseur = remember { FocusRequester() }
+    val etatActuel = rememberUpdatedState(snapshot)
+    val actionsActuelles = rememberUpdatedState(actions)
+    val reglerVolume: (Float) -> Unit = remember {
+        { f ->
+            runCatching { focusCurseur.requestFocus() }
+            val e = etatActuel.value
+            if (e != null) {
+                val a = actionsActuelles.value
+                if (e.muet) a.mute()
+                val cible = (f * e.volumeMax).roundToInt().coerceIn(0, e.volumeMax)
+                if (cible != e.volume) a.volume(cible - e.volume)
+            }
+        }
+    }
     val sections = contenuReglages(
         snapshot, maj, hiddenCount, isDefaultHome, telecommande, actions,
         volumeEnReglage = volumeEnReglage,
         basculerVolume = { volumeEnReglage = !volumeEnReglage },
+        reglerVolume = reglerVolume,
     )
     val premier = remember { FocusRequester() }
     var focus by remember { mutableStateOf(CLE_VOLUME) }
@@ -195,7 +219,7 @@ fun SettingsPanel(
                     colonneFocus = colonne
                 }
             }
-            .then(if (r.curseur) touchesVolume else Modifier)
+            .then(if (r.curseur) Modifier.focusRequester(focusCurseur).then(touchesVolume) else Modifier)
     }
     PanneauStyle(
         style = LocalDesign.current.styleReglages(),
@@ -220,6 +244,7 @@ private fun contenuReglages(
     actions: SettingsActions,
     volumeEnReglage: Boolean,
     basculerVolume: () -> Unit,
+    reglerVolume: (Float) -> Unit,
 ): List<SectionReglages> {
     val design = LocalDesign.current
     val hote = LocalHoteModules.current ?: HoteModules()
@@ -253,6 +278,8 @@ private fun contenuReglages(
         enReglage = volumeEnReglage,
         chiffre = if (muet) "—" else "${(niveau * 100).toInt()} %",
         onLongClick = actions.mute,
+        surJauge = reglerVolume,
+        surFleche = actions.volume,
         onClick = {
             if (muet && !volumeEnReglage) actions.mute()
             basculerVolume()

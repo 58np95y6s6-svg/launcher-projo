@@ -46,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.NbaGame
 import fr.projo.launcher.data.NbaNight
@@ -75,6 +74,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import fr.projo.launcher.ui.SurfaceCliquable
+import fr.projo.launcher.ui.moletteRangee
 
 private const val LIGNES_VISIBLES = 3
 private const val HAUTEUR_LIGNE = 34
@@ -272,7 +273,9 @@ private fun SportOnglets(
     val actif = onglets.firstOrNull { comps[it].id == choisi } ?: onglets.first()
     Column(modifier) {
         Row(Modifier.fillMaxWidth().height(20.u), verticalAlignment = Alignment.CenterVertically) {
-            LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.u)) {
+            // Molette de la souris : fait défiler les onglets (une rangée ne se glisse pas à la souris)
+            val etatOnglets = rememberLazyListState()
+            LazyRow(Modifier.weight(1f).moletteRangee(etatOnglets), state = etatOnglets, horizontalArrangement = Arrangement.spacedBy(4.u)) {
                 itemsIndexed(onglets, key = { _, i -> comps[i].id }) { k, i ->
                     Onglet(
                         comps[i].court, i == actif,
@@ -379,7 +382,7 @@ private fun LignePetite(m: MatchDe, repo: NbaRepository, avecCompetition: Boolea
     val style = LocalStyleModule.current
     val g = m.g
     val forme = RoundedCornerShape(9.u)
-    Surface(
+    SurfaceCliquable(
         onClick = {},
         modifier = modifier.fillMaxWidth().height(HAUTEUR_LIGNE_PETITE.u),
         shape = ClickableSurfaceDefaults.shape(forme),
@@ -442,7 +445,7 @@ private fun Message(msg: String) {
 @Composable
 private fun Onglet(texte: String, actif: Boolean, modifier: Modifier, onSelect: () -> Unit) {
     val style = LocalStyleModule.current
-    Surface(
+    SurfaceCliquable(
         onClick = onSelect,
         modifier = modifier.height(20.u).onFocusChanged { if (it.isFocused) onSelect() },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.u)),
@@ -465,7 +468,7 @@ private fun LigneMatch(g: NbaGame, repo: NbaRepository, avecJour: Boolean) {
     val style = LocalStyleModule.current
     val forme = RoundedCornerShape(9.u)
     // Ligne focalisable : c'est ce qui permet de faire défiler la liste à la télécommande
-    Surface(
+    SurfaceCliquable(
         onClick = {},
         modifier = Modifier.fillMaxWidth().height(HAUTEUR_LIGNE.u),
         shape = ClickableSurfaceDefaults.shape(forme),

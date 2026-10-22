@@ -86,7 +86,6 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
@@ -575,7 +574,7 @@ private fun PastelRangeeFavoris(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth()
+        modifier = Modifier.moletteRangee(ctx.rangeeFavoris).testTag("rangee:favoris").fillMaxWidth()
             .onFocusChanged { surFocus(it.hasFocus) }.navFavoris(ctx.nav)
             .fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
         // Haut/bas : place pour l'agrandissement et l'anneau. Fin : la dernière carte peut
@@ -603,7 +602,7 @@ private fun PastelRangeeFavoris(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
 private fun PastelRangeeApps(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.testTag("rangee:apps").fillMaxWidth()
+        modifier = Modifier.moletteRangee(ctx.rangeeApps).testTag("rangee:apps").fillMaxWidth()
             .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 7.u, bottom = 7.u),
         horizontalArrangement = Arrangement.spacedBy(10.u),
@@ -641,7 +640,7 @@ private fun PastelCarte(
     val ecart = 4.u
     val epaisseur = 3.u
     val forme = RoundedCornerShape(rayon)
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
@@ -781,7 +780,7 @@ private fun PastelPilule(
 ) {
     var focus by remember { mutableStateOf(false) }
     val echelle = animateFloatAsState(if (focus) agrandi else 1f, pastelRessort(), label = "echellePilule")
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier

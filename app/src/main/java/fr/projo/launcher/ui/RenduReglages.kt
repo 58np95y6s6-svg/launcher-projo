@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -76,6 +77,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -91,7 +93,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import java.util.Locale
 import kotlin.math.PI
@@ -164,7 +165,8 @@ internal fun PanneauStyle(style: StyleReglages, p: PanneauReglages, gaucheFerme:
     val forme = formePanneau(s)
     val unite = 1.u
 
-    Box(Modifier.fillMaxSize().drawBehind { drawRect(c.voile, alpha = ouverture.value) }) {
+    // Pointeur : toucher le voile (hors du panneau) ferme le panneau, comme Retour
+    Box(Modifier.fillMaxSize().drawBehind { drawRect(c.voile, alpha = ouverture.value) }.cliquableSansFocus(fermer)) {
         val place = when (s.disposition) {
             Disposition.FEUILLE_DROITE -> Modifier.align(Alignment.CenterEnd)
                 .padding(top = m.haut.u, bottom = m.bas.u, end = m.cote.u).width(m.largeur.u).fillMaxHeight()
@@ -205,9 +207,11 @@ internal fun PanneauStyle(style: StyleReglages, p: PanneauReglages, gaucheFerme:
                         false
                     }
                 }
+                // Un clic sur une partie vide du panneau ne le ferme pas (ni n'atteint l'accueil)
+                .retenirClics()
                 .testTag("reglages:panneau"),
         ) {
-            EnTeteReglages(s, p)
+            EnTeteReglages(s, p, fermer)
             CorpsReglages(s, p, Modifier.weight(1f))
             PiedReglages(s, p)
         }
@@ -293,7 +297,7 @@ private fun DrawScope.matiere(s: StyleReglages, u: Float) {
 // ------------------------------------------------------------------ en-têtes
 
 @Composable
-private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
+private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages, fermer: () -> Unit) {
     val c = s.couleurs
     val m = s.mesures
     val ty = s.typo
@@ -305,7 +309,7 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
         EnTete.CENTRE -> Box(
             Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 16.u, bottom = 4.u).height(30.u),
         ) {
-            BoutonFermer(30, c.pastille, c.texte, Modifier.align(Alignment.CenterStart))
+            BoutonFermer(30, c.pastille, c.texte, fermer, Modifier.align(Alignment.CenterStart))
             T("Réglages", ty.enTete.toFloat(), c.texte, Modifier.align(Alignment.Center), poids = FontWeight.Bold, espacement = -0.3f)
         }
         EnTete.TITRE_FERMER -> Row(
@@ -313,7 +317,7 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             T("Réglages", ty.enTete.toFloat(), c.texte, Modifier.weight(1f), poids = FontWeight.Bold, espacement = -0.6f)
-            BoutonFermer(32, Color(0xFFE9E1EE), c.texte)
+            BoutonFermer(32, Color(0xFFE9E1EE), c.texte, fermer)
         }
         EnTete.AIDES -> Row(
             Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 30.u, bottom = 8.u),
@@ -328,12 +332,12 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages) {
     }
 }
 
-/** Bouton × décoratif (Retour ferme le panneau). */
+/** Bouton × : décoratif à la télécommande (Retour ferme le panneau), il ferme au clic ou au toucher. */
 @Composable
-private fun BoutonFermer(taille: Int, fond: Color, encre: Color, modifier: Modifier = Modifier) {
+private fun BoutonFermer(taille: Int, fond: Color, encre: Color, fermer: () -> Unit, modifier: Modifier = Modifier) {
     val unite = 1.u
     Box(
-        modifier.size(taille.u).background(fond, CircleShape).drawBehind {
+        modifier.testTag("reglages:fermer").cliquableSansFocus(fermer).size(taille.u).background(fond, CircleShape).drawBehind {
             val k = unite.toPx()
             val d = 4.5f * k
             val cx = size.width / 2
@@ -913,7 +917,7 @@ private fun TuileReglage(s: StyleReglages, p: PanneauReglages, r: Reglage, colon
             Spacer(Modifier.weight(1f).heightIn(min = 8.u))
             if (r.curseur && r.jauge != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { JaugeSimple(Jauge.FINE, r.jauge, s, t, epaisseur = 4f, couleur = Color.White) }
+                    Box(Modifier.weight(1f).jaugeCliquable(r)) { JaugeSimple(Jauge.FINE, r.jauge, s, t, epaisseur = 4f, couleur = Color.White) }
                     Spacer(Modifier.width(10.u))
                     T(r.chiffre ?: "", 13f, Color.White, poids = FontWeight.Bold)
                 }
@@ -1063,7 +1067,7 @@ private fun CaseReglage(
                 }
             },
     ) {
-        Surface(
+        SurfaceCliquable(
             onClick = r.onClick,
             onLongClick = r.onLongClick,
             modifier = p.comportement(r, colonne, finDeRangee)
@@ -1206,19 +1210,19 @@ private fun JaugeVolume(s: StyleReglages, r: Reglage, t: Float) {
         Jauge.CURSEUR -> Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(ProjoIcons.Muet, null, Modifier.size(13.u), tint = discret)
             Spacer(Modifier.width(9.u))
-            Box(Modifier.weight(1f)) { Curseur(s, v, t) }
+            Box(Modifier.weight(1f).jaugeCliquable(r)) { Curseur(s, v, t) }
             Spacer(Modifier.width(9.u))
             Icon(ProjoIcons.Volume, null, Modifier.size(15.u), tint = discret)
             if (t > 0.5f) {
                 Spacer(Modifier.width(10.u))
-                FlecheReglage("◀", s, t, r.enReglage)
+                FlecheReglage("◀", s, t, r.enReglage, r.surFleche?.let { f -> { f(-1) } })
                 Spacer(Modifier.width(4.u))
-                FlecheReglage("▶", s, t, r.enReglage)
+                FlecheReglage("▶", s, t, r.enReglage, r.surFleche?.let { f -> { f(1) } })
             }
         }
-        Jauge.EXPRESSIVE -> Expressive(s, v, t)
-        Jauge.BLOCS -> Blocs(v, 20)
-        else -> if (s.tuiles == FormeTuiles.CARTES) {
+        Jauge.EXPRESSIVE -> Box(Modifier.jaugeCliquable(r)) { Expressive(s, v, t) }
+        Jauge.BLOCS -> Box(Modifier.jaugeCliquable(r)) { Blocs(v, 20) }
+        else -> Box(Modifier.jaugeCliquable(r)) { if (s.tuiles == FormeTuiles.CARTES) {
             // Console : piste fine, bouton blanc, « Muet » et « Max » dessous
             Column {
                 Curseur(s, v, t, fin = true)
@@ -1230,15 +1234,28 @@ private fun JaugeVolume(s: StyleReglages, r: Reglage, t: Float) {
             }
         } else {
             JaugeSimple(Jauge.FINE, v, s, t, couleur = if (r.enReglage) c.accent else null)
-        }
+        } }
+    }
+}
+
+/**
+ * Pointeur : un clic ou un toucher sur la jauge du volume règle directement le niveau
+ * (Reglage.surJauge, position de 0 à 1 sur la largeur de la jauge). Rien à la télécommande.
+ */
+private fun Modifier.jaugeCliquable(r: Reglage): Modifier {
+    val regler = r.surJauge ?: return this
+    return testTag("jauge:" + r.cle).pointerInput(regler) {
+        detectTapGestures { regler((it.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)) }
     }
 }
 
 @Composable
-private fun FlecheReglage(fleche: String, s: StyleReglages, t: Float, actif: Boolean) {
+private fun FlecheReglage(fleche: String, s: StyleReglages, t: Float, actif: Boolean, onClick: (() -> Unit)?) {
     val c = s.couleurs
     val fond = if (actif) c.accent else lerp(c.texte, c.texteFocus, t).copy(alpha = 0.08f)
-    Box(Modifier.size(16.u).background(fond, RoundedCornerShape(4.u)), contentAlignment = Alignment.Center) {
+    // Pointeur : la flèche dessinée règle d'un cran (affichée seulement sur la tuile sélectionnée)
+    val clic = if (onClick != null) Modifier.cliquableSansFocus(onClick) else Modifier
+    Box(Modifier.then(clic).size(16.u).background(fond, RoundedCornerShape(4.u)), contentAlignment = Alignment.Center) {
         T(fleche, 8f, if (actif) Color.White else lerp(c.texte, c.texteFocus, t), interligne = 1f)
     }
 }

@@ -33,10 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.LocalContentColor
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.SourceCandidate
@@ -89,7 +87,7 @@ fun MenuDialog(
             ) {
                 items(actions.size) { i ->
                     val a = actions[i]
-                    ListItem(
+                    LigneCliquable(
                         selected = false,
                         onClick = { a.onClick(); onDismiss() },
                         headlineContent = { Text(a.label, fontSize = 15.us) },
@@ -266,7 +264,7 @@ fun ListeDialog(
                             fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.u, top = 10.u, bottom = 2.u),
                         )
                     } else {
-                        ListItem(
+                        LigneCliquable(
                             selected = false,
                             onClick = l.onClick,
                             headlineContent = { Text(l.titre, fontSize = 15.us, maxLines = 1) },
@@ -307,7 +305,7 @@ internal fun couleursLigne(h: HabillageDialogue) = ListItemDefaults.colors(
 @Composable
 internal fun BoutonDialogue(texte: String, modifier: Modifier = Modifier, accent: Boolean = false, onClick: () -> Unit) {
     val h = habillageDialogue()
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = modifier,
         shape = ClickableSurfaceDefaults.shape(h.formeLigne),

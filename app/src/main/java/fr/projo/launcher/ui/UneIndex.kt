@@ -412,6 +412,7 @@ private fun UneRangeeFavoris(
         LazyRow(
             state = ctx.rangeeFavoris,
             modifier = Modifier
+                .moletteRangee(ctx.rangeeFavoris)
                 .padding(top = 400.u)
                 .fillMaxWidth()
                 .height(50.u)
@@ -500,6 +501,7 @@ private fun UneRangeeApps(
         LazyRow(
             state = ctx.rangeeApps,
             modifier = Modifier
+                .moletteRangee(ctx.rangeeApps)
                 .padding(top = 463.u)
                 .fillMaxWidth()
                 .height(50.u)

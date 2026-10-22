@@ -47,7 +47,6 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.ui.LocalScale
@@ -57,6 +56,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import fr.projo.launcher.ui.SurfaceCliquable
 
 /**
  * Écran plein écran de l'alarme, ouvert par-dessus l'app en cours à l'échéance du minuteur
@@ -170,7 +170,7 @@ private fun EcranAlarme(activite: ComponentActivity) {
 @Composable
 private fun BoutonAlarme(texte: String, modifier: Modifier, onClick: () -> Unit) {
     val forme = RoundedCornerShape(30.u)
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = modifier.height(60.u).width(220.u),
         shape = ClickableSurfaceDefaults.shape(forme),

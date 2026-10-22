@@ -60,6 +60,8 @@ fun LibraryScreen(
             // Le focus reste dans la bibliothèque (pas de saut vers l'accueil caché derrière)
             .focusProperties { exit = { FocusRequester.Cancel } }
             .focusGroup()
+            // Pointeur : un clic sur une partie vide n'atteint pas l'accueil caché derrière
+            .retenirClics()
     ) {
         Column(Modifier.fillMaxSize()) {
             Text(

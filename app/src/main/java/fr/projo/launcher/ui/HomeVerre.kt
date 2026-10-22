@@ -77,7 +77,6 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.FormatVisuel
@@ -242,7 +241,7 @@ fun HomeVerre(ctx: HomeContext) {
                 }
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight()
+                    modifier = Modifier.moletteRangee(ctx.rangeeFavoris).testTag("rangee:favoris").weight(1f).fillMaxHeight()
                         .onFocusChanged { focusFavoris = it.hasFocus }.navFavoris(ctx.nav)
                         .fadingEdges(ctx.rangeeFavoris, 48.u),
                     // Marges hautes/basses : place pour la levée, le halo et l'ombre (la rangée découpe)
@@ -418,7 +417,7 @@ private fun VerreBouton(
     contenuFocus: Color = VerreEncre,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier.testTag("rapide:$libelle").size(40.u).onFocusChanged { surFocus(it.isFocused) },
@@ -486,7 +485,7 @@ private fun VerreCarte(
                 onDrawBehind { if (p > 0.01f) halo.dessiner(this, p) }
             },
     ) {
-        Surface(
+        SurfaceCliquable(
             onClick = onClick,
             onLongClick = onMenu,
             modifier = Modifier
@@ -545,7 +544,7 @@ private fun VerreCarte(
 @Composable
 private fun VerreAide(onFocused: () -> Unit, modifier: Modifier = Modifier) {
     val forme = RoundedCornerShape(VERRE_CARTE_RAYON.u)
-    Surface(
+    SurfaceCliquable(
         onClick = {},
         modifier = modifier
             .size(300.u, VERRE_CARTE_H.u)
@@ -592,7 +591,7 @@ private fun VerreMesApps(ctx: HomeContext, fond: FondVerre, surFocus: (Boolean) 
         // Hauteur = celle des icônes + noms (pas de poids : rien n'est rogné)
         LazyRow(
             state = ctx.rangeeApps,
-            modifier = Modifier.testTag("rangee:apps").fillMaxWidth()
+            modifier = Modifier.moletteRangee(ctx.rangeeApps).testTag("rangee:apps").fillMaxWidth()
                 .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 40.u),
             // Marge haute : place pour la levée et le halo de l'icône sélectionnée
             contentPadding = PaddingValues(start = 12.u, end = 24.u, top = 16.u, bottom = 8.u),
@@ -756,7 +755,7 @@ private fun VerreRond(
                 onDrawBehind { if (p > 0.01f) halo.dessiner(this, p) }
             },
     ) {
-        Surface(
+        SurfaceCliquable(
             onClick = onClick,
             onLongClick = onLongClick,
             modifier = Modifier

@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 
 // ------------------------------------------------------------------ palette « Studio »
@@ -152,7 +151,7 @@ internal fun StudioCadre(
     var focus by remember { mutableStateOf(false) }
     val f by animateFloatAsState(if (focus) 1f else 0f, tween(200), label = "levee")
     val forme = RoundedCornerShape(rayon)
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onMenu,
         modifier = modifier
@@ -197,7 +196,7 @@ internal fun StudioPastille(
 ) {
     var focus by remember { mutableStateOf(false) }
     val h = 30.u
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onLong,
         modifier = modifier

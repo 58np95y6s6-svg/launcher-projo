@@ -103,6 +103,19 @@ internal class StudioNav {
         return choix.second.fr
     }
 
+    /**
+     * Pointeur (glisser, molette : changement d'écran) : focus à l'élément de [bande] le plus
+     * aligné avec l'élément sélectionné (le premier s'il n'y en a pas) ; false si la bande est vide.
+     */
+    fun allerVers(bande: StudioBande): Boolean {
+        val candidats = visibles(bande).values
+        if (candidats.isEmpty()) return false
+        val x = focus?.let { (b, c) -> cibleDe(b, c)?.centre }
+        val choix = if (x == null) candidats.first() else candidats.minBy { abs(it.centre - x) }
+        dernierSaut = null
+        return runCatching { choix.fr.requestFocus() }.isSuccess
+    }
+
     /** ▼ / ▲ : donne le focus à [cible] ; false si rien dans ce sens. */
     fun sauter(depuis: StudioBande, sens: Int): Boolean {
         val fr = cible(depuis, sens) ?: return false

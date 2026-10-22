@@ -95,7 +95,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
@@ -852,7 +851,7 @@ internal fun UneBouton(
         if (focus) 1f else 0f, tween(160, easing = FastOutSlowInEasing), label = "focusUne",
     )
     val k = with(LocalDensity.current) { 1.u.toPx() }
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier

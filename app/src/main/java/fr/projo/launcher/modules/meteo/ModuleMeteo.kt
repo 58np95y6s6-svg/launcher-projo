@@ -42,7 +42,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
-import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.Text
 import fr.projo.launcher.modules.CarteModule
@@ -72,6 +71,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import fr.projo.launcher.ui.LigneCliquable
 
 /**
  * Module Météo (Open-Meteo, sans clé) : température, ressenti, ciel (icônes vectorielles),
@@ -372,13 +372,13 @@ private fun RechercheVille(onChoisir: (Lieu) -> Unit, onRetour: () -> Unit) {
             }
             LazyColumn(Modifier.heightIn(max = 300.u), verticalArrangement = Arrangement.spacedBy(4.u)) {
                 item(key = "chercher") {
-                    ListItem(
+                    LigneCliquable(
                         selected = false, onClick = { lancer() }, headlineContent = { Text("Rechercher « ${texte.trim()} »", fontSize = 15.us) },
                         colors = couleursLigne(h), shape = ListItemDefaults.shape(shape = h.formeLigne),
                     )
                 }
                 items(resultats, key = { "${it.first.lat},${it.first.lon}" }) { (lieu, detail) ->
-                    ListItem(
+                    LigneCliquable(
                         selected = false,
                         onClick = { onChoisir(lieu) },
                         headlineContent = { Text(lieu.nom, fontSize = 15.us) },
@@ -387,7 +387,7 @@ private fun RechercheVille(onChoisir: (Lieu) -> Unit, onRetour: () -> Unit) {
                     )
                 }
                 item(key = "retour") {
-                    ListItem(
+                    LigneCliquable(
                         selected = false, onClick = onRetour, headlineContent = { Text("Retour", fontSize = 15.us) },
                         colors = couleursLigne(h), shape = ListItemDefaults.shape(shape = h.formeLigne),
                     )

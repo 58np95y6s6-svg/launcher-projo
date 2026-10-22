@@ -46,7 +46,6 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppVisual
@@ -130,7 +129,7 @@ fun AppCard(
     val reflet by animateFloatAsState(if (focus) 1f else 0f, tween(250), label = "reflet")
 
     Column(modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
+        SurfaceCliquable(
             onClick = onClick,
             onLongClick = onMenu,
             modifier = Modifier
@@ -236,7 +235,7 @@ fun TextCard(
 ) {
     val forme = RoundedCornerShape(height * 0.16f)
     val c = LocalDesign.current.colors()
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = modifier
             .size(width, height)

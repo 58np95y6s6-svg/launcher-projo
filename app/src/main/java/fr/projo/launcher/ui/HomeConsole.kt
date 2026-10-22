@@ -91,7 +91,6 @@ import androidx.compose.ui.zIndex
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppCategories
 import fr.projo.launcher.data.AppInfo
@@ -517,7 +516,7 @@ private fun ConsoleBouton(
     modifier: Modifier = Modifier,
 ) {
     var focus by remember { mutableStateOf(false) }
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
@@ -562,7 +561,7 @@ private fun ConsoleBouton(
 /** « Mise à jour » : pilule bleu clair, libellé toujours visible. */
 @Composable
 private fun ConsoleBoutonMaj(onClick: () -> Unit) {
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = Modifier.height(CONSOLE_BOUTON.u),
         shape = ClickableSurfaceDefaults.shape(CircleShape),
@@ -609,6 +608,7 @@ private fun ConsoleBande(
     LazyRow(
         state = ctx.rangeeFavoris,
         modifier = Modifier
+            .moletteRangee(ctx.rangeeFavoris)
             .fillMaxWidth()
             // Hauteur fixe (tuile agrandie + anneau) : le héros ne bouge pas avec le focus
             .testTag("rangee:favoris")
@@ -720,7 +720,7 @@ private fun ConsoleTuile(
                 .consoleCarre { cote }
                 .drawBehind { anneau.dessiner(this, p, size.minDimension * CONSOLE_RAYON_PCT / 100f) }
         ) {
-            Surface(
+            SurfaceCliquable(
                 onClick = onClick,
                 onLongClick = onMenu,
                 modifier = modifier
@@ -917,6 +917,7 @@ private fun ConsoleMesApps(
         LazyRow(
             state = ctx.rangeeApps,
             modifier = Modifier
+                .moletteRangee(ctx.rangeeApps)
                 .fillMaxWidth()
                 .testTag("rangee:apps")
                 .height((CONSOLE_CARTE_H + 26).u)
@@ -1077,7 +1078,7 @@ private fun ConsoleCarte(
                 }
             }
     ) {
-        Surface(
+        SurfaceCliquable(
             onClick = onClick,
             onLongClick = onLongClick,
             modifier = modifier

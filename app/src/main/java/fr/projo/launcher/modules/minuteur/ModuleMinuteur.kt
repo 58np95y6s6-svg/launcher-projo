@@ -49,7 +49,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.ContextCompat
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.modules.LocalStyleModule
 import fr.projo.launcher.modules.Module
@@ -68,6 +67,8 @@ import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import fr.projo.launcher.ui.SurfaceCliquable
+import fr.projo.launcher.ui.cliquableSansFocus
 
 /** Préréglages proposés (minutes). */
 private val PREREGLAGES = listOf(5, 10, 15, 30, 45, 60)
@@ -444,7 +445,7 @@ private fun Afficheur(
         texte.length <= 5 -> if (petit) 30 else 36
         else -> if (petit) 24 else 27
     }
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = modifier.onPreviewKeyEvent {
             if (!ajustable) return@onPreviewKeyEvent false
@@ -479,8 +480,15 @@ private fun Afficheur(
                     Modifier.align(Alignment.CenterEnd).padding(end = 5.u),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("▲", color = style.texteDiscret, fontSize = 7.us, style = ligne(9.us), maxLines = 1)
-                    Text("▼", color = style.texteDiscret, fontSize = 7.us, style = ligne(9.us), maxLines = 1)
+                    // Pointeur : les flèches dessinées règlent comme ▲ ▼ à la télécommande
+                    Text(
+                        "▲", color = style.texteDiscret, fontSize = 7.us, style = ligne(9.us), maxLines = 1,
+                        modifier = Modifier.cliquableSansFocus(onPlus),
+                    )
+                    Text(
+                        "▼", color = style.texteDiscret, fontSize = 7.us, style = ligne(9.us), maxLines = 1,
+                        modifier = Modifier.cliquableSansFocus(onMoins),
+                    )
                 }
             }
             if (progression != null) {
@@ -507,7 +515,7 @@ private fun Touche(
 ) {
     val style = LocalStyleModule.current
     val forme = RoundedCornerShape(8.u)
-    Surface(
+    SurfaceCliquable(
         onClick = onClick,
         modifier = if (tag != null) modifier.testTag(tag) else modifier,
         shape = ClickableSurfaceDefaults.shape(forme),

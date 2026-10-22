@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.LocalContentColor
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import fr.projo.launcher.modules.CarteModule
 import fr.projo.launcher.modules.DonneesModules
@@ -55,6 +54,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import fr.projo.launcher.ui.SurfaceCliquable
 
 /** Hauteur de l'en-tête « CE SOIR À LA TV » (unités .u). */
 private const val ENTETE = 16
@@ -186,7 +186,7 @@ private fun heure(t: Long): String = SimpleDateFormat("HH:mm", Locale.FRENCH).fo
 private fun LigneProgramme(c: ChaineTv, p: ProgrammeTv, taille: TailleModule, hauteur: Int, modifier: Modifier) {
     val style = LocalStyleModule.current
     val forme = RoundedCornerShape(9.u)
-    Surface(
+    SurfaceCliquable(
         onClick = {},
         modifier = modifier.fillMaxWidth().height(hauteur.u),
         shape = ClickableSurfaceDefaults.shape(forme),
