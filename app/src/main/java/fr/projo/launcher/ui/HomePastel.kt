@@ -574,9 +574,11 @@ private fun PastelRangeeFavoris(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
     val ui = ctx.ui
     LazyRow(
         state = ctx.rangeeFavoris,
-        modifier = Modifier.moletteRangee(ctx.rangeeFavoris).testTag("rangee:favoris").fillMaxWidth()
+        modifier = Modifier.testTag("rangee:favoris").fillMaxWidth()
             .onFocusChanged { surFocus(it.hasFocus) }.navFavoris(ctx.nav)
-            .fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u),
+            .fadingEdges(ctx.rangeeFavoris, PASTEL_FONDU.u)
+            // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+            .moletteRangee(ctx.rangeeFavoris),
         // Haut/bas : place pour l'agrandissement et l'anneau. Fin : la dernière carte peut
         // venir hors du fondu.
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 18.u, bottom = 18.u),
@@ -602,8 +604,10 @@ private fun PastelRangeeFavoris(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
 private fun PastelRangeeApps(ctx: HomeContext, surFocus: (Boolean) -> Unit) {
     LazyRow(
         state = ctx.rangeeApps,
-        modifier = Modifier.moletteRangee(ctx.rangeeApps).testTag("rangee:apps").fillMaxWidth()
-            .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u),
+        modifier = Modifier.testTag("rangee:apps").fillMaxWidth()
+            .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, PASTEL_FONDU.u)
+            // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+            .moletteRangee(ctx.rangeeApps),
         contentPadding = PaddingValues(start = PASTEL_BORD.u, end = PASTEL_MARGE.u, top = 7.u, bottom = 7.u),
         horizontalArrangement = Arrangement.spacedBy(10.u),
         verticalAlignment = Alignment.CenterVertically,

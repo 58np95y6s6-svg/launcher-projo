@@ -608,7 +608,6 @@ private fun ConsoleBande(
     LazyRow(
         state = ctx.rangeeFavoris,
         modifier = Modifier
-            .moletteRangee(ctx.rangeeFavoris)
             .fillMaxWidth()
             // Hauteur fixe (tuile agrandie + anneau) : le héros ne bouge pas avec le focus
             .testTag("rangee:favoris")
@@ -626,7 +625,9 @@ private fun ConsoleBande(
                     false
                 }
             }
-            .fadingEdges(ctx.rangeeFavoris, 56.u),
+            .fadingEdges(ctx.rangeeFavoris, 56.u)
+            // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+            .moletteRangee(ctx.rangeeFavoris),
         // Marges hautes/basses : place pour l'anneau et le halo de la tuile sélectionnée
         contentPadding = PaddingValues(start = CONSOLE_MARGE.u, end = CONSOLE_MARGE.u, top = 14.u, bottom = 14.u),
         horizontalArrangement = Arrangement.spacedBy(12.u),
@@ -917,7 +918,6 @@ private fun ConsoleMesApps(
         LazyRow(
             state = ctx.rangeeApps,
             modifier = Modifier
-                .moletteRangee(ctx.rangeeApps)
                 .fillMaxWidth()
                 .testTag("rangee:apps")
                 .height((CONSOLE_CARTE_H + 26).u)
@@ -934,7 +934,9 @@ private fun ConsoleMesApps(
                         false
                     }
                 }
-                .fadingEdges(ctx.rangeeApps, 56.u),
+                .fadingEdges(ctx.rangeeApps, 56.u)
+                // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+                .moletteRangee(ctx.rangeeApps),
             contentPadding = PaddingValues(horizontal = CONSOLE_MARGE.u, vertical = 13.u),
             horizontalArrangement = Arrangement.spacedBy(10.u),
             verticalAlignment = Alignment.CenterVertically,

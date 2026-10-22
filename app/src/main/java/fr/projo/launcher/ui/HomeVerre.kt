@@ -241,9 +241,11 @@ fun HomeVerre(ctx: HomeContext) {
                 }
                 LazyRow(
                     state = ctx.rangeeFavoris,
-                    modifier = Modifier.moletteRangee(ctx.rangeeFavoris).testTag("rangee:favoris").weight(1f).fillMaxHeight()
+                    modifier = Modifier.testTag("rangee:favoris").weight(1f).fillMaxHeight()
                         .onFocusChanged { focusFavoris = it.hasFocus }.navFavoris(ctx.nav)
-                        .fadingEdges(ctx.rangeeFavoris, 48.u),
+                        .fadingEdges(ctx.rangeeFavoris, 48.u)
+                        // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+                        .moletteRangee(ctx.rangeeFavoris),
                     // Marges hautes/basses : place pour la levée, le halo et l'ombre (la rangée découpe)
                     contentPadding = PaddingValues(start = 24.u, end = 40.u, top = 24.u, bottom = 24.u),
                     horizontalArrangement = Arrangement.spacedBy(18.u),
@@ -591,8 +593,10 @@ private fun VerreMesApps(ctx: HomeContext, fond: FondVerre, surFocus: (Boolean) 
         // Hauteur = celle des icônes + noms (pas de poids : rien n'est rogné)
         LazyRow(
             state = ctx.rangeeApps,
-            modifier = Modifier.moletteRangee(ctx.rangeeApps).testTag("rangee:apps").fillMaxWidth()
-                .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 40.u),
+            modifier = Modifier.testTag("rangee:apps").fillMaxWidth()
+                .onFocusChanged { surFocus(it.hasFocus) }.navApps(ctx.nav).fadingEdges(ctx.rangeeApps, 40.u)
+                // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+                .moletteRangee(ctx.rangeeApps),
             // Marge haute : place pour la levée et le halo de l'icône sélectionnée
             contentPadding = PaddingValues(start = 12.u, end = 24.u, top = 16.u, bottom = 8.u),
             horizontalArrangement = Arrangement.spacedBy(12.u),

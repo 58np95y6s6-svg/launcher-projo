@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -99,7 +100,8 @@ fun LibraryScreen(
                             onFocused = { _, _ -> },
                             onClick = { onLaunch(app) },
                             onMenu = { onMenu(app) },
-                            modifier = if (r == 0 && i == 0) Modifier.focusRequester(premier) else Modifier,
+                            modifier = Modifier.testTag("bibliotheque:" + app.packageName)
+                                .then(if (r == 0 && i == 0) Modifier.focusRequester(premier) else Modifier),
                         )
                     }
                 }

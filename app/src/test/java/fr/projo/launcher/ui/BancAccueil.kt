@@ -89,6 +89,15 @@ abstract class BancAccueil(nomDesign: String) {
     /** Paquets lancés (OK sur une app). */
     protected val lances = mutableListOf<String>()
 
+    /** Autres actions de l'accueil déclenchées (boutons rapides, « Toutes les apps ») : « reglages », « wifi »… */
+    protected val rapides = mutableListOf<String>()
+
+    /** Appelé par le bouton Réglages (après l'avoir noté dans [rapides]) : un test peut y ouvrir le panneau. */
+    protected open fun surReglages() {}
+
+    /** Version Fire TV (LocalFireTv) : pas de bouton Sources, tuile « Ouverture automatique »… */
+    protected var fireTv = false
+
     /** Appuis sur Maison : l'incrémenter ramène l'accueil en haut (comme MainActivity). */
     /** Même compteur que [appuisMaison] (nom utilisé par les tests Studio). */
     protected val pressionsMaison get() = appuisMaison
@@ -137,8 +146,10 @@ abstract class BancAccueil(nomDesign: String) {
         val nba = NbaRepository(contexte)
         val nbaData = DonneesFactices.nba()
         val actions = HomeActions(
-            launch = { lances += it.packageName }, openMenu = { menus += it.packageName }, openLibrary = {}, sources = {}, sourcesLong = {},
-            wifi = {}, bluetooth = {}, settings = {}, settingsLong = {}, update = {},
+            launch = { lances += it.packageName }, openMenu = { menus += it.packageName },
+            openLibrary = { rapides += "bibliotheque" }, sources = { rapides += "sources" }, sourcesLong = { rapides += "sourcesLong" },
+            wifi = { rapides += "wifi" }, bluetooth = { rapides += "bluetooth" },
+            settings = { rapides += "reglages"; surReglages() }, settingsLong = { rapides += "reglagesLong" }, update = { rapides += "maj" },
         )
         compose.mainClock.autoAdvance = false
         compose.setContent {
@@ -146,6 +157,7 @@ abstract class BancAccueil(nomDesign: String) {
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
             CompositionLocalProvider(
                 LocalScale provides echelle,
+                LocalFireTv provides fireTv,
                 LocalDesign provides design,
                 LocalHoteModules provides hoteModules,
                 LocalStudioSource provides sourceStudio,

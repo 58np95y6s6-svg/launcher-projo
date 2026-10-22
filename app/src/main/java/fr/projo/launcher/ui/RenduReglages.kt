@@ -213,7 +213,7 @@ internal fun PanneauStyle(style: StyleReglages, p: PanneauReglages, gaucheFerme:
         ) {
             EnTeteReglages(s, p, fermer)
             CorpsReglages(s, p, Modifier.weight(1f))
-            PiedReglages(s, p)
+            PiedReglages(s, p, fermer)
         }
         // Verre : poignée et point de fermeture sous la fenêtre, façon visionOS
         if (s.disposition == Disposition.FENETRE_CENTREE && s.reflet) {
@@ -545,7 +545,7 @@ private fun BandeauReglages(s: StyleReglages, p: PanneauReglages) {
 // ------------------------------------------------------------------ pieds
 
 @Composable
-private fun PiedReglages(s: StyleReglages, p: PanneauReglages) {
+private fun PiedReglages(s: StyleReglages, p: PanneauReglages, fermer: () -> Unit) {
     val c = s.couleurs
     val m = s.mesures
     when {
@@ -553,14 +553,20 @@ private fun PiedReglages(s: StyleReglages, p: PanneauReglages) {
             Modifier.fillMaxWidth().padding(horizontal = m.marge.u, vertical = 12.u),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Bouton rond « Retour », décoratif : la touche Retour ferme
-            Box(
-                Modifier.size(44.u).background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE6E9EC))), CircleShape)
-                    .border(2.u, ChainesBleuFilet, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) { Icon(IconeRetour, null, Modifier.size(22.u), tint = ChainesGris) }
-            Spacer(Modifier.width(12.u))
-            T("Retour", 15f, c.texte, poids = FontWeight.Medium)
+            // Bouton rond « Retour », décoratif à la télécommande (la touche Retour ferme) ; il ferme
+            // au clic ou au toucher (le panneau occupe tout l'écran : pas de voile à toucher)
+            Row(
+                Modifier.testTag("reglages:fermer").cliquableSansFocus(fermer),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(44.u).background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE6E9EC))), CircleShape)
+                        .border(2.u, ChainesBleuFilet, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(IconeRetour, null, Modifier.size(22.u), tint = ChainesGris) }
+                Spacer(Modifier.width(12.u))
+                T("Retour", 15f, c.texte, poids = FontWeight.Medium)
+            }
             Spacer(Modifier.weight(1f))
             T("OK  Choisir", 13f, c.texteDiscret, poids = FontWeight.Medium)
         }

@@ -412,7 +412,6 @@ private fun UneRangeeFavoris(
         LazyRow(
             state = ctx.rangeeFavoris,
             modifier = Modifier
-                .moletteRangee(ctx.rangeeFavoris)
                 .padding(top = 400.u)
                 .fillMaxWidth()
                 .height(50.u)
@@ -422,7 +421,9 @@ private fun UneRangeeFavoris(
                 nav.origineFavoris = it.positionInRoot().x
                 nav.largeurFenetre = it.findRootCoordinates().size.width.toFloat()
             }
-                .onPreviewKeyEvent { nav.toucheFavoris(it, ctx) },
+                .onPreviewKeyEvent { nav.toucheFavoris(it, ctx) }
+                // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+                .moletteRangee(ctx.rangeeFavoris),
             contentPadding = PaddingValues(horizontal = 48.u),
             horizontalArrangement = repartition,
             verticalAlignment = Alignment.CenterVertically,
@@ -501,14 +502,15 @@ private fun UneRangeeApps(
         LazyRow(
             state = ctx.rangeeApps,
             modifier = Modifier
-                .moletteRangee(ctx.rangeeApps)
                 .padding(top = 463.u)
                 .fillMaxWidth()
                 .height(50.u)
                 .testTag("rangee:apps")
                 .graphicsLayer { this.alpha = alpha.value }
                 .onGloballyPositioned { nav.origineApps = it.positionInRoot().x }
-                .onPreviewKeyEvent { nav.toucheApps(it, ctx) },
+                .onPreviewKeyEvent { nav.toucheApps(it, ctx) }
+                // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+                .moletteRangee(ctx.rangeeApps),
             contentPadding = PaddingValues(horizontal = 48.u),
             horizontalArrangement = repartition,
             verticalAlignment = Alignment.CenterVertically,

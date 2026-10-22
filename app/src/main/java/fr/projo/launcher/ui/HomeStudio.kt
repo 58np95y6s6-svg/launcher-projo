@@ -385,10 +385,11 @@ private fun StudioRangeeSuggestions(
     LazyRow(
         state = etat,
         modifier = Modifier
-            .moletteRangee(etat)
             .fillMaxWidth()
             .testTag("rangee:suggestions")
-            .bandeStudio(nav, StudioBande.SUGGESTIONS, versEcran),
+            .bandeStudio(nav, StudioBande.SUGGESTIONS, versEcran)
+            // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+            .moletteRangee(etat),
         contentPadding = PaddingValues(horizontal = S_MARGE.u, vertical = 12.u),
         horizontalArrangement = Arrangement.spacedBy(18.u),
         verticalAlignment = Alignment.Bottom,
@@ -566,11 +567,12 @@ private fun StudioDock(
         LazyRow(
             state = ctx.rangeeFavoris,
             modifier = Modifier
-                .moletteRangee(ctx.rangeeFavoris)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(26.u))
                 .testTag("rangee:favoris")
-                .bandeStudio(nav, StudioBande.DOCK, versEcran),
+                .bandeStudio(nav, StudioBande.DOCK, versEcran)
+                // Molette de la souris : fait défiler la rangée (Pointeur.kt)
+                .moletteRangee(ctx.rangeeFavoris),
             contentPadding = PaddingValues(horizontal = 18.u, vertical = 12.u),
             horizontalArrangement = Arrangement.spacedBy(13.u),
             verticalAlignment = Alignment.CenterVertically,
