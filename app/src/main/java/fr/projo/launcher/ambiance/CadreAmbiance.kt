@@ -61,6 +61,11 @@ class CadreAmbiance(private val service: AccessibilityService) {
     private var sauter = false
     private var musiqueActive = false
     private var prochaineLectureMusique = 0L
+
+    // Son lu une image sur deux (~30 fois par seconde : chaque lecture passe par le serveur audio)
+    private var lireSon = false
+    private var dtSon = 0f
+    private var dernierSilence = true
     private var corrections = 0
     private val position = IntArray(2)
 
@@ -258,6 +263,9 @@ class CadreAmbiance(private val service: AccessibilityService) {
         c.ouvrir()
         if (c.etat == CaptureSon.Etat.ACTIVE) analyse.configurer(c.taille, c.frequenceHz)
         detecteur.reinitialiser()
+        lireSon = false
+        dtSon = 0f
+        dernierSilence = true
         if (audio == null) audio = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         prochaineLectureMusique = 0L
         // Pochette du morceau de cette app (accès aux notifications)
@@ -345,7 +353,10 @@ class CadreAmbiance(private val service: AccessibilityService) {
     private fun surImage(nanos: Long) {
         val vues = bandes ?: return
         val d = dessin ?: return
-        Choreographer.getInstance().postFrameCallback(image)
+        // Image suivante : au vsync qui suit (8 ms de délai, moins qu'un intervalle de 16,7 ms).
+        // Sans délai, l'horloge des tests (Robolectric), avancée à chaque vsync, rendrait
+        // l'image suivante aussitôt due : une boucle sans fin.
+        Choreographer.getInstance().postFrameCallbackDelayed(image, DELAI_IMAGE)
         val c = capture
         val sonPossible = c != null && c.etat == CaptureSon.Etat.ACTIVE
         // Sans son en direct, 30 images par seconde suffisent (pulsation lente)
@@ -356,17 +367,27 @@ class CadreAmbiance(private val service: AccessibilityService) {
         val dt = if (dernierInstant == 0L) 1f / 60f else ((nanos - dernierInstant) / 1e9f).coerceIn(0.001f, 0.1f)
         dernierInstant = nanos
 
-        var silence = true
-        if (sonPossible && c!!.lire()) {
-            analyse.analyser(c.fft, dt)
-            silence = analyse.silence
+        var attaque = 0f
+        if (sonPossible) {
+            dtSon += dt
+            lireSon = !lireSon
+            if (lireSon) {
+                dernierSilence = if (c!!.lire()) {
+                    analyse.analyser(c.fft, dtSon)
+                    attaque = analyse.attaque
+                    analyse.silence
+                } else {
+                    true
+                }
+                dtSon = 0f
+            }
         }
         val maintenant = SystemClock.uptimeMillis()
         if (maintenant >= prochaineLectureMusique) {
             musiqueActive = try { audio?.isMusicActive == true } catch (e: Exception) { false }
             prochaineLectureMusique = maintenant + 500
         }
-        if (sonPossible) detecteur.suivre(silence, musiqueActive, dt)
+        if (sonPossible) detecteur.suivre(dernierSilence, musiqueActive, dt)
         val sonDirect = sonPossible && !detecteur.muet
         val teinte = teinteNeon(reglageCouleurs, couleurPochette != null)
         val source = sourceNeon(sonDirect, teinte)
@@ -374,7 +395,7 @@ class CadreAmbiance(private val service: AccessibilityService) {
         moteur.reagitAuSon = sonDirect
         if (sonDirect) {
             System.arraycopy(analyse.niveaux, 0, moteur.cibles, 0, AnalyseSpectre.NB_BANDES)
-            if (analyse.attaque > 0f) moteur.sursauter(analyse.attaque)
+            if (attaque > 0f) moteur.sursauter(attaque)
         }
         when (teinte) {
             Teinte.POCHETTE -> couleurPochette?.let { moteur.changerCouleur(it) }
@@ -474,6 +495,9 @@ class CadreAmbiance(private val service: AccessibilityService) {
         const val DUREE_APPUI_LONG = 700L
 
         private val DELAIS_VERIFICATION = longArrayOf(700L, 1_500L, 3_000L, 6_000L)
+
+        /** Délai avant de redemander une image (ms). */
+        private const val DELAI_IMAGE = 8L
 
         /** Texte du diagnostic : source, couleur, et pourquoi le son en direct manque. */
         fun texteDiagnostic(

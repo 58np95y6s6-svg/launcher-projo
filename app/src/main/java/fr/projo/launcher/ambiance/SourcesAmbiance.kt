@@ -278,7 +278,8 @@ class LecteurPochette(private val context: Context, private val surCouleur: (Int
                 // Pochette en noir et blanc : néon blanc légèrement chaud
                 return 0xFFF2E6
             }
-            hsv[1] = hsv[1].coerceIn(0.45f, 1f)
+            // Saturation bornée : ni délavé, ni criard (rouge pur d'une icône)
+            hsv[1] = hsv[1].coerceIn(0.45f, 0.88f)
             hsv[2] = hsv[2].coerceAtLeast(0.9f)
             return Color.HSVToColor(hsv) and 0xFFFFFF
         }
