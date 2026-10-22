@@ -46,6 +46,11 @@ object ProjoIcons {
     /** Photo (« image ») : affiches des nouveautés. */
     val Photo = icone("M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z")
 
+    /** Mode Ambiance : cadre lumineux aux coins arrondis (néon autour de l'écran). */
+    val Neon = icone(
+        "M6,3h12c1.66,0 3,1.34 3,3v12c0,1.66 -1.34,3 -3,3H6c-1.66,0 -3,-1.34 -3,-3V6c0,-1.66 1.34,-3 3,-3zM6.5,5.5c-0.55,0 -1,0.45 -1,1v11c0,0.55 0.45,1 1,1h11c0.55,0 1,-0.45 1,-1v-11c0,-0.55 -0.45,-1 -1,-1H6.5zM8,8h8v8H8z",
+    )
+
     private fun icone(path: String): ImageVector =
         ImageVector.Builder(
             defaultWidth = 24.dp, defaultHeight = 24.dp,

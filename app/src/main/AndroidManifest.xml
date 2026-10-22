@@ -44,6 +44,14 @@
 
     <!-- Design « Studio » : suggestions de films et séries lues sur TMDB (INTERNET, déjà déclaré) -->
 
+    <!-- Mode Ambiance : néon réactif à la musique. Le « Visualizer » d'Android donne le spectre
+         du son qui sort de l'appareil (rien n'est enregistré, gardé ni envoyé) ; il demande
+         l'autorisation micro, et MODIFY_AUDIO_SETTINGS pour la sortie générale (session 0).
+         Accordée par la fenêtre d'Android, ou par adb : pm grant fr.projo.launcher android.permission.RECORD_AUDIO -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <!-- Projecteur : pas d'écran tactile, Leanback non obligatoire (marche aussi hors Android TV) -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -162,6 +170,18 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/navigation_telecommande" />
+        </service>
+        <!-- Mode Ambiance : couleur de la pochette du morceau en cours (session média). Ce service
+             ne lit aucune notification. Accès à donner une fois (l'écran manque souvent sur Fire TV) :
+             adb shell cmd notification allow_listener fr.projo.launcher/fr.projo.launcher.ambiance.EcouteNotifications -->
+        <service
+            android:name=".ambiance.EcouteNotifications"
+            android:exported="true"
+            android:label="@string/ambiance_notifications_nom"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
         <!-- Partage de l'APK de mise à jour avec l'installeur d'Android -->
         <provider

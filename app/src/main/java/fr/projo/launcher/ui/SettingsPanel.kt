@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import fr.projo.launcher.system.FireTv
 import androidx.compose.ui.platform.testTag
 import fr.projo.launcher.LauncherViewModel
+import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.data.CleTmdb
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.modules.HoteModules
@@ -75,6 +76,8 @@ class SettingsActions(
     val appairer: () -> Unit = {},
     val telephones: () -> Unit = {},
     val aideTelecommande: () -> Unit = {},
+    /** Mode Ambiance : néon réactif à la musique autour de l'app au premier plan. */
+    val ambiance: () -> Unit = {},
 )
 
 /**
@@ -252,6 +255,8 @@ private fun contenuReglages(
     // « Affiches des nouveautés » : réglage enregistré, lu une fois
     LaunchedEffect(Unit) { ReglageNouveautes.charger(contexte) }
     val nouveautes = ReglageNouveautes.actif
+    // Mode Ambiance : réglages enregistrés, lus une fois (résumé et source utilisée sur la tuile)
+    remember { ModeAmbiance.charger(contexte) }
     // Studio : résumé de la clé TMDB, relu quand elle change (dialogue ouvert depuis le panneau)
     val versionCle = CleTmdb.version
     val resumeCle = if (design == Design.STUDIO) remember(versionCle) { resumeCleTmdb(contexte) } else ""
@@ -430,6 +435,15 @@ private fun contenuReglages(
                 teinte = Teintes.nouveautes,
                 onClick = { ReglageNouveautes.ecrire(contexte, !nouveautes) },
             ),
+            // Néon réactif à la musique autour de l'app (automatique avec les apps de musique)
+            Reglage(
+                cle = "ambiance",
+                icone = ProjoIcons.Neon,
+                titre = "Mode Ambiance",
+                valeur = ModeAmbiance.resume(),
+                teinte = Teintes.ambiance,
+                onClick = actions.ambiance,
+            ),
             if (majDispo) null else Reglage(
                 cle = "maj",
                 icone = ProjoIcons.MiseAJour,
@@ -512,6 +526,7 @@ object Teintes {
     val suggestions = Color(0xFFE11D48)
     val masquees = Color(0xFF64748B)
     val nouveautes = Color(0xFF14B8A6)
+    val ambiance = Color(0xFFE879F9)
     val appairer = Color(0xFF0EA5E9)
     val telephones = Color(0xFF22C55E)
     val clavier = Color(0xFFA855F7)

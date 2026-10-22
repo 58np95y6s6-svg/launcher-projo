@@ -1,5 +1,6 @@
 package fr.projo.launcher
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,7 +11,9 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -29,10 +33,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
+import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.remote.ClavierTelecommande
 import fr.projo.launcher.remote.HoteNavigation
 import fr.projo.launcher.remote.Telecommande
+import fr.projo.launcher.ui.ActionsMenuApp
+import fr.projo.launcher.ui.AideAmbianceDialog
 import fr.projo.launcher.ui.AideTelecommandeDialog
+import fr.projo.launcher.ui.AmbianceDialog
+import fr.projo.launcher.ui.EtatAmbiance
+import fr.projo.launcher.ui.ExplicationMicroDialog
+import fr.projo.launcher.ui.actionsMenuApp
 import fr.projo.launcher.ui.AppairageDialog
 import fr.projo.launcher.ui.ConfirmationAppairageDialog
 import fr.projo.launcher.ui.ResumeTelecommande
@@ -147,6 +158,28 @@ class MainActivity : ComponentActivity() {
         val demandeAppairage by Telecommande.confirmation.collectAsStateWithLifecycle()
         val telephones by Telecommande.telephones.collectAsStateWithLifecycle()
         val connectes by Telecommande.connectes.collectAsStateWithLifecycle()
+        // Mode Ambiance : explication du micro (app à ouvrir ensuite), réglages, aide
+        var explicationMicroPour by remember { mutableStateOf<String?>(null) }
+        var paquetApresMicro by remember { mutableStateOf<String?>(null) }
+        var montrerAmbiance by remember { mutableStateOf(false) }
+        var montrerAideAmbiance by remember { mutableStateOf(false) }
+        var versionAutorisations by remember { mutableIntStateOf(0) }
+        val demandeMicro = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { accorde ->
+            versionAutorisations++
+            val p = paquetApresMicro
+            paquetApresMicro = null
+            if (p != null) {
+                ouvrirEnAmbiance(p)
+            } else if (!accorde && !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
+                // Refus définitif (ou fenêtre absente) : commande adb de secours
+                montrerAideAmbiance = true
+            }
+        }
+        // Premier lancement : explication avant la fenêtre d'Android, puis ouverture de l'app
+        val demarrerAmbiance: (String) -> Unit = { p ->
+            if (!ModeAmbiance.micAutorise(this) && !ModeAmbiance.micDemande(this)) explicationMicroPour = p
+            else ouvrirEnAmbiance(p)
+        }
         // État du clavier et de l'accessibilité : relu à l'ouverture des Réglages ou de l'aide
         val resumeTel = remember(montrerReglages, montrerAideTelecommande, telephones.size, connectes.size) {
             resumeTelecommande(telephones.size, connectes.size)
@@ -260,6 +293,7 @@ class MainActivity : ComponentActivity() {
                     appairer = { Telecommande.commencerAppairage(); montrerAppairage = true },
                     telephones = { montrerTelephones = true },
                     aideTelecommande = { montrerAideTelecommande = true },
+                    ambiance = { montrerAmbiance = true },
                 ),
             )
         }
@@ -282,22 +316,19 @@ class MainActivity : ComponentActivity() {
             // Position dans sa rangée, pour proposer « déplacer » seulement si possible
             val rangee = if (favori) ui.favorites else ui.homeApps
             val index = rangee.indexOfFirst { it.packageName == pkg }
-            val actions = buildList {
-                add(MenuAction(if (favori) "Retirer des favoris" else "Ajouter aux favoris") { if (favori) refocusApresMenu = true; vm.toggleFavorite(pkg) })
-                if (!favori) {
-                    add(MenuAction(if (accueil) "Retirer de l'accueil" else "Ajouter à l'accueil") { if (accueil) refocusApresMenu = true; vm.toggleHome(pkg) })
-                }
-                if (index > 0) add(MenuAction("Déplacer à gauche") { vm.move(pkg, -1) })
-                if (index >= 0 && index < rangee.size - 1) add(MenuAction("Déplacer à droite") { vm.move(pkg, 1) })
-                if (!app.isSpecial) {
-                    add(MenuAction("Changer le logo…") { logoApp = app })
-                    add(MenuAction("Masquer partout") { refocusApresMenu = true; vm.hide(pkg); toast("${app.label} masquée") })
-                    add(MenuAction("Infos de l'app") { vm.actions.openAppInfo(pkg) })
-                } else {
-                    add(MenuAction("Choisir l'entrée à ouvrir…") { vm.loadSourceCandidates(); montrerSources = true })
-                }
-                add(MenuAction("Annuler") {})
-            }
+            val actions = actionsMenuApp(
+                app, favori, accueil, index, rangee.size,
+                ActionsMenuApp(
+                    basculerFavori = { if (favori) refocusApresMenu = true; vm.toggleFavorite(pkg) },
+                    basculerAccueil = { if (accueil) refocusApresMenu = true; vm.toggleHome(pkg) },
+                    deplacer = { vm.move(pkg, it) },
+                    changerLogo = { logoApp = app },
+                    masquer = { refocusApresMenu = true; vm.hide(pkg); toast("${app.label} masquée") },
+                    infos = { vm.actions.openAppInfo(pkg) },
+                    choisirEntree = { vm.loadSourceCandidates(); montrerSources = true },
+                    ambiance = { demarrerAmbiance(pkg) },
+                ),
+            )
             MenuDialog(
                 title = app.label,
                 subtitle = if (app.isSpecial) null else pkg,
@@ -412,6 +443,62 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        // ---------------- Mode Ambiance
+        explicationMicroPour?.let { p ->
+            ExplicationMicroDialog(
+                onContinuer = {
+                    ModeAmbiance.noterMicDemande(this)
+                    explicationMicroPour = null
+                    paquetApresMicro = p
+                    demandeMicro.launch(Manifest.permission.RECORD_AUDIO)
+                },
+                onPlusTard = {
+                    ModeAmbiance.noterMicDemande(this)
+                    explicationMicroPour = null
+                    ouvrirEnAmbiance(p)
+                },
+            )
+        }
+        if (montrerAmbiance) {
+            // Autorisations relues au retour d'une page système
+            val cycleAmbiance = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(cycleAmbiance) {
+                cycleAmbiance.repeatOnLifecycle(Lifecycle.State.RESUMED) { versionAutorisations++ }
+            }
+            val etatAmbiance = remember(versionAutorisations) {
+                EtatAmbiance(
+                    micro = ModeAmbiance.micAutorise(this),
+                    notifications = ModeAmbiance.notificationsAutorisees(this),
+                    service = FireTv.redirectionActive(this),
+                )
+            }
+            AmbianceDialog(
+                etat = etatAmbiance,
+                onMicro = {
+                    if (ModeAmbiance.micAutorise(this)) {
+                        toast("Son en direct déjà autorisé")
+                    } else {
+                        ModeAmbiance.noterMicDemande(this)
+                        demandeMicro.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
+                onNotifications = {
+                    if (ModeAmbiance.notificationsAutorisees(this)) toast("Accès aux notifications déjà donné")
+                    else if (!ouvrirPageNotifications()) montrerAideAmbiance = true
+                },
+                onService = { montrerAmbiance = false; montrerAide = true },
+                onAide = { montrerAideAmbiance = true },
+                onDismiss = { montrerAmbiance = false },
+            )
+        }
+        if (montrerAideAmbiance) {
+            val ip = FireTv.adresseIp()
+            AideAmbianceDialog(
+                commandes = listOfNotNull(ip?.let { "./adb connect $it:5555" }) + ModeAmbiance.commandesAdb(this),
+                onDismiss = { montrerAideAmbiance = false; versionAutorisations++ },
+            )
+        }
+
         // ---------------- Télécommande smartphone
         if (montrerAppairage) {
             AppairageDialog(
@@ -468,6 +555,26 @@ class MainActivity : ComponentActivity() {
         clavierChoisi = ClavierTelecommande.estSelectionne(this),
         navigationActive = HoteNavigation.estActive(this),
     )
+
+    /**
+     * Mode Ambiance : ouvre l'app (comme sa tuile, par AppRepository.launch) avec le néon,
+     * tant qu'elle reste au premier plan.
+     */
+    private fun ouvrirEnAmbiance(paquet: String) {
+        if (!ModeAmbiance.ouvrir(this, paquet) { vm.repo.launch(it) }) {
+            toast("Impossible d'ouvrir l'app")
+            return
+        }
+        if (!FireTv.redirectionActive(this)) toast("Néon : active d'abord « Ouverture automatique » (Réglages)")
+    }
+
+    /** Page « Accès aux notifications » (absente sur certains Fire TV : false). */
+    private fun ouvrirPageNotifications(): Boolean = try {
+        val i = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (i.resolveActivity(packageManager) == null) false else { startActivity(i); true }
+    } catch (e: Exception) {
+        false
+    }
 
     private fun ouvrirPage(action: String) {
         try {

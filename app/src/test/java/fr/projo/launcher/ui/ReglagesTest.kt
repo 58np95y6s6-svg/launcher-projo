@@ -61,6 +61,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     private var fermetures = 0
     private val volumes = mutableListOf<Int>()
     private var suggestions = 0
+    private var ambiances = 0
     private var ouvert by mutableStateOf(false)
 
     // ------------------------------------------------------------------ tests
@@ -128,7 +129,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         attendreFocus("reglage:volume", "ouverture")
         val attendues = listOfNotNull(
             "volume", "maj", "wifi", "bluetooth", "stockage",
-            "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design == Design.STUDIO }, "masquees", "nouveautes",
+            "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design == Design.STUDIO }, "masquees", "nouveautes", "ambiance",
             "appairer", "telephones", "aide-telecommande",
             "langue", "date", "son", "tous",
         ).map { "reglage:$it" }.toSet()
@@ -164,6 +165,31 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
             if (fermetures != 0) fail("[${design.name}] le panneau ne devait pas se fermer")
         } finally {
             ReglageNouveautes.ecrire(contexte, true)
+        }
+    }
+
+    /** « Mode Ambiance » : présente dans tous les designs, OK ouvre ses réglages sans fermer le panneau. */
+    @Test
+    fun tuileModeAmbiance() {
+        fr.projo.launcher.ambiance.ModeAmbiance.oublier()
+        ouvrir()
+        attendreFocus("reglage:volume", "ouverture")
+        donnerFocus("reglage:ambiance")
+        if (!texteAffiche("Mode Ambiance")) fail("[${design.name}] tuile « Mode Ambiance » sans son titre")
+        touche(Key.DirectionCenter)
+        if (ambiances != 1) fail("[${design.name}] OK sur « Mode Ambiance » : réglages attendus (appels : $ambiances)")
+        if (fermetures != 0) fail("[${design.name}] le panneau ne devait pas se fermer")
+    }
+
+    /** Réglages → Mode Ambiance : liste à cases, aux couleurs du design. */
+    @Test
+    fun captureDialogueAmbiance() {
+        fr.projo.launcher.ambiance.ModeAmbiance.oublier()
+        capturerDialogue("r8_dialogue_ambiance", "Mode Ambiance") {
+            AmbianceDialog(
+                etat = EtatAmbiance(micro = true, notifications = false, service = true),
+                onMicro = {}, onNotifications = {}, onService = {}, onAide = {}, onDismiss = {},
+            )
         }
     }
 
@@ -313,6 +339,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
                                     date = {}, sound = {}, allSettings = {},
                                     close = { fermetures++; ouvert = false },
                                     suggestions = { suggestions++ },
+                                    ambiance = { ambiances++ },
                                 ),
                             )
                         }

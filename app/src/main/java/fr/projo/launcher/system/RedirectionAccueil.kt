@@ -15,6 +15,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import fr.projo.launcher.MainActivity
+import fr.projo.launcher.ambiance.CadreAmbiance
 import fr.projo.launcher.remote.NavigationTelecommande
 
 /**
@@ -69,8 +70,12 @@ class RedirectionAccueil : NavigationTelecommande() {
         }
     }
 
+    /** Mode Ambiance : néon autour de l'app au premier plan (voir ambiance/CadreAmbiance.kt). */
+    private val ambiance = CadreAmbiance(this)
+
     private val surEcran = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            ambiance.ecran(intent.action)
             when (intent.action) {
                 Intent.ACTION_DREAMING_STARTED -> enReve = true
                 Intent.ACTION_DREAMING_STOPPED -> enReve = false
@@ -81,6 +86,11 @@ class RedirectionAccueil : NavigationTelecommande() {
     }
     private var recepteurActif = false
 
+    override fun onCreate() {
+        super.onCreate()
+        ambiance.attacher()
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         // On ajoute l'accueil par défaut de l'appareil, quel qu'il soit
@@ -90,6 +100,7 @@ class RedirectionAccueil : NavigationTelecommande() {
                 addAction(Intent.ACTION_DREAMING_STARTED)
                 addAction(Intent.ACTION_DREAMING_STOPPED)
                 addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
             }, ContextCompat.RECEIVER_NOT_EXPORTED)
             recepteurActif = true
         } catch (e: Exception) {
@@ -112,6 +123,8 @@ class RedirectionAccueil : NavigationTelecommande() {
      * long, et un appui court dure ~0,1 s, invisible à côté des ~2 s d'avant.
      */
     override fun onKeyEvent(event: KeyEvent?): Boolean {
+        // ☰ : appui long = néon allumé ou éteint (mode Ambiance) ; appui court : passe à l'app
+        if (event != null && event.keyCode == KeyEvent.KEYCODE_MENU) return ambiance.toucheMenu(event)
         if (event == null || event.keyCode != KeyEvent.KEYCODE_HOME) return false
         return when (event.action) {
             KeyEvent.ACTION_DOWN -> appuiMaison(event)
@@ -151,6 +164,8 @@ class RedirectionAccueil : NavigationTelecommande() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val paquet = event.packageName?.toString() ?: return
+        // Mode Ambiance : néon affiché seulement tant que son app est au premier plan
+        ambiance.fenetre(paquet, event.className?.toString(), accueils)
         val maintenant = SystemClock.uptimeMillis()
         if (paquet == packageName) {
             // L'écran d'iBiProjo est affiché : ouverture terminée, fin de la pause éventuelle.
@@ -201,6 +216,7 @@ class RedirectionAccueil : NavigationTelecommande() {
 
     override fun onDestroy() {
         principal.removeCallbacks(appuiLong)
+        ambiance.liberer()
         if (recepteurActif) {
             try { unregisterReceiver(surEcran) } catch (e: Exception) { /* déjà retiré */ }
             recepteurActif = false

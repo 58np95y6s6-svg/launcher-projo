@@ -2,5 +2,6 @@
 <resources>
     <string name="app_name">Projo</string>
     <string name="redirection_nom">iBiProjo · ouverture automatique</string>
-    <string name="redirection_description">Ouvre iBiProjo dès qu\'on appuie sur Maison, et au démarrage. Appui long sur Maison : accueil d\'origine. Seule la touche Maison est gardée, les autres touches passent normalement. Permet aussi au téléphone appairé (télécommande smartphone) de naviguer dans toutes les applis : l\'écran est lu seulement à sa demande, pour trouver l\'élément voisin à sélectionner, et rien n\'en est gardé ni envoyé.</string>
+    <string name="redirection_description">Ouvre iBiProjo dès qu\'on appuie sur Maison, et au démarrage. Appui long sur Maison : accueil d\'origine. Seuls Maison et l\'appui long sur ☰ sont gardés, les autres touches passent normalement. Permet aussi au téléphone appairé (télécommande smartphone) de naviguer dans toutes les applis : l\'écran est lu seulement à sa demande, pour trouver l\'élément voisin à sélectionner, et rien n\'en est gardé ni envoyé. Mode Ambiance : affiche un néon autour de l\'app de musique au premier plan (ou de l\'app ouverte en mode Ambiance) ; seul le nom de l\'app active est lu, pour savoir quand l\'afficher. Appui long sur ☰ dans une app : néon allumé ou éteint.</string>
+    <string name="ambiance_notifications_nom">iBiProjo · couleur de la pochette (mode Ambiance)</string>
 </resources>

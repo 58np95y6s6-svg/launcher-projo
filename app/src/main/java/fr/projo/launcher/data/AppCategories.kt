@@ -21,6 +21,8 @@ enum class Rubrique(val titre: String) {
 object AppCategories {
 
     private val regles: List<Pair<Rubrique, Regex>> = listOf(
+        // Avant « youtube » (vidéo) : YouTube Music est une app de musique
+        Rubrique.MUSIQUE to Regex("youtube ?music|ytmusic|youtube\\.tvmusic|youtube\\.music"),
         Rubrique.TV to Regex(
             "molotov|francetv|france\\.tv|tf1|mytf1|\\bm6\\b|6play|\\barte\\b|bfm|rmc|pluto|livetv|iptv|tivimate|" +
                 "smarters|channels|\\btnt\\b|awsource|hdmi|tvinput|tvcenter|tv ?en ?direct",
