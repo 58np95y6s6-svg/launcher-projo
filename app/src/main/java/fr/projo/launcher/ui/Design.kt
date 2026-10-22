@@ -149,8 +149,6 @@ class HomeContext(
     val sansSelection: () -> Unit,
     /** Sortie du bandeau NBA (◀ ou Retour) : revient au premier favori. */
     val sortieNba: () -> Unit,
-    /** Incrémenté à chaque appui sur Maison : un design peut remettre son état visuel au départ. */
-    val retourAccueil: Int = 0,
 )
 
 /** Bouton rapide (Sources, Wi-Fi, Bluetooth, Réglages) avec son action. */
