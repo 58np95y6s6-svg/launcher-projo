@@ -151,8 +151,6 @@ class HomeContext(
     val sortieNba: () -> Unit,
     /** Fire TV : pas d'entrée HDMI, donc pas de bouton Sources. */
     val fireTv: Boolean = false,
-    /** Incrémenté à chaque appui sur Maison : un design peut remettre son état visuel au départ. */
-    val retourAccueil: Int = 0,
 )
 
 /** Bouton rapide (Sources, Wi-Fi, Bluetooth, Réglages) avec son action. */
