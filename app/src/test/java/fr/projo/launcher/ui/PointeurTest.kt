@@ -13,6 +13,8 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -179,14 +181,17 @@ abstract class BancPointeur(nomDesign: String) : BancAccueil(nomDesign) {
         return noeud(etiquette)
     }
 
-    /** Rangée qui dépasse de l'écran (favoris, sinon « Mes apps ») et ses éléments, pour la faire défiler. */
-    protected fun rangeeQuiDepasse(): Pair<String, List<String>> {
+    /**
+     * Rangée qui peut défiler vers la droite (favoris, sinon « Mes apps ») et ses éléments ;
+     * null si les deux tiennent dans l'écran (Une répartit ses rangées sur la largeur).
+     */
+    protected fun rangeeQuiDepasse(): Pair<String, List<String>>? {
         val rangees = listOf("rangee:favoris" to ui.favorites.indices.map { favori(it) }, "rangee:apps" to ui.homeApps.indices.map { app(it) })
-        return rangees.firstOrNull { (r, e) ->
-            val b = bornesDe(r)
-            val dernier = e.lastOrNull()?.let { bornesDe(it) }
-            b != null && (dernier == null || dernier.right > minOf(b.right, largeur()) + 2f)
-        } ?: rangees.first()
+        return rangees.firstOrNull { (r, _) ->
+            val n = compose.onAllNodes(hasTestTag(r), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+            val axe = n?.config?.getOrNull(SemanticsProperties.HorizontalScrollAxisRange)
+            axe != null && axe.maxValue() > axe.value() + 0.5f
+        }
     }
 
     /** Le focus est sur [etiquette] (élément principal ou une étiquette de sa chaîne). */
@@ -293,13 +298,16 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
             val attendu = etiquettesChaines()[GrilleChaines.PAR_PAGE]
             focusSur(attendu, "glisser vers la gauche sur la grille")
         } else {
-            // Rangée qui dépasse de l'écran (favoris, sinon « Mes apps ») : elle doit défiler
-            val (rangee, elements) = rangeeQuiDepasse()
+            // Rangée qui dépasse de l'écran (favoris, sinon « Mes apps ») : elle doit défiler ;
+            // si tout tient à l'écran, glisser sur les favoris ne doit simplement rien lancer
+            val depasse = rangeeQuiDepasse()
+            val (rangee, elements) = depasse ?: ("rangee:favoris" to ui.favorites.indices.map { favori(it) })
             val r = bornesDe(rangee) ?: return fail("$d OUTILLAGE : $rangee introuvable")
             val avant = bornesDe(elements[0])!!.left
             glisser(Offset(r.left + r.width * 0.85f, r.center.y), Offset(r.left + r.width * 0.15f, r.center.y))
             val apres = bornesDe(elements[0])?.left ?: Float.NEGATIVE_INFINITY
-            if (apres > avant - 20f) fail("$d glisser sur $rangee : la rangée n'a pas défilé ($avant → $apres px)")
+            if (depasse != null && apres > avant - 20f) fail("$d glisser sur $rangee : la rangée n'a pas défilé ($avant → $apres px)")
+            if (depasse == null) println("$d rangées entièrement à l'écran : seul « rien de lancé » est vérifié")
         }
         if (lances.isNotEmpty() || menus.isNotEmpty()) fail("$d un glissement n'est pas un clic : lancés $lances, menus $menus")
     }
@@ -558,7 +566,7 @@ class PointeurBibliothequeTest : BancPointeur("VERRE") {
     @Test
     fun moletteSurRangee() {
         afficher()
-        val (rangee, elements) = rangeeQuiDepasse()
+        val (rangee, elements) = rangeeQuiDepasse() ?: return fail("[VERRE] OUTILLAGE : aucune rangée qui dépasse")
         val r = bornesDe(rangee)!!
         val avant = bornesDe(elements[0])!!.left
         molette(Offset(r.center.x, r.center.y), 2f)

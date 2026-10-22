@@ -6,7 +6,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.horizontalDrag
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.lazy.LazyListState
@@ -14,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequesterModifierNode
 import androidx.compose.ui.focus.requestFocus
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputChange
@@ -27,7 +27,6 @@ import androidx.compose.ui.node.DelegatingNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 
 /*
  * Souris et écran tactile, EN PLUS de la télécommande (version Fire TV, essayée aussi dans un
@@ -326,9 +325,11 @@ private class MoletteRangeeNode(var etat: LazyListState) : DelegatingNode() {
         delegate(SuspendingPointerInputModifierNode { molette() })
     }
 
+    // Passe « Initial » : la rangée traite la molette avant sa propre gestion du défilement
+    // (qui, selon la version de Compose, prend la molette verticale sans rien faire défiler).
     private suspend fun PointerInputScope.molette() = awaitPointerEventScope {
         while (true) {
-            val e = awaitPointerEvent()
+            val e = awaitPointerEvent(PointerEventPass.Initial)
             if (e.type != PointerEventType.Scroll) continue
             val c = e.changes.firstOrNull() ?: continue
             if (c.isConsumed) continue
@@ -337,8 +338,8 @@ private class MoletteRangeeNode(var etat: LazyListState) : DelegatingNode() {
             val possible = if (v > 0f) etat.canScrollForward else etat.canScrollBackward
             if (v == 0f || !possible) continue
             c.consume()
-            val distance = v * CRAN_RANGEE.toPx()
-            coroutineScope.launch { etat.scrollBy(distance) }
+            // Défilement immédiat, sans animation ni coroutine (un cran = CRAN_RANGEE)
+            etat.dispatchRawDelta(v * CRAN_RANGEE.toPx())
         }
     }
 }
