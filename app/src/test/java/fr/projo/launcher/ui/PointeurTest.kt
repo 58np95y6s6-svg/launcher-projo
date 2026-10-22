@@ -25,7 +25,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performMouseInput
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.rightClick
@@ -106,6 +105,21 @@ abstract class BancPointeur(nomDesign: String) : BancAccueil(nomDesign) {
         apres(1200)
     }
 
+    /**
+     * Glissement lent puis arrêt avant de lever le doigt : la liste suit le doigt sans élan
+     * (pour amener un élément à l'écran sans le dépasser).
+     */
+    protected fun glisserSansElan(depart: Offset, arrivee: Offset) {
+        compose.onRoot().performTouchInput {
+            down(depart)
+            for (k in 1..10) moveTo(depart + (arrivee - depart) * (k / 10f))
+            advanceEventTime(300)
+            move()
+            up()
+        }
+        apres(800)
+    }
+
     private var tempsMolette = 10_000L
 
     /**
@@ -146,21 +160,33 @@ abstract class BancPointeur(nomDesign: String) : BancAccueil(nomDesign) {
             vu.left >= -1f && vu.right <= largeur() + 1f && vu.top >= -1f && vu.bottom <= hauteur() + 1f
     }
 
-    /** Amène l'élément à l'écran sans le pointeur (préparation) : défilement de sa liste, sinon focus. */
-    protected fun amener(etiquette: String): SemanticsNodeInteraction {
-        var n = noeud(etiquette)
-        if (!visible(n.fetchSemanticsNode())) {
-            runCatching { n.performScrollTo() }
-            avancer(1000)
-            n = noeud(etiquette)
+    /**
+     * Amène l'élément à l'écran AU DOIGT : la liste ou la rangée [zone] glisse (vers le haut,
+     * ou vers la gauche si [horizontal]) jusqu'à ce qu'il soit visible. Pas de performScrollTo :
+     * il attend sans fin la fin d'un défilement animé quand l'horloge du test est arrêtée.
+     */
+    protected fun amener(etiquette: String, zone: String? = null, horizontal: Boolean = false): SemanticsNodeInteraction {
+        val m = hasClickAction() and (hasTestTag(etiquette) or hasAnyAncestor(hasTestTag(etiquette)))
+        for (essai in 0..8) {
+            val n = compose.onAllNodes(m, useUnmergedTree = true)
+            val premier = n.fetchSemanticsNodes().firstOrNull()
+            if (premier != null && visible(premier)) return n.onFirst()
+            val b = zone?.let { bornesDe(it) } ?: break
+            if (horizontal) glisserSansElan(Offset(b.left + b.width * 0.8f, b.center.y), Offset(b.left + b.width * 0.2f, b.center.y))
+            else glisserSansElan(Offset(b.center.x, b.top + b.height * 0.75f), Offset(b.center.x, b.top + b.height * 0.4f))
         }
-        if (!visible(n.fetchSemanticsNode())) {
-            n.performSemanticsAction(SemanticsActions.RequestFocus)
-            avancer(1000)
-            n = noeud(etiquette)
-        }
-        if (!visible(n.fetchSemanticsNode())) fail("$d OUTILLAGE : « $etiquette » hors de l'écran")
-        return n
+        fail("$d OUTILLAGE : « $etiquette » jamais à l'écran (zone ${zone ?: "aucune"})")
+        return noeud(etiquette)
+    }
+
+    /** Rangée qui dépasse de l'écran (favoris, sinon « Mes apps ») et ses éléments, pour la faire défiler. */
+    protected fun rangeeQuiDepasse(): Pair<String, List<String>> {
+        val rangees = listOf("rangee:favoris" to ui.favorites.indices.map { favori(it) }, "rangee:apps" to ui.homeApps.indices.map { app(it) })
+        return rangees.firstOrNull { (r, e) ->
+            val b = bornesDe(r)
+            val dernier = e.lastOrNull()?.let { bornesDe(it) }
+            b != null && (dernier == null || dernier.right > minOf(b.right, largeur()) + 2f)
+        } ?: rangees.first()
     }
 
     /** Le focus est sur [etiquette] (élément principal ou une étiquette de sa chaîne). */
@@ -268,12 +294,7 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
             focusSur(attendu, "glisser vers la gauche sur la grille")
         } else {
             // Rangée qui dépasse de l'écran (favoris, sinon « Mes apps ») : elle doit défiler
-            val rangees = listOf("rangee:favoris" to ui.favorites.indices.map { favori(it) }, "rangee:apps" to ui.homeApps.indices.map { app(it) })
-            val (rangee, elements) = rangees.firstOrNull { (r, e) ->
-                val b = bornesDe(r)
-                val dernier = e.lastOrNull()?.let { bornesDe(it) }
-                b != null && (dernier == null || dernier.right > minOf(b.right, largeur()) + 2f)
-            } ?: rangees.first()
+            val (rangee, elements) = rangeeQuiDepasse()
             val r = bornesDe(rangee) ?: return fail("$d OUTILLAGE : $rangee introuvable")
             val avant = bornesDe(elements[0])!!.left
             glisser(Offset(r.left + r.width * 0.85f, r.center.y), Offset(r.left + r.width * 0.15f, r.center.y))
@@ -341,11 +362,11 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
     fun reglagesTuilesEtJauge() {
         afficher()
         ouvrirReglagesAuToucher()
-        cliquer(amener("reglage:wifi"))
+        cliquer(amener("reglage:wifi", "reglages:panneau"))
         if (choix != listOf("wifi")) fail("$d clic sur Wi-Fi : actions $choix")
         focusSur("reglage:wifi", "clic sur Wi-Fi")
         // Fire TV : « Ouverture automatique », en haut du panneau
-        toucher(amener("reglage:auto"))
+        toucher(amener("reglage:auto", "reglages:panneau"))
         if (choix != listOf("wifi", "auto")) fail("$d toucher « Ouverture automatique » : actions $choix")
         focusSur("reglage:auto", "toucher « Ouverture automatique »")
         // Jauge du volume : 80 % de 15 crans = 12, depuis 10 → +2 ; la tuile du volume reprend le focus
@@ -364,14 +385,14 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
         afficher()
         ouvrirReglagesAuToucher()
         // Design : dialogue en liste (MenuDialog)
-        cliquer(amener("reglage:design"))
+        cliquer(amener("reglage:design", "reglages:panneau"))
         if (dialogue != "design") fail("$d clic sur « Design » : dialogue $dialogue")
         val autre = if (design == Design.PASTEL) Design.VERRE else Design.PASTEL
         toucher(noeudTexte(autre.nom + " — " + autre.resume))
         if (choix != listOf("design:" + autre.name)) fail("$d toucher « ${autre.nom} » : choix $choix")
         if (dialogue != null) fail("$d le dialogue Design devait se fermer après le choix")
         // Appairage : boutons de dialogue (BoutonDialogue)
-        toucher(amener("reglage:appairer"))
+        toucher(amener("reglage:appairer", "reglages:panneau"))
         if (dialogue != "appairage") fail("$d toucher « Appairer » : dialogue $dialogue")
         cliquer(noeudTexte("Nouveau code"))
         if (choix.lastOrNull() != "nouveau code") fail("$d clic sur « Nouveau code » : choix $choix")
@@ -504,8 +525,10 @@ class PointeurBibliothequeTest : BancPointeur("VERRE") {
     @Test
     fun bibliotheque() {
         afficher()
-        toucher(noeud("biblio"))
+        // « Toutes les apps » au bout de « Mes apps » : la rangée glisse au doigt jusqu'à elle
+        toucher(amener("biblio", "rangee:apps", horizontal = true))
         if (rapides != listOf("bibliotheque")) fail("[VERRE] toucher « Toutes les apps » : actions $rapides")
+        if (lances.isNotEmpty()) fail("[VERRE] glisser « Mes apps » a lancé $lances")
         val lancesBiblio = mutableListOf<String>()
         val menusBiblio = mutableListOf<String>()
         compose.runOnIdle {
@@ -531,15 +554,16 @@ class PointeurBibliothequeTest : BancPointeur("VERRE") {
         if (lances.isNotEmpty() || menus.isNotEmpty()) fail("[VERRE] un clic dans la bibliothèque a atteint l'accueil : $lances $menus")
     }
 
-    /** Molette sur les favoris : la rangée défile, le focus ne bouge pas, rien n'est lancé. */
+    /** Molette sur une rangée qui dépasse de l'écran : elle défile, le focus ne bouge pas, rien n'est lancé. */
     @Test
     fun moletteSurRangee() {
         afficher()
-        val r = bornesDe("rangee:favoris")!!
-        val avant = bornesDe(favori(0))!!.left
+        val (rangee, elements) = rangeeQuiDepasse()
+        val r = bornesDe(rangee)!!
+        val avant = bornesDe(elements[0])!!.left
         molette(Offset(r.center.x, r.center.y), 2f)
-        val apres = bornesDe(favori(0))?.left ?: Float.NEGATIVE_INFINITY
-        if (apres > avant - 20f) fail("[VERRE] molette sur les favoris : la rangée n'a pas défilé ($avant → $apres px)")
+        val apres = bornesDe(elements[0])?.left ?: Float.NEGATIVE_INFINITY
+        if (apres > avant - 20f) fail("[VERRE] molette sur $rangee : la rangée n'a pas défilé ($avant → $apres px)")
         focusSur(favori(0), "molette sur « Mes apps »")
         if (lances.isNotEmpty()) fail("[VERRE] molette : lancés $lances")
     }
