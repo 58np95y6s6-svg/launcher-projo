@@ -73,6 +73,39 @@ class RedirectionAccueil : NavigationTelecommande() {
     /** Mode Ambiance : néon autour de l'app au premier plan (voir ambiance/CadreAmbiance.kt). */
     private val ambiance = CadreAmbiance(this)
 
+    /**
+     * Paquet de la fenêtre affichée (null si inconnu). Remplaçable dans les tests.
+     */
+    internal var paquetAffiche: () -> String? = {
+        try {
+            rootInActiveWindow?.packageName?.toString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private val verification = Runnable { verifierEcran() }
+
+    /**
+     * Regarde ce qui est affiché : si c'est l'accueil Amazon (et pas de pause en cours),
+     * ouvre iBiProjo. Utile quand aucun changement d'écran ne viendra : au démarrage du
+     * Fire TV ou au réveil, l'accueil Amazon est souvent déjà là quand le service est prêt.
+     */
+    internal fun verifierEcran() {
+        val paquet = paquetAffiche() ?: return
+        if (paquet !in accueils) return
+        val maintenant = SystemClock.uptimeMillis()
+        if (maintenant < pauseJusqua) return
+        if (lancement != 0L && maintenant - lancement < 1_500) return
+        ouvrirIBiProjo()
+    }
+
+    /** Vérifications de l'écran affiché, à [delais] ms. */
+    private fun verifierPlusTard(vararg delais: Long) {
+        principal.removeCallbacks(verification)
+        for (d in delais) principal.postDelayed(verification, d)
+    }
+
     private val surEcran = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             ambiance.ecran(intent.action)
@@ -81,6 +114,8 @@ class RedirectionAccueil : NavigationTelecommande() {
                 Intent.ACTION_DREAMING_STOPPED -> enReve = false
                 // Mise en veille : la pause « accueil Amazon » s'arrête
                 Intent.ACTION_SCREEN_OFF -> { enReve = false; pauseJusqua = 0 }
+                // Réveil : Fire OS remet souvent son accueil, sans toujours le signaler
+                Intent.ACTION_SCREEN_ON -> verifierPlusTard(800, 2_500)
             }
         }
     }
@@ -107,6 +142,8 @@ class RedirectionAccueil : NavigationTelecommande() {
             Log.w(TAG, "Suivi de l'économiseur d'écran indisponible", e)
         }
         Log.i(TAG, "Ouverture automatique active (accueils surveillés : $accueils)")
+        // Démarrage du Fire TV : l'accueil Amazon est déjà affiché quand le service est relié
+        verifierPlusTard(400, 2_000, 5_000)
         // Android 9 : après une mise à jour, le service peut être relié avec son ancienne
         // configuration (sans les touches) jusqu'au redémarrage. Voir FireTv.majAFinir.
         if ((serviceInfo?.flags ?: 0) and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS == 0) {
@@ -216,6 +253,7 @@ class RedirectionAccueil : NavigationTelecommande() {
 
     override fun onDestroy() {
         principal.removeCallbacks(appuiLong)
+        principal.removeCallbacks(verification)
         ambiance.liberer()
         if (recepteurActif) {
             try { unregisterReceiver(surEcran) } catch (e: Exception) { /* déjà retiré */ }

@@ -85,4 +85,29 @@ class RedirectionAccueilTest {
         s.ecran(amazon, "com.amazon.tv.launcher.ui.HomeActivity")
         assertEquals(MainActivity::class.java.name, ouverte())
     }
+
+    @Test
+    fun auDemarrageLAccueilAmazonDejaAfficheEstRemplace() {
+        val s = service()
+        s.paquetAffiche = { amazon }
+        s.verifierEcran()
+        assertEquals(MainActivity::class.java.name, ouverte())
+    }
+
+    @Test
+    fun auDemarrageUneAppAfficheeResteLa() {
+        val s = service()
+        s.paquetAffiche = { "com.netflix.ninja" }
+        s.verifierEcran()
+        assertNull(ouverte())
+    }
+
+    @Test
+    fun laVerificationRespecteLaPauseAmazon() {
+        val s = service()
+        s.pause(10 * 60_000L)
+        s.paquetAffiche = { amazon }
+        s.verifierEcran()
+        assertNull(ouverte())
+    }
 }
