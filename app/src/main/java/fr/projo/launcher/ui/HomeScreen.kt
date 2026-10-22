@@ -100,7 +100,6 @@ fun HomeScreen(
                 runCatching { premierFocus.requestFocus() }
             }
         },
-        retourAccueil = homePressCount,
     )
     when (design) {
         Design.VERRE -> HomeVerre(ctx)

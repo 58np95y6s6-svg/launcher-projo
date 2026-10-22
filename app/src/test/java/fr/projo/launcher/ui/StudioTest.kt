@@ -24,6 +24,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Designs à deux rangées (favoris, puis « Mes apps ») : tous sauf Studio, dont l'unique barre
@@ -519,46 +520,40 @@ class StudioSuggestionsTest : BancStudio() {
     }
 
     /**
-     * La grande carte suit la sélection : la carte sélectionnée s'agrandit et se cale à gauche,
-     * la précédente rapetisse ; ▼ vers la barre : rien ne bouge ; Maison : la 1re redevient grande.
+     * Cartes de suggestion toutes de la même taille ; la sélectionnée est soulevée et reste
+     * entière à l'écran (la rangée ne défile que si besoin) ; ▼ vers la barre : rien ne bouge.
      */
     @Test
-    fun grandeCarteSuitLaSelection() {
+    fun cartesDeMemeTailleSelectionVisible() {
         sourceStudio = TmdbFactice.source()
         afficher()
         avancer(500)
         val s = suggestions()
         if (s.size < 3) fail("[STUDIO] au moins 3 suggestions attendues : $s")
-        fun largeur(e: String) = (bornesDe(e)?.width ?: 0f) / pxParU
-        // Bord gauche de la rangée (1re carte au repos) : la carte sélectionnée, levée comprise,
-        // s'aligne dessus
-        val gauche = bornesDe(s[0])!!.left
-        if (largeur(s[0]) < 380f) fail("[STUDIO] au départ, la 1re carte est la grande : ${bornesDe(s[0])?.enU()}")
+        val largeurs = elements(Bande.SUGGESTIONS).map { (it.second.width / pxParU).roundToInt() }
+        if (largeurs.max() - largeurs.min() > 2) fail("[STUDIO] cartes de tailles différentes au repos : $largeurs u")
+        val ecran = largeurEcran()
         appuyer(Key.DirectionUp)
         attendre(s[0], "▲ depuis la barre")
-        for (i in 1..2) {
+        var avant = s[0]
+        repeat(5) { i ->
             appuyer(Key.DirectionRight)
-            attendre(s[i], "▶ vers la suggestion ${i + 1}")
-            val g = bornesDe(s[i])!!
-            if (largeur(s[i]) < 380f) fail("[STUDIO] suggestion ${i + 1} sélectionnée : elle doit être la grande (${g.enU()})")
-            if (largeur(s[i - 1]) > 240f) fail("[STUDIO] la suggestion $i doit rapetisser : ${bornesDe(s[i - 1])?.enU()}")
-            if (abs(g.left - gauche) > 4f * pxParU) {
-                fail("[STUDIO] la grande carte doit se caler à gauche (${(gauche / pxParU).toInt()} u) : ${g.enU()}")
-            }
+            val f = focus() ?: return fail("[STUDIO] ▶ ${i + 1} : aucun focus")
+            if (!f.etiquette.startsWith("suggestion:")) fail("[STUDIO] ▶ ${i + 1} : sorti des suggestions (${decrire(f)})")
+            if (f.etiquette == avant) return@repeat
+            val b = bornesDe(f.etiquette)!!
+            if (b.left < 0f || b.right > ecran) fail("[STUDIO] ▶ ${i + 1} : carte sélectionnée coupée (${b.enU()})")
+            val l = b.width / pxParU
+            if (l < 280f || l > 300f) fail("[STUDIO] ▶ ${i + 1} : carte sélectionnée de $l u, attendu ≈ 292 (270 u soulevée)")
+            avant = f.etiquette
         }
-        capturer("s0b_grande_suit_la_selection")
-        // ▼ vers la barre : la dernière sélectionnée reste grande, à sa place
-        val avant = bornesDe(s[2])!!
+        if (avant == s[0]) fail("[STUDIO] ▶ ne change pas de suggestion")
+        capturer("s0b_selection_suggestions")
+        // ▼ vers la barre : la rangée ne bouge pas
+        val x = bornesDe(avant)!!.center.x
         appuyer(Key.DirectionDown)
-        val apres = bornesDe(s[2])!!
-        if (largeur(s[2]) < 380f || abs(apres.center.x - avant.center.x) > 2f * pxParU) {
-            fail("[STUDIO] ▼ vers la barre : la grande carte a changé (${avant.enU()} → ${apres.enU()})")
-        }
-        // Maison : retour au début, la 1re redevient la grande
-        changerEtat { pressionsMaison.intValue++ }
-        avancer(1000)
-        if (largeur(s[0]) < 380f) fail("[STUDIO] après Maison, la 1re carte doit redevenir la grande : ${bornesDe(s[0])?.enU()}")
-        if (largeur(s[2]) > 240f) fail("[STUDIO] après Maison, la 3e carte doit être petite : ${bornesDe(s[2])?.enU()}")
+        val apres = bornesDe(avant)
+        if (apres == null || abs(apres.center.x - x) > 2f * pxParU) fail("[STUDIO] ▼ vers la barre : la rangée a bougé")
     }
 
     @Test
@@ -608,8 +603,7 @@ class StudioSuggestionsTest : BancStudio() {
         afficher()
         val s = elements(Bande.SUGGESTIONS)
         val premiere = s.firstOrNull() ?: return fail("[STUDIO] aucune suggestion")
-        if (premiere.first != "suggestion:" + ui.favorites[0].packageName) fail("[STUDIO] grande carte : ${premiere.first}, attendu le 1er favori")
-        if (s.size > 1 && premiere.second.width < 1.5f * s[1].second.width) fail("[STUDIO] la 1re carte doit être la grande")
+        if (premiere.first != "suggestion:" + ui.favorites[0].packageName) fail("[STUDIO] 1re carte : ${premiere.first}, attendu le 1er favori")
         if (!textePresent("Films et séries")) fail("[STUDIO] phrase de rubrique « Films et séries » absente")
         if (textePresent("Explorer")) fail("[STUDIO] onglets affichés sans vraies suggestions")
         if (!textePresent("Pour vous")) fail("[STUDIO] titre « Pour vous » absent")
@@ -621,7 +615,7 @@ class StudioSuggestionsTest : BancStudio() {
         afficher()
         avancer(500)
         val premiere = suggestions().firstOrNull()
-        if (premiere != "suggestion:" + ui.favorites[2].packageName) fail("[STUDIO] app récente : grande carte $premiere")
+        if (premiere != "suggestion:" + ui.favorites[2].packageName) fail("[STUDIO] app récente : 1re carte $premiere")
         if (!textePresent("Reprendre sur ${ui.favorites[2].label}")) fail("[STUDIO] « Reprendre sur ${ui.favorites[2].label} » absent")
     }
 
