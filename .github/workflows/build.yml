@@ -52,8 +52,18 @@ jobs:
             --target "${{ github.sha }}" \
             --title "Version de test #${{ github.run_number }}" \
             --notes "APK de test compilé depuis ${{ github.ref_name }} (${{ github.sha }})."
-          # GitHub laisse parfois la version en brouillon (lien en 404) : on la publie
-          gh release edit test --draft=false
+          # GitHub remet parfois la version en brouillon APRÈS sa publication (lien en 404,
+          # mise à jour introuvable) : on surveille une minute et on la republie si besoin
+          for essai in 1 2 3 4 5 6; do
+            sleep 10
+            id=$(gh api "repos/${{ github.repository }}/releases?per_page=30" --jq '[.[] | select(.tag_name=="test")][0].id' || true)
+            if [ -z "$id" ] || [ "$id" = "null" ]; then echo "Vérification $essai : version introuvable"; continue; fi
+            brouillon=$(gh api "repos/${{ github.repository }}/releases/$id" --jq '.draft' || true)
+            echo "Vérification $essai : brouillon=$brouillon"
+            if [ "$brouillon" = "true" ]; then
+              gh api -X PATCH "repos/${{ github.repository }}/releases/$id" -F draft=false -f tag_name=test > /dev/null || true
+            fi
+          done
 
       - name: Publication de l'APK Fire TV
         # Branche Fire TV : sa propre version de test, sans toucher à celle du projecteur
@@ -68,8 +78,18 @@ jobs:
             --target "${{ github.sha }}" \
             --title "Version Fire TV #${{ github.run_number }}" \
             --notes "APK Fire TV compilé depuis ${{ github.ref_name }} (${{ github.sha }}). Lien direct : https://github.com/${{ github.repository }}/releases/download/firetv/launcher-firetv.apk"
-          # GitHub laisse parfois la version en brouillon (lien en 404) : on la publie
-          gh release edit firetv --draft=false
+          # GitHub remet parfois la version en brouillon APRÈS sa publication (lien en 404,
+          # mise à jour introuvable) : on surveille une minute et on la republie si besoin
+          for essai in 1 2 3 4 5 6; do
+            sleep 10
+            id=$(gh api "repos/${{ github.repository }}/releases?per_page=30" --jq '[.[] | select(.tag_name=="firetv")][0].id' || true)
+            if [ -z "$id" ] || [ "$id" = "null" ]; then echo "Vérification $essai : version introuvable"; continue; fi
+            brouillon=$(gh api "repos/${{ github.repository }}/releases/$id" --jq '.draft' || true)
+            echo "Vérification $essai : brouillon=$brouillon"
+            if [ "$brouillon" = "true" ]; then
+              gh api -X PATCH "repos/${{ github.repository }}/releases/$id" -F draft=false -f tag_name=firetv > /dev/null || true
+            fi
+          done
 
       - name: Vérification de la version release (R8)
         env:
