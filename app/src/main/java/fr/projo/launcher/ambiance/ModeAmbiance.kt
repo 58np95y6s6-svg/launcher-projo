@@ -32,6 +32,7 @@ object ModeAmbiance {
     private const val CLE_INTENSITE = "intensite"
     private const val CLE_COULEURS = "couleurs"
     private const val CLE_AUTO = "auto_musique"
+    private const val CLE_DECALAGE = "decalage_ms"
     private const val CLE_MICRO = "micro_demande"
 
     /** Quand afficher le néon (app au premier plan, demande en cours…). */
@@ -43,6 +44,17 @@ object ModeAmbiance {
         private set
     var couleurs by mutableStateOf(CouleursNeon.POCHETTE)
         private set
+
+    /**
+     * Retard du néon sur le son analysé (ms) : le son sort de la TV ou du projecteur un peu
+     * après qu'Android l'a joué (HDMI, traitement du son). Sans retard, le néon devance le
+     * temps fort entendu.
+     */
+    var decalageMs by mutableStateOf(DECALAGE_CONSEILLE)
+        private set
+
+    val decalagesPossibles = listOf(0, 100, 200, 300, 400)
+    const val DECALAGE_CONSEILLE = 100
 
     /** Néon automatique dès qu'une app de musique est au premier plan. */
     var auto by mutableStateOf(true)
@@ -69,6 +81,7 @@ object ModeAmbiance {
         intensite = Intensite.de(p.getString(CLE_INTENSITE, null))
         couleurs = CouleursNeon.de(p.getString(CLE_COULEURS, null))
         auto = p.getBoolean(CLE_AUTO, true)
+        decalageMs = p.getInt(CLE_DECALAGE, DECALAGE_CONSEILLE).coerceIn(0, 1_000)
     }
 
     fun ecrireIntensite(context: Context, i: Intensite) {
@@ -82,6 +95,14 @@ object ModeAmbiance {
         charger(context)
         context.getSharedPreferences(FICHIER, Context.MODE_PRIVATE).edit().putString(CLE_COULEURS, c.id).apply()
         couleurs = c
+        surChangement?.invoke()
+    }
+
+    fun ecrireDecalage(context: Context, ms: Int) {
+        charger(context)
+        val v = ms.coerceIn(0, 1_000)
+        context.getSharedPreferences(FICHIER, Context.MODE_PRIVATE).edit().putInt(CLE_DECALAGE, v).apply()
+        decalageMs = v
         surChangement?.invoke()
     }
 
@@ -168,6 +189,7 @@ object ModeAmbiance {
         intensite = Intensite.NORMALE
         couleurs = CouleursNeon.POCHETTE
         auto = true
+        decalageMs = DECALAGE_CONSEILLE
         source = null
         diagnostic = null
         affichePour = null

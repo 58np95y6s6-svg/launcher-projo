@@ -66,6 +66,21 @@ class CadreAmbiance(private val service: AccessibilityService) {
     private var lireSon = false
     private var dtSon = 0f
     private var dernierSilence = true
+
+    // Retard réglable du néon sur le son (« Synchro avec le son »), compté sur l'horloge du son
+    private val retard = RetardSon()
+    private val rebut = FloatArray(AnalyseSpectre.NB_BANDES)
+    private var horlogeSon = 0f
+    private var decalage = ModeAmbiance.DECALAGE_CONSEILLE / 1000f
+    private var attaquesComptees = 0
+    private var prochainBilan = 0f
+
+    // Capteur sourd (accroché à une sortie où la musique ne passe pas) : rebranché tout seul
+    private var silenceDepuis = 0f
+    private var rebranchements = 0
+    private var prochainRebranchement = REBRANCHER_APRES
+    private var sonRecu = false
+    private var prochainEssaiCapture = 0L
     private var corrections = 0
     private val position = IntArray(2)
 
@@ -253,6 +268,7 @@ class CadreAmbiance(private val service: AccessibilityService) {
 
         moteur.intensite = ModeAmbiance.intensite
         reglageCouleurs = ModeAmbiance.couleurs
+        decalage = ModeAmbiance.decalageMs / 1000f
         moteur.reinitialiser()
         couleurPochette = null
         couleurIcone = ModeAmbiance.couleursIcones[paquet]
@@ -261,11 +277,20 @@ class CadreAmbiance(private val service: AccessibilityService) {
         // Son en direct (si autorisé), sinon repli
         val c = capture ?: CaptureSon(service).also { capture = it }
         c.ouvrir()
-        if (c.etat == CaptureSon.Etat.ACTIVE) analyse.configurer(c.taille, c.frequenceHz)
+        if (c.etat == CaptureSon.Etat.ACTIVE) brancherAnalyse(c)
         detecteur.reinitialiser()
         lireSon = false
         dtSon = 0f
         dernierSilence = true
+        retard.vider()
+        horlogeSon = 0f
+        attaquesComptees = 0
+        prochainBilan = BILAN_SON
+        silenceDepuis = 0f
+        rebranchements = 0
+        prochainRebranchement = REBRANCHER_APRES
+        sonRecu = false
+        prochainEssaiCapture = SystemClock.uptimeMillis() + ESSAI_CAPTURE
         if (audio == null) audio = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         prochaineLectureMusique = 0L
         // Pochette du morceau de cette app (accès aux notifications)
@@ -358,6 +383,12 @@ class CadreAmbiance(private val service: AccessibilityService) {
         // l'image suivante aussitôt due : une boucle sans fin.
         Choreographer.getInstance().postFrameCallbackDelayed(image, DELAI_IMAGE)
         val c = capture
+        // Capteur indisponible (erreur, pris ailleurs) : nouvel essai toutes les 10 s
+        if (c != null && c.etat == CaptureSon.Etat.INDISPONIBLE && SystemClock.uptimeMillis() >= prochainEssaiCapture) {
+            prochainEssaiCapture = SystemClock.uptimeMillis() + ESSAI_CAPTURE
+            c.ouvrir()
+            if (c.etat == CaptureSon.Etat.ACTIVE) brancherAnalyse(c)
+        }
         val sonPossible = c != null && c.etat == CaptureSon.Etat.ACTIVE
         // Sans son en direct, 30 images par seconde suffisent (pulsation lente)
         if (!sonPossible || detecteur.muet) {
@@ -367,19 +398,36 @@ class CadreAmbiance(private val service: AccessibilityService) {
         val dt = if (dernierInstant == 0L) 1f / 60f else ((nanos - dernierInstant) / 1e9f).coerceIn(0.001f, 0.1f)
         dernierInstant = nanos
 
-        var attaque = 0f
         if (sonPossible) {
             dtSon += dt
+            horlogeSon += dt
             lireSon = !lireSon
             if (lireSon) {
                 dernierSilence = if (c!!.lire()) {
-                    analyse.analyser(c.fft, dtSon)
-                    attaque = analyse.attaque
+                    analyse.analyser(c.onde, dtSon)
+                    // Montré plus tard (retard réglable), pour tomber avec le son entendu
+                    retard.ajouter(horlogeSon, analyse.niveaux, analyse.attaque)
+                    if (analyse.attaque > 0f) attaquesComptees++
                     analyse.silence
                 } else {
                     true
                 }
                 dtSon = 0f
+            }
+            // Silence prolongé : le capteur est peut-être sourd, on le rebranche (3,5 s, puis 4 s, puis toutes les 30 s)
+            if (dernierSilence) {
+                silenceDepuis += dt
+                if (silenceDepuis >= prochainRebranchement) rebrancherSon(c!!)
+            } else {
+                if (!sonRecu) Log.i(TAG, "Ambiance : son reçu")
+                sonRecu = true
+                silenceDepuis = 0f
+                rebranchements = 0
+                prochainRebranchement = REBRANCHER_APRES
+            }
+            if (horlogeSon >= prochainBilan) {
+                bilanSon()
+                prochainBilan = horlogeSon + BILAN_SON
             }
         }
         val maintenant = SystemClock.uptimeMillis()
@@ -393,9 +441,10 @@ class CadreAmbiance(private val service: AccessibilityService) {
         val source = sourceNeon(sonDirect, teinte)
         moteur.teinte = teinte
         moteur.reagitAuSon = sonDirect
-        if (sonDirect) {
-            System.arraycopy(analyse.niveaux, 0, moteur.cibles, 0, AnalyseSpectre.NB_BANDES)
-            if (attaque > 0f) moteur.sursauter(attaque)
+        if (sonPossible) {
+            // Mesures dues maintenant ; sans son en direct elles sont jetées (pas de vieux sursaut au retour)
+            val attaque = retard.extraire(horlogeSon, decalage, if (sonDirect) moteur.cibles else rebut)
+            if (sonDirect && attaque > 0f) moteur.sursauter(attaque)
         }
         when (teinte) {
             Teinte.POCHETTE -> couleurPochette?.let { moteur.changerCouleur(it) }
@@ -421,7 +470,39 @@ class CadreAmbiance(private val service: AccessibilityService) {
         muetSignale = muet
         pochetteSignalee = etatPochette
         ModeAmbiance.source = source
-        ModeAmbiance.diagnostic = texteDiagnostic(source, teinte, son, muet, etatPochette)
+        val texte = texteDiagnostic(source, teinte, son, muet, etatPochette)
+        ModeAmbiance.diagnostic = texte
+        Log.i(TAG, "Ambiance : $texte")
+    }
+
+    private fun brancherAnalyse(c: CaptureSon) {
+        analyse.configurer(c.taille, c.frequenceHz)
+        retard.vider()
+        lireSon = false
+        dtSon = 0f
+    }
+
+    /**
+     * Le capteur ne reçoit rien depuis [silenceDepuis] s. Le Visualizer s'accroche à la sortie
+     * audio active à sa création : ouvert avant que la musique ne démarre (au démarrage du
+     * Fire TV…), il peut écouter une sortie muette. Le recréer le rebranche sur la bonne.
+     */
+    private fun rebrancherSon(c: CaptureSon) {
+        rebranchements++
+        Log.i(TAG, "Ambiance : aucun son reçu depuis ${silenceDepuis.toInt()} s (musique ${if (musiqueActive) "en cours" else "arrêtée"}), capteur rebranché (essai $rebranchements)")
+        c.fermer()
+        c.ouvrir()
+        if (c.etat == CaptureSon.Etat.ACTIVE) brancherAnalyse(c)
+        sonRecu = false
+        prochainRebranchement = silenceDepuis + if (rebranchements < 3) 4f else 30f
+    }
+
+    /** Toutes les 10 s de son : sursauts comptés et tempo trouvé (pour régler la détection). */
+    private fun bilanSon() {
+        val p = analyse.periode
+        val tempo = if (p > 0f) "${(60f / p).toInt()} BPM" else "pas de tempo régulier"
+        Log.i(TAG, "Ambiance : $attaquesComptees sursauts en ${BILAN_SON.toInt()} s · $tempo · retard ${(decalage * 1000).toInt()} ms · silence=$dernierSilence")
+        attaquesComptees = 0
     }
 
     // ------------------------------------------------------------------ outils
@@ -498,6 +579,15 @@ class CadreAmbiance(private val service: AccessibilityService) {
 
         /** Délai avant de redemander une image (ms). */
         private const val DELAI_IMAGE = 8L
+
+        /** Silence (s) avant de rebrancher le capteur du son. */
+        private const val REBRANCHER_APRES = 3.5f
+
+        /** Capteur indisponible : nouvel essai après (ms). */
+        private const val ESSAI_CAPTURE = 10_000L
+
+        /** Bilan du son dans le journal toutes les 10 s. */
+        private const val BILAN_SON = 10f
 
         /** Texte du diagnostic : source, couleur, et pourquoi le son en direct manque. */
         fun texteDiagnostic(

@@ -55,6 +55,7 @@ fun AmbianceDialog(
     val intensite = ModeAmbiance.intensite
     val couleurs = ModeAmbiance.couleurs
     val auto = ModeAmbiance.auto
+    val decalage = ModeAmbiance.decalageMs
     val source = ModeAmbiance.diagnostic ?: "pas encore allumé"
     ListeDialog(
         titre = "Mode Ambiance",
@@ -80,6 +81,17 @@ fun AmbianceDialog(
                     ModeAmbiance.ecrireCouleurs(contexte, CouleursNeon.ARC_EN_CIEL)
                 },
             )
+            add(LigneListe("SYNCHRO AVEC LE SON", section = true))
+            for (ms in ModeAmbiance.decalagesPossibles) {
+                val conseille = if (ms == ModeAmbiance.DECALAGE_CONSEILLE) " (conseillé)" else ""
+                val nom = if (ms == 0) "Aucun retard" else "Retard de 0,${ms / 100} s$conseille"
+                val detail = when (ms) {
+                    0 -> "Le néon réagit dès que le son est joué"
+                    ModeAmbiance.DECALAGE_CONSEILLE -> "Compense le retard habituel de la sortie HDMI"
+                    else -> "Si le néon s'allume encore avant le coup entendu"
+                }
+                add(LigneListe(nom, detail, coche = ms == decalage) { ModeAmbiance.ecrireDecalage(contexte, ms) })
+            }
             add(LigneListe("ALLUMAGE", section = true))
             add(
                 LigneListe("Automatique avec les apps de musique", "Spotify, Deezer, radios… Jamais avec les apps vidéo", coche = auto) {

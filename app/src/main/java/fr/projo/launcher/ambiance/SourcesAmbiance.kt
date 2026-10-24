@@ -15,6 +15,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.palette.graphics.Palette
 import java.io.ByteArrayOutputStream
@@ -24,9 +25,10 @@ import java.net.URL
 
 /**
  * Son en direct : Visualizer d'Android sur la sortie générale (session 0). Il ne donne que
- * le spectre (FFT) du son qui sort, à l'instant : rien n'est enregistré, gardé ni envoyé.
- * Lu à chaque image (getFft dans un tableau réutilisé) : plus frais que le rappel du
- * Visualizer, limité à getMaxCaptureRate (~20 fois par seconde), et sans allocation.
+ * l'onde du son qui sort, à l'instant (1024 points, ~23 ms) : rien n'est enregistré, gardé
+ * ni envoyé. Lu à chaque image (getWaveForm dans un tableau réutilisé) : plus frais que le
+ * rappel du Visualizer, et sans allocation. Échelle « telle que jouée » : le mode normalisé
+ * change le gain par paliers de ×2 toutes les ~20 ms, ce qui faisait croire à des coups.
  * Il faut l'autorisation « micro » (RECORD_AUDIO) et MODIFY_AUDIO_SETTINGS (session 0).
  */
 class CaptureSon(private val context: Context) {
@@ -38,8 +40,8 @@ class CaptureSon(private val context: Context) {
 
     private var visualiseur: Visualizer? = null
 
-    /** Dernière FFT lue (taille de la capture). */
-    var fft = ByteArray(0)
+    /** Dernière onde lue (taille de la capture, octets non signés, 128 = zéro). */
+    var onde = ByteArray(0)
         private set
     var taille = 0
         private set
@@ -50,6 +52,7 @@ class CaptureSon(private val context: Context) {
         if (visualiseur != null) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             etat = Etat.REFUSEE
+            Log.w("Projo", "Ambiance : son en direct refusé (autorisation micro absente)")
             return
         }
         var v: Visualizer? = null
@@ -58,26 +61,29 @@ class CaptureSon(private val context: Context) {
             v.enabled = false
             val plage = Visualizer.getCaptureSizeRange()
             v.captureSize = plage[1].coerceAtMost(1024).coerceAtLeast(plage[0])
-            v.scalingMode = Visualizer.SCALING_MODE_NORMALIZED
+            v.scalingMode = Visualizer.SCALING_MODE_AS_PLAYED
             v.enabled = true
             taille = v.captureSize
             // Fréquence donnée en milliHertz
             frequenceHz = (v.samplingRate / 1000).takeIf { it > 0 } ?: 44_100
-            if (fft.size != taille) fft = ByteArray(taille)
+            if (onde.size != taille) onde = ByteArray(taille)
             visualiseur = v
             etat = Etat.ACTIVE
+            Log.i("Projo", "Ambiance : son en direct ouvert (capture $taille, $frequenceHz Hz)")
         } catch (e: Exception) {
             liberer(v)
             etat = Etat.INDISPONIBLE
+            Log.w("Projo", "Ambiance : son en direct indisponible (${e.javaClass.simpleName} : ${e.message})")
         } catch (e: LinkageError) {
             liberer(v)
             etat = Etat.INDISPONIBLE
+            Log.w("Projo", "Ambiance : son en direct indisponible (${e.javaClass.simpleName})")
         }
     }
 
-    /** Lit la FFT du moment dans [fft] ; false si rien à lire. */
+    /** Lit l'onde du moment dans [onde] ; false si rien à lire. */
     fun lire(): Boolean = try {
-        visualiseur?.getFft(fft) == Visualizer.SUCCESS
+        visualiseur?.getWaveForm(onde) == Visualizer.SUCCESS
     } catch (e: Exception) {
         false
     }
