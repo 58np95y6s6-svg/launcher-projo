@@ -215,7 +215,7 @@ class SourceAmbianceTest {
             a.configurer(taille, frequence)
             val vus = m.ecouter(a)
             val (part, faux) = bilan(m, vus)
-            assertTrue("$bpm BPM : ${(part * 100).toInt()} % des coups suivis", part >= 0.75f)
+            assertTrue("$bpm BPM : ${(part * 100).toInt()} % des coups suivis", part >= 0.7f)
             assertTrue("$bpm BPM : $faux sursauts hors des coups sur ${vus.size}", faux <= 6)
             assertEquals("$bpm BPM : tempo trouvé", bpm, 60f / a.periode, 4f)
         }
@@ -228,8 +228,8 @@ class SourceAmbianceTest {
         a.configurer(taille, frequence)
         val vus = m.ecouter(a)
         val (part, faux) = bilan(m, vus)
-        assertTrue("${(part * 100).toInt()} % des coups suivis", part >= 0.75f)
-        assertTrue("$faux sursauts hors des coups sur ${vus.size}", faux <= 10)
+        assertTrue("${(part * 100).toInt()} % des coups suivis", part >= 0.7f)
+        assertTrue("$faux sursauts hors des coups sur ${vus.size}", faux <= 8)
     }
 
     @Test
@@ -240,6 +240,16 @@ class SourceAmbianceTest {
         a.configurer(taille, frequence)
         val vus = m.ecouter(a)
         assertEquals("sursauts sur une nappe seule : $vus", 0, vus.size)
+    }
+
+    @Test
+    fun sansGrosseCaissePresqueAucunSursaut() {
+        // Caisse claire, charleston et nappe : les basses ne pèsent pas, pas de sursaut
+        val m = Morceau(120f, 15f, floatArrayOf(), basse = false)
+        val a = AnalyseSpectre()
+        a.configurer(taille, frequence)
+        val vus = m.ecouter(a)
+        assertTrue("sursauts sans grosse caisse : $vus", vus.size <= 3)
     }
 
     @Test

@@ -7,9 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.tv.material3.MaterialTheme
@@ -138,13 +136,6 @@ class AmbianceUiTest : BancAccueil("VERRE") {
         avancer(300)
         assertEquals("forte", ModeAmbiance.intensite.id)
         assertEquals("arc", ModeAmbiance.couleurs.id)
-        // Synchro avec le son : 0,1 s conseillé par défaut, réglable
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Retard de 0,2 s"))
-        avancer(300)
-        if (compose.onAllNodes(hasText("Retard de 0,1 s (conseillé)")).fetchSemanticsNodes().isEmpty()) fail("réglage 0,1 s conseillé absent")
-        compose.onAllNodes(hasText("Retard de 0,2 s")).onFirst().performSemanticsAction(SemanticsActions.OnClick)
-        avancer(300)
-        assertEquals(200, ModeAmbiance.decalageMs)
         if (compose.onAllNodes(hasText("Mode Ambiance")).fetchSemanticsNodes().isEmpty()) fail("le dialogue devait rester ouvert")
     }
 

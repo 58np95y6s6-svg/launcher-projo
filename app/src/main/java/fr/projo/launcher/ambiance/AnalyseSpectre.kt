@@ -157,6 +157,10 @@ class AnalyseSpectre {
     private var prochain = -1f
     private var dernierCalcul = 0f
 
+    // Tempo faux (grille décalée) : les coups forts rejetés le font abandonner
+    private var rejets = 0
+    private var bloqueJusqua = 0f
+
     /** À appeler une fois : taille de la capture (octets) et fréquence d'échantillonnage (Hz). */
     fun configurer(tailleCapture: Int, frequenceHz: Int) {
         var n = 1
@@ -204,6 +208,8 @@ class AnalyseSpectre {
         confiance = 0f
         prochain = -1f
         dernierCalcul = 0f
+        rejets = 0
+        bloqueJusqua = 0f
     }
 
     fun analyser(onde: ByteArray, dt: Float) {
@@ -249,7 +255,10 @@ class AnalyseSpectre {
         // Basses sur toute la fenêtre (sans pondération) : plus stable d'une image à l'autre
         var eb = 0f
         for (k in basseDebut until basseFin) eb += re[k] * re[k] + im[k] * im[k]
+        var et = 0f
+        for (k in 1 until n / 2) et += re[k] * re[k] + im[k] * im[k]
         val basse = 10f * log10(eb + 1f)
+        val totale = 10f * log10(et + 1f)
         maxBasse = max(basse, maxBasse - BAISSE_REFERENCE * dt)
         val prec = precedente
         precedente = basse
@@ -258,8 +267,9 @@ class AnalyseSpectre {
         avancerGrille(montee)
 
         val seuil = moyenne + K_SEUIL * ecart + PLANCHER
-        // Basse proche de son maximum récent, et pas un simple bruit
-        val forte = basse > maxBasse - 12f && basse > BASSE_MIN_DB
+        // Basse proche de son maximum récent, pas un simple bruit, et qui pèse dans le son
+        // (une nappe ou une voix seule ne laisse dans les basses que des « fuites »)
+        val forte = basse > maxBasse - 12f && basse > BASSE_MIN_DB && basse - totale > PART_BASSE_MIN
         val depuis = horloge - dernierCoup
         val p = duree
         if (confiance > 0f && prochain > 0f) {
@@ -276,10 +286,20 @@ class AnalyseSpectre {
                 // La phase se recale sur le coup entendu
                 prochain = horloge + p
                 dernierTemps = horloge
+                if (rejets > 0) rejets--
             } else if (contretemps && forte && montee > seuil * 1.2f && depuis > max(ECART_MIN, p * 0.4f)) {
                 frapper(montee, seuil)
             } else if (!surLeTemps && !contretemps && forte && montee > seuil * 1.8f && depuis > max(ECART_MIN, p * 0.45f)) {
                 frapper(montee, seuil)
+            } else if (forte && montee > seuil && depuis > ECART_MIN) {
+                // Coup net mais hors de la grille : après 4, la grille est fausse, on l'oublie
+                rejets++
+                if (rejets >= 4) {
+                    confiance = 0f
+                    prochain = -1f
+                    rejets = 0
+                    bloqueJusqua = horloge + 4f
+                }
             }
         } else if (forte && montee > seuil && depuis > ECART_MIN) {
             frapper(montee, seuil)
@@ -289,7 +309,7 @@ class AnalyseSpectre {
         val k = 1f - exp(-dt / TAU_SEUIL)
         moyenne += (montee - moyenne) * k
         ecart += (abs(montee - moyenne) - ecart) * k
-        if (horloge - dernierCalcul > 0.5f) {
+        if (horloge - dernierCalcul > 0.5f && horloge >= bloqueJusqua) {
             dernierCalcul = horloge
             estimerTempo()
         }
@@ -417,6 +437,9 @@ class AnalyseSpectre {
 
         /** Énergie des basses minimale pour un coup (dB ; bruit de quantification ≈ 35). */
         private const val BASSE_MIN_DB = 55f
+
+        /** Part minimale des basses dans le son pour un coup (dB). */
+        private const val PART_BASSE_MIN = -10f
 
         /** Seuil = moyenne récente des montées + K × écart moyen + plancher (dB). */
         private const val K_SEUIL = 2f
