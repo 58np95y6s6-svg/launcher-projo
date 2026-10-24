@@ -1,0 +1,500 @@
+
+NavigationTest > scenarioSignaleDepuisFavori1[CHAINES] PASSED
+
+NavigationTest > scenarioSignaleDepuisFavori2[CHAINES] PASSED
+
+NavigationTest > hautDepuisToutesLesApps[CHAINES] PASSED
+
+NavigationTest > toucheMenu[CHAINES] PASSED
+
+NavigationTest > basDepuisMesAppsResteSurPlace[CHAINES] PASSED
+
+NavigationTest > basDepuisFavori1[CHAINES] PASSED
+
+NavigationTest > basDepuisFavori2[CHAINES] PASSED
+
+NavigationTest > basDepuisFavori3[CHAINES] PASSED
+
+NavigationTest > retourDuFocusApresLesPanneaux[CHAINES] PASSED
+
+NavigationTest > basDepuisDernierFavoriVisible[CHAINES] PASSED
+
+NavigationTest > allerRetourBasHaut[CHAINES] PASSED
+
+NavigationTest > hautDepuisMesAppsMilieu[CHAINES] PASSED
+
+NavigationTest > allerRetourHautBas[CHAINES] PASSED
+
+NavigationTest > basApresDefilementDesFavoris[CHAINES] PASSED
+
+NavigationTest > gaucheDroiteDansLesRangees[CHAINES] PASSED
+
+NavigationTest > entreeDansLaNba[CHAINES] PASSED
+
+NavigationTest > sortieDuBandeauNba[CHAINES] PASSED
+
+NavigationTest > hautDepuisMesApps1[CHAINES] PASSED
+
+NavigationTest > hautDepuisMesApps3[CHAINES] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[VERRE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[VERRE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[PASTEL 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[PASTEL 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CONSOLE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CONSOLE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[UNE 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[UNE 30 favoris] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 1 app] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 1 app] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 2 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 2 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 30 apps] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 30 apps] PASSED
+
+NavigationVariantesTest > hautPuisRetourLeLongDeMesApps[CHAINES 30 favoris] PASSED
+
+NavigationVariantesTest > basPuisRetourDepuisLesFavoris[CHAINES 30 favoris] PASSED
+
+PastelPhotosTest > bandeHaute PASSED
+
+PastelPhotosTest > primeVideo PASSED
+
+PastelPhotosTest > repliSansCle PASSED
+
+PastelPhotosTest > mesAppsDisney PASSED
+
+PastelPhotosTest > reglageCoupe PASSED
+
+PastelPhotosTest > appSansCatalogue PASSED
+
+PastelPhotosTest > netflix PASSED
+
+PointeurBibliothequeTest > moletteSurRangee PASSED
+
+PointeurBibliothequeTest > bibliotheque PASSED
+
+PointeurChainesTest > pagesAuPointeur PASSED
+
+PointeurSourcesTest > aucunComposantTvSansPointeur PASSED
+
+PointeurStudioTest > moletteEtGlisser PASSED
+
+PointeurTest > favoriEtMesApps[VERRE] PASSED
+
+PointeurTest > glisserNeLancePas[VERRE] PASSED
+
+PointeurTest > reglagesTuilesEtJauge[VERRE] PASSED
+
+PointeurTest > moduleAuPointeur[VERRE] PASSED
+
+PointeurTest > appuiLongEtClicDroit[VERRE] PASSED
+
+PointeurTest > reglagesDialoguesEtFermeture[VERRE] PASSED
+
+PointeurTest > favoriEtMesApps[PASTEL] PASSED
+
+PointeurTest > glisserNeLancePas[PASTEL] PASSED
+
+PointeurTest > reglagesTuilesEtJauge[PASTEL] PASSED
+
+PointeurTest > moduleAuPointeur[PASTEL] PASSED
+
+PointeurTest > appuiLongEtClicDroit[PASTEL] PASSED
+
+PointeurTest > reglagesDialoguesEtFermeture[PASTEL] PASSED
+
+PointeurTest > favoriEtMesApps[CONSOLE] PASSED
+
+PointeurTest > glisserNeLancePas[CONSOLE] PASSED
+
+PointeurTest > reglagesTuilesEtJauge[CONSOLE] PASSED
+
+PointeurTest > moduleAuPointeur[CONSOLE] PASSED
+
+PointeurTest > appuiLongEtClicDroit[CONSOLE] PASSED
+
+PointeurTest > reglagesDialoguesEtFermeture[CONSOLE] PASSED
+
+PointeurTest > favoriEtMesApps[UNE] PASSED
+
+PointeurTest > glisserNeLancePas[UNE] PASSED
+
+PointeurTest > reglagesTuilesEtJauge[UNE] PASSED
+
+PointeurTest > moduleAuPointeur[UNE] PASSED
+
+PointeurTest > appuiLongEtClicDroit[UNE] PASSED
+
+PointeurTest > reglagesDialoguesEtFermeture[UNE] PASSED
+
+PointeurTest > favoriEtMesApps[CHAINES] PASSED
+
+PointeurTest > glisserNeLancePas[CHAINES] PASSED
+
+PointeurTest > reglagesTuilesEtJauge[CHAINES] PASSED
+
+PointeurTest > moduleAuPointeur[CHAINES] PASSED
+
+PointeurTest > appuiLongEtClicDroit[CHAINES] PASSED
+
+PointeurTest > reglagesDialoguesEtFermeture[CHAINES] PASSED
+
+PointeurTest > favoriEtMesApps[STUDIO] PASSED
+
+PointeurTest > glisserNeLancePas[STUDIO] PASSED
+
+PointeurTest > reglagesTuilesEtJauge[STUDIO] PASSED
+
+PointeurTest > moduleAuPointeur[STUDIO] PASSED
+
+PointeurTest > appuiLongEtClicDroit[STUDIO] PASSED
+
+PointeurTest > reglagesDialoguesEtFermeture[STUDIO] PASSED
+
+PreferenceDesignTest > preferenceEnregistreeRelue PASSED
+
+ReglagesTest > tuilesDuPanneau[VERRE] PASSED
+
+ReglagesTest > gaucheFerme[VERRE] PASSED
+
+ReglagesTest > ouvertureEtFocusInitial[VERRE] PASSED
+
+ReglagesTest > actionsDesNouvellesTuiles[VERRE] PASSED
+
+ReglagesTest > retourFerme[VERRE] PASSED
+
+ReglagesTest > toutesLesTuilesAtteignables[VERRE] PASSED
+
+ReglagesTest > reglageDuVolume[VERRE] PASSED
+
+ReglagesTest > tuileModeAmbiance[VERRE] PASSED
+
+ReglagesTest > captureDialogueAppairage[VERRE] PASSED
+
+ReglagesTest > captureDialogueCleTmdb[VERRE] PASSED
+
+ReglagesTest > captureDialogueAmbiance[VERRE] PASSED
+
+ReglagesTest > captureDialogue[VERRE] PASSED
+
+ReglagesTest > captureDialogueModules[VERRE] PASSED
+
+ReglagesTest > tuilesDuPanneau[PASTEL] PASSED
+
+ReglagesTest > gaucheFerme[PASTEL] PASSED
+
+ReglagesTest > ouvertureEtFocusInitial[PASTEL] PASSED
+
+ReglagesTest > actionsDesNouvellesTuiles[PASTEL] PASSED
+
+ReglagesTest > retourFerme[PASTEL] PASSED
+
+ReglagesTest > toutesLesTuilesAtteignables[PASTEL] PASSED
+
+ReglagesTest > reglageDuVolume[PASTEL] PASSED
+
+ReglagesTest > tuileModeAmbiance[PASTEL] PASSED
+
+ReglagesTest > captureDialogueAppairage[PASTEL] PASSED
+
+ReglagesTest > captureDialogueCleTmdb[PASTEL] PASSED
+
+ReglagesTest > captureDialogueAmbiance[PASTEL] PASSED
+
+ReglagesTest > captureDialogue[PASTEL] PASSED
+
+ReglagesTest > captureDialogueModules[PASTEL] PASSED
+
+ReglagesTest > tuilesDuPanneau[CONSOLE] PASSED
+
+ReglagesTest > gaucheFerme[CONSOLE] PASSED
+
+ReglagesTest > ouvertureEtFocusInitial[CONSOLE] PASSED
+
+ReglagesTest > actionsDesNouvellesTuiles[CONSOLE] PASSED
+
+ReglagesTest > retourFerme[CONSOLE] PASSED
+
+ReglagesTest > toutesLesTuilesAtteignables[CONSOLE] PASSED
+
+ReglagesTest > reglageDuVolume[CONSOLE] PASSED
+
+ReglagesTest > tuileModeAmbiance[CONSOLE] PASSED
+
+ReglagesTest > captureDialogueAppairage[CONSOLE] PASSED
+
+ReglagesTest > captureDialogueCleTmdb[CONSOLE] PASSED
+
+ReglagesTest > captureDialogueAmbiance[CONSOLE] PASSED
+
+ReglagesTest > captureDialogue[CONSOLE] PASSED
+
+ReglagesTest > captureDialogueModules[CONSOLE] PASSED
+
+ReglagesTest > tuilesDuPanneau[UNE] PASSED
+
+ReglagesTest > gaucheFerme[UNE] PASSED
+
+ReglagesTest > ouvertureEtFocusInitial[UNE] PASSED
+
+ReglagesTest > actionsDesNouvellesTuiles[UNE] PASSED
+
+ReglagesTest > retourFerme[UNE] PASSED
+
+ReglagesTest > toutesLesTuilesAtteignables[UNE] PASSED
+
+ReglagesTest > reglageDuVolume[UNE] PASSED
+
+ReglagesTest > tuileModeAmbiance[UNE] PASSED
+
+ReglagesTest > captureDialogueAppairage[UNE] PASSED
+
+ReglagesTest > captureDialogueCleTmdb[UNE] PASSED
+
+ReglagesTest > captureDialogueAmbiance[UNE] PASSED
+
+ReglagesTest > captureDialogue[UNE] PASSED
+
+ReglagesTest > captureDialogueModules[UNE] PASSED
+
+ReglagesTest > tuilesDuPanneau[CHAINES] PASSED
+
+ReglagesTest > gaucheFerme[CHAINES] PASSED
+
+ReglagesTest > ouvertureEtFocusInitial[CHAINES] PASSED
+
+ReglagesTest > actionsDesNouvellesTuiles[CHAINES] PASSED
+
+ReglagesTest > retourFerme[CHAINES] PASSED
+
+ReglagesTest > toutesLesTuilesAtteignables[CHAINES] PASSED
+
+ReglagesTest > reglageDuVolume[CHAINES] PASSED
+
+ReglagesTest > tuileModeAmbiance[CHAINES] PASSED
+
+ReglagesTest > captureDialogueAppairage[CHAINES] PASSED
+
+ReglagesTest > captureDialogueCleTmdb[CHAINES] PASSED
+
+ReglagesTest > captureDialogueAmbiance[CHAINES] PASSED
+
+ReglagesTest > captureDialogue[CHAINES] PASSED
+
+ReglagesTest > captureDialogueModules[CHAINES] PASSED
+
+ReglagesTest > tuilesDuPanneau[STUDIO] PASSED
+
+ReglagesTest > gaucheFerme[STUDIO] PASSED
+
+ReglagesTest > ouvertureEtFocusInitial[STUDIO] PASSED
+
+ReglagesTest > actionsDesNouvellesTuiles[STUDIO] PASSED
+
+ReglagesTest > retourFerme[STUDIO] PASSED
+
+ReglagesTest > toutesLesTuilesAtteignables[STUDIO] PASSED
+
+ReglagesTest > reglageDuVolume[STUDIO] PASSED
+
+ReglagesTest > tuileModeAmbiance[STUDIO] PASSED
+
+ReglagesTest > captureDialogueAppairage[STUDIO] PASSED
+
+ReglagesTest > captureDialogueCleTmdb[STUDIO] PASSED
+
+ReglagesTest > captureDialogueAmbiance[STUDIO] PASSED
+
+ReglagesTest > captureDialogue[STUDIO] PASSED
+
+ReglagesTest > captureDialogueModules[STUDIO] PASSED
+
+StudioModulesTest > deuxModules PASSED
+
+StudioModulesTest > unModule PASSED
+
+StudioModulesTest > deuxModulesMoyens PASSED
+
+StudioPhotosTest > suggestionEnHeros PASSED
+
+StudioPhotosTest > primeVideo PASSED
+
+StudioPhotosTest > herosSuggestion PASSED
+
+StudioPhotosTest > netflixDansLaBarre PASSED
+
+StudioPhotosTest > repliSansCle PASSED
+
+StudioPhotosTest > reglageCoupe PASSED
+
+StudioPhotosTest > appSansCatalogue PASSED
+
+StudioSuggestionsTest > cartesDeMemeTailleSelectionVisible PASSED
+
+StudioSuggestionsTest > suggestionsTmdb PASSED
+
+StudioSuggestionsTest > formatsDeCle PASSED
+
+StudioSuggestionsTest > repliAppLaPlusRecente PASSED
+
+StudioSuggestionsTest > ongletsFiltrent PASSED
+
+StudioSuggestionsTest > repliSansHistorique PASSED
+
+StudioSuggestionsTest > dernieresSorties PASSED
+
+StudioSuggestionsTest > sansCle PASSED
+
+StudioSuggestionsTest > panneReseau PASSED
+
+StudioTest > sortieDesModules PASSED
+
+StudioTest > ecran1AuDemarrage PASSED
+
+StudioTest > okEtMenu PASSED
+
+StudioTest > retourDuFocusApresLesPanneaux PASSED
+
+StudioTest > enTeteEtSuggestions PASSED
+
+StudioTest > passageEcran1Ecran2 PASSED
+
+StudioTest > basPuisRetourDepuisChaqueTuile PASSED
+
+StudioTest > hautEtBasDepuisChaqueRaccourci PASSED
+
+StudioTest > maisonRevientEnHaut PASSED
+
+StudioTest > captureReglages PASSED
+
+StudioTest > gaucheDroiteRestentDansLaBande PASSED
+
+StudioVariantesTest > navigation[sans favori] PASSED
+
+StudioVariantesTest > navigation[fire tv] PASSED
+
+StudioVariantesTest > navigation[30 apps] PASSED
+
+StudioVariantesTest > navigation[1 app] PASSED
+
+UnePhotosTest > primeVideo PASSED
+
+UnePhotosTest > netflixJour PASSED
+
+UnePhotosTest > netflixSoir PASSED
+
+UnePhotosTest > repliSansCle PASSED
+
+UnePhotosTest > appSansCatalogue PASSED
+
+UneTest > droiteAuBoutDesPilulesVersNba PASSED
+
+UneTest > butees PASSED
+
+UneTest > captureBibliotheque PASSED
+
+UneTest > retourDepuisMesAppsVersPremierFavori PASSED
+
+UneTest > captureMesApps PASSED
+
+UneTest > captureNba PASSED
+
+UneTest > captureRaccourciReglages PASSED
+
+UneTest > droiteJusquaToutesLesApps PASSED
+
+UneTest > captureSansFavoriSansNba PASSED
+
+UneTest > hautDepuisFavoriVersPilules PASSED
+
+UneTest > gaucheEtRetourQuittentLeNba PASSED
+
+UneTest > basPuisHautDepuisChaqueFavori PASSED
+
+UneTest > captureJauneInverse PASSED
+
+UneTest > basDepuisPiluleVersNbaPuisFavori PASSED
+
+UneTest > captureReglagesOuverts PASSED
+
+UneTest > hautDepuisNbaVersPilules PASSED
+
+VerrePhotosTest > primeVideo PASSED
+
+VerrePhotosTest > netflixSoir PASSED
+
+VerrePhotosTest > repliSansCle PASSED
+
+VerrePhotosTest > mesAppsDisney PASSED
+
+VerrePhotosTest > ornement PASSED
+
+VerrePhotosTest > appSansCatalogue PASSED
+
+VerrePhotosTest > netflix PASSED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1792832851946.json
+
+BUILD SUCCESSFUL in 7m 25s
+28 actionable tasks: 28 executed
