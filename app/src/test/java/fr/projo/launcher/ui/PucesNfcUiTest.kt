@@ -23,6 +23,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -48,23 +49,28 @@ class PucesNfcUiTest : BancAccueil("VERRE") {
     private fun present(t: String) = compose.onAllNodes(hasText(t, substring = true)).fetchSemanticsNodes().isNotEmpty()
 
     @Test
-    fun activerPuisChoisirUneApp() {
-        var choisie: Pair<String, String>? = null
+    fun activerDepuisLeDialogue() {
         afficherSeul {
-            PucesNfcDialog(apps = apps, ip = "192.168.1.19", onApp = { a, adr -> choisie = a.label to adr }, onAide = {}, onDismiss = {})
+            PucesNfcDialog(apps = apps, ip = "192.168.1.19", onApp = { _, _ -> }, onAide = {}, onDismiss = {})
         }
         assertTrue(present("Désactivé · OK pour activer"))
         assertFalse("pas de liens avant l'activation", present("Netflix"))
         compose.onAllNodes(hasText("Lancement par puce NFC")).onFirst().performSemanticsAction(SemanticsActions.OnClick)
-        // Deux pas d'horloge : le changement d'état est appliqué, puis l'image redessinée
-        avancer(500)
         avancer(500)
         assertTrue(PucesNfc.actif)
         assertEquals(20, PucesNfc.code.length)
+    }
+
+    @Test
+    fun uneLigneParAppAvecSonLien() {
+        PucesNfc.activer(RuntimeEnvironment.getApplication(), true)
+        var choisie: Pair<String, String>? = null
+        afficherSeul {
+            PucesNfcDialog(apps = apps, ip = "192.168.1.19", onApp = { a, adr -> choisie = a.label to adr }, onAide = {}, onDismiss = {})
+        }
         for (t in listOf("Netflix", "SmartTube", "CANAL+", "192.168.1.19")) if (!present(t)) fail("Puces NFC : « $t » absent")
         capturerEcran("puces_reglages")
         compose.onAllNodes(hasText("Netflix")).onFirst().performSemanticsAction(SemanticsActions.OnClick)
-        avancer(300)
         avancer(300)
         // Netflix n'est pas installée dans les tests : son adresse est alors son nom de paquet
         assertEquals("Netflix", choisie?.first)
