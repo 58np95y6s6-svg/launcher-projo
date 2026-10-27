@@ -56,12 +56,15 @@ class PucesNfcUiTest : BancAccueil("VERRE") {
         assertTrue(present("Désactivé · OK pour activer"))
         assertFalse("pas de liens avant l'activation", present("Netflix"))
         compose.onAllNodes(hasText("Lancement par puce NFC")).onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        // Deux pas d'horloge : le changement d'état est appliqué, puis l'image redessinée
+        avancer(500)
         avancer(500)
         assertTrue(PucesNfc.actif)
         assertEquals(20, PucesNfc.code.length)
         for (t in listOf("Netflix", "SmartTube", "CANAL+", "192.168.1.19")) if (!present(t)) fail("Puces NFC : « $t » absent")
         capturerEcran("puces_reglages")
         compose.onAllNodes(hasText("Netflix")).onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        avancer(300)
         avancer(300)
         // Netflix n'est pas installée dans les tests : son adresse est alors son nom de paquet
         assertEquals("Netflix", choisie?.first)

@@ -16,6 +16,8 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
 
 /**
@@ -139,13 +141,21 @@ class PucesNfcTest {
         } finally {
             s.arreter()
         }
-        // Arrêté : plus rien n'écoute
-        try {
-            (URL("http://127.0.0.1:$port/o/netflix?c=Code123abc").openConnection() as HttpURLConnection).apply { connectTimeout = 1_000 }.responseCode
-            fail("le serveur écoute encore")
-        } catch (e: ConnectException) {
-            // attendu
+        // Arrêté : plus rien n'écoute (la fermeture peut prendre un instant)
+        assertEquals(-1, s.portEcoute)
+        var refuse = false
+        for (essai in 1..20) {
+            try {
+                Socket().use { it.connect(InetSocketAddress("127.0.0.1", port), 500) }
+                Thread.sleep(100)
+            } catch (e: ConnectException) {
+                refuse = true
+                break
+            }
         }
+        assertTrue("le port $port accepte encore des connexions après l'arrêt", refuse)
+        // Un serveur arrêté ne redémarre pas (désactivation pendant un démarrage)
+        assertFalse(s.demarrer())
     }
 
     @Test

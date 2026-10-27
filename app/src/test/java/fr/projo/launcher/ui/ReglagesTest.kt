@@ -130,7 +130,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         val attendues = listOfNotNull(
             "volume", "maj", "wifi", "bluetooth", "stockage",
             "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design == Design.STUDIO }, "masquees", "nouveautes", "ambiance",
-            "appairer", "telephones", "aide-telecommande",
+            "appairer", "telephones", "puces", "aide-telecommande",
             "langue", "date", "son", "tous",
         ).map { "reglage:$it" }.toSet()
         val composees = etiquettesTuiles()
