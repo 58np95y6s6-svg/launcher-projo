@@ -16,6 +16,7 @@ import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import fr.projo.launcher.MainActivity
 import fr.projo.launcher.ambiance.CadreAmbiance
+import fr.projo.launcher.puces.PucesNfc
 import fr.projo.launcher.remote.NavigationTelecommande
 
 /**
@@ -110,10 +111,10 @@ class RedirectionAccueil : NavigationTelecommande() {
         override fun onReceive(context: Context, intent: Intent) {
             ambiance.ecran(intent.action)
             when (intent.action) {
-                Intent.ACTION_DREAMING_STARTED -> enReve = true
-                Intent.ACTION_DREAMING_STOPPED -> enReve = false
+                Intent.ACTION_DREAMING_STARTED -> { enReve = true; PucesNfc.enReve = true }
+                Intent.ACTION_DREAMING_STOPPED -> { enReve = false; PucesNfc.enReve = false }
                 // Mise en veille : la pause « accueil Amazon » s'arrête
-                Intent.ACTION_SCREEN_OFF -> { enReve = false; pauseJusqua = 0 }
+                Intent.ACTION_SCREEN_OFF -> { enReve = false; PucesNfc.enReve = false; pauseJusqua = 0 }
                 // Réveil : Fire OS remet souvent son accueil, sans toujours le signaler
                 Intent.ACTION_SCREEN_ON -> verifierPlusTard(800, 2_500)
             }
@@ -144,6 +145,8 @@ class RedirectionAccueil : NavigationTelecommande() {
         Log.i(TAG, "Ouverture automatique active (accueils surveillés : $accueils)")
         // Démarrage du Fire TV : l'accueil Amazon est déjà affiché quand le service est relié
         verifierPlusTard(400, 2_000, 5_000)
+        // Puces NFC : écoute dès le démarrage, sans attendre l'ouverture d'iBiProjo
+        PucesNfc.demarrerSiActif(this)
         // Android 9 : après une mise à jour, le service peut être relié avec son ancienne
         // configuration (sans les touches) jusqu'au redémarrage. Voir FireTv.majAFinir.
         if ((serviceInfo?.flags ?: 0) and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS == 0) {

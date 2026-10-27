@@ -51,6 +51,11 @@ object ProjoIcons {
         "M6,3h12c1.66,0 3,1.34 3,3v12c0,1.66 -1.34,3 -3,3H6c-1.66,0 -3,-1.34 -3,-3V6c0,-1.66 1.34,-3 3,-3zM6.5,5.5c-0.55,0 -1,0.45 -1,1v11c0,0.55 0.45,1 1,1h11c0.55,0 1,-0.45 1,-1v-11c0,-0.55 -0.45,-1 -1,-1H6.5zM8,8h8v8H8z",
     )
 
+    /** Puce NFC (pictogramme Material « nfc »). */
+    val Nfc = icone(
+        "M20,2H4c-1.1,0 -2,0.9 -2,2v16c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2zM20,20H4V4h16v16zM18,6h-5c-1.1,0 -2,0.9 -2,2v2.28c-0.6,0.35 -1,0.98 -1,1.72 0,1.1 0.9,2 2,2s2,-0.9 2,-2c0,-0.74 -0.4,-1.38 -1,-1.72V8h3v8H8V8h2V6H6v12h12V6z",
+    )
+
     private fun icone(path: String): ImageVector =
         ImageVector.Builder(
             defaultWidth = 24.dp, defaultHeight = 24.dp,

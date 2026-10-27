@@ -28,6 +28,7 @@ import fr.projo.launcher.system.FireTv
 import androidx.compose.ui.platform.testTag
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.ambiance.ModeAmbiance
+import fr.projo.launcher.puces.PucesNfc
 import fr.projo.launcher.data.CleTmdb
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.modules.HoteModules
@@ -78,6 +79,8 @@ class SettingsActions(
     val aideTelecommande: () -> Unit = {},
     /** Mode Ambiance : néon réactif à la musique autour de l'app au premier plan. */
     val ambiance: () -> Unit = {},
+    /** Puces NFC : une puce touchée avec le téléphone ouvre une app sur la TV. */
+    val pucesNfc: () -> Unit = {},
 )
 
 /**
@@ -257,6 +260,7 @@ private fun contenuReglages(
     val nouveautes = ReglageNouveautes.actif
     // Mode Ambiance : réglages enregistrés, lus une fois (résumé et source utilisée sur la tuile)
     remember { ModeAmbiance.charger(contexte) }
+    remember { PucesNfc.charger(contexte) }
     // Studio : résumé de la clé TMDB, relu quand elle change (dialogue ouvert depuis le panneau)
     val versionCle = CleTmdb.version
     val resumeCle = if (design == Design.STUDIO) remember(versionCle) { resumeCleTmdb(contexte) } else ""
@@ -484,6 +488,16 @@ private fun contenuReglages(
                 teinte = Teintes.telephones,
                 onClick = actions.telephones,
             ),
+            // Puces NFC : le téléphone touche une puce, l'app s'ouvre sur la TV
+            Reglage(
+                cle = "puces",
+                icone = ProjoIcons.Nfc,
+                titre = "Puces NFC",
+                valeur = if (PucesNfc.actif) "Activées ✓ · une puce par app (Netflix, Prime Video…)"
+                else "Désactivées · toucher une puce avec le téléphone ouvre une app",
+                teinte = Teintes.puces,
+                onClick = actions.pucesNfc,
+            ),
             Reglage(
                 cle = "aide-telecommande",
                 icone = IconesTelecommande.Clavier,
@@ -527,6 +541,7 @@ object Teintes {
     val masquees = Color(0xFF64748B)
     val nouveautes = Color(0xFF14B8A6)
     val ambiance = Color(0xFFE879F9)
+    val puces = Color(0xFF2DD4BF)
     val appairer = Color(0xFF0EA5E9)
     val telephones = Color(0xFF22C55E)
     val clavier = Color(0xFFA855F7)

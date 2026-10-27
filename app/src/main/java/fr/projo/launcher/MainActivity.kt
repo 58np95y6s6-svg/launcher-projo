@@ -34,6 +34,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.ambiance.ModeAmbiance
+import fr.projo.launcher.puces.PucesNfc
+import fr.projo.launcher.ui.AidePucesDialog
+import fr.projo.launcher.ui.LienPuceDialog
+import fr.projo.launcher.ui.PucesNfcDialog
 import fr.projo.launcher.remote.ClavierTelecommande
 import fr.projo.launcher.remote.HoteNavigation
 import fr.projo.launcher.remote.Telecommande
@@ -93,6 +97,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Puces NFC : le Fire TV écoute sur le Wi-Fi si la fonction est activée
+        PucesNfc.demarrerSiActif(this)
 
         // Le bouton Retour ne quitte jamais l'écran d'accueil.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -162,6 +169,10 @@ class MainActivity : ComponentActivity() {
         var explicationMicroPour by remember { mutableStateOf<String?>(null) }
         var paquetApresMicro by remember { mutableStateOf<String?>(null) }
         var montrerAmbiance by remember { mutableStateOf(false) }
+        // Puces NFC : réglages, lien d'une app (QR code), aide
+        var montrerPuces by remember { mutableStateOf(false) }
+        var lienPuce by remember { mutableStateOf<Pair<String, String>?>(null) }
+        var montrerAidePuces by remember { mutableStateOf(false) }
         var montrerAideAmbiance by remember { mutableStateOf(false) }
         var versionAutorisations by remember { mutableIntStateOf(0) }
         val demandeMicro = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { accorde ->
@@ -294,6 +305,7 @@ class MainActivity : ComponentActivity() {
                     telephones = { montrerTelephones = true },
                     aideTelecommande = { montrerAideTelecommande = true },
                     ambiance = { montrerAmbiance = true },
+                    pucesNfc = { montrerPuces = true },
                 ),
             )
         }
@@ -498,6 +510,23 @@ class MainActivity : ComponentActivity() {
                 onDismiss = { montrerAideAmbiance = false; versionAutorisations++ },
             )
         }
+
+        // ---------------- Puces NFC
+        if (montrerPuces) {
+            val ip = remember { FireTv.adresseIp() }
+            PucesNfcDialog(
+                apps = ui.allApps,
+                ip = ip,
+                onApp = { app, adresse ->
+                    if (ip == null) toast("Fire TV sans réseau : connecte-le au Wi-Fi")
+                    else lienPuce = app.label to PucesNfc.lien(ip, adresse)
+                },
+                onAide = { montrerAidePuces = true },
+                onDismiss = { montrerPuces = false },
+            )
+        }
+        lienPuce?.let { (app, lien) -> LienPuceDialog(app, lien, onDismiss = { lienPuce = null }) }
+        if (montrerAidePuces) AidePucesDialog(FireTv.adresseIp(), onDismiss = { montrerAidePuces = false })
 
         // ---------------- Télécommande smartphone
         if (montrerAppairage) {

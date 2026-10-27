@@ -24,6 +24,9 @@
     <!-- Mise à jour de Projo depuis GitHub (Android demande toujours confirmation) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Puces NFC (Fire TV) : réveiller le Fire TV quand une puce ouvre une app -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Fire TV : ouvrir iBiProjo au démarrage de l'appareil -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
