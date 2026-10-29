@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- iBiTube : logo original (monogramme « iB », boucles du B en triangles « lecture »).
-     Dégradé #1E6BFF → #00C2FF. Logotype : police Outfit Bold (SIL OFL 1.1) convertie en tracés. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
-  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="108" y2="108"><stop offset="0" stop-color="#1E6BFF"/><stop offset="1" stop-color="#00C2FF"/></linearGradient></defs>
-  <rect width="108" height="108" fill="url(#g)"/>
-</svg>

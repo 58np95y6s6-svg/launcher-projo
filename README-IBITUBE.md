@@ -1,7 +1,7 @@
 # iBiTube
 
 iBiTube est SmartTube (https://github.com/yuliskov/SmartTube, licence MIT) avec une autre identité visuelle :
-nom, logo, couleurs bleues, écran de démarrage. Le lecteur, les réglages et toutes les fonctions sont ceux de SmartTube.
+nom, logo, couleurs bleues, vagues, écran de démarrage. Le lecteur, les réglages et toutes les fonctions sont ceux de SmartTube.
 
 - Identifiant : `com.ibi.ibitube`. L'appli s'installe à côté de SmartTube sans le remplacer.
 - Version : celle de SmartTube suivie de `-ibi` (ex. `32.68-ibi`).
@@ -17,7 +17,7 @@ Tout passe par une variante Gradle `ibitube` et ses ressources. Le code de Smart
 | `smarttubetv/build.gradle` | **1 ligne ajoutée** : `apply from: 'ibitube.gradle'` |
 | `common/.../dialogs/AppUpdatePresenter.java` | **1 bloc ajouté** (`// iBiTube`) : sans adresse de mise à jour, ne cherche rien et répond « dernière version » |
 | `smarttubetv/src/ibitube/AndroidManifest.xml` | Thème de l'écran de démarrage sur l'activité de lancement |
-| `smarttubetv/src/ibitube/res/values/` | Nom, palette (le rouge devient bleu), coins arrondis, adresses de mise à jour vides |
+| `smarttubetv/src/ibitube/res/values/` | Nom, palette (le rouge devient bleu), coins arrondis, fond à vagues de l'accueil, adresses de mise à jour vides |
 | `smarttubetv/src/ibitube/res/drawable*/`, `mipmap*/` | Logo, icônes, bannière TV, écran de démarrage, halo de focus des cartes |
 | `smarttubetv/src/ibitube/res/xml/searchable.xml` | Recherche Android TV branchée sur iBiTube, pas sur SmartTube |
 | `ibitube/logo/` | Sources SVG du logo et le script qui produit les PNG |
@@ -32,10 +32,15 @@ Tout passe par une variante Gradle `ibitube` et ses ressources. Le code de Smart
   variante F-Droid (`matchingFallbacks`), la seule sans adresse de mise à jour, et dont le fournisseur
   de recherche dépend de l'identifiant de l'appli.
 - Cartes : coins arrondis de 10 dp, et halo bleu sur la carte qui a le focus (premier plan des cartes
-  leanback). Le léger agrandissement au focus est celui de SmartTube.
-- Écran de démarrage : fond `#0A1020`, logo centré, nom dessous. Il s'affiche pendant le chargement
-  normal, sans attente ajoutée. Sous Android 12 et plus, l'écran de démarrage du système joue le logo
-  en fondu avec un léger zoom (600 ms). Avant Android 12 (Fire TV compris), l'écran est fixe : Android ne
+  leanback). Le texte de la carte en focus s'affiche en blanc sur un bandeau bleu. Le léger
+  agrandissement au focus est celui de SmartTube.
+- Vagues : trois couches de bleu en bas de l'écran de démarrage et du fond de l'accueil. Sur l'accueil, elles passent par l'attribut de thème `shelfBackground`, que SmartTube étire
+  derrière les rangées. Pour cela, le style `App.Theme.DarkGrey.Browse` (le jeu de couleurs par défaut)
+  est recopié dans `ibitube_styles.xml`, avec seulement le fond qui change. Si SmartTube modifie ce
+  style, reporte ses changements dans la copie.
+- Écran de démarrage : fond `#0A1020`, vagues en bas, le mot « iBiTube » au centre. Il s'affiche
+  pendant le chargement normal, sans attente ajoutée. Sous Android 12 et plus, l'écran de démarrage du
+  système fait apparaître le mot en fondu avec un léger zoom (600 ms). Avant Android 12 (Fire TV compris), l'écran est fixe : Android ne
   sait pas animer ce fond sans code. `androidx.core:core-splashscreen` n'apporterait rien ici, car il
   n'anime pas non plus avant Android 12 et demanderait du code dans `SplashActivity`.
 
@@ -139,13 +144,12 @@ ressource du même nom dans `smarttubetv/src/ibitube/res/`.
 
 ## Logo
 
-Le logo est original : un monogramme « iB » dont les deux boucles du B sont des triangles « lecture »
-arrondis. Il est posé sur un carré aux coins arrondis, en dégradé de `#1E6BFF` à `#00C2FF`. Le logotype
-utilise la police Outfit Bold (SIL Open Font License 1.1), convertie en tracés.
+Pas de pictogramme : l'identité, c'est le mot « iBiTube », « iBi » en bleu `#1E90FF` et « Tube » en
+blanc, sur le fond nuit `#0A1020`. Il apparaît sur l'icône, la bannière TV, l'en-tête de l'accueil et
+l'écran de démarrage. Police : Outfit Bold (SIL Open Font License 1.1), convertie en tracés.
 
-- `ibitube/logo/*.svg` : les sources du logo, de l'icône adaptative (premier plan et fond), de
-  l'icône alternative, du logotype, de la bannière TV 320 × 180, du logo d'en-tête et de l'écran de
-  démarrage.
+- `ibitube/logo/*.svg` : les sources du mot, de l'icône (et de son premier plan adaptatif), de la
+  bannière TV 320 × 180, de l'en-tête, des vagues et de l'écran de démarrage.
 - `ibitube/logo/outils/` : le script qui produit ces SVG, les VectorDrawable et les PNG. Il utilise
   Python avec `fonttools` et `uharfbuzz`, Node avec Playwright, et la police
   `npm pack @fontsource/outfit` décompressée dans `outils/fonts/outfit/`.
@@ -161,4 +165,5 @@ utilise la police Outfit Bold (SIL Open Font License 1.1), convertie en tracés.
 | Texte secondaire | `#A8B3CF` |
 
 Les jeux de couleurs de SmartTube (réglages, Interface) restent choisissables. Ils passent tous au
-bleu, y compris celui qui s'appelle « rouge ».
+bleu, y compris celui qui s'appelle « rouge ». Les vagues ne sont que sur le jeu par défaut ; les jeux
+« OLED » restent noirs.

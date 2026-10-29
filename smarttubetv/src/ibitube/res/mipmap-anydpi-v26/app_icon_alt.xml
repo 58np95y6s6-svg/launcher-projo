@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- iBiTube : icône alternative (réglage « icône alternative » de l'appli) : fond nuit, monogramme bleu -->
+<!-- iBiTube : icône alternative (réglage « icône alternative » de l'appli) : même mot, fond « surface » -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ibitube_fond" />
-    <foreground android:drawable="@drawable/ibitube_icon_alt_foreground" />
+    <background android:drawable="@color/ibitube_surface" />
+    <foreground android:drawable="@drawable/ibitube_icon_foreground" />
     <monochrome android:drawable="@drawable/ibitube_icon_foreground" />
 </adaptive-icon>

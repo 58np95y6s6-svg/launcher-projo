@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- iBiTube : écran de démarrage (fond de fenêtre de l'activité de lancement).
-     Fond nuit, logo centré, nom dessous. Images en xxhdpi, réduites par Android selon l'écran. -->
+     Fond nuit, vagues bleues en bas, le mot « iBiTube » au centre. Le mot est en xxhdpi, réduit par
+     Android selon l'écran ; les vagues (vecteur 16:9) s'étirent sur toute la fenêtre. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android"
     android:opacity="opaque">
     <item android:drawable="@color/ibitube_fond" />
-    <item android:bottom="64dp">
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/ibitube_splash_logo" />
-    </item>
-    <item android:top="120dp">
+    <item android:drawable="@drawable/ibitube_vagues_fortes" />
+    <item android:bottom="80dp">
         <bitmap
             android:gravity="center"
             android:src="@drawable/ibitube_splash_wordmark" />

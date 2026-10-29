@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : fond de l'accueil (jeu de couleurs par défaut) : nuit + vagues discrètes en bas.
+     SmartTube l'étire sur tout l'écran derrière les rangées (attribut de thème shelfBackground). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:opacity="opaque">
+    <item android:drawable="@color/ibitube_fond" />
+    <item android:drawable="@drawable/ibitube_vagues_discretes" />
+</layer-list>

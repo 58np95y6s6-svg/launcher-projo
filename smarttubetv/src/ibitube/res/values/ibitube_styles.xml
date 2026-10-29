@@ -6,4 +6,17 @@
     <style name="IbiTube.Splash" parent="App.Theme.Leanback.Browse">
         <item name="android:windowBackground">@drawable/ibitube_splash</item>
     </style>
+
+    <!-- iBiTube : jeu de couleurs par défaut (« gris foncé ») avec les vagues en fond d'accueil.
+         Copie du style de l'amont (src/main/res/values/styles.xml), seul shelfBackground change.
+         Si SmartTube modifie ce style, reporter ses changements ici. -->
+    <style name="App.Theme.DarkGrey.Browse" parent="App.Theme.Leanback.Browse">
+        <item name="android:windowBackground">@color/scheme_grey_shelf_background_dark</item>
+        <item name="brandColor">@color/scheme_grey_background_dark</item>
+        <item name="brandAccentColor">@color/semi_red</item>
+        <item name="cardProgressStyle">@style/ProgressBarHorizontal.Dark</item>
+        <item name="shelfBackground">@drawable/ibitube_fond_vagues</item>
+        <item name="cardDefaultBackground">@color/scheme_grey_card_background_dark</item>
+        <item name="appLogo">@mipmap/app_logo_semi_red</item>
+    </style>
 </resources>

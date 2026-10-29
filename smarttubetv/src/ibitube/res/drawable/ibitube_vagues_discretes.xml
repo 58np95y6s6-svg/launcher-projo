@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : vagues discrètes du fond de l'accueil. Vecteur 16:9 étiré par Android sur toute la fenêtre ;
+     taille intrinsèque réduite (192 x 108 dp), utilisée seulement par la conversion PNG des
+     très vieux Android. Source : ibitube/logo/outils/vagues.py -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp" android:height="108dp"
+    android:viewportWidth="1920" android:viewportHeight="1080">
+    <path
+        android:fillColor="#1E6BFF"
+        android:fillAlpha="0.26"
+        android:pathData="M-96,800C-22.4,790.67 195.2,736.53 345.6,744C496,751.47 652.8,839.2 806.4,844.8C960,850.4 1126.4,811.2 1267.2,777.6C1408,744 1526.4,674.93 1651.2,643.2C1776,611.47 1955.2,596.53 2016,587.2L2016,1080L-96,1080Z" />
+    <path
+        android:fillColor="#1E90FF"
+        android:fillAlpha="0.19"
+        android:pathData="M-96,912C-16,900.8 220.8,842.93 384,844.8C547.2,846.67 716.8,912 883.2,923.2C1049.6,934.4 1241.6,925.07 1382.4,912C1523.2,898.93 1622.4,857.87 1728,844.8C1833.6,831.73 1968,835.47 2016,833.6L2016,1080L-96,1080Z" />
+    <path
+        android:fillColor="#7CC2FF"
+        android:fillAlpha="0.13"
+        android:pathData="M-96,979.2C-3.2,973.6 278.4,941.87 460.8,945.6C643.2,949.33 825.6,997.87 998.4,1001.6C1171.2,1005.33 1328,979.2 1497.6,968C1667.2,956.8 1929.6,940 2016,934.4L2016,1080L-96,1080Z" />
+</vector>

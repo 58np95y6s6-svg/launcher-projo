@@ -52,6 +52,11 @@
     <color name="orb_color">@color/ibitube_surface</color>
     <color name="orb_bright_color">@color/ibitube_accent</color>
 
+    <!-- Carte en focus : bandeau bleu, texte blanc (au lieu de blanc / gris foncé) -->
+    <color name="card_selected_background_white">@color/ibitube_accent</color>
+    <color name="card_selected_background_white_grey">@color/ibitube_accent_fonce</color>
+    <color name="card_selected_text_grey">@color/ibitube_texte</color>
+
     <!-- Textes -->
     <color name="card_default_text">@color/ibitube_texte</color>
     <color name="lb_basic_card_title_text_color">@color/ibitube_texte</color>

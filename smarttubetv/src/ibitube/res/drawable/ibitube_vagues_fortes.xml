@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : vagues franches du bas de l'écran de démarrage. Vecteur 16:9 étiré par Android sur toute la fenêtre ;
+     taille intrinsèque réduite (192 x 108 dp), utilisée seulement par la conversion PNG des
+     très vieux Android. Source : ibitube/logo/outils/vagues.py -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp" android:height="108dp"
+    android:viewportWidth="1920" android:viewportHeight="1080">
+    <path
+        android:fillColor="#1E6BFF"
+        android:fillAlpha="0.85"
+        android:pathData="M-96,840C-22.4,832 195.2,785.6 345.6,792C496,798.4 652.8,873.6 806.4,878.4C960,883.2 1126.4,849.6 1267.2,820.8C1408,792 1526.4,732.8 1651.2,705.6C1776,678.4 1955.2,665.6 2016,657.6L2016,1080L-96,1080Z" />
+    <path
+        android:fillColor="#1E90FF"
+        android:fillAlpha="0.62"
+        android:pathData="M-96,936C-16,926.4 220.8,876.8 384,878.4C547.2,880 716.8,936 883.2,945.6C1049.6,955.2 1241.6,947.2 1382.4,936C1523.2,924.8 1622.4,889.6 1728,878.4C1833.6,867.2 1968,870.4 2016,868.8L2016,1080L-96,1080Z" />
+    <path
+        android:fillColor="#7CC2FF"
+        android:fillAlpha="0.45"
+        android:pathData="M-96,993.6C-3.2,988.8 278.4,961.6 460.8,964.8C643.2,968 825.6,1009.6 998.4,1012.8C1171.2,1016 1328,993.6 1497.6,984C1667.2,974.4 1929.6,960 2016,955.2L2016,1080L-96,1080Z" />
+</vector>
