@@ -88,9 +88,10 @@ jobs:
           # Installation à côté de SmartTube : aucune autorité de fournisseur ne doit reprendre la sienne
           "$outils/aapt" dump xmltree "$apk" AndroidManifest.xml | grep "android:authorities" | tee autorites.txt
           if grep -qi "smarttube" autorites.txt; then echo "::error::autorité SmartTube dans le manifeste"; exit 1; fi
-          # Mises à jour coupées : aucune adresse de mise à jour de SmartTube dans les ressources
+          # Mises à jour coupées : aucun fichier de mise à jour de SmartTube (smarttube_stable2.json…)
+          # dans les ressources. Le lien « code source » vers SmartTubeNext, lui, reste (crédit MIT).
           "$outils/aapt" dump --values resources "$apk" > ressources.txt
-          if grep -qi "SmartTubeNext" ressources.txt; then
+          if grep -Eqi "smarttube_(stable|beta)[0-9]*\.json" ressources.txt; then
             echo "::error::adresse de mise à jour SmartTube trouvée"; exit 1
           fi
           "$outils/apksigner" verify --print-certs "$apk" > signature.txt
