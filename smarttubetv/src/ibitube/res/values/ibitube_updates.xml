@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- iBiTube : aucune source de mise à jour automatique.
+         La liste vide empêche toute recherche de mise à jour : l'application ne télécharge ni ne
+         propose jamais l'APK officiel de SmartTube (dont les adresses sont dans
+         common/src/ststable et common/src/stbeta). Voir aussi AppUpdatePresenter.start(). -->
+    <string-array name="update_urls" />
+</resources>

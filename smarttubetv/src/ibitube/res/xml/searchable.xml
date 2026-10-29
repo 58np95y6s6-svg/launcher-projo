@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : recherche globale Android TV, branchée sur le fournisseur de recherche d'iBiTube
+     (et non sur celui de SmartTube, qui peut être installé à côté). -->
+<searchable xmlns:android="http://schemas.android.com/apk/res/android"
+    android:hint="@string/search_hint"
+    android:includeInGlobalSearch="true"
+    android:label="@string/search_label"
+    android:icon="@drawable/lb_ic_in_app_search"
+    android:searchSettingsDescription="@string/settings_description"
+    android:searchSuggestAuthority="com.ibi.ibitube.search_provider"
+    android:searchSuggestIntentAction="android.intent.action.VIEW"
+    android:searchSuggestIntentData="content://com.ibi.ibitube.search_provider/video"
+    android:queryAfterZeroResults="true"
+    android:searchSuggestPath="search"
+    android:searchSuggestThreshold="0" />

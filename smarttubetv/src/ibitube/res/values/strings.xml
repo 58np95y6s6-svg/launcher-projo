@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : nom de l'application et libellés de la recherche Android TV -->
+<resources>
+    <string translatable="false" name="app_name"><![CDATA[iBiTube]]></string>
+    <string translatable="false" name="browse_title"><![CDATA[iBiTube]]></string>
+
+    <!-- Recherche globale Android TV (module leanbackassistant) -->
+    <string name="search_label">iBiTube</string>
+    <string name="settings_description">iBiTube</string>
+    <!-- Doit rester égal à « applicationId + .search_provider » : c'est l'autorité du fournisseur
+         de recherche déclarée par leanbackassistant (variante F-Droid, utilisée en repli). -->
+    <string translatable="false" name="search_authority">com.ibi.ibitube.search_provider</string>
+</resources>

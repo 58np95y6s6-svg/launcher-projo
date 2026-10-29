@@ -23,6 +23,7 @@ buildscript {
 }
 
 apply plugin: 'com.android.application'
+apply from: 'ibitube.gradle' // iBiTube : variante « ibitube » (tout est dans ce fichier)
 
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()

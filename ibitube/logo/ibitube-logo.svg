@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- iBiTube : logo original (monogramme « iB », boucles du B en triangles « lecture »).
+     Dégradé #1E6BFF → #00C2FF. Logotype : police Outfit Bold (SIL OFL 1.1) convertie en tracés. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="512" y2="512"><stop offset="0" stop-color="#1E6BFF"/><stop offset="1" stop-color="#00C2FF"/></linearGradient></defs>
+  <path fill="url(#g)" d="M117.76,0L394.24,0A117.76,117.76 0 0,1 512,117.76L512,394.24A117.76,117.76 0 0,1 394.24,512L117.76,512A117.76,117.76 0 0,1 0,394.24L0,117.76A117.76,117.76 0 0,1 117.76,0Z"/>
+  <path fill="#FFFFFF" d="M91.14,137.12A36.58,36.58 0 1,0 164.3,137.12A36.58,36.58 0 1,0 91.14,137.12Z"/>
+  <path fill="#FFFFFF" d="M127.72,198.08L127.72,198.08A35.56,35.56 0 0,1 163.28,233.65L163.28,375.9A35.56,35.56 0 0,1 127.72,411.46L127.72,411.46A35.56,35.56 0 0,1 92.16,375.9L92.16,233.65A35.56,35.56 0 0,1 127.72,198.08Z"/>
+  <path fill="#FFFFFF" d="M234.41,116.8L232.77,116.8A30.48,30.48 0 0,1 245.59,119.63L347.9,167.05A30.48,30.48 0 0,1 351.01,220.7L292.35,256.64A8.13,8.13 0 0,0 292.82,270.77L361.92,306.96A30.48,30.48 0 0,1 359.38,362.15L245.06,409.17A30.48,30.48 0 0,1 233.47,411.46L234.41,411.46A35.56,35.56 0 0,1 198.85,375.9L198.85,152.36A35.56,35.56 0 0,1 234.41,116.8Z"/>
+</svg>

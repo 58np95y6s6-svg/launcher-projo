@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : halo de focus = bordure bleue franche + liseré intérieur translucide -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/lb_rounded_rect_corner_radius" />
+            <stroke android:width="@dimen/ibitube_halo_width" android:color="@color/ibitube_accent" />
+        </shape>
+    </item>
+    <item
+        android:left="@dimen/ibitube_halo_width"
+        android:top="@dimen/ibitube_halo_width"
+        android:right="@dimen/ibitube_halo_width"
+        android:bottom="@dimen/ibitube_halo_width">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/ibitube_halo_inner_radius" />
+            <stroke android:width="@dimen/ibitube_halo_width" android:color="@color/ibitube_halo_doux" />
+        </shape>
+    </item>
+</layer-list>

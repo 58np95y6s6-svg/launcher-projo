@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : leanbackassistant traduit ces deux libellés en turc avec « SmartTube » -->
+<resources>
+    <string name="search_label">iBiTube</string>
+    <string name="settings_description">iBiTube</string>
+</resources>

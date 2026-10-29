@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : palette et remplacement du rouge.
+     Les couleurs de l'amont sont redéfinies ici sous le même nom : les ressources de l'application
+     priment sur celles des modules (common, chatkit, leanback), sans toucher à leur code. -->
+<resources>
+    <!-- Palette iBiTube -->
+    <color name="ibitube_fond">#0A1020</color>
+    <color name="ibitube_surface">#141C30</color>
+    <color name="ibitube_accent">#1E90FF</color>
+    <color name="ibitube_accent_clair">#7CC2FF</color>
+    <color name="ibitube_accent_fonce">#1E6BFF</color>
+    <color name="ibitube_texte">#FFFFFF</color>
+    <color name="ibitube_texte_secondaire">#A8B3CF</color>
+    <color name="ibitube_halo_doux">#591E90FF</color>
+
+    <!-- Rouges de l'amont (barres de progression, lecteur, badges « EN DIRECT », sélection) -->
+    <color name="red">@color/ibitube_accent</color>
+    <color name="semi_red">@color/ibitube_accent</color>
+    <color name="light_red">@color/ibitube_accent_clair</color>
+    <color name="dark_red">@color/ibitube_accent_fonce</color>
+
+    <!-- Jeu « sarcelle » d'origine (leanback) -->
+    <color name="leanback">@color/ibitube_accent</color>
+    <color name="fastlane_background">@color/ibitube_accent</color>
+    <color name="fastlane_background_dark">@color/ibitube_surface</color>
+    <color name="search_opaque">@color/ibitube_accent</color>
+    <color name="card_default_background">@color/ibitube_surface</color>
+    <color name="card_default_background_dark">@color/ibitube_surface</color>
+    <color name="shelf_background">@color/ibitube_surface</color>
+    <color name="shelf_background_dark">@color/ibitube_fond</color>
+    <color name="primary">@color/ibitube_accent</color>
+    <color name="primary_dark">@color/ibitube_accent_fonce</color>
+    <color name="primary_light">@color/ibitube_accent_clair</color>
+    <color name="icon_background">@color/ibitube_surface</color>
+
+    <!-- Jeu « gris foncé » (celui par défaut) -->
+    <color name="scheme_grey_background">@color/ibitube_surface</color>
+    <color name="scheme_grey_background_dark">@color/ibitube_surface</color>
+    <color name="scheme_grey_shelf_background_dark">@color/ibitube_fond</color>
+    <color name="scheme_grey_card_background_dark">@color/ibitube_surface</color>
+
+    <!-- Jeu « rouge » : devient bleu nuit -->
+    <color name="scheme_red_background">@color/ibitube_surface</color>
+    <color name="scheme_red_shelf_background_dark">@color/ibitube_fond</color>
+    <color name="scheme_red_card_background_dark">@color/ibitube_surface</color>
+
+    <!-- Jeu « bleu » -->
+    <color name="scheme_blue_background">@color/ibitube_accent</color>
+    <color name="scheme_blue_background_dark">@color/ibitube_accent_fonce</color>
+
+    <!-- Boutons ronds de la barre de titre (recherche, réglages, compte) : bleus au focus -->
+    <color name="orb_color">@color/ibitube_surface</color>
+    <color name="orb_bright_color">@color/ibitube_accent</color>
+
+    <!-- Textes -->
+    <color name="card_default_text">@color/ibitube_texte</color>
+    <color name="lb_basic_card_title_text_color">@color/ibitube_texte</color>
+    <color name="lb_basic_card_content_text_color">@color/ibitube_texte_secondaire</color>
+
+    <!-- Panneau des réglages (leanback-preference) -->
+    <color name="lb_preference_decor_list_background">@color/ibitube_surface</color>
+</resources>

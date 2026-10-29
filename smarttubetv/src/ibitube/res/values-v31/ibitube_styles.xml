@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- iBiTube : Android 12+ remplace le fond de lancement par son propre écran de démarrage.
+         On lui donne le fond nuit, le logo animé (fondu + léger zoom, 600 ms) et le nom en bas.
+         Le système joue l'animation pendant le chargement : rien n'est rallongé. -->
+    <style name="IbiTube.Splash" parent="App.Theme.Leanback.Browse">
+        <item name="android:windowBackground">@drawable/ibitube_splash</item>
+        <item name="android:windowSplashScreenBackground">@color/ibitube_fond</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ibitube_splash_icon</item>
+        <item name="android:windowSplashScreenAnimationDuration">600</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/ibitube_wordmark</item>
+    </style>
+</resources>

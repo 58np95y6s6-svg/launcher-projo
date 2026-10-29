@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : écran de démarrage (fond de fenêtre de l'activité de lancement).
+     Fond nuit, logo centré, nom dessous. Images en xxhdpi, réduites par Android selon l'écran. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:opacity="opaque">
+    <item android:drawable="@color/ibitube_fond" />
+    <item android:bottom="64dp">
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/ibitube_splash_logo" />
+    </item>
+    <item android:top="120dp">
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/ibitube_splash_wordmark" />
+    </item>
+</layer-list>

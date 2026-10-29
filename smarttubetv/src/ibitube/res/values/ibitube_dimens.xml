@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- iBiTube : cartes vidéo aux coins arrondis (leanback : 2dp). L'arrondi est appliqué par
+         leanback quand le réglage « coins arrondis » est actif, ce qui est le cas par défaut. -->
+    <dimen name="lb_rounded_rect_corner_radius">10dp</dimen>
+    <!-- Halo de focus : bordure bleue de 3dp + liseré intérieur plus doux -->
+    <dimen name="ibitube_halo_width">3dp</dimen>
+    <dimen name="ibitube_halo_inner_radius">7dp</dimen>
+</resources>

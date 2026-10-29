@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : ajouts au manifeste principal, propres à la variante « ibitube ».
+     Seul changement : le thème de l'activité de lancement, qui affiche l'écran de démarrage
+     iBiTube (fond nuit, logo, nom) pendant que l'application se charge. Aucun code. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="com.liskovsoft.smartyoutubetv2.tv.ui.main.SplashActivity"
+            android:theme="@style/IbiTube.Splash" />
+    </application>
+
+</manifest>

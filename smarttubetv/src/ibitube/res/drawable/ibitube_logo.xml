@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : logo complet, repli avant Android 7 (forme dégradée + monogramme vectoriel) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="120dp" android:height="120dp" />
+            <corners android:radius="27.6dp" />
+            <gradient android:angle="315" android:startColor="#1E6BFF" android:endColor="#00C2FF" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/ibitube_logo_monogram" />
+</layer-list>

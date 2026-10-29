@@ -49,6 +49,14 @@ public class AppUpdatePresenter extends BasePresenter<Void> implements AppUpdate
     }
 
     public void start(boolean forceCheck) {
+        // iBiTube: no update source (empty update_urls) -> never fetch nor offer the official SmartTube APK
+        if (mUpdateManifestUrls.length == 0) {
+            if (forceCheck) {
+                MessageHelpers.showMessage(getContext(), R.string.update_not_found);
+            }
+            return;
+        }
+
         mIsForceCheck = forceCheck;
 
         if (forceCheck) {

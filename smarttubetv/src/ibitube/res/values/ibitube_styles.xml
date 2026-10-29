@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- iBiTube : thème de l'activité de lancement (voir AndroidManifest.xml de la variante).
+         Android affiche ce fond pendant le chargement de l'appli : logo et nom sur fond nuit,
+         sans aucune attente ajoutée. MotherActivity applique ensuite le jeu de couleurs choisi. -->
+    <style name="IbiTube.Splash" parent="App.Theme.Leanback.Browse">
+        <item name="android:windowBackground">@drawable/ibitube_splash</item>
+    </style>
+</resources>

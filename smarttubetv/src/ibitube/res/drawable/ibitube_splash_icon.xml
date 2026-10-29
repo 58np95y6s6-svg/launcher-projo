@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : repli de l'icône du splash système. La vraie version (animée) est dans
+     drawable-v31 ; celle-ci n'existe que pour que la ressource ait une valeur par défaut. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ibitube_logo"
+    android:inset="84dp" />

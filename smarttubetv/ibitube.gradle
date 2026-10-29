@@ -1,0 +1,41 @@
+// iBiTube : variante « ibitube » de SmartTube (seule l'identité visuelle change).
+// Appliqué par une seule ligne dans build.gradle (« apply from: 'ibitube.gradle' ») pour que les
+// fusions avec le dépôt d'origine ne touchent jamais ce fichier.
+//
+// Compilation : ./gradlew assembleIbitubeRelease
+// Ressources propres à la variante : src/ibitube/ (elles priment sur src/main et sur les modules).
+
+android {
+    productFlavors {
+        ibitube {
+            // Identifiant distinct : s'installe à côté de SmartTube sans le remplacer
+            applicationId "com.ibi.ibitube"
+            versionNameSuffix "-ibi"
+            targetSdkVersion project.properties.compileSdkVersion
+
+            // Les modules common et leanbackassistant n'ont pas de variante « ibitube » : ils
+            // prennent leur variante F-Droid, la seule sans adresse de mise à jour et dont le
+            // fournisseur de recherche dépend de l'applicationId (pas de conflit avec SmartTube).
+            matchingFallbacks = ['stfdroid']
+
+            // Sans keystore.properties (CI sans secrets, poste local), l'APK release est signé avec
+            // la clé de débogage pour rester installable. Avec keystore.properties, le type de build
+            // « release » de l'amont impose la vraie clé (prioritaire sur celle-ci).
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+// Noms des APK : iBiTube_<version>_<abi>.apk (le bloc de l'amont les nommerait « SmartTube_itube_… »).
+// afterEvaluate : passe après le renommage de l'amont, fait à la création des variantes.
+afterEvaluate {
+    android.applicationVariants.all { variant ->
+        if (variant.flavorName != 'ibitube') {
+            return
+        }
+        variant.outputs.all { output ->
+            def abi = output.getFilter(com.android.build.OutputFile.ABI) ?: 'universal'
+            output.outputFileName = "iBiTube_${variant.versionName}_${abi}.apk"
+        }
+    }
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : icône animée de l'écran de démarrage (Android 12+) : fondu + léger zoom, 600 ms.
+     Le système la joue tout seul pendant le lancement : aucune attente ajoutée. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector android:name="logo"
+            android:width="288dp" android:height="288dp"
+            android:viewportWidth="288" android:viewportHeight="288">
+            <!-- État de repos = état final : si l'animation ne démarre pas, le logo reste visible -->
+            <group android:name="zoom" android:pivotX="144" android:pivotY="144">
+                <path android:pathData="M109.44,80L178.56,80A29.44,29.44 0 0,1 208,109.44L208,178.56A29.44,29.44 0 0,1 178.56,208L109.44,208A29.44,29.44 0 0,1 80,178.56L80,109.44A29.44,29.44 0 0,1 109.44,80Z">
+                    <aapt:attr name="android:fillColor">
+                        <gradient android:type="linear" android:startX="80" android:startY="80" android:endX="208" android:endY="208"
+                            android:startColor="#1E6BFF" android:endColor="#00C2FF" />
+                    </aapt:attr>
+                </path>
+                <path
+                    android:fillColor="#FFFFFFFF"
+                    android:pathData="M102.79,114.28A9.14,9.14 0 1,0 121.08,114.28A9.14,9.14 0 1,0 102.79,114.28Z" />
+                <path
+                    android:fillColor="#FFFFFFFF"
+                    android:pathData="M111.93,129.52L111.93,129.52A8.89,8.89 0 0,1 120.82,138.41L120.82,173.97A8.89,8.89 0 0,1 111.93,182.86L111.93,182.86A8.89,8.89 0 0,1 103.04,173.97L103.04,138.41A8.89,8.89 0 0,1 111.93,129.52Z" />
+                <path
+                    android:fillColor="#FFFFFFFF"
+                    android:pathData="M138.6,109.2L138.19,109.2A7.62,7.62 0 0,1 141.4,109.91L166.98,121.76A7.62,7.62 0 0,1 167.75,135.17L153.09,144.16A2.03,2.03 0 0,0 153.21,147.69L170.48,156.74A7.62,7.62 0 0,1 169.84,170.54L141.26,182.29A7.62,7.62 0 0,1 138.37,182.86L138.6,182.86A8.89,8.89 0 0,1 129.71,173.97L129.71,118.09A8.89,8.89 0 0,1 138.6,109.2Z" />
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="logo">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:propertyName="alpha" android:valueFrom="0" android:valueTo="1"
+                android:duration="600" android:interpolator="@android:interpolator/decelerate_cubic" />
+        </aapt:attr>
+    </target>
+    <target android:name="zoom">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator android:propertyName="scaleX" android:valueFrom="0.86" android:valueTo="1"
+                    android:duration="600" android:interpolator="@android:interpolator/decelerate_cubic" />
+                <objectAnimator android:propertyName="scaleY" android:valueFrom="0.86" android:valueTo="1"
+                    android:duration="600" android:interpolator="@android:interpolator/decelerate_cubic" />
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

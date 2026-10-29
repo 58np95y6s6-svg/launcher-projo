@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iBiTube : premier plan des cartes (remplace celui de leanback, vide à l'origine).
+     Carte qui a le focus : halo bleu qui suit l'arrondi des coins ; leanback ajoute déjà
+     le léger agrandissement. Autres cartes : rien. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:drawable="@drawable/ibitube_card_halo" />
+    <item android:state_selected="true" android:drawable="@drawable/ibitube_card_halo" />
+    <item android:drawable="@android:color/transparent" />
+</selector>
