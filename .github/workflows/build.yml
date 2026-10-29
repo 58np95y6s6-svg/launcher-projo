@@ -1,10 +1,13 @@
 # iBiTube : compile la variante « ibitube » de SmartTube (APK release), la signe avec ta clé si les
 # secrets existent, dépose les APK en artefact et publie une version GitHub sur les tags « v* ».
 #
+# À chaque push sur la branche ibitube, l'APK est aussi publié à une adresse fixe :
+#   https://github.com/<compte>/launcher-projo/releases/download/ibitube-apk/iBiTube.apk
+#
 # Secrets (Settings → Secrets and variables → Actions) : KEYSTORE_BASE64, KEYSTORE_PASSWORD,
-# KEY_ALIAS, KEY_PASSWORD (voir README-IBITUBE.md). Sans eux, l'APK est signé avec une clé de
-# débogage jetable : installable pour tester, mais aucune mise à jour possible d'une compilation à
-# l'autre, et aucune version GitHub n'est publiée.
+# KEY_ALIAS, KEY_PASSWORD (voir README-IBITUBE.md). Sans eux, l'APK est signé avec la clé de test
+# du dépôt (ibitube/signature/test.keystore) : chaque version s'installe par-dessus la précédente,
+# mais aucune version « v* » n'est publiée.
 name: iBiTube
 
 on:
@@ -51,7 +54,7 @@ jobs:
             [ -n "${!v}" ] || manquants="$manquants $v"
           done
           if [ -n "$manquants" ]; then
-            echo "::warning::Secrets absents :$manquants. APK signé avec une clé de débogage (test seulement)."
+            echo "::notice::Secrets absents :$manquants. APK signé avec la clé de test du dépôt."
             echo "SIGNE=non" >> "$GITHUB_ENV"
             exit 0
           fi
@@ -97,7 +100,7 @@ jobs:
           {
             echo "### iBiTube $version"
             echo "- Identifiant : com.ibi.ibitube (s'installe à côté de SmartTube)"
-            echo "- Signature : $([ "$SIGNE" = oui ] && echo "ta clé (secrets)" || echo "clé de débogage, test seulement")"
+            echo "- Signature : $([ "$SIGNE" = oui ] && echo "ta clé (secrets)" || echo "clé de test du dépôt")"
             echo "- APK : $(cd "$dossier" && ls *.apk | tr '\n' ' ')"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -107,6 +110,36 @@ jobs:
           name: iBiTube-${{ env.VERSION }}
           path: smarttubetv/build/outputs/apk/ibitube/release/*.apk
           if-no-files-found: error
+
+      # APK « en continu » : chaque push sur ibitube remplace la pré-version ibitube-apk, avec des noms
+      # de fichiers fixes, pour un lien de téléchargement qui ne change jamais (Downloader sur Fire TV).
+      # Le tag s'appelle ibitube-apk et non ibitube, pour ne pas porter le même nom que la branche.
+      - name: Publication de l'APK en continu (branche ibitube)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/ibitube'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          dossier=smarttubetv/build/outputs/apk/ibitube/release
+          mkdir -p publication
+          cp "$dossier"/iBiTube_*_universal.apk publication/iBiTube.apk
+          cp "$dossier"/iBiTube_*_armeabi-v7a.apk publication/iBiTube-armeabi-v7a.apk
+          cp "$dossier"/iBiTube_*_arm64-v8a.apk publication/iBiTube-arm64-v8a.apk
+          gh release delete ibitube-apk --cleanup-tag --yes || true
+          gh release create ibitube-apk publication/*.apk \
+            --prerelease --latest=false \
+            --target "${{ github.sha }}" \
+            --title "iBiTube $VERSION (en continu)" \
+            --notes "iBiTube $VERSION compilé depuis la branche ibitube (${{ github.sha }}). Lien direct : https://github.com/${{ github.repository }}/releases/download/ibitube-apk/iBiTube.apk"
+          # Parade déjà utilisée par le launcher : une version recréée trop vite peut rester en brouillon
+          id=$(gh api "repos/${{ github.repository }}/releases?per_page=30" --jq '[.[] | select(.tag_name=="ibitube-apk")][0].id' || true)
+          if [ -n "$id" ]; then
+            brouillon=$(gh api "repos/${{ github.repository }}/releases/$id" --jq '.draft' || true)
+            if [ "$brouillon" = "true" ]; then
+              gh api -X PATCH "repos/${{ github.repository }}/releases/$id" -F draft=false -f tag_name=ibitube-apk > /dev/null || true
+            fi
+          fi
+          echo "- Téléchargement : https://github.com/${{ github.repository }}/releases/download/ibitube-apk/iBiTube.apk" >> "$GITHUB_STEP_SUMMARY"
 
       # Version GitHub : seulement sur un tag v*, et seulement avec ta vraie clé.
       # Publiée en pré-version et jamais « latest » : le launcher Projo, dans le même dépôt, suit

@@ -6,6 +6,18 @@
 // Ressources propres à la variante : src/ibitube/ (elles priment sur src/main et sur les modules).
 
 android {
+    // Clé de TEST versionnée (ibitube/signature/test.keystore, mots de passe Android standard) :
+    // toutes les compilations sans clé de publication portent la même signature et s'installent
+    // donc les unes par-dessus les autres. Ne protège rien : la vraie clé reste dans les secrets.
+    signingConfigs {
+        ibitubeTest {
+            storeFile rootProject.file('ibitube/signature/test.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     productFlavors {
         ibitube {
             // Identifiant distinct : s'installe à côté de SmartTube sans le remplacer
@@ -19,23 +31,25 @@ android {
             matchingFallbacks = ['stfdroid']
 
             // Sans keystore.properties (CI sans secrets, poste local), l'APK release est signé avec
-            // la clé de débogage pour rester installable. Avec keystore.properties, le type de build
-            // « release » de l'amont impose la vraie clé (prioritaire sur celle-ci).
-            signingConfig signingConfigs.debug
+            // la clé de test ci-dessus. Avec keystore.properties, le type de build « release » de
+            // l'amont impose la vraie clé (prioritaire sur celle-ci).
+            signingConfig signingConfigs.ibitubeTest
         }
     }
 }
 
-// Noms des APK : iBiTube_<version>_<abi>.apk (le bloc de l'amont les nommerait « SmartTube_itube_… »).
-// afterEvaluate : passe après le renommage de l'amont, fait à la création des variantes.
-afterEvaluate {
-    android.applicationVariants.all { variant ->
-        if (variant.flavorName != 'ibitube') {
-            return
-        }
-        variant.outputs.all { output ->
-            def abi = output.getFilter('ABI') ?: 'universal' // OutputFile.ABI vaut "ABI" ; la classe n'est pas visible depuis un script appliqué
-            output.outputFileName = "iBiTube_${variant.versionName}_${abi}.apk"
+// Noms des APK : iBiTube_<version>_<abi>.apk. Le bloc de l'amont nomme les fichiers pendant la
+// création des variantes (« SmartTube_itube_… ») et AGP fige ce nom ensuite : on renomme donc les
+// fichiers une fois l'assemblage terminé.
+tasks.configureEach { tache ->
+    if (tache.name == 'assembleIbitubeRelease' || tache.name == 'assembleIbitubeDebug') {
+        tache.doLast {
+            def dossier = file("${buildDir}/outputs/apk/ibitube/${tache.name.endsWith('Release') ? 'release' : 'debug'}")
+            if (dossier.isDirectory()) {
+                dossier.eachFileMatch(~/SmartTube_itube_.*\.apk/) { apk ->
+                    apk.renameTo(new File(dossier, apk.name.replace('SmartTube_itube_', 'iBiTube_')))
+                }
+            }
         }
     }
 }

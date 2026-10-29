@@ -7,13 +7,24 @@ nom, logo, couleurs bleues, vagues, écran de démarrage. Le lecteur, les régla
 - Version : celle de SmartTube suivie de `-ibi` (ex. `32.68-ibi`).
 - Mises à jour automatiques : coupées. iBiTube ne propose jamais l'APK officiel de SmartTube.
 
+## Télécharger
+
+Chaque push sur la branche `ibitube` publie l'APK à une adresse qui ne change jamais :
+
+- **Fire TV** : https://github.com/58np95y6s6-svg/launcher-projo/releases/download/ibitube-apk/iBiTube-armeabi-v7a.apk
+- **Toute TV Android** (APK universel, plus lourd) : https://github.com/58np95y6s6-svg/launcher-projo/releases/download/ibitube-apk/iBiTube.apk
+
+Sur le Fire TV, avec l'appli **Downloader** : tape l'adresse, télécharge, puis « Installer ». La
+première fois, Fire OS demande d'autoriser Downloader à installer des applis inconnues. Une nouvelle
+version s'installe par-dessus l'ancienne, sans perdre les réglages.
+
 ## Où sont les changements
 
 Tout passe par une variante Gradle `ibitube` et ses ressources. Le code de SmartTube reste intact, sauf deux lignes repérées par `iBiTube`.
 
 | Fichier | Rôle |
 | --- | --- |
-| `smarttubetv/ibitube.gradle` | Déclare la variante : identifiant, suffixe `-ibi`, signature de repli, noms des APK |
+| `smarttubetv/ibitube.gradle` | Déclare la variante : identifiant, suffixe `-ibi`, clé de test, noms des APK |
 | `smarttubetv/build.gradle` | **1 ligne ajoutée** : `apply from: 'ibitube.gradle'` |
 | `common/.../dialogs/AppUpdatePresenter.java` | **1 bloc ajouté** (`// iBiTube`) : sans adresse de mise à jour, ne cherche rien et répond « dernière version » |
 | `smarttubetv/src/ibitube/AndroidManifest.xml` | Thème de l'écran de démarrage sur l'activité de lancement |
@@ -59,8 +70,9 @@ Sur un Fire TV, prends l'APK `armeabi-v7a`. En cas de doute, prends `universal`.
 
 ## Signature
 
-Sans clé, l'APK est signé avec une clé de débogage : il s'installe, mais une compilation suivante ne
-pourra pas le mettre à jour. Pour signer avec ta clé :
+Sans secrets, l'APK est signé avec la clé de test du dépôt (`ibitube/signature/test.keystore`, mots
+de passe Android standard). Toutes ces versions s'installent les unes par-dessus les autres. Cette clé
+ne protège rien, puisqu'elle est publique. Pour signer avec ta propre clé :
 
 1. Crée la clé une seule fois, et garde le fichier et les mots de passe en lieu sûr. Si tu la perds,
    il faudra désinstaller iBiTube pour installer la version suivante.
@@ -78,6 +90,9 @@ pourra pas le mettre à jour. Pour signer avec ta clé :
    - `KEYSTORE_PASSWORD` : le mot de passe du fichier ;
    - `KEY_ALIAS` : `ibitube` ;
    - `KEY_PASSWORD` : le mot de passe de la clé.
+
+Passer de la clé de test à ta clé change la signature : il faudra désinstaller iBiTube une fois
+avant d'installer la version signée.
 
 Ces 4 secrets portent les mêmes noms que ceux du launcher Projo, dans le même dépôt. S'ils existent
 déjà, iBiTube est signé avec la clé du launcher, ce qui ne pose aucun problème. Pour une clé à part,
@@ -104,7 +119,8 @@ tags `v*`. Il fait les étapes suivantes :
 - compile `assembleIbitubeRelease` ;
 - vérifie l'APK : identifiant, suffixe `-ibi`, nom affiché, aucune autorité ni adresse de mise à
   jour de SmartTube ;
-- dépose les APK en artefact.
+- dépose les APK en artefact ;
+- sur la branche `ibitube`, remplace la pré-version `ibitube-apk` (liens de téléchargement fixes).
 
 ### Publier une version
 
