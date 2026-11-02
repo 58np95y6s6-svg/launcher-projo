@@ -19,7 +19,8 @@ import org.robolectric.annotation.GraphicsMode
  * « Toutes les apps ») : chaque test y vérifie l'équivalent dans la grille (voisin prévu par
  * GrilleChaines, même colonne pour ▲ ▼, allers-retours) ; les autres designs ne changent pas.
  *
- * Studio n'a qu'une barre d'apps : ses équivalents sont dans StudioTest (voir Design.deuxRangees).
+ * Studio et Galerie n'ont qu'une barre d'apps : leurs équivalents sont dans StudioTest et GalerieTest
+ * (voir Design.deuxRangees).
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

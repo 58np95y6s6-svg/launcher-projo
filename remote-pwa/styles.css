@@ -511,6 +511,7 @@ body.clavier .ecran-telecommande.avec-onglets { padding-bottom: calc(12px + var(
 .apercu-design[data-id="une"] { background: linear-gradient(135deg, #e50914, #5b0306); }
 .apercu-design[data-id="chaines"] { background: repeating-linear-gradient(90deg, #1f2a44 0 10px, #2a3a5c 10px 20px); }
 .apercu-design[data-id="studio"] { background: linear-gradient(135deg, #f4f6fb, #cfd8ea); }
+.apercu-design[data-id="galerie"] { background: linear-gradient(#0b0b0e, #0b0b0e) center 40% / 46% 52% no-repeat, radial-gradient(ellipse at 50% 20%, #e6e7ea, #a2a4a9); }
 
 /* Boutons côte à côte, pleine largeur ; le principal en dégradé */
 .boutons-reglage { display: flex; gap: 8px; margin-top: 11px; }

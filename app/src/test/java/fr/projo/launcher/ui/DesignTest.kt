@@ -29,10 +29,18 @@ class DesignTest {
     @Test
     fun designsDansLOrdre() {
         assertEquals(
-            listOf(Design.VERRE, Design.PASTEL, Design.CONSOLE, Design.UNE, Design.CHAINES, Design.STUDIO),
+            listOf(Design.VERRE, Design.PASTEL, Design.CONSOLE, Design.UNE, Design.CHAINES, Design.STUDIO, Design.GALERIE),
             Design.entries.toList(),
         )
         assertEquals("identifiants uniques", Design.entries.size, Design.entries.map { it.id }.toSet().size)
+        assertEquals("galerie", Design.GALERIE.id)
+        assertEquals("Galerie", Design.GALERIE.nom)
+    }
+
+    /** Suggestions TMDB (réglage « Suggestions de films et séries ») : Studio et Galerie seulement. */
+    @Test
+    fun designsAvecSuggestions() {
+        assertEquals(listOf(Design.STUDIO, Design.GALERIE), Design.entries.filter { it.suggestionsTmdb })
     }
 
     @Test
@@ -79,7 +87,7 @@ class PreferenceDesignTest {
     }
 }
 
-/** Réglages → Design : les 6 designs proposés, « Verre » (par défaut) coché ; capture « dialogue_design ». */
+/** Réglages → Design : les 7 designs proposés, « Verre » (par défaut) coché ; capture « dialogue_design ». */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)

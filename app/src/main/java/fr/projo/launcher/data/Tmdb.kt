@@ -50,6 +50,14 @@ data class TitreTmdb(
     val image: String,
     /** Date de sortie (première diffusion pour une série), « 2026-10-03 », ou null. */
     val sortie: String?,
+    /** Affiche (portrait, w342), adresse complète, ou null. */
+    val affiche: String? = null,
+    /** Résumé en français (overview), vide s'il manque. */
+    val resume: String = "",
+    /** Note moyenne TMDB sur 10, ou null sans votes. */
+    val note: Double? = null,
+    /** Rang dans les tendances TMDB de la semaine (1 : en tête), ou null. */
+    val rang: Int? = null,
 )
 
 /** Un service de streaming installé : son app et ses identifiants TMDB (France). */
@@ -186,7 +194,13 @@ class ClientTmdb(private val cle: String, private val lire: (url: String, bearer
             val g = e.optJSONArray("genre_ids")
             val genres = (0 until (g?.length() ?: 0)).mapNotNull { GENRES[g!!.optInt(it)] }.distinct()
             val sortie = e.optString(if (type == "movie") "release_date" else "first_air_date").takeIf { it.length >= 4 }
-            TitreTmdb("$type:${e.optInt("id")}", titre, if (type == "movie") GenreTmdb.FILM else GenreTmdb.SERIE, genres, IMAGES + image, sortie)
+            val affiche = e.optString("poster_path").takeIf { it.startsWith("/") }?.let { AFFICHES + it }
+            val resume = e.optString("overview").trim().takeIf { it != "null" }.orEmpty()
+            val note = e.optDouble("vote_average", 0.0).takeIf { it > 0.0 && e.optInt("vote_count", 0) > 0 }
+            TitreTmdb(
+                "$type:${e.optInt("id")}", titre, if (type == "movie") GenreTmdb.FILM else GenreTmdb.SERIE, genres, IMAGES + image, sortie,
+                affiche, resume, note,
+            )
         }
     }
 
@@ -256,8 +270,8 @@ class ClientTmdb(private val cle: String, private val lire: (url: String, bearer
         fun ajouter(s: ServiceTmdb, t: TitreTmdb) {
             if (vus.add(t.id)) res += s to t
         }
-        for (c in tendance) {
-            for ((s, liste) in parService) liste.firstOrNull { it.id == c }?.let { ajouter(s, it) }
+        for ((rang, c) in tendance.withIndex()) {
+            for ((s, liste) in parService) liste.firstOrNull { it.id == c }?.let { ajouter(s, it.copy(rang = rang + 1)) }
         }
         val iterateurs = parService.map { it.first to it.second.iterator() }
         while (res.size < max && iterateurs.any { it.second.hasNext() }) {
@@ -269,6 +283,7 @@ class ClientTmdb(private val cle: String, private val lire: (url: String, bearer
     companion object {
         const val BASE = "https://api.themoviedb.org/3/"
         const val IMAGES = "https://image.tmdb.org/t/p/w780"
+        const val AFFICHES = "https://image.tmdb.org/t/p/w342"
         private const val MAX_SERVICES = 8
     }
 }

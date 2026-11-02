@@ -49,8 +49,8 @@ import org.robolectric.annotation.GraphicsMode
 abstract class BancPointeur(nomDesign: String) : BancAccueil(nomDesign) {
 
     init {
-        // Studio : suggestions factices (repli, sans réseau), comme dans StudioTest
-        if (design == Design.STUDIO) sourceStudio = SourceStudioFactice()
+        // Studio, Galerie : suggestions factices (repli, sans réseau), comme dans StudioTest
+        if (design == Design.STUDIO || design == Design.GALERIE) sourceStudio = SourceStudioFactice()
     }
 
     protected val d get() = "[${design.name}]"
@@ -233,7 +233,7 @@ abstract class BancPointeur(nomDesign: String) : BancAccueil(nomDesign) {
 }
 
 /**
- * Souris et tactile, pour CHACUN des 6 designs (version Fire TV) : favori et app de
+ * Souris et tactile, pour CHACUN des 7 designs (version Fire TV) : favori et app de
  * « Mes apps » lancés au toucher et au clic, le focus suit le clic, appui long et clic droit
  * ouvrent le menu, un glissement fait défiler sans rien lancer, Réglages (bouton rapide,
  * tuiles, jauge du volume, dialogues, fermeture) et zone de modules au pointeur.
@@ -431,7 +431,8 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
                 toucher(noeud("rapide:Modules"))
                 if (!present("chaines:panneau")) fail("$d toucher l'enveloppe : panneau des modules non affiché")
             }
-            Design.STUDIO -> {
+            // Studio, Galerie : modules sur l'écran 2, atteint à la molette
+            Design.STUDIO, Design.GALERIE -> {
                 molette(Offset(largeur() / 2f, hauteur() * 0.12f), 1f)
                 if (!present("module:meteo") || bornesDe("module:meteo")!!.top > hauteur()) fail("$d molette : écran 2 attendu")
             }

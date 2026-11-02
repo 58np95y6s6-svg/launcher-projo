@@ -290,7 +290,7 @@ Précisions de comportement (le protocole ci-dessus ne change pas) :
   `boutons` côte à côte dans l'ordre reçu, le principal en dégradé ; `progression` en barre ;
   `actif: false` grisé et désactivé ; `titre` vide : pas de ligne de titre. Un type inconnu n'est pas
   affiché. Seule exception liée à une clé : `design`, en cartes avec un aperçu coloré par `id`
-  (`verre`, `pastel`, `console`, `une`, `chaines`, `studio` ; aperçu neutre pour un autre `id`).
+  (`verre`, `pastel`, `console`, `une`, `chaines`, `studio`, `galerie` ; aperçu neutre pour un autre `id`).
 - **Curseur** : au plus un `reglage` toutes les 150 ms pendant le glissé, puis la valeur finale au
   relâcher (renvoyée même identique si la TV a changé la valeur entre-temps). Les `reglages` reçus
   pendant le glissé ne bougent pas le curseur.

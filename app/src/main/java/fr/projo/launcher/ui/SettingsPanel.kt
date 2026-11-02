@@ -261,9 +261,9 @@ private fun contenuReglages(
     // Mode Ambiance : réglages enregistrés, lus une fois (résumé et source utilisée sur la tuile)
     remember { ModeAmbiance.charger(contexte) }
     remember { PucesNfc.charger(contexte) }
-    // Studio : résumé de la clé TMDB, relu quand elle change (dialogue ouvert depuis le panneau)
+    // Studio, Galerie : résumé de la clé TMDB, relu quand elle change (dialogue ouvert depuis le panneau)
     val versionCle = CleTmdb.version
-    val resumeCle = if (design == Design.STUDIO) remember(versionCle) { resumeCleTmdb(contexte) } else ""
+    val resumeCle = if (design.suggestionsTmdb) remember(versionCle) { resumeCleTmdb(contexte) } else ""
     val majDispo = maj.info?.available == true || maj.telechargement != null
     // Fire TV : pas d'entrée HDMI ni de choix d'écran d'accueil, mais l'ouverture automatique
     val fireTv = LocalFireTv.current
@@ -413,8 +413,8 @@ private fun contenuReglages(
                 teinte = Teintes.modules,
                 onClick = actions.modules,
             ),
-            // Studio seulement : clé TMDB de ses suggestions (jamais la clé elle-même, voir resumeCleTmdb)
-            if (design != Design.STUDIO) null else Reglage(
+            // Studio et Galerie seulement : clé TMDB de leurs suggestions (jamais la clé elle-même, voir resumeCleTmdb)
+            if (!design.suggestionsTmdb) null else Reglage(
                 cle = "suggestions",
                 icone = ProjoIcons.Film,
                 titre = "Suggestions de films et séries",

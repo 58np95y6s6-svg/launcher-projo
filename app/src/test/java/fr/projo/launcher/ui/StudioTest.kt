@@ -27,13 +27,12 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Designs à deux rangées (favoris, puis « Mes apps ») : tous sauf Studio, dont l'unique barre
- * des apps (favoris puis « Mes apps ») est suivie, sur l'écran 2, des entrées / raccourcis et
- * des modules. Les tests de NavigationTest propres aux deux rangées ne valent donc pas pour
- * Studio : leurs équivalents (▼ / ▲ vers l'élément visible le plus aligné de la bande voisine,
- * allers-retours, rangées longues, sans favori…) sont dans StudioTest.
+ * Designs à deux rangées (favoris, puis « Mes apps ») : tous sauf Studio et Galerie, dont
+ * l'unique barre (ou dock) des apps réunit favoris et « Mes apps ». Les tests de NavigationTest
+ * propres aux deux rangées ne valent donc pas pour eux : leurs équivalents sont dans StudioTest
+ * et GalerieTest (étages, ▼ / ▲ vers l'élément le plus proche, allers-retours, sans favori…).
  */
-val Design.deuxRangees: Boolean get() = this != Design.STUDIO
+val Design.deuxRangees: Boolean get() = this != Design.STUDIO && this != Design.GALERIE
 
 fun designsDeuxRangees(): List<Array<Any>> = Design.entries.filter { it.deuxRangees }.map { arrayOf<Any>(it.name) }
 

@@ -54,6 +54,12 @@ data class StudioProgramme(
     val paquet: String,
     val service: String,
     val image: String?,
+    /** Affiche (portrait), résumé, date de sortie, note et rang dans les tendances (design Galerie). */
+    val affiche: String? = null,
+    val resume: String = "",
+    val sortie: String? = null,
+    val note: Double? = null,
+    val rang: Int? = null,
 )
 
 /** État des suggestions TMDB. */
@@ -98,7 +104,12 @@ open class StudioSourceTmdb(
             val choix = client.alaUne(services) ?: return StudioResultat(emptyList(), StudioEtat.ERREUR)
             Log.i(AppRepository.TAG, "Studio : ${choix.size} suggestions TMDB (${services.joinToString { it.idIllustration }})")
             StudioResultat(
-                choix.map { (s, t) -> StudioProgramme(t.id, t.titre, t.genre, t.genres, s.app.packageName, s.app.label, t.image) },
+                choix.map { (s, t) ->
+                    StudioProgramme(
+                        t.id, t.titre, t.genre, t.genres, s.app.packageName, s.app.label, t.image,
+                        t.affiche, t.resume, t.sortie, t.note, t.rang,
+                    )
+                },
                 StudioEtat.OK,
             )
         } catch (e: Exception) {
@@ -188,8 +199,9 @@ fun appsALaUne(favoris: List<AppInfo>, mesApps: List<AppInfo>, recente: String?)
     }
 }
 
+/** Source des suggestions (TMDB, ou celle des tests) : partagée avec le design Galerie. */
 @Composable
-private fun rememberSource(): StudioSource {
+internal fun rememberSourceStudio(): StudioSource {
     val context = LocalContext.current
     val fournie = LocalStudioSource.current
     return remember(fournie) { fournie ?: StudioSourceAndroid(context.applicationContext) }
@@ -198,7 +210,7 @@ private fun rememberSource(): StudioSource {
 /** Lit les suggestions hors du thread principal : à l'affichage, au retour sur l'accueil, au changement de clé. */
 @Composable
 fun rememberStudioSuggestions(apps: List<AppInfo>, paquets: List<String>): StudioSuggestionsEtat {
-    val source = rememberSource()
+    val source = rememberSourceStudio()
     val cycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     var reprises by remember { mutableIntStateOf(0) }
     LaunchedEffect(cycle) { if (cycle == Lifecycle.State.RESUMED) reprises++ }
@@ -215,7 +227,7 @@ fun rememberStudioSuggestions(apps: List<AppInfo>, paquets: List<String>): Studi
 /** Image d'une suggestion (null tant qu'elle n'est pas prête). [largeur] : largeur affichée, en px. */
 @Composable
 fun rememberImageProgramme(adresse: String?, largeur: Int): ImageBitmap? {
-    val source = rememberSource()
+    val source = rememberSourceStudio()
     val image by produceState<ImageBitmap?>(null, adresse, largeur) {
         if (adresse != null) {
             value = if (source.synchrone) source.image(adresse, largeur) else withContext(Dispatchers.IO) { source.image(adresse, largeur) }

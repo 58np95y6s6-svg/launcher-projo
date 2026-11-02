@@ -97,7 +97,7 @@ object ModuleMeteo : Module(
         val choisi = Lieu.decoder(reglages.texte(CLE_LIEU))
         val detecte = Lieu.decoder(reglages.texte(CLE_AUTO))
         val etat = ctx.rememberDonnees(
-            if (choisi != null) "meteo:" + choisi.encoder() else "meteo:auto",
+            cleDonnees(reglages),
             delai = { _: MeteoDonnees -> 20 * 60_000L },
             delaiErreur = 3 * 60_000L,
         ) {
@@ -129,6 +129,12 @@ object ModuleMeteo : Module(
                 }
             }
         }
+    }
+
+    /** Clé de la donnée affichée (ville choisie, sinon position automatique) : lue aussi par la pilule météo de Galerie. */
+    fun cleDonnees(reglages: ReglagesModule): String {
+        val choisi = Lieu.decoder(reglages.texte(CLE_LIEU))
+        return if (choisi != null) "meteo:" + choisi.encoder() else "meteo:auto"
     }
 
     override val aDesReglages: Boolean get() = true

@@ -228,6 +228,7 @@ fun Design.styleReglages(): StyleReglages = when (this) {
     Design.UNE -> StyleUne
     Design.CHAINES -> StyleChaines
     Design.STUDIO -> StyleStudio
+    Design.GALERIE -> StyleGalerie
 }
 
 // ------------------------------------------------------------------ Verre
@@ -441,4 +442,45 @@ private val StyleStudio = StyleReglages(
     jaugeStockage = Jauge.CURSEUR,
     verreClair = true,
     ombre = 22,
+)
+
+// ------------------------------------------------------------------ Galerie
+
+/**
+ * Galerie : fenêtre de verre clair flottant au centre, comme les panneaux de son accueil
+ * (GalerieVerre.kt) — titre centré, cartes de verre séparées, icônes monochromes ; la tuile
+ * sélectionnée devient une plaque d'encre qui se soulève sur une ombre douce, et la fenêtre
+ * s'ouvre d'un léger zoom.
+ */
+private val StyleGalerie = StyleReglages(
+    disposition = Disposition.FENETRE_CENTREE,
+    tuiles = FormeTuiles.LIGNES,
+    selection = Selection.PLATEAU,
+    pastille = Pastille.RONDE,
+    enTete = EnTete.CENTRE,
+    ouverture = Ouverture.ZOOM,
+    couleurs = CouleursReglages(
+        // Gris studio de l'accueil, éclairci : blanc laiteux en haut, gris perle en bas
+        fond = listOf(Color(0xFFF8F8FA), Color(0xFFEEEFF2), Color(0xFFE3E4E8)),
+        texte = GalerieEncre, texteDiscret = Color(0xFF6C6F78),
+        carte = Color.White.copy(alpha = 0.62f),
+        carteFocus = listOf(Color(0xFF3A3C43), GalerieEncre),
+        texteFocus = Color.White, texteDiscretFocus = Color.White.copy(alpha = 0.72f),
+        accent = Color(0xFF4F7DF0), accentFond = Color(0xFF4F7DF0).copy(alpha = 0.12f),
+        filet = GalerieEncre.copy(alpha = 0.08f), anneau = GalerieEncre,
+        pastille = GalerieEncre.copy(alpha = 0.06f), alerte = Color(0xFFC4251C),
+        voile = GalerieEncre.copy(alpha = 0.28f),
+        section = GalerieGris,
+    ),
+    mesures = MesuresReglages(
+        largeur = 470, haut = 28, bas = 28, rayon = 30, marge = 20, rayonTuile = 16, ecart = 9,
+        padH = 14, padV = 11, pastille = 32,
+    ),
+    typo = TypoReglages(titre = 14, valeur = 11, section = 12, chiffre = 15, enTete = 20, sectionsCapitales = false),
+    valeurADroite = true,
+    agrandissement = 1.03f,
+    jaugeVolume = Jauge.CURSEUR,
+    jaugeStockage = Jauge.CURSEUR,
+    verreClair = true,
+    ombre = 24,
 )

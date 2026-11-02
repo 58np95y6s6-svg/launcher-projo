@@ -33,7 +33,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     CONSOLE("console", "Console", "Grand visuel de l'app choisie"),
     UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
     CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments"),
-    STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans");
+    STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans"),
+    GALERIE("galerie", "Galerie", "Verre flottant, galerie animée et dock");
 
     companion object {
         /** Design par défaut : « Verre ». */
@@ -110,7 +111,18 @@ fun Design.colors(): DesignColors = when (this) {
         voile = Color(0xFF1C1C1E).copy(alpha = 0.3f), fondBibliotheque = Color(0xFFF1F2F5),
         clair = true,
     )
+    // « Galerie » : studio gris clair, verre blanc, encre #2B2D33 ; sélection en encre
+    Design.GALERIE -> DesignColors(
+        panneau = Color(0xFCF2F3F5), carte = Color(0xFFE2E3E7),
+        texte = Color(0xFF2B2D33), texteDiscret = Color(0xFF6C6F78), accent = Color(0xFF4F7DF0),
+        focusFond = Color(0xFF2B2D33), focusTexte = Color.White,
+        voile = Color(0xFF2B2D33).copy(alpha = 0.3f), fondBibliotheque = Color(0xFFE9EAED),
+        clair = true,
+    )
 }
+
+/** Designs qui affichent des films et séries de TMDB (réglage « Suggestions de films et séries »). */
+val Design.suggestionsTmdb: Boolean get() = this == Design.STUDIO || this == Design.GALERIE
 
 /** Design actif, accessible partout (panneaux, dialogues…). */
 val LocalDesign = staticCompositionLocalOf { Design.PAR_DEFAUT }

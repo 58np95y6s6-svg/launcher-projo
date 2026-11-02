@@ -109,5 +109,6 @@ fun HomeScreen(
         Design.UNE -> HomeUne(ctx)
         Design.CHAINES -> HomeChaines(ctx)
         Design.STUDIO -> HomeStudio(ctx)
+        Design.GALERIE -> HomeGalerie(ctx)
     }
 }
