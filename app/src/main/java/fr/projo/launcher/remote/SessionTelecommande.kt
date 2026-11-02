@@ -1,5 +1,6 @@
 package fr.projo.launcher.remote
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** Clé d'identité de la TV (ECDSA P-256). */
@@ -27,6 +28,12 @@ interface HoteSession {
     val nomTv: String
     val versionApp: String
     fun maintenant(): Long = System.currentTimeMillis()
+
+    /**
+     * Applis et réglages pilotés depuis le téléphone (voir Pilotage). null : non proposé, le
+     * `hello` de la TV n'annonce alors pas `fonctions` et ces messages sont ignorés.
+     */
+    val pilotage: Pilotage? get() = null
 
     /**
      * Affiche « Autoriser le téléphone de Marie ? ». [reponse] est appelée une fois (sur le
@@ -82,6 +89,10 @@ class SessionTelecommande(
 
     val authentifiee: Boolean get() = etat == Etat.AUTHENTIFIEE
 
+    /** Le téléphone a envoyé `reglages_liste` pendant cette connexion : il reçoit les changements. */
+    var abonneReglages = false
+        private set
+
     /** Message reçu du téléphone. */
     fun recevoir(texte: String) {
         if (etat == Etat.FERMEE || texte.length > Protocole.TAILLE_MAX) return
@@ -105,6 +116,11 @@ class SessionTelecommande(
     /** Message de la TV vers le téléphone, seulement une fois authentifié (focus_text…). */
     fun envoyerSiAuthentifiee(message: String) {
         if (etat == Etat.AUTHENTIFIEE) envoyer(message)
+    }
+
+    /** `reglages` envoyé de lui-même par la TV (valeur changée) : seulement aux téléphones abonnés. */
+    fun envoyerReglagesSiAbonne(message: String) {
+        if (abonneReglages) envoyerSiAuthentifiee(message)
     }
 
     /** Ce téléphone vient d'être révoqué sur la TV. */
@@ -192,6 +208,7 @@ class SessionTelecommande(
                 versionApp = hote.versionApp,
                 idTv = hote.registre.idTv(),
                 cle = Base64Url.encoder(hote.identite.spki),
+                fonctions = if (hote.pilotage != null) Protocole.FONCTIONS else null,
             ),
         )
     }
@@ -272,6 +289,81 @@ class SessionTelecommande(
             "ping" -> envoyer(Protocole.pong(m.opt("n")))
             // Déjà appairé (la PWA a pu oublier la TV) : on confirme sans redemander
             "pair_request" -> envoyer(Protocole.paired(hote.nomTv, hote.registre.idTv(), Base64Url.encoder(hote.identite.spki)))
+            "apps_liste", "apps_images", "app_ouvrir", "reglages_liste", "reglage" -> hote.pilotage?.let { pilotage(it, t, m) }
         }
+    }
+
+    // ------------------------------------------------------------------ pilotage (applis et réglages)
+
+    /**
+     * Applis et réglages (docs/telecommande.md, « Pilotage depuis le téléphone »). Tout est
+     * vérifié ici : une appli doit être dans la liste actuelle de la TV, un réglage dans sa
+     * description actuelle. Les réponses partent par [envoyerSiAuthentifiee] : rien si le
+     * téléphone est parti entre-temps. Journal : types d'événements seulement.
+     */
+    private fun pilotage(p: Pilotage, t: String, m: JSONObject) {
+        when (t) {
+            "apps_liste" -> {
+                hote.journal("liste des applis demandée")
+                p.applis { envoyerSiAuthentifiee(Protocole.apps(it)) }
+            }
+            "apps_images" -> {
+                val ids = idsDemandes(m.opt("ids"))
+                if (ids.isEmpty()) return
+                hote.journal("images d'applis demandées")
+                p.applis { liste ->
+                    if (!authentifiee) return@applis
+                    val parId = liste.associateBy { it.id }
+                    // Ordre demandé ; identifiants inconnus ignorés
+                    val connues = ids.mapNotNull { parId[it] }
+                    if (connues.isNotEmpty()) p.images(connues, { authentifiee }) { envoyerSiAuthentifiee(Protocole.appImage(it)) }
+                }
+            }
+            "app_ouvrir" -> {
+                val id = m.opt("id") as? String
+                if (id.isNullOrEmpty() || id.length > Protocole.ID_APPLI_MAX) return
+                p.applis { liste ->
+                    if (!authentifiee) return@applis
+                    if (liste.none { it.id == id }) {
+                        // Seulement les applis de la liste actuelle (ni masquée, ni iBiTV, ni inconnue)
+                        hote.journal("appli inconnue refusée")
+                        envoyerSiAuthentifiee(Protocole.appOuverte(id, false))
+                        return@applis
+                    }
+                    p.ouvrir(id) { ok ->
+                        hote.journal(if (ok) "appli ouverte" else "appli non ouverte")
+                        envoyerSiAuthentifiee(Protocole.appOuverte(id, ok))
+                    }
+                }
+            }
+            "reglages_liste" -> {
+                abonneReglages = true
+                hote.journal("réglages demandés")
+                p.reglages { envoyerSiAuthentifiee(Protocole.reglages(it)) }
+            }
+            "reglage" -> p.reglages { items ->
+                if (!authentifiee) return@reglages
+                val changement = ReglagesTv.valider(items, m.opt("cle"), m.opt("valeur"), m.opt("bouton"))
+                if (changement == null) {
+                    // Refusé : l'état actuel quand même, pour que le téléphone se recale
+                    hote.journal("réglage ignoré")
+                    envoyerSiAuthentifiee(Protocole.reglages(items))
+                    return@reglages
+                }
+                hote.journal("réglage ${changement.cle}")
+                p.appliquer(changement) { p.reglages { envoyerSiAuthentifiee(Protocole.reglages(it)) } }
+            }
+        }
+    }
+
+    /** `apps_images.ids` : les 100 premiers au plus, chaînes seulement, sans doublon ; vide si ce n'est pas une liste. */
+    private fun idsDemandes(brut: Any?): List<String> {
+        val tableau = brut as? JSONArray ?: return emptyList()
+        val ids = LinkedHashSet<String>()
+        for (i in 0 until minOf(tableau.length(), Protocole.IDS_IMAGES_MAX)) {
+            val id = tableau.opt(i) as? String ?: continue
+            if (id.isNotEmpty() && id.length <= Protocole.ID_APPLI_MAX) ids += id
+        }
+        return ids.toList()
     }
 }

@@ -60,7 +60,7 @@ class DeviceStatus(private val context: Context) {
     /** Son coupé ? (Android 5 ne le dit pas : on se souvient de notre propre réglage.) */
     private var muetAncien = false
 
-    private fun estMuet(): Boolean =
+    fun estMuet(): Boolean =
         if (android.os.Build.VERSION.SDK_INT >= 23) audio.isStreamMute(AudioManager.STREAM_MUSIC) else muetAncien
 
     @Suppress("DEPRECATION")

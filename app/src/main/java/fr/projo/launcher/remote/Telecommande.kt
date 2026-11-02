@@ -13,9 +13,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.PowerManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
+import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,6 +97,19 @@ object Telecommande : HoteSession {
     private var _versionApp = "?"
     override val versionApp: String get() = _versionApp
 
+    /** Applis et réglages pilotés depuis le téléphone (créé par [demarrer]). */
+    @Volatile
+    private var _pilotage: PilotageLauncher? = null
+    override val pilotage: Pilotage? get() = _pilotage
+
+    /** Renvoi de `reglages` aux téléphones abonnés, au plus toutes les 300 ms (fil de la télécommande). */
+    private val regroupementReglages = Regroupement(
+        RemoteConfig.REGLAGES_INTERVALLE_MS,
+        horloge = { SystemClock.uptimeMillis() },
+        planifier = { delai, tache -> fil.postDelayed({ tache() }, delai) },
+        action = { envoyerReglages() },
+    )
+
     private var principal: ClientPeerJs? = null
     private var temporaire: ClientPeerJs? = null
     private val connexions = mutableListOf<ConnexionWebRtc>()
@@ -117,6 +132,7 @@ object Telecommande : HoteSession {
         contexte = app
         fil = Handler(HandlerThread("telecommande").apply { start() }.looper)
         _injecteur = InjectionAndroid(app)
+        _pilotage = PilotageLauncher(app, retour = { executer(it) }, surChangement = { reglagesChanges() })
         (app as? Application)?.registerActivityLifecycleCallbacks(suiviActivites)
         fil.post {
             try {
@@ -460,6 +476,31 @@ object Telecommande : HoteSession {
     fun champPerdu() = surFil {
         fil.removeCallbacks(focusPerdu)
         fil.postDelayed(focusPerdu, 200)
+    }
+
+    // ------------------------------------------------------------------ pilotage (applis et réglages)
+
+    /** MainActivity créée : son ViewModel sert au pilotage (mises à jour d'iBiTV, liste des applis). Fil principal. */
+    fun attacherAccueil(vm: LauncherViewModel) {
+        _pilotage?.attacher(vm)
+    }
+
+    /** MainActivity détruite : `maj` redevient grisé tant qu'un nouvel accueil n'est pas créé. Fil principal. */
+    fun detacherAccueil(vm: LauncherViewModel) {
+        _pilotage?.detacher(vm)
+    }
+
+    /** Un réglage a changé (sur la TV ou depuis un téléphone) : `reglages` renvoyé aux abonnés. N'importe quel fil. */
+    fun reglagesChanges() = surFil { regroupementReglages.signaler() }
+
+    private fun envoyerReglages() {
+        val p = _pilotage ?: return
+        // Personne d'abonné : rien à lire
+        if (connexions.none { c -> c.session?.let { it.authentifiee && it.abonneReglages } == true }) return
+        p.reglages { items ->
+            val message = Protocole.reglages(items)
+            connexions.forEach { it.session?.envoyerReglagesSiAbonne(message) }
+        }
     }
 
     /** Au moins un téléphone authentifié est connecté. */

@@ -226,6 +226,48 @@ Réglages de la TV (version 1) :
 Comme pour le reste : types d'événements seulement (« appli ouverte », « réglage design »), jamais de
 liste d'applis ni de valeurs.
 
+### Côté TV : implémentation et précisions
+
+- **Fichiers** : `remote/Pilotage.kt` (sans Android, testé sur la JVM : interface `Pilotage`,
+  description des réglages `ReglagesTv.decrire`, validation `ReglagesTv.valider`, ordre des applis
+  `ListeApplis`, regroupement `Regroupement`), `remote/PilotageLauncher.kt` (Android),
+  `remote/ImagesApplis.kt` (images). `SessionTelecommande` reçoit les messages et vérifie tout ;
+  `HoteSession.pilotage` (null dans un banc de test sans pilotage : pas de `fonctions`).
+- **Fils** : les messages arrivent sur le fil de la télécommande ; liste des applis et images sur un
+  fil à part (« pilotage », une image à la fois pour qu'une autre demande passe entre deux) ; lecture
+  des réglages et toutes les écritures (états Compose, ViewModel, ouverture d'une appli ou d'une page
+  système) sur le fil principal.
+- **Écran d'accueil** : MainActivity prête son ViewModel (`Telecommande.attacherAccueil` à la
+  création, `detacherAccueil` à la destruction). Sans lui : `maj` grisé, et la liste des applis est
+  relue directement (sans l'écrire dans les journaux).
+- **Renvoi de `reglages`** : récepteur `android.media.VOLUME_CHANGED_ACTION` /
+  `STREAM_MUTE_CHANGED_ACTION`, préférence du design (DataStore), états Compose des nouveautés et du
+  Mode Ambiance (`snapshotFlow`), flux `maj` du ViewModel, et chaque réglage appliqué. Le tout est
+  regroupé : au plus un envoi toutes les 300 ms (le premier après un calme part tout de suite), et
+  rien n'est lu si aucun téléphone n'est abonné. L'écoute démarre à la première demande d'un
+  téléphone. Le téléphone qui envoie `reglage` reçoit en plus sa réponse directe.
+- **Précisions** (choix les plus sûrs, la PWA n'a rien à changer) :
+  - `id` des options : toujours des chaînes, y compris pour `ambiance_decalage` (`"0"`, `"100"`…
+    `"400"`). La TV accepte aussi un entier dans `reglage.valeur` pour un `id` numérique. Un retard
+    enregistré hors de la liste (ancienne version) est ajouté aux options pour rester sélectionné.
+  - `curseur` : un nombre non entier est arrondi, puis ramené dans `min..max` ; une chaîne ou un
+    booléen est refusé.
+  - Un réglage `actif: false` refuse `reglage` (et renvoie `reglages`).
+  - `apps_images` : seuls les 100 premiers éléments de `ids` sont examinés ; les éléments qui ne sont
+    pas des chaînes et les doublons sont ignorés ; `ids` absent ou qui n'est pas une liste : aucune
+    réponse.
+  - `app_ouvrir` sans `id` chaîne non vide (255 caractères au plus) : ignoré, sans réponse. `id`
+    hors de la liste actuelle : `app_ouverte {ok: false}`.
+  - `apps` : la liste s'arrête avant 60 000 caractères (limite de 65 536 du codec de la PWA), soit
+    plusieurs centaines d'applis ; `nom` coupé à 80 caractères.
+  - Images : WebP (qualité 85, puis 70, 50, 30 si l'URL dépasse 48 Ko), PNG si le WebP échoue ;
+    appli sans image possible sous 48 Ko : pas d'`app_image`. Cache mémoire (2 Mo) par paquet et `maj`.
+  - `maj` : `detail` = « Version <version affichée sur la TV> · <état> » ; `verifier` (« Rechercher »)
+    toujours présent, `installer` (« Installer 1.5 », `principal`) dès qu'une version plus récente
+    est connue, y compris pendant le téléchargement (un second appui ne fait rien).
+  - `systeme` : `wifi`, `bluetooth`, `reglages` ouvrent la page sur la TV (comme les tuiles de
+    Réglages) ; si elle n'existe pas, la TV affiche « Réglage indisponible sur cet appareil ».
+
 ## Côté TV : injection
 
 - **Texte** : clavier iBiTV (IME, `remote/ClavierTelecommande`). Il remplace le contenu du champ actif via `InputConnection` (`setComposingText` / `commitText`, `deleteSurroundingText`) et envoie l'action de l'éditeur pour `submit`. Il détecte le focus : `onStartInput` donne le type du champ via `EditorInfo.inputType` / `imeOptions`, et `onFinishInput` envoie `focus_lost`.

@@ -116,6 +116,8 @@ class MainActivity : ComponentActivity() {
 
         // Télécommande smartphone : connexion seulement si un téléphone est appairé (voir remote.Telecommande)
         Telecommande.demarrer(this)
+        // Pilotage depuis le téléphone : mises à jour d'iBiTV et liste des applis de cet accueil
+        Telecommande.attacherAccueil(vm)
 
         setContent {
             // Échelle : interface dessinée pour 960 dp de large
@@ -621,6 +623,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         unregisterReceiver(surChangementApps)
+        Telecommande.detacherAccueil(vm)
         super.onDestroy()
     }
 

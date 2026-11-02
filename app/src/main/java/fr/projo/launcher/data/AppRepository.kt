@@ -49,9 +49,10 @@ class AppRepository(private val context: Context) {
      * Toutes les apps lançables, triées par nom, sans le launcher lui-même.
      * Apps TV (LEANBACK_LAUNCHER) d'abord, complétées par les apps classiques (LAUNCHER) :
      * sur un projecteur Android « non TV », la plupart sont classiques.
-     * À appeler hors du thread principal.
+     * À appeler hors du thread principal. [journal] : false pour ne pas écrire la liste dans
+     * les journaux (télécommande smartphone).
      */
-    fun loadApps(): List<AppInfo> {
+    fun loadApps(journal: Boolean = true): List<AppInfo> {
         val tv = query(Intent.CATEGORY_LEANBACK_LAUNCHER)
         val classiques = query(Intent.CATEGORY_LAUNCHER)
 
@@ -60,8 +61,10 @@ class AppRepository(private val context: Context) {
         for (ri in classiques) ajouter(parPaquet, ri, isTv = false)
 
         val apps = parPaquet.values.sortedBy { it.label.lowercase() }
-        Log.i(TAG, "${apps.size} apps trouvées (${tv.size} TV, ${classiques.size} classiques)")
-        apps.forEach { Log.i(TAG, "  ${it.label} → ${it.packageName}${if (it.isTvApp) " [TV]" else ""}") }
+        if (journal) {
+            Log.i(TAG, "${apps.size} apps trouvées (${tv.size} TV, ${classiques.size} classiques)")
+            apps.forEach { Log.i(TAG, "  ${it.label} → ${it.packageName}${if (it.isTvApp) " [TV]" else ""}") }
+        }
         return apps
     }
 
