@@ -907,10 +907,7 @@ private fun CiblesCarrousel(
             )
         }
     }
-    if (n > 1) {
-        Fleche(k, 588f, -1, nav, deplacer)
-        Fleche(k, 1530f, 1, nav, deplacer)
-    }
+    // Carte du centre avant les flèches : son anneau passe sous leur verre
     val c = CarrouselGalerie.place(0)
     val app = when (heros) {
         is StudioSuggestion.Programme -> heros.app
@@ -934,6 +931,10 @@ private fun CiblesCarrousel(
             .testTag("galerie:carte")
             .then(rememberCibleGalerie(nav, EtageGalerie.GALERIE, CLE_CARTE, fr = focusCarte, ordre = 0f)),
     )
+    if (n > 1) {
+        Fleche(k, 588f, -1, nav, deplacer)
+        Fleche(k, 1530f, 1, nav, deplacer)
+    }
 }
 
 /** Élément sélectionnable posé sur une carte du dessin : invisible, sauf son anneau de sélection. */
