@@ -84,6 +84,7 @@ def main():
             "plateforme": fournisseur or ("Au cinéma" if film else "TV"),
             "annee": date[:4],
             "note": ("%.1f" % r["vote_average"]).replace(".", ",") if r.get("vote_average") else "",
+            "resume": (r.get("overview") or "").strip(),
             "backdrop": f"img/backdrop{i}.jpg",
             "poster": f"img/poster{i}.jpg",
         })

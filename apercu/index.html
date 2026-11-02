@@ -1,262 +1,219 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8">
 <title>iBiTV · Galerie</title>
+<!--
+  Concept « Galerie » pour la TV, inspiré des interfaces en verre flottant :
+  trois étages navigables à la télécommande, et rien de décoratif qui ait l'air d'un bouton.
+   1. En haut : Pour vous / Films / Séries (filtres réels), météo (info), Réglages.
+   2. Au centre : galerie des titres du moment (TMDB), en carrousel ◀ ▶ ; le titre au centre a
+      son synopsis sur un panneau de verre, avec « Regarder sur … » (ouvre l'appli sur ce titre)
+      et « Bande-annonce » (recherche YouTube).
+   3. En bas : le dock des applis, en grand, avec leur reflet au sol.
+-->
 <style>
 @font-face { font-family: Serif; src: url(polices/instrument-serif-latin-400-normal.woff2); }
-@font-face { font-family: Serif; font-style: italic; src: url(polices/instrument-serif-latin-400-italic.woff2); }
 @font-face { font-family: M; font-weight: 400; src: url(polices/manrope-latin-400-normal.woff2); }
 @font-face { font-family: M; font-weight: 500; src: url(polices/manrope-latin-500-normal.woff2); }
 @font-face { font-family: M; font-weight: 600; src: url(polices/manrope-latin-600-normal.woff2); }
 @font-face { font-family: M; font-weight: 700; src: url(polices/manrope-latin-700-normal.woff2); }
-:root {
-  --verre: rgba(255,255,255,.22); --verre-fort: rgba(255,255,255,.34); --bord: rgba(255,255,255,.55);
-  --encre: #2b2d33; --encre-2: #5d6069; --encre-3: #8a8d96;
-}
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { width: 1920px; height: 1080px; overflow: hidden; font-family: M, sans-serif; color: var(--encre); position: relative;
-  background: radial-gradient(ellipse 120% 80% at 50% 18%, #e4e5e8 0%, #cfd0d4 42%, #b3b5ba 72%, #9fa1a6 100%); }
-/* brume du sol et horizon */
-.sol { position: absolute; left: 0; right: 0; bottom: 0; height: 300px;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(240,241,244,.55) 40%, rgba(200,202,207,.85) 100%); }
-.horizon { position: absolute; left: 0; right: 0; top: 820px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); filter: blur(1px); }
+body { width: 1920px; height: 1080px; overflow: hidden; font-family: M, sans-serif; color: #2b2d33; position: relative;
+  background: radial-gradient(ellipse 120% 85% at 50% 22%, #e6e7ea 0%, #d0d1d5 45%, #b4b6bb 75%, #a2a4a9 100%); }
+.sol { position: absolute; left: 0; right: 0; top: 770px; bottom: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(236,237,240,.55) 35%, rgba(196,198,203,.9) 100%); }
+.horizon { position: absolute; left: 0; right: 0; top: 770px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); }
 
-/* ---------- verre ---------- */
-.verre { background: linear-gradient(160deg, rgba(255,255,255,.38), rgba(255,255,255,.14) 55%, rgba(255,255,255,.22));
-  border: 1.5px solid rgba(255,255,255,.6); backdrop-filter: blur(22px) saturate(1.3);
-  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 -1px 0 rgba(0,0,0,.05) inset, 0 18px 40px rgba(40,44,52,.18), 0 2px 6px rgba(40,44,52,.08); }
-.pilule { border-radius: 999px; display: inline-flex; align-items: center; gap: 12px; }
-.reflet { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(115deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 22%, rgba(255,255,255,0) 70%, rgba(255,255,255,.25) 100%); mix-blend-mode: soft-light; }
+/* verre */
+.verre { background: linear-gradient(160deg, rgba(255,255,255,.42), rgba(255,255,255,.16) 55%, rgba(255,255,255,.26));
+  border: 1.5px solid rgba(255,255,255,.62); backdrop-filter: blur(24px) saturate(1.35);
+  box-shadow: 0 1px 0 rgba(255,255,255,.75) inset, 0 18px 40px rgba(40,44,52,.16), 0 2px 6px rgba(40,44,52,.06); }
+.pilule { border-radius: 999px; display: inline-flex; align-items: center; }
+/* focus télécommande : anneau blanc + contour sombre, léger zoom */
+.focus { box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(43,45,51,.9), 0 22px 44px rgba(20,22,28,.3) !important; transform: scale(1.05); }
 
-/* ---------- haut ---------- */
-.logo { position: absolute; left: 70px; top: 52px; display: flex; align-items: center; gap: 14px; font-weight: 700; letter-spacing: .02em; font-size: 26px; color: #3b3d44; }
-.logo .etoile { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.logo .etoile svg { width: 26px; height: 26px; }
-.heure { position: absolute; left: 70px; top: 128px; display: flex; align-items: center; gap: 16px; }
-.heure .rond { width: 62px; height: 62px; border-radius: 50%; background: #2f3137; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
-.heure .txt small { display: block; color: var(--encre-3); font-size: 15px; }
-.heure .txt b { font-size: 20px; font-weight: 600; }
-.recherche { position: absolute; left: 600px; top: 46px; width: 840px; height: 54px; padding: 0 26px; font-size: 18px; color: var(--encre-2); justify-content: center; }
-.recherche svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
-.filtres { position: absolute; left: 0; right: 0; top: 130px; display: flex; justify-content: center; gap: 14px; }
-.filtre { padding: 10px 22px 10px 26px; min-width: 210px; justify-content: space-between; position: relative; }
-.filtre small { display: block; font-size: 13px; color: var(--encre-3); line-height: 1.1; }
-.filtre b { font-size: 18px; font-weight: 600; }
-.filtre svg { width: 18px; height: 18px; stroke: var(--encre-2); fill: none; stroke-width: 2; }
-.filtre.rond { min-width: 0; width: 62px; height: 62px; padding: 0; justify-content: center; }
+/* ---------- étage 1 ---------- */
+.logo { position: absolute; left: 72px; top: 50px; display: flex; align-items: center; gap: 14px; font-size: 27px; font-weight: 700; color: #34363d; }
+.logo .pastille { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.logo .pastille svg { width: 26px; height: 26px; }
+.logo small { display: block; font-size: 15px; font-weight: 500; color: #7c7f88; margin-top: 2px; }
+.onglets { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); padding: 6px; gap: 4px; }
+.onglet { padding: 12px 30px; border-radius: 999px; font-size: 19px; font-weight: 600; color: #5d6069; }
+.onglet.actif { background: #2b2d33; color: #fff; box-shadow: 0 8px 18px rgba(0,0,0,.22); }
+.meteo { position: absolute; right: 150px; top: 54px; padding: 10px 22px 10px 14px; gap: 12px; font-size: 18px; font-weight: 600; color: #34363d; }
+.meteo svg { width: 34px; height: 34px; }
+.meteo small { color: #7c7f88; font-weight: 500; font-size: 15px; }
+.reglages { position: absolute; right: 72px; top: 52px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.reglages svg { width: 26px; height: 26px; stroke: #34363d; fill: none; stroke-width: 1.9; }
 
-/* ---------- héros ---------- */
-.halo { position: absolute; left: 610px; top: 320px; width: 840px; height: 460px; border-radius: 60px; filter: blur(80px) saturate(1.7); opacity: .75; background-size: cover; background-position: center; }
-.heros { position: absolute; left: 600px; top: 300px; width: 860px; height: 470px; border-radius: 34px; overflow: hidden; background: #0b0b0e;
-  box-shadow: 0 40px 80px rgba(20,22,28,.35), 0 0 0 1px rgba(255,255,255,.08) inset; }
-.heros .img { position: absolute; inset: -14px; background-size: cover; background-position: center 35%; filter: blur(4px) saturate(1.35) contrast(1.08); transform: scale(1.04); }
-.heros .img2 { position: absolute; inset: 0; background-size: cover; background-position: center 35%; filter: blur(0.6px) saturate(1.2); mix-blend-mode: screen; opacity: .45;
-  -webkit-mask-image: radial-gradient(ellipse 55% 60% at 50% 62%, #000 30%, transparent 80%); }
-.heros .voile { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,5,8,.92) 0%, rgba(5,5,8,.55) 30%, rgba(5,5,8,.05) 60%, rgba(5,5,8,.35) 100%); }
-.heros .marque { position: absolute; left: 34px; top: 30px; color: #fff; font-size: 13px; line-height: 1.35; letter-spacing: .04em; }
-.heros .marque b { display: block; font-size: 15px; letter-spacing: .08em; }
-.heros .marque i { font-family: Serif; font-style: normal; font-size: 19px; letter-spacing: 0; }
-.heros .coin { position: absolute; right: 30px; top: 34px; color: rgba(255,255,255,.85); font-family: Serif; font-size: 20px; }
-.heros h1 { position: absolute; left: 0; right: 0; top: 104px; margin: 0; text-align: center; color: #fff; font-family: Serif; font-weight: 400; font-size: 58px; line-height: 1.05; letter-spacing: -.005em; text-shadow: 0 2px 20px rgba(0,0,0,.4); }
-.heros h1 .sel { background: rgba(255,255,255,.16); box-shadow: 0 0 0 1px rgba(255,255,255,.22); padding: 0 8px; border-radius: 4px; }
-.heros h1 .curseur { display: inline-block; width: 2px; height: 50px; background: #fff; vertical-align: -6px; margin-left: 2px; }
+/* ---------- étage 2 : galerie ---------- */
+.carte { position: absolute; border-radius: 26px; overflow: hidden; background-size: cover; background-position: center; box-shadow: 0 26px 50px rgba(20,22,28,.28); }
+.carte::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 1.5px rgba(255,255,255,.4) inset; background: linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0) 35%); }
+.carte.loin { filter: blur(3px) saturate(1.2); opacity: .9; }
+.carte.tres-loin { filter: blur(6px) saturate(1.1); opacity: .7; }
+.carte .etiquette { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; color: #fff; font-size: 15px; font-weight: 600; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+.reflet-carte { position: absolute; border-radius: 26px; background-size: cover; background-position: center; transform: scaleY(-1); opacity: .2; filter: blur(5px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 60%, #000 100%); }
+.fleche { position: absolute; top: 372px; width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; }
+.fleche svg { width: 24px; height: 24px; stroke: #34363d; fill: none; stroke-width: 2.2; }
 
-/* outils flottants au-dessus du héros */
-.outil { position: absolute; padding: 9px 12px 9px 18px; font-size: 16px; font-weight: 600; color: #2f3137; z-index: 4; background: linear-gradient(160deg, rgba(255,255,255,.72), rgba(236,237,240,.55)) !important; }
-.outil svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
-.touche { min-width: 28px; height: 28px; padding: 0 7px; border-radius: 9px; background: rgba(40,42,48,.12); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #4b4e57; }
-.outil.focus { background: rgba(255,255,255,.75); color: #111; box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(47,49,55,.85), 0 18px 40px rgba(20,22,28,.3); transform: scale(1.06); }
-.outil.sombre { background: rgba(30,32,38,.55); color: #fff; border-color: rgba(255,255,255,.25); }
-.outil.sombre .touche { background: rgba(255,255,255,.18); color: #fff; }
-.rond-outil { position: absolute; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 4; background: linear-gradient(160deg, rgba(255,255,255,.7), rgba(236,237,240,.5)) !important; }
-.rond-outil svg { width: 22px; height: 22px; stroke: #3b3d44; fill: none; stroke-width: 1.8; }
-.point-guide { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.9); z-index: 4; }
-.badges { position: absolute; left: 0; right: 0; top: 236px; display: flex; justify-content: center; gap: 8px; z-index: 3; }
-.badge { padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.55); color: #fff; font-size: 13px; font-weight: 600; background: rgba(255,255,255,.08); }
-.barre-infos { position: absolute; left: 1010px; top: 596px; padding: 8px 10px 8px 18px; gap: 14px; background: rgba(28,30,36,.55); color: #fff; border-color: rgba(255,255,255,.22); font-size: 15px; z-index: 4; }
-.barre-infos .sep { width: 1px; height: 20px; background: rgba(255,255,255,.25); }
-.barre-infos .pt { width: 12px; height: 12px; border-radius: 50%; background: #fff; }
-.barre-infos .net { color: #fff; font-weight: 700; }
-.genie { position: absolute; left: 958px; top: 584px; width: 56px; height: 44px; border-radius: 16px; background: #6c9c79; display: flex; align-items: center; justify-content: center; z-index: 5; box-shadow: 0 10px 24px rgba(40,90,60,.35), 0 0 0 1px rgba(255,255,255,.4) inset; }
-.genie svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; }
+.halo { position: absolute; left: 520px; top: 190px; width: 880px; height: 440px; border-radius: 60px; filter: blur(80px) saturate(1.7); opacity: .7; background-size: cover; background-position: center; }
+.heros { position: absolute; left: 470px; top: 150px; width: 980px; height: 500px; border-radius: 34px; overflow: hidden; background: #0b0b0e;
+  box-shadow: 0 40px 80px rgba(20,22,28,.35), 0 0 0 1px rgba(255,255,255,.1) inset; }
+.heros .img { position: absolute; inset: -16px; background-size: cover; background-position: center 30%; filter: blur(3px) saturate(1.35) contrast(1.06); }
+.heros .net { position: absolute; inset: 0; background-size: cover; background-position: center 30%; filter: saturate(1.2);
+  -webkit-mask-image: radial-gradient(ellipse 50% 55% at 50% 58%, #000 25%, transparent 78%); opacity: .55; }
+.heros .voile { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,5,8,.9) 0%, rgba(5,5,8,.5) 32%, rgba(5,5,8,.05) 62%, rgba(5,5,8,.4) 100%); }
+.heros .haut { position: absolute; left: 34px; right: 34px; top: 28px; display: flex; justify-content: space-between; align-items: center; color: #fff; }
+.heros .service { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: .06em; }
+.heros .service i { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 17px; font-weight: 800; }
+.heros .rang { font-family: Serif; font-size: 22px; opacity: .9; }
+.heros h1 { position: absolute; left: 60px; right: 60px; top: 92px; margin: 0; text-align: center; color: #fff; font-family: Serif; font-weight: 400; font-size: 64px; line-height: 1.04; text-shadow: 0 2px 22px rgba(0,0,0,.45); }
+.heros .infos { position: absolute; left: 0; right: 0; top: 248px; display: flex; justify-content: center; gap: 8px; }
+.badge { padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); color: #fff; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.08); }
+.badge.note { background: rgba(255,255,255,.9); color: #1b1c20; border-color: transparent; }
 
-/* ---------- galerie de gauche ---------- */
-.tuile { position: absolute; border-radius: 26px; overflow: hidden; background-size: cover; background-position: center; box-shadow: 0 24px 50px rgba(20,22,28,.28); }
-.tuile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 1.5px rgba(255,255,255,.35) inset; background: linear-gradient(140deg, rgba(255,255,255,.25), rgba(255,255,255,0) 35%); }
-.tuile.floue { filter: blur(2.5px) saturate(1.3); }
-.tuile.nb { filter: grayscale(1) contrast(1.1); }
-.tuile .coche { position: absolute; left: 50%; top: 55%; width: 28px; height: 28px; margin: -14px; z-index: 2; }
-.ajout { position: absolute; left: 150px; top: 520px; padding: 10px 26px; font-size: 15px; font-weight: 600; background: rgba(60,62,70,.55); color: #fff; border-color: rgba(255,255,255,.25); }
-.agrandir { position: absolute; left: 370px; top: 517px; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.agrandir svg { width: 20px; height: 20px; stroke: #3b3d44; fill: none; stroke-width: 2; }
+/* panneau synopsis (verre) à cheval sur le bas du héros */
+.synopsis { position: absolute; left: 640px; top: 528px; width: 900px; height: 236px; border-radius: 32px; padding: 26px 30px 0 30px; z-index: 6; overflow: hidden;
+  background: linear-gradient(160deg, rgba(255,255,255,.78), rgba(246,247,249,.6) 60%, rgba(255,255,255,.7)) !important; backdrop-filter: blur(30px) saturate(1.2) !important; }
+.synopsis .tete { display: flex; align-items: center; gap: 12px; font-size: 15px; color: #55585f; font-weight: 600; }
+.synopsis .tete b { color: #2b2d33; }
+.synopsis p { margin: 10px 0 0; font-size: 19.5px; line-height: 1.5; color: #26282d; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.synopsis .actions { position: absolute; left: 26px; bottom: 26px; display: flex; gap: 12px; }
+.bouton { height: 54px; padding: 0 24px; border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: #2b2d33;
+  background: rgba(255,255,255,.5); box-shadow: 0 0 0 1.3px rgba(255,255,255,.75) inset, 0 6px 16px rgba(0,0,0,.08); }
+.bouton svg { width: 20px; height: 20px; }
+.bouton.principal { background: #1d1e22; color: #fff; }
+.trait { position: absolute; left: 30px; right: 30px; bottom: 0; height: 4px; border-radius: 4px; }
+.trait-lueur { position: absolute; left: 80px; right: 80px; bottom: -16px; height: 40px; border-radius: 40px; filter: blur(22px); opacity: .55; }
+.points { position: absolute; right: 30px; bottom: 44px; display: flex; gap: 7px; }
+.points i { width: 8px; height: 8px; border-radius: 50%; background: rgba(43,45,51,.25); }
+.points i.on { width: 26px; border-radius: 4px; background: #2b2d33; }
 
-/* ---------- reflets au sol ---------- */
-.miroir { position: absolute; transform: scaleY(-1); opacity: .22; filter: blur(6px);
-  -webkit-mask-image: linear-gradient(180deg, transparent 55%, #000 100%); pointer-events: none; }
+/* ---------- étage 3 : dock des applis ---------- */
+.onglet-dock { position: absolute; left: 110px; top: 776px; padding: 7px 20px; border-radius: 14px 14px 0 0; font-size: 16px; font-weight: 600; color: #34363d;
+  background: rgba(255,255,255,.34); border: 1.5px solid rgba(255,255,255,.62); border-bottom: 0; backdrop-filter: blur(20px); z-index: 7; }
+.dock { position: absolute; left: 70px; right: 70px; top: 808px; height: 196px; border-radius: 34px; padding: 22px; display: flex; gap: 18px; z-index: 7; }
+.appli { flex: 1; border-radius: 22px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1.3px rgba(255,255,255,.4) inset, 0 12px 26px rgba(0,0,0,.16); font-weight: 800; font-size: 30px; letter-spacing: -.01em; }
+.appli::before { content: ""; position: absolute; inset: 0; background: linear-gradient(150deg, rgba(255,255,255,.28), rgba(255,255,255,0) 40%); }
+.appli.focus { transform: scale(1.06) translateY(-6px); }
+.appli .nom { position: absolute; left: 0; right: 0; bottom: -30px; text-align: center; font-size: 14px; color: #4b4e57; font-weight: 600; letter-spacing: 0; }
+.appli.toutes { background: rgba(255,255,255,.35); color: #34363d; font-size: 17px; font-weight: 700; flex-direction: column; gap: 8px; }
+.appli.toutes svg { width: 34px; height: 34px; stroke: #34363d; fill: none; stroke-width: 1.8; }
+.reflet-dock { position: absolute; left: 92px; right: 92px; top: 1006px; height: 120px; display: flex; gap: 18px; opacity: .18; filter: blur(5px); transform: scaleY(-1);
+  -webkit-mask-image: linear-gradient(180deg, transparent 30%, #000 100%); }
+.reflet-dock div { flex: 1; border-radius: 22px; }
 
-/* ---------- panneau « reprendre / demander » ---------- */
-.demande { position: absolute; left: 650px; top: 690px; width: 860px; height: 300px; border-radius: 34px; overflow: hidden; z-index: 6; }
-.demande .fond { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.18)); }
-.demande .vignettes { position: absolute; left: 30px; top: 26px; display: flex; gap: 12px; }
-.demande .v { width: 116px; height: 72px; border-radius: 14px; background-size: cover; background-position: center; box-shadow: 0 0 0 1.5px rgba(255,255,255,.6), 0 6px 16px rgba(0,0,0,.18); position: relative; }
-.demande .v .prog { position: absolute; left: 8px; right: 8px; bottom: 7px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.4); }
-.demande .v .prog b { display: block; height: 100%; width: 62%; border-radius: 2px; background: #fff; }
-.demande .plus { width: 72px; height: 72px; border-radius: 14px; border: 1.5px dashed rgba(60,62,70,.35); display: flex; align-items: center; justify-content: center; color: var(--encre-2); font-size: 26px; }
-.demande p { position: absolute; left: 32px; right: 40px; top: 120px; margin: 0; font-size: 19px; line-height: 1.45; color: #3e4048; }
-.demande p em { font-style: normal; font-weight: 700; color: #22242a; }
-.demande p .caret { display: inline-block; width: 2px; height: 22px; background: #e2584a; vertical-align: -4px; margin-left: 2px; }
-.demande .actions { position: absolute; left: 26px; right: 26px; bottom: 30px; display: flex; align-items: center; gap: 12px; }
-.chip { height: 50px; padding: 0 20px; border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: #34363d;
-  background: rgba(255,255,255,.42); box-shadow: 0 0 0 1.2px rgba(255,255,255,.7) inset, 0 6px 16px rgba(0,0,0,.08); }
-.chip.carre { width: 50px; padding: 0; justify-content: center; }
-.chip svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
-.chip.noir { background: #2b2d33; color: #fff; box-shadow: 0 10px 22px rgba(0,0,0,.28); }
-.arc { position: absolute; left: 30px; right: 30px; bottom: 0; height: 4px; border-radius: 4px;
-  background: linear-gradient(90deg, #4f8df5 0%, #4f8df5 24%, #f07090 34%, #f0a060 52%, #f2d160 62%, #7dcf8a 78%, #7dcf8a 100%); filter: saturate(1.1); }
-.arc-lueur { position: absolute; left: 60px; right: 60px; bottom: -14px; height: 38px; border-radius: 40px; filter: blur(22px); opacity: .5;
-  background: linear-gradient(90deg, #4f8df5, #f07090 40%, #f2d160 62%, #7dcf8a); }
-
-/* ---------- applis (bas gauche) ---------- */
-.applis { position: absolute; left: 70px; top: 822px; width: 480px; padding: 16px; border-radius: 30px; }
-.applis .titre { position: absolute; left: 50px; top: -26px; padding: 6px 18px; border-radius: 14px 14px 0 0; font-size: 16px; font-weight: 600; color: #3b3d44; background: rgba(255,255,255,.28); border: 1.5px solid rgba(255,255,255,.6); border-bottom: 0; backdrop-filter: blur(20px); }
-.applis .g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.app { height: 78px; border-radius: 20px; padding: 18px 20px; font-size: 19px; font-weight: 600; color: #fff; position: relative; overflow: hidden;
-  box-shadow: 0 0 0 1.2px rgba(255,255,255,.45) inset, 0 10px 22px rgba(0,0,0,.12); }
-.app::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 120% at 85% 120%, rgba(255,255,255,.45), transparent 60%); }
-.app span { position: relative; }
-.app.focus-app { box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(47,49,55,.85); }
-
-/* ---------- module (bas droite) ---------- */
-.module { position: absolute; right: 60px; top: 880px; width: 250px; height: 140px; border-radius: 26px; padding: 22px 24px; }
-.module small { color: var(--encre-3); font-size: 15px; }
-.module b { display: block; font-size: 40px; font-weight: 600; margin-top: 2px; color: #2f3137; }
-.module .nuage { position: absolute; right: 22px; top: 22px; width: 64px; height: 64px; }
-.droite { position: absolute; right: -90px; top: 360px; width: 410px; height: 280px; }
-
-.credit { position: absolute; right: 70px; bottom: 26px; font-size: 13px; color: rgba(60,62,70,.55); }
+.credit { position: absolute; right: 74px; top: 126px; font-size: 13px; color: rgba(60,62,70,.55); }
 </style></head>
 <body>
 <div class="sol"></div><div class="horizon"></div>
 
-<!-- haut -->
-<div class="logo"><span class="etoile verre"><svg viewBox="0 0 24 24" fill="none" stroke="#3b3d44" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/><circle cx="12" cy="12" r="3.2" fill="#e9eaee"/></svg></span>iBiTV</div>
-<div class="heure"><span class="rond">20:41</span><span class="txt"><small>Mardi 3 novembre</small><b>Bonsoir</b></span></div>
-<div class="recherche verre pilule"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Rechercher un film, une série, une appli…</div>
-<div class="filtres">
-  <div class="filtre verre pilule"><div><small>Profil</small><b>Salon</b></div><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
-  <div class="filtre verre pilule"><div><small>Explorer</small><b>Films et séries</b></div><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
-  <div class="filtre verre pilule"><div><small>Plateforme</small><b>Toutes</b></div><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
-  <div class="filtre verre pilule"><div><small>Tendances</small><b>Cette semaine</b></div><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
-  <div class="filtre verre pilule rond"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/></svg></div>
-</div>
+<!-- étage 1 -->
+<div class="logo"><span class="pastille verre"><svg viewBox="0 0 24 24" fill="none" stroke="#34363d" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/><circle cx="12" cy="12" r="3.2" fill="#e9eaee"/></svg></span>
+  <div>iBiTV<small>20:41 · mardi 3 novembre</small></div></div>
+<div class="onglets verre pilule"><span class="onglet actif">Pour vous</span><span class="onglet">Films</span><span class="onglet">Séries</span></div>
+<div class="meteo verre pilule"><svg viewBox="0 0 64 64"><circle cx="40" cy="22" r="11" fill="#f3c969"/><path d="M18 46h30a10 10 0 000-20 14 14 0 00-26 4 8 8 0 00-4 16z" fill="#fff"/></svg>14°<small>Paris</small></div>
+<div class="reglages verre"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></div>
+<div class="credit" id="credit">Titres et images : TMDB</div>
 
-<!-- galerie gauche -->
+<!-- étage 2 : galerie -->
 <div id="galerie"></div>
-<div class="ajout verre pilule">Ajouter à ma liste</div>
-<div class="agrandir verre"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></div>
-
-<!-- héros -->
+<div class="fleche verre" style="left:432px"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div>
+<div class="fleche verre" style="left:1430px"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
 <div class="halo" id="halo"></div>
-<div class="heros" id="heros">
-  <div class="img" id="heros-img"></div><div class="img2" id="heros-img2"></div><div class="voile"></div>
-  <div class="marque"><i id="heros-plateforme">Netflix</i><b>À LA UNE</b></div>
-  <div class="coin">iBiTV</div>
-  <h1 id="heros-titre"></h1>
-  <div class="badges"><span class="badge">4K</span><span class="badge">Dolby Vision</span><span class="badge">VF</span></div>
+<div class="heros">
+  <div class="img" id="h-img"></div><div class="net" id="h-net"></div><div class="voile"></div>
+  <div class="haut"><span class="service"><i id="h-logo">N</i><span id="h-service">NETFLIX</span></span><span class="rang">N°1 cette semaine</span></div>
+  <h1 id="h-titre"></h1>
+  <div class="infos" id="h-infos"></div>
 </div>
-<div class="outil verre pilule" style="left:928px; top:236px;"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Bande-annonce<span class="touche">▶</span></div>
-<div class="point-guide" style="left:1026px; top:292px"></div><div class="rond-outil verre" style="left:1000px; top:306px"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg></div>
-<div class="outil verre pilule focus" style="left:800px; top:282px;"><svg viewBox="0 0 24 24" style="fill:#111;stroke:none"><path d="M7 5v14l12-7z"/></svg>Regarder<span class="touche">OK</span></div>
-<div class="outil verre pilule" style="left:1092px; top:282px;"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ma liste<span class="touche">+</span></div>
-<div class="genie"><svg viewBox="0 0 24 24"><path d="M5 19L15 9M14 4v3M18.5 5.5l-2 2M20 10h-3M9 4l.7 1.8L11.5 6.5l-1.8.7L9 9l-.7-1.8L6.5 6.5l1.8-.7z"/></svg></div>
-<div class="barre-infos verre pilule"><span class="net" id="info-plateforme">Netflix</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg><span class="sep"></span><span id="info-sous">Film · 2h46</span><span class="sep"></span><span class="pt"></span><span id="info-note">★ 8,2 TMDB</span></div>
-
-<!-- panneau de droite (aperçu suivant) -->
-<div class="tuile droite floue" id="droite"></div>
-
-<!-- reflets au sol -->
-<div class="miroir" id="miroir-heros" style="left:600px; top:770px; width:860px; height:300px; border-radius:34px; background:#0b0b0e; overflow:hidden;"></div>
-
-<!-- demander / reprendre -->
-<div class="demande verre">
-  <div class="fond"></div>
-  <div class="vignettes" id="vignettes"></div>
-  <p>Reprendre <em id="reprendre-titre">The Bear</em>, saison 3 épisode 4 — il reste 23 min. Ou dites simplement ce que vous voulez regarder : « une comédie courte ce soir »…<span class="caret"></span></p>
+<div class="synopsis verre">
+  <div class="tete"><b id="s-titre"></b><span>·</span><span id="s-sous"></span></div>
+  <p id="s-texte"></p>
   <div class="actions">
-    <span class="chip carre"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
-    <span class="chip carre"><svg viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></svg></span>
-    <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z"/></svg>Films</span>
-    <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Séries</span>
-    <span style="flex:1"></span>
-    <span class="chip carre"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>
-    <span class="chip carre noir"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+    <span class="bouton principal focus"><svg viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg><span id="b-regarder">Regarder sur Netflix</span></span>
+    <span class="bouton"><svg viewBox="0 0 24 24" fill="none" stroke="#2b2d33" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z" fill="#2b2d33"/></svg>Bande-annonce</span>
   </div>
-  <div class="arc-lueur"></div><div class="arc"></div>
+  <div class="points" id="points"></div>
+  <div class="trait-lueur" id="lueur"></div><div class="trait" id="trait"></div>
 </div>
 
-<!-- applis -->
-<div class="applis verre">
-  <div class="titre">Mes applis</div>
-  <div class="g">
-    <div class="app focus-app" style="background:linear-gradient(135deg,#e88f74,#d9604a)"><span>Netflix</span></div>
-    <div class="app" style="background:linear-gradient(135deg,#4aa6c9,#1f7fa8)"><span>Prime Video</span></div>
-    <div class="app" style="background:linear-gradient(135deg,#d6d7db,#b4b6bc); color:#2f3137"><span>iBiTube</span></div>
-    <div class="app" style="background:linear-gradient(135deg,#86c39a,#4f9f6c)"><span>Spotify</span></div>
-  </div>
-</div>
-
-<!-- module météo -->
-<div class="module verre"><small>Météo · Paris</small><b>14°</b><small>Nuageux, éclaircies</small>
-  <svg class="nuage" viewBox="0 0 64 64"><circle cx="40" cy="22" r="11" fill="#f3c969"/><path d="M18 46h30a10 10 0 000-20 14 14 0 00-26 4 8 8 0 00-4 16z" fill="#fff" opacity=".92"/></svg></div>
-
-<div class="credit" id="credit">Images : TMDB</div>
+<!-- étage 3 : applis -->
+<div class="onglet-dock">Mes applis</div>
+<div class="dock verre" id="dock"></div>
+<div class="reflet-dock" id="reflet-dock"></div>
 
 <script src="donnees.js"></script>
 <script>
 const T = window.DONNEES.titres;
 const fond = (el, url) => { el.style.backgroundImage = `url("${url}")`; };
-// héros
+const SERVICES = {
+  "Netflix": { logo: "N", fond: "#000", texte: "#e50914", trait: "linear-gradient(90deg,#e50914,#ff6a3d 55%,#e50914)" },
+  "Amazon Prime Video": { logo: "p", fond: "#0f79af", texte: "#fff", trait: "linear-gradient(90deg,#00a8e1,#7fd3f5 55%,#00a8e1)" },
+  "Prime Video": { logo: "p", fond: "#0f79af", texte: "#fff", trait: "linear-gradient(90deg,#00a8e1,#7fd3f5 55%,#00a8e1)" },
+  "Disney Plus": { logo: "D+", fond: "#0b1e5b", texte: "#fff", trait: "linear-gradient(90deg,#1b3fa8,#4ad0e8 55%,#1b3fa8)" },
+  "Disney+": { logo: "D+", fond: "#0b1e5b", texte: "#fff", trait: "linear-gradient(90deg,#1b3fa8,#4ad0e8 55%,#1b3fa8)" },
+  "Canal+": { logo: "+", fond: "#000", texte: "#fff", trait: "linear-gradient(90deg,#222,#888 55%,#222)" },
+  "CANAL+": { logo: "+", fond: "#000", texte: "#fff", trait: "linear-gradient(90deg,#222,#888 55%,#222)" },
+};
+const defaut = { logo: "▶", fond: "rgba(255,255,255,.2)", texte: "#fff", trait: "linear-gradient(90deg,#4f8df5,#f07090 40%,#f2d160 62%,#7dcf8a)" };
+
+// Titre au centre : le premier ; les voisins de part et d'autre (carrousel)
 const h = T[0];
-fond(document.getElementById("heros-img"), h.backdrop);
-fond(document.getElementById("heros-img2"), h.backdrop);
-fond(document.getElementById("halo"), h.backdrop);
-const mots = h.titre.split(" ");
-// le mot le plus long est « sélectionné », comme un texte édité
-let iSel = mots.reduce((m, w, i) => w.length > mots[m].length ? i : m, 0);
-const coupe = Math.ceil(mots.length / 2);
-document.getElementById("heros-titre").innerHTML = mots.map((w, i) =>
-  (i === coupe && mots.length > 2 ? "<br>" : "") + (i === iSel ? `<span class="sel">${w}</span>` : w)).join(" ") + '<span class="curseur"></span>';
-document.getElementById("heros-plateforme").textContent = h.plateforme || "";
-document.getElementById("info-plateforme").textContent = h.plateforme || "";
-document.getElementById("info-sous").textContent = h.sous + (h.annee ? " · " + h.annee : "");
-document.getElementById("info-note").textContent = h.note ? "★ " + h.note + " TMDB" : "TMDB";
-// galerie gauche : 2 × 2 + une carte coupée par le bord
+const sv = SERVICES[h.plateforme] || defaut;
+for (const id of ["h-img", "h-net", "halo"]) fond(document.getElementById(id), h.backdrop);
+document.getElementById("h-titre").textContent = h.titre;
+document.getElementById("h-service").textContent = (h.plateforme || "").toUpperCase();
+const lg = document.getElementById("h-logo"); lg.textContent = sv.logo; lg.style.background = sv.fond; lg.style.color = sv.texte;
+document.getElementById("h-infos").innerHTML = [h.sous.split(" · ")[0], h.sous.split(" · ")[1], h.annee].filter(Boolean).map(x => `<span class="badge">${x}</span>`).join("")
+  + (h.note ? `<span class="badge note">★ ${h.note}</span>` : "");
+document.getElementById("s-titre").textContent = h.titre;
+document.getElementById("s-sous").textContent = [h.sous, h.annee].filter(Boolean).join(" · ");
+document.getElementById("s-texte").textContent = h.resume || "Résumé du titre, fourni par TMDB en français.";
+document.getElementById("b-regarder").textContent = h.plateforme && SERVICES[h.plateforme] ? "Regarder sur " + h.plateforme.replace("Amazon ", "") : "Où regarder ?";
+document.getElementById("trait").style.background = sv.trait;
+document.getElementById("lueur").style.background = sv.trait;
+document.getElementById("points").innerHTML = T.slice(0, 7).map((_, i) => `<i class="${i === 0 ? "on" : ""}"></i>`).join("");
+
+// Voisins : affiches, plus floues et plus petites en s'éloignant
 const g = document.getElementById("galerie");
-const places = [
-  { l: -70, t: 290, w: 170, h: 290, img: T[5].poster, cls: "" },
-  { l: 320, t: 300, w: 250, h: 210, img: T[1].backdrop, cls: "floue", coche: true },
-  { l: 130, t: 590, w: 230, h: 180, img: T[2].backdrop, cls: "" },
-  { l: 376, t: 590, w: 194, h: 180, img: T[3].backdrop, cls: "nb" },
+const voisins = [
+  { t: T[T.length - 1], l: 182, top: 222, w: 230, h: 345, cls: "loin" },
+  { t: T[T.length - 2], l: -88, top: 262, w: 200, h: 300, cls: "tres-loin" },
+  { t: T[1], l: 1508, top: 222, w: 230, h: 345, cls: "loin" },
+  { t: T[2], l: 1790, top: 262, w: 200, h: 300, cls: "tres-loin" },
 ];
-for (const p of places) {
+for (const v of voisins) {
   const d = document.createElement("div");
-  d.className = "tuile " + p.cls;
-  Object.assign(d.style, { left: p.l + "px", top: p.t + "px", width: p.w + "px", height: p.h + "px" });
-  fond(d, p.img);
-  if (p.coche) d.innerHTML = '<svg class="coche" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="rgba(255,255,255,.9)"/><path d="M8 14.5l4 4 8-9" stroke="#2b2d33" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>';
+  d.className = "carte " + v.cls;
+  Object.assign(d.style, { left: v.l + "px", top: v.top + "px", width: v.w + "px", height: v.h + "px" });
+  fond(d, v.t.poster);
   g.appendChild(d);
+  const r = document.createElement("div");
+  r.className = "reflet-carte";
+  Object.assign(r.style, { left: v.l + "px", top: (v.top + v.h + 8) + "px", width: v.w + "px", height: v.h * 0.5 + "px" });
+  fond(r, v.t.poster);
+  g.appendChild(r);
 }
-fond(document.getElementById("droite"), T[4].backdrop);
-// reflet au sol du héros
-const m = document.getElementById("miroir-heros");
-m.innerHTML = '<div style="position:absolute;inset:0;background-size:cover;background-position:center 35%;filter:saturate(1.3)"></div>';
-fond(m.firstChild, h.backdrop);
-// vignettes « reprendre »
-const v = document.getElementById("vignettes");
-for (const k of [2, 6]) { const d = document.createElement("div"); d.className = "v"; fond(d, T[k].backdrop); d.innerHTML = '<div class="prog"><b></b></div>'; v.appendChild(d); }
-v.insertAdjacentHTML("beforeend", '<div class="plus">+</div>');
-document.getElementById("reprendre-titre").textContent = T[2].titre;
+
+// Dock des applis (favoris de l'accueil) + « Toutes les applis »
+const APPS = [
+  { nom: "Netflix", html: '<span style="color:#e50914">NETFLIX</span>', fond: "#121212" },
+  { nom: "Prime Video", html: "prime video", fond: "linear-gradient(135deg,#0f79af,#00a8e1)", couleur: "#fff" },
+  { nom: "Disney+", html: "Disney+", fond: "linear-gradient(135deg,#0b1e5b,#1a46b8)", couleur: "#fff" },
+  { nom: "CANAL+", html: "CANAL+", fond: "#000", couleur: "#fff" },
+  { nom: "iBiTube", html: '<span style="color:#1e90ff">iBi</span><span style="color:#fff">Tube</span>', fond: "#0a1020" },
+  { nom: "Spotify", html: "Spotify", fond: "#1db954", couleur: "#0b0b0b" },
+];
+const dock = document.getElementById("dock"), rd = document.getElementById("reflet-dock");
+APPS.forEach((a, i) => {
+  dock.insertAdjacentHTML("beforeend", `<div class="appli" style="background:${a.fond};color:${a.couleur || "#fff"}">${a.html}</div>`);
+  rd.insertAdjacentHTML("beforeend", `<div style="background:${a.fond}"></div>`);
+});
+dock.insertAdjacentHTML("beforeend", '<div class="appli toutes"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg>Toutes les applis</div>');
+rd.insertAdjacentHTML("beforeend", '<div style="background:rgba(255,255,255,.5)"></div>');
 if (window.DONNEES.source !== "tmdb") document.getElementById("credit").textContent = "Images provisoires (remplacées par TMDB)";
 window.pret = true;
 </script>
