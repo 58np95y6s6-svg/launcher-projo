@@ -21,7 +21,7 @@ test("événements connus seulement, codes courts seulement", () => {
     journal("connexion", "v=0\r\na=fingerprint:sha-256 AA");
     journal("connexion", { s: "secret" });
   });
-  assert.deepEqual(l, ["[iBiProjo] connexion tv", "[iBiProjo] appairage_refuse trop_d_essais", "[iBiProjo] connexion", "[iBiProjo] connexion", "[iBiProjo] connexion"]);
+  assert.deepEqual(l, ["[iBiTV] connexion tv", "[iBiTV] appairage_refuse trop_d_essais", "[iBiTV] connexion", "[iBiTV] connexion", "[iBiTV] connexion"]);
 });
 
 test("aucun console.log dans le code de la PWA (hors journal.js)", async () => {

@@ -7,7 +7,7 @@ import android.util.Log
 import fr.projo.launcher.MainActivity
 
 /**
- * Au démarrage de l'appareil, sur Fire TV : ouvre iBiProjo. (Jusqu'à Fire OS 7 ; ensuite
+ * Au démarrage de l'appareil, sur Fire TV : ouvre iBiTV. (Jusqu'à Fire OS 7 ; ensuite
  * Android l'interdit depuis l'arrière-plan et c'est le service d'accessibilité qui s'en charge.)
  */
 class DemarrageReceiver : BroadcastReceiver() {

@@ -1,7 +1,7 @@
-// Configuration de la télécommande iBiProjo : TOUTES les adresses et versions sont ici.
+// Configuration de la télécommande iBiTV : TOUTES les adresses et versions sont ici.
 // Script « classique » : chargé par index.html (balise <script>), par le service worker
 // (importScripts) et par les tests Node (import). Il ne contient aucun secret.
-globalThis.IBIPROJO_CONFIG = Object.freeze({
+globalThis.IBITV_CONFIG = Object.freeze({
   // Adresse publique de la PWA (GitHub Pages). Le QR code de la TV pointe ici.
   urlBase: "https://58np95y6s6-svg.github.io/launcher-projo/",
 

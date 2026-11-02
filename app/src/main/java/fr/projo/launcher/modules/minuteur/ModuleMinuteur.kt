@@ -106,7 +106,7 @@ private fun texteReglage(minutes: Int) = Minuteur.formaterDuree(minutes * 60_000
 object ModuleMinuteur : Module(
     id = "minuteur",
     nom = "Minuteur et réveil",
-    description = "Compte à rebours ou réveil, avec alarme même hors de Projo",
+    description = "Compte à rebours ou réveil, avec alarme même hors d'iBiTV",
     icone = IconeMinuteur,
     tailles = setOf(TailleModule.PETIT, TailleModule.MOYEN),
 ) {

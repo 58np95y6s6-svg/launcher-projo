@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Ouverture automatique (Fire TV) : la pause « accueil Amazon » après un appui long sur Maison.
- * Bug corrigé : le clavier iBiProjo (même paquet), ouvert pour une recherche dans l'accueil
- * Amazon, annulait la pause et l'on était renvoyé vers iBiProjo en plein téléchargement.
+ * Bug corrigé : le clavier iBiTV (même paquet), ouvert pour une recherche dans l'accueil
+ * Amazon, annulait la pause et l'on était renvoyé vers iBiTV en plein téléchargement.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -47,21 +47,21 @@ class RedirectionAccueilTest {
         shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity?.component?.className
 
     @Test
-    fun sansPauseLAccueilAmazonRenvoieVersIBiProjo() {
+    fun sansPauseLAccueilAmazonRenvoieVersIBiTV() {
         val s = service()
         s.ecran(amazon, "com.amazon.tv.launcher.ui.HomeActivity")
         assertEquals(MainActivity::class.java.name, ouverte())
     }
 
     @Test
-    fun leClavierIBiProjoNAnnulePasLaPause() {
+    fun leClavierIBiTVNAnnulePasLaPause() {
         val s = service()
         s.pause(10 * 60_000L)
-        // Recherche dans l'accueil Amazon : notre clavier s'affiche (même paquet qu'iBiProjo)
+        // Recherche dans l'accueil Amazon : notre clavier s'affiche (même paquet qu'iBiTV)
         s.ecran(s.packageName, "android.inputmethodservice.SoftInputWindow")
         s.ecran(appstore, "com.amazon.venezia.AppDetailActivity")
         s.ecran(amazon, "com.amazon.tv.launcher.ui.DetailActivity")
-        assertNull("renvoyé vers iBiProjo pendant la pause", ouverte())
+        assertNull("renvoyé vers iBiTV pendant la pause", ouverte())
     }
 
     @Test
@@ -73,11 +73,11 @@ class RedirectionAccueilTest {
             ShadowLooper.idleMainLooper(50, TimeUnit.SECONDS)
             s.ecran(amazon, "com.amazon.tv.launcher.ui.HomeActivity")
         }
-        assertNull("renvoyé vers iBiProjo alors qu'on navigue chez Amazon", ouverte())
+        assertNull("renvoyé vers iBiTV alors qu'on navigue chez Amazon", ouverte())
     }
 
     @Test
-    fun lEcranIBiProjoTermineLaPause() {
+    fun lEcranIBiTVTermineLaPause() {
         val s = service()
         s.pause(10 * 60_000L)
         s.ecran(s.packageName, MainActivity::class.java.name)

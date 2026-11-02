@@ -11,7 +11,7 @@
     <!-- Internet : calendrier NBA et logos des équipes -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Télécommande smartphone : re-sélectionner le clavier iBiProjo quand un téléphone se
+    <!-- Télécommande smartphone : re-sélectionner le clavier iBiTV quand un téléphone se
          connecte (permission accordée seulement par adb : pm grant, voir l'aide dans Réglages) -->
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
@@ -27,7 +27,7 @@
     <!-- Puces NFC (Fire TV) : réveiller le Fire TV quand une puce ouvre une app -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Fire TV : ouvrir iBiProjo au démarrage de l'appareil -->
+    <!-- Fire TV : ouvrir iBiTV au démarrage de l'appareil -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Bluetooth : afficher l'état et les appareils associés (Android 11 et moins) -->
@@ -145,7 +145,7 @@
         <receiver
             android:name=".modules.minuteur.MinuteurReceiver"
             android:exported="false" />
-        <!-- Télécommande smartphone : clavier iBiProjo (texte tapé sur le téléphone) -->
+        <!-- Télécommande smartphone : clavier iBiTV (texte tapé sur le téléphone) -->
         <service
             android:name=".remote.ClavierTelecommande"
             android:exported="true"

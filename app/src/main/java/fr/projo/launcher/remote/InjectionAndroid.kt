@@ -12,8 +12,8 @@ import android.view.KeyEvent
  * Exécute les commandes d'un téléphone authentifié (appelé sur le fil de la télécommande).
  *
  * Touches de navigation, dans l'ordre :
- * 1. clavier iBiProjo lié à un champ texte → InputConnection.sendKeyEvent ;
- * 2. iBiProjo au premier plan → injection dans sa propre fenêtre (permise sans droit
+ * 1. clavier iBiTV lié à un champ texte → InputConnection.sendKeyEvent ;
+ * 2. iBiTV au premier plan → injection dans sa propre fenêtre (permise sans droit
  *    particulier quand la fenêtre visée appartient à l'appli) ;
  * 3. service d'accessibilité actif → actions globales, focus voisin, clic ;
  * 4. sinon rien (repli silencieux).
@@ -47,7 +47,7 @@ class InjectionAndroid(private val context: Context) : Injecteur {
     override fun valider() {
         val clavier = ClavierTelecommande.instance
         if (clavier != null && clavier.lieAUnChamp) clavier.valider()
-        else injecterDansIBiProjo(KeyEvent.KEYCODE_ENTER)
+        else injecterDansIBiTV(KeyEvent.KEYCODE_ENTER)
     }
 
     private fun naviguer(k: String) {
@@ -63,12 +63,12 @@ class InjectionAndroid(private val context: Context) : Injecteur {
         }
         val clavier = ClavierTelecommande.instance
         if (clavier != null && clavier.lieAUnChamp && clavier.envoyerTouche(code)) return
-        if (injecterDansIBiProjo(code)) return
+        if (injecterDansIBiTV(code)) return
         HoteNavigation.executer(k)
     }
 
-    /** Injection dans la fenêtre d'iBiProjo, seulement si elle est au premier plan. */
-    private fun injecterDansIBiProjo(code: Int): Boolean {
+    /** Injection dans la fenêtre d'iBiTV, seulement si elle est au premier plan. */
+    private fun injecterDansIBiTV(code: Int): Boolean {
         if (Telecommande.activiteAuPremierPlan == null) return false
         return try {
             instrumentation.sendKeyDownUpSync(code)

@@ -239,7 +239,7 @@ fun questionAutorisation(nom: String): String {
     else "Autoriser « $n » ?"
 }
 
-/** Confirmation d'appairage, par-dessus n'importe quel écran d'iBiProjo. */
+/** Confirmation d'appairage, par-dessus n'importe quel écran d'iBiTV. */
 @Composable
 fun ConfirmationAppairageDialog(nom: String, onAutoriser: () -> Unit, onRefuser: () -> Unit) {
     val h = habillageDialogue()
@@ -347,7 +347,7 @@ fun TelephonesDialog(
     }
 }
 
-/** Saisie d'un nom au clavier (clavier de la TV, ou du téléphone par le clavier iBiProjo). */
+/** Saisie d'un nom au clavier (clavier de la TV, ou du téléphone par le clavier iBiTV). */
 @Composable
 private fun SaisieNomDialog(initial: String, onValider: (String) -> Unit, onDismiss: () -> Unit) {
     val h = habillageDialogue()
@@ -406,7 +406,7 @@ fun commandesAdb(
 }
 
 /**
- * Aide à l'activation unique du clavier iBiProjo et de la navigation (accessibilité),
+ * Aide à l'activation unique du clavier iBiTV et de la navigation (accessibilité),
  * comme l'aide de l'ouverture automatique : boutons vers les pages système, et commandes adb
  * (Fire TV, ou appareil sans ces pages).
  */
@@ -437,16 +437,16 @@ fun AideTelecommandeDialog(
                 Etat(
                     fait = resume.clavierChoisi,
                     texte = when {
-                        resume.clavierChoisi -> "Clavier iBiProjo : activé et choisi"
-                        resume.clavierActive -> "Clavier iBiProjo : activé, à choisir"
-                        else -> "Clavier iBiProjo : à activer"
+                        resume.clavierChoisi -> "Clavier iBiTV : activé et choisi"
+                        resume.clavierActive -> "Clavier iBiTV : activé, à choisir"
+                        else -> "Clavier iBiTV : à activer"
                     },
                 )
                 Etat(fait = resume.navigationActive, texte = if (resume.navigationActive) "Navigation : activée" else "Navigation (accessibilité) : à activer")
                 Spacer(Modifier.height(10.u))
                 Text(
                     "À faire une seule fois. Le clavier écrit dans les applis le texte tapé sur le téléphone ; " +
-                        "la navigation fait marcher les flèches et OK hors d'iBiProjo. Sans téléphone connecté, " +
+                        "la navigation fait marcher les flèches et OK hors d'iBiTV. Sans téléphone connecté, " +
                         "le clavier rend la main au clavier habituel.",
                     color = h.discret, fontSize = 12.us,
                 )
@@ -473,7 +473,7 @@ fun AideTelecommandeDialog(
                 }
                 Spacer(Modifier.height(8.u))
                 Text(
-                    "La dernière commande est facultative : elle permet au clavier iBiProjo de se re-choisir tout seul quand un téléphone se connecte.",
+                    "La dernière commande est facultative : elle permet au clavier iBiTV de se re-choisir tout seul quand un téléphone se connecte.",
                     color = h.discret, fontSize = 11.us,
                 )
                 if (note != null) {

@@ -58,7 +58,7 @@ test("verifierVersion() : version annoncée par la TV", () => {
 
 test("verdictErreurVersion() : erreur {code:version, vMax}", () => {
   assert.equal(verdictErreurVersion(0), "maj_tv");
-  assert.equal(TEXTES_VERSION[verdictErreurVersion(0)], "Mettez à jour iBiProjo sur la TV");
+  assert.equal(TEXTES_VERSION[verdictErreurVersion(0)], "Mettez à jour iBiTV sur la TV");
   assert.equal(verdictErreurVersion(1), "recharger");
   assert.equal(verdictErreurVersion(5), "recharger");
   assert.equal(TEXTES_VERSION[verdictErreurVersion(undefined)], "Rechargez la télécommande");

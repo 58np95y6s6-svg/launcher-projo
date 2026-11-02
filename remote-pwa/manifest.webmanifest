@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Télécommande iBiProjo",
-  "short_name": "iBiProjo",
-  "description": "Pilotez iBiProjo (Android TV) depuis votre téléphone : navigation, volume, saisie de texte.",
+  "name": "Télécommande iBiTV",
+  "short_name": "iBiTV",
+  "description": "Pilotez iBiTV (Android TV) depuis votre téléphone : navigation, volume, saisie de texte.",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "./",

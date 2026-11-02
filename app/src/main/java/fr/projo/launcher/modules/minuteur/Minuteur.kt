@@ -451,7 +451,7 @@ object Minuteur {
             .addAction(0, "Annuler", intentionRecepteur(context, ACTION_ANNULER, 4))
         if (e.reveil) {
             b.setContentTitle("Réveil à " + heure(e.fin))
-                .setContentText("Projo sonnera à " + heure(e.fin))
+                .setContentText("iBiTV sonnera à " + heure(e.fin))
                 .setWhen(e.fin).setShowWhen(true)
         } else if (e.mode == ModeMinuteur.PAUSE) {
             b.setContentTitle("Minuteur en pause")

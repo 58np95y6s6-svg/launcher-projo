@@ -12,7 +12,7 @@ for (const ev of ["gesturestart", "gesturechange", "gestureend"]) {
   document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 }
 
-const config = globalThis.IBIPROJO_CONFIG;
+const config = globalThis.IBITV_CONFIG;
 const $ = (id) => document.getElementById(id);
 const ctrl = new Controleur(config);
 
@@ -270,7 +270,7 @@ ctrl.addEventListener("version", async (e) => {
     titre: TEXTES_VERSION[verdict],
     texte: recharger
       ? "La TV utilise une version plus récente du protocole. Rechargez la télécommande pour obtenir la dernière version."
-      : "La télécommande est plus récente que l'app de la TV. Installez la dernière version d'iBiProjo sur la TV.",
+      : "La télécommande est plus récente que l'app de la TV. Installez la dernière version d'iBiTV sur la TV.",
     ok: recharger ? "Recharger" : "OK",
     annuler: recharger ? "Plus tard" : null,
   });
@@ -480,7 +480,7 @@ function majListeTVs() {
     choix.setAttribute("aria-current", String(tv.id === ctrl.active));
     choix.innerHTML = `<svg class="ic"><use href="#i-tv"/></svg><span class="tv-textes">
       <span class="tv-nom">${echapper(tv.nom)}</span>
-      <span class="tv-detail">${tv.id === ctrl.active ? "Pilotée" : "Toucher pour piloter"}${tv.versionApp ? ` · iBiProjo ${echapper(tv.versionApp)}` : ""}</span></span>`;
+      <span class="tv-detail">${tv.id === ctrl.active ? "Pilotée" : "Toucher pour piloter"}${tv.versionApp ? ` · iBiTV ${echapper(tv.versionApp)}` : ""}</span></span>`;
     choix.addEventListener("click", () => {
       vibrer();
       fermerFeuille();

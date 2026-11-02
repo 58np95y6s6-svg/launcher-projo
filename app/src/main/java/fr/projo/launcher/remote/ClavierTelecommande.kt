@@ -21,7 +21,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 /**
- * Clavier iBiProjo : le texte tapé sur le téléphone arrive dans le champ actif de n'importe
+ * Clavier iBiTV : le texte tapé sur le téléphone arrive dans le champ actif de n'importe
  * quelle appli. Sur la TV, seul un bandeau discret « Saisie depuis le téléphone » s'affiche.
  *
  * - `text` : remplace le contenu du champ (voir [EditionTexte.remplacer]) ;
@@ -31,7 +31,7 @@ import androidx.core.content.ContextCompat
  *
  * Aucun téléphone connecté et l'utilisateur ouvre un champ à la télécommande : on rend la main
  * au clavier précédent (sinon il ne pourrait plus rien taper). Quand un téléphone se connecte,
- * le clavier iBiProjo est re-sélectionné si l'appli a la permission WRITE_SECURE_SETTINGS
+ * le clavier iBiTV est re-sélectionné si l'appli a la permission WRITE_SECURE_SETTINGS
  * (donnée une fois par adb, voir l'aide dans Réglages).
  */
 class ClavierTelecommande : InputMethodService() {

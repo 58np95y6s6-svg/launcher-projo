@@ -304,7 +304,7 @@ private fun EnTeteReglages(s: StyleReglages, p: PanneauReglages, fermer: () -> U
     when (s.enTete) {
         EnTete.SIMPLE -> Column(Modifier.padding(start = (m.marge + 4).u, end = m.marge.u, top = 26.u, bottom = 8.u)) {
             T("Réglages", ty.enTete.toFloat(), c.texte, poids = FontWeight.Bold, espacement = -0.4f)
-            T("Projo ${p.version}", 12f, c.texteDiscret, Modifier.padding(top = 2.u), poids = FontWeight.Medium)
+            T("iBiTV ${p.version}", 12f, c.texteDiscret, Modifier.padding(top = 2.u), poids = FontWeight.Medium)
         }
         EnTete.CENTRE -> Box(
             Modifier.fillMaxWidth().padding(start = m.marge.u, end = m.marge.u, top = 16.u, bottom = 4.u).height(30.u),
@@ -538,7 +538,7 @@ private fun BandeauReglages(s: StyleReglages, p: PanneauReglages) {
             Spacer(Modifier.width(14.u))
             T("Réglages", s.typo.enTete.toFloat(), c.texte, poids = FontWeight.Medium)
         }
-        T("Projo ${p.version}", 13f, c.texteDiscret, Modifier.align(Alignment.CenterEnd).padding(bottom = 6.u), poids = FontWeight.Medium)
+        T("iBiTV ${p.version}", 13f, c.texteDiscret, Modifier.align(Alignment.CenterEnd).padding(bottom = 6.u), poids = FontWeight.Medium)
     }
 }
 

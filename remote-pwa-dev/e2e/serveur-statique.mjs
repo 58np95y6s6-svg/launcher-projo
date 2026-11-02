@@ -19,7 +19,7 @@ const TYPES = {
 };
 
 export function configTest({ portPeerJS, versionApp = "1.0.0-test", versionProtocole = 1 }) {
-  return `globalThis.IBIPROJO_CONFIG = Object.freeze(${JSON.stringify({
+  return `globalThis.IBITV_CONFIG = Object.freeze(${JSON.stringify({
     urlBase: "http://127.0.0.1/launcher-projo/",
     versionApp,
     versionProtocole,

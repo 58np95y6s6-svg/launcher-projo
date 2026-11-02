@@ -40,7 +40,7 @@ data class InfosAppareil(
     val memoireTotale: Long,
     /** Température du processeur en °C (null : illisible sans root). */
     val temperature: Double?,
-    /** Version d'iBiProjo (versionName). */
+    /** Version d'iBiTV (versionName). */
     val version: String,
     /** « Android 11 » (affiché à la place de la température si elle est illisible). */
     val android: String,

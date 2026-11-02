@@ -157,12 +157,12 @@ fun DiagnosticDialog(
     onDismiss: () -> Unit,
 ) {
     val etat = when (currentHome) {
-        ourPackage -> "Projo est l'écran d'accueil par défaut ✓"
+        ourPackage -> "iBiTV est l'écran d'accueil par défaut ✓"
         null -> "Aucun écran d'accueil par défaut choisi"
         else -> "Écran d'accueil actuel : $currentHome"
     }
     MenuDialog(
-        title = "Projo $version",
+        title = "iBiTV $version",
         subtitle = "$etat\nAccueils disponibles : ${homeCandidates.joinToString()}",
         actions = listOf(
             MenuAction("Choisir l'écran d'accueil", onChooseHome),

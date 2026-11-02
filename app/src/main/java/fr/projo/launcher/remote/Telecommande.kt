@@ -38,15 +38,15 @@ sealed class EtatAppairage {
 /** Demande « Autoriser le téléphone de Marie ? » en attente d'une réponse. */
 data class DemandeConfirmation(val nom: String)
 
-/** Champ texte qui a le focus (vu par le clavier iBiProjo). */
+/** Champ texte qui a le focus (vu par le clavier iBiTV). */
 data class InfoChamp(val type: String, val texte: String, val action: String)
 
 /**
  * Télécommande smartphone, côté TV : un seul objet pour toute l'appli.
  *
- * Pas de service au premier plan : la connexion vit dans le processus d'iBiProjo, qui reste
+ * Pas de service au premier plan : la connexion vit dans le processus d'iBiTV, qui reste
  * en vie parce que c'est l'écran d'accueil (priorité « home »), et parce que le système garde
- * liés le clavier iBiProjo (s'il est choisi) et le service d'accessibilité (s'il est activé ;
+ * liés le clavier iBiTV (s'il est choisi) et le service d'accessibilité (s'il est activé ;
  * sur Fire TV, le service d'ouverture automatique). Si Android tue quand même le processus,
  * le premier de ces composants à redémarrer rappelle [demarrer]. Avantages : aucune
  * notification permanente, aucune permission FOREGROUND_SERVICE (types obligatoires à partir
@@ -90,7 +90,7 @@ object Telecommande : HoteSession {
     private val qr = RenouvellementQr(appairage)
     private lateinit var _injecteur: Injecteur
     override val injecteur: Injecteur get() = _injecteur
-    private var _nomTv = "iBiProjo"
+    private var _nomTv = "iBiTV"
     override val nomTv: String get() = _nomTv
     private var _versionApp = "?"
     override val versionApp: String get() = _versionApp
@@ -103,7 +103,7 @@ object Telecommande : HoteSession {
 
     private var attente: Pair<SessionTelecommande, (Boolean) -> Unit>? = null
 
-    /** Activité d'iBiProjo au premier plan (null sinon). */
+    /** Activité d'iBiTV au premier plan (null sinon). */
     @Volatile
     private var activite: WeakReference<Activity>? = null
     val activiteAuPremierPlan: Activity? get() = activite?.get()
@@ -269,7 +269,7 @@ object Telecommande : HoteSession {
         if (attente != null) return false
         attente = session to reponse
         _confirmation.value = DemandeConfirmation(nom)
-        montrerIBiProjo()
+        montrerIBiTV()
         return true
     }
 
@@ -301,8 +301,8 @@ object Telecommande : HoteSession {
         Log.i(TAG, evenement)
     }
 
-    /** La demande doit être vue même si l'utilisateur a quitté iBiProjo. */
-    private fun montrerIBiProjo() {
+    /** La demande doit être vue même si l'utilisateur a quitté iBiTV. */
+    private fun montrerIBiTV() {
         val ctx = contexte ?: return
         if (activiteAuPremierPlan is MainActivity) return
         try {
@@ -441,7 +441,7 @@ object Telecommande : HoteSession {
         fil.post { if (pret) action() }
     }
 
-    // ------------------------------------------------------------------ clavier iBiProjo
+    // ------------------------------------------------------------------ clavier iBiTV
 
     private val focusPerdu = Runnable {
         if (champ == null) return@Runnable
@@ -449,7 +449,7 @@ object Telecommande : HoteSession {
         diffuser(Protocole.focusLost())
     }
 
-    /** Un champ texte a le focus (clavier iBiProjo). */
+    /** Un champ texte a le focus (clavier iBiTV). */
     fun champTexte(info: InfoChamp) = surFil {
         fil.removeCallbacks(focusPerdu)
         champ = info
@@ -478,6 +478,6 @@ object Telecommande : HoteSession {
         val nom = try {
             Settings.Global.getString(context.contentResolver, "device_name")
         } catch (e: Exception) { null }
-        return (nom?.takeIf { it.isNotBlank() } ?: Build.MODEL ?: "iBiProjo").take(40)
+        return (nom?.takeIf { it.isNotBlank() } ?: Build.MODEL ?: "iBiTV").take(40)
     }
 }

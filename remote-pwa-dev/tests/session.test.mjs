@@ -11,7 +11,7 @@ import {
 } from "../../remote-pwa/js/crypto.js";
 
 const V = JSON.parse(readFileSync(new URL("./vecteurs.json", import.meta.url)));
-const config = { ...globalThis.IBIPROJO_CONFIG, delais: { ...globalThis.IBIPROJO_CONFIG.delais, connexion: 2000 } };
+const config = { ...globalThis.IBITV_CONFIG, delais: { ...globalThis.IBITV_CONFIG.delais, connexion: 2000 } };
 const ID_TV = "ibiprojo-0123456789abcdef0123456789abcdef";
 
 class FauxCanal {

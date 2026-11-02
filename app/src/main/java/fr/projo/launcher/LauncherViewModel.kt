@@ -97,7 +97,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 verification = false,
                 message = when {
                     info == null -> "Vérification impossible (connexion ?)"
-                    !info.available && force -> "Projo est à jour"
+                    !info.available && force -> "iBiTV est à jour"
                     else -> null
                 },
             )
@@ -109,7 +109,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val info = _maj.value.info ?: return
         if (_maj.value.telechargement != null) return
         if (!updates.peutInstaller()) {
-            _maj.value = _maj.value.copy(message = "Autorise Projo à installer des apps, puis reviens : la mise à jour reprendra")
+            _maj.value = _maj.value.copy(message = "Autorise iBiTV à installer des apps, puis reviens : la mise à jour reprendra")
             reprendreMaj = true
             updates.ouvrirAutorisation()
             return

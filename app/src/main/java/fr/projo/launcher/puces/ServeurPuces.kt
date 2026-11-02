@@ -226,7 +226,7 @@ this.textContent=ok?'Copié ✓':'Sélectionné : copie-le'};
 </script>"""
             return """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
-<title>iBiProjo</title><style>
+<title>iBiTV</title><style>
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f1115;color:#f3f4f6;
 font:17px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-align:center}
 main{padding:24px 20px;max-width:440px;width:100%;box-sizing:border-box}
@@ -240,7 +240,7 @@ button{margin-top:10px;padding:11px 20px;border:0;border-radius:10px;background:
 .m{margin-top:30px;font-size:12px;color:#6b7280}
 </style></head><body><main>
 <div class="i">$icone</div><h1>${echapper(r.titre)}</h1><p>${echapper(r.message)}</p>$copie
-<p class="m">iBiProjo · puces NFC</p>
+<p class="m">iBiTV · puces NFC</p>
 </main></body></html>"""
         }
     }

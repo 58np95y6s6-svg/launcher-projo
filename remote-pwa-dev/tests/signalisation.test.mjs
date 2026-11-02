@@ -18,7 +18,7 @@ const prochain = (s, type) => new Promise((r) => s.addEventListener("message", f
 }));
 
 test("URL du serveur PeerJS", () => {
-  const cfg = globalThis.IBIPROJO_CONFIG.peerjs;
+  const cfg = globalThis.IBITV_CONFIG.peerjs;
   assert.equal(urlSignalisation(cfg, "tel-abc", "0123"), "wss://0.peerjs.com:443/peerjs?key=peerjs&id=tel-abc&token=0123");
   assert.equal(urlSignalisation({ ...cfg, chemin: "/signal" }, "x", "y"), "wss://0.peerjs.com:443/signal/peerjs?key=peerjs&id=x&token=y");
 });

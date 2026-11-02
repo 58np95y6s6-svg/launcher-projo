@@ -9,11 +9,11 @@ import android.util.Log
 
 /**
  * Musique en arrière-plan (Spotify…) : mise en pause quand on ouvre une app vidéo ou TV
- * depuis iBiProjo. Sans ça, Android laisse la musique continuer tant que l'app ouverte n'a
+ * depuis iBiTV. Sans ça, Android laisse la musique continuer tant que l'app ouverte n'a
  * pas commencé à lire elle-même (par exemple sur l'accueil de YouTube).
  *
- * Comment : iBiProjo demande le son « pour de bon » (comme une vidéo qui démarre), le lecteur
- * en cours se met en pause, puis iBiProjo rend la main aussitôt. L'app ouverte reprend le son
+ * Comment : iBiTV demande le son « pour de bon » (comme une vidéo qui démarre), le lecteur
+ * en cours se met en pause, puis iBiTV rend la main aussitôt. L'app ouverte reprend le son
  * quand elle lit quelque chose. Ouvrir une app de musique ne coupe rien.
  */
 object PauseMusique {

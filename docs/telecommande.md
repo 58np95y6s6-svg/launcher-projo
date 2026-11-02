@@ -5,7 +5,7 @@ Version du protocole : **1**
 ## Vue d'ensemble
 
 ```
-Téléphone (PWA, GitHub Pages, HTTPS)          TV (iBiProjo, Android)
+Téléphone (PWA, GitHub Pages, HTTPS)          TV (iBiTV, Android)
         │                                              │
         │   1. mise en relation (WebSocket sécurisé)   │
         └──────────►  serveur PeerJS public  ◄─────────┘
@@ -112,15 +112,15 @@ TV → téléphone :
 | `erreur` | `code` | par ex. `version` |
 
 Compatibilité : à `hello`, chacun annonce `v`. Si la TV reçoit une version qu'elle ne gère pas, elle répond `erreur` avec `code: "version"` et `vMax`. La PWA affiche alors :
-- « Mettez à jour iBiProjo sur la TV » si sa propre version est la plus récente ;
+- « Mettez à jour iBiTV sur la TV » si sa propre version est la plus récente ;
 - sinon « Rechargez la télécommande ».
 
 ## Côté TV : injection
 
-- **Texte** : clavier iBiProjo (IME, `remote/ClavierTelecommande`). Il remplace le contenu du champ actif via `InputConnection` (`setComposingText` / `commitText`, `deleteSurroundingText`) et envoie l'action de l'éditeur pour `submit`. Il détecte le focus : `onStartInput` donne le type du champ via `EditorInfo.inputType` / `imeOptions`, et `onFinishInput` envoie `focus_lost`.
+- **Texte** : clavier iBiTV (IME, `remote/ClavierTelecommande`). Il remplace le contenu du champ actif via `InputConnection` (`setComposingText` / `commitText`, `deleteSurroundingText`) et envoie l'action de l'éditeur pour `submit`. Il détecte le focus : `onStartInput` donne le type du champ via `EditorInfo.inputType` / `imeOptions`, et `onFinishInput` envoie `focus_lost`.
   - Activation unique : Paramètres → Clavier (projecteur) ; sur Fire TV : `adb shell ime enable fr.projo.launcher/.remote.ClavierTelecommande` puis `ime set …`.
 - **Navigation** :
-  - quand le clavier iBiProjo est lié à un champ : touches directionnelles envoyées par `InputConnection.sendKeyEvent` ;
+  - quand le clavier iBiTV est lié à un champ : touches directionnelles envoyées par `InputConnection.sendKeyEvent` ;
   - sinon, par le service d'accessibilité : `GLOBAL_ACTION_BACK` / `GLOBAL_ACTION_HOME`, et déplacement du focus vers l'élément focusable voisin dans la direction demandée, puis `ACTION_CLICK` pour OK ;
   - repli silencieux si rien n'est possible.
 - **Volume** : `AudioManager.adjustStreamVolume`.
@@ -194,7 +194,7 @@ Ces points complètent la spécification ; la PWA les applique et la fausse TV d
    - appareil inconnu **sans** `cle` (téléphone révoqué pendant qu'il était hors ligne) → envoie son `hello` signé, puis `revoked`, puis ferme ;
    - signature fausse → fermeture, sans détail.
 3. TV → `hello` : `{v, t:"hello", nonce, sig, nomTV, versionApp, cle}`. **Ajout : `cle` (SPKI de la TV) est obligatoire** — le téléphone n'a que l'empreinte (QR code) ou rien (code de secours). Le téléphone vérifie : `cle` identique à celle enregistrée (TV appairée), ou `empreinte(cle)` = empreinte du QR code, ou rien (code de secours) ; puis la signature.
-   La PWA compare aussi `v` : `v` > sa version → « Rechargez la télécommande » ; `v` < sa version minimale → « Mettez à jour iBiProjo sur la TV ».
+   La PWA compare aussi `v` : `v` > sa version → « Rechargez la télécommande » ; `v` < sa version minimale → « Mettez à jour iBiTV sur la TV ».
 4. Après les deux `hello` : `ping`/`pong` autorisés (y compris pendant l'appairage) ; la PWA envoie un `ping` toutes les 15 s et considère la connexion perdue après 2 `pong` manqués (puis se reconnecte). Elle envoie aussi un `ping` immédiat au retour au premier plan (4 s pour répondre).
 5. Appairage : téléphone → `pair_request {secret, nom, cle, empreinteTV}`.
    - QR : `secret` = secret base64url du QR ; `empreinteTV` = empreinte du QR.
@@ -271,9 +271,9 @@ hello TV : "ibiprojo-v1|hello-tv|" + empreinteDtlsTV + "|" + empreinteDtlsTel + 
 
 ### Composants et cycle de vie
 
-- `remote/Telecommande.kt` : un objet pour toute l'appli, sur un fil dédié. **Pas de service au premier plan** : iBiProjo est l'écran d'accueil (processus prioritaire), et le système garde liés le clavier iBiProjo et le service d'accessibilité ; le premier composant qui (re)démarre le processus relance la télécommande. WebRTC (bibliothèque native) n'est chargé qu'à la première connexion et libéré 30 s après la dernière.
-- Clavier sans téléphone connecté : quand l'utilisateur ouvre un champ à la télécommande de la TV, le clavier iBiProjo rend la main au clavier précédent. Il se re-sélectionne à la connexion d'un téléphone si l'appli a reçu `WRITE_SECURE_SETTINGS` (`adb shell pm grant fr.projo.launcher android.permission.WRITE_SECURE_SETTINGS`), sinon il faut le re-choisir dans les réglages.
-- Navigation : 1. clavier lié à un champ → `sendKeyEvent` ; 2. iBiProjo au premier plan → injection dans sa propre fenêtre (permise sans droit particulier pour la fenêtre de l'appli) ; 3. service d'accessibilité → actions globales, `focusSearch` de l'appli puis repli géométrique (éléments focusables visibles, comme FocusFinder), `ACTION_CLICK` sur l'élément focalisé ou son parent cliquable ; 4. sinon rien. `home` passe par `GLOBAL_ACTION_HOME`, sinon par l'intent Accueil ; `playpause` par `AudioManager.dispatchMediaKeyEvent`.
+- `remote/Telecommande.kt` : un objet pour toute l'appli, sur un fil dédié. **Pas de service au premier plan** : iBiTV est l'écran d'accueil (processus prioritaire), et le système garde liés le clavier iBiTV et le service d'accessibilité ; le premier composant qui (re)démarre le processus relance la télécommande. WebRTC (bibliothèque native) n'est chargé qu'à la première connexion et libéré 30 s après la dernière.
+- Clavier sans téléphone connecté : quand l'utilisateur ouvre un champ à la télécommande de la TV, le clavier iBiTV rend la main au clavier précédent. Il se re-sélectionne à la connexion d'un téléphone si l'appli a reçu `WRITE_SECURE_SETTINGS` (`adb shell pm grant fr.projo.launcher android.permission.WRITE_SECURE_SETTINGS`), sinon il faut le re-choisir dans les réglages.
+- Navigation : 1. clavier lié à un champ → `sendKeyEvent` ; 2. iBiTV au premier plan → injection dans sa propre fenêtre (permise sans droit particulier pour la fenêtre de l'appli) ; 3. service d'accessibilité → actions globales, `focusSearch` de l'appli puis repli géométrique (éléments focusables visibles, comme FocusFinder), `ACTION_CLICK` sur l'élément focalisé ou son parent cliquable ; 4. sinon rien. `home` passe par `GLOBAL_ACTION_HOME`, sinon par l'intent Accueil ; `playpause` par `AudioManager.dispatchMediaKeyEvent`.
 - Données : `files/telecommande/telecommande.json` (identifiant TV, jeton PeerJS, téléphones appairés) et `files/telecommande/identite.bin` (seulement en repli logiciel, clé chiffrée AES-GCM avec une clé dérivée d'ANDROID_ID et d'un sel : simple obscurcissement, la protection réelle est le bac à sable de l'appli).
 
 ### Fusion avec la branche Fire TV

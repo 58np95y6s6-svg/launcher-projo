@@ -293,7 +293,7 @@ class LecteurPochette(private val context: Context, private val surCouleur: (Int
 }
 
 /**
- * Accès aux notifications d'iBiProjo, demandé par le mode Ambiance. Ce service ne lit AUCUNE
+ * Accès aux notifications d'iBiTV, demandé par le mode Ambiance. Ce service ne lit AUCUNE
  * notification : sa seule présence permet de connaître le morceau en cours (session
  * média) pour prendre la couleur de sa pochette. À activer une fois :
  * adb shell cmd notification allow_listener fr.projo.launcher/fr.projo.launcher.ambiance.EcouteNotifications

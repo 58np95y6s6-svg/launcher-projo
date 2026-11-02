@@ -13,7 +13,7 @@ import java.lang.ref.WeakReference
  * Navigation hors des champs texte, par un service d'accessibilité.
  *
  * Le rôle « navigation » est indépendant du service qui le porte : tout service
- * d'accessibilité d'iBiProjo peut s'y attacher ([attacher] / [detacher]).
+ * d'accessibilité d'iBiTV peut s'y attacher ([attacher] / [detacher]).
  * - Projecteur (et toute branche sans Fire TV) : [NavigationTelecommande] ci-dessous.
  * - Fire TV : le service d'ouverture automatique (system/RedirectionAccueil) hérite de
  *   [NavigationTelecommande] et ajoute son rôle « redirection » : un seul service à activer.
@@ -53,7 +53,7 @@ object HoteNavigation {
         }
     }
 
-    /** Service d'accessibilité d'iBiProjo activé dans les réglages (quel qu'il soit). */
+    /** Service d'accessibilité d'iBiTV activé dans les réglages (quel qu'il soit). */
     fun estActive(context: Context): Boolean {
         val liste = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
         return liste.split(':').any { it.startsWith(context.packageName + "/") }
@@ -122,7 +122,7 @@ object HoteNavigation {
 }
 
 /**
- * Service d'accessibilité « iBiProjo · télécommande » : navigation hors des champs texte.
+ * Service d'accessibilité « iBiTV · télécommande » : navigation hors des champs texte.
  * Il ne réagit qu'aux commandes du téléphone ; il ne lit l'écran que pour trouver l'élément
  * voisin à sélectionner et n'en garde ni n'envoie rien.
  *

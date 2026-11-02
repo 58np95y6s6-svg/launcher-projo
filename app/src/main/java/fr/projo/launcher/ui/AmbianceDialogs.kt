@@ -147,7 +147,7 @@ fun ExplicationMicroDialog(onContinuer: () -> Unit, onPlusTard: () -> Unit) {
             Text("Faire réagir le néon au son", color = h.texte, fontSize = 22.us, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(12.u))
             Text(
-                "Pour suivre la musique, iBiProjo lit le spectre du son qui sort du Fire TV (le « Visualizer » d'Android).",
+                "Pour suivre la musique, iBiTV lit le spectre du son qui sort du Fire TV (le « Visualizer » d'Android).",
                 color = h.texte, fontSize = 14.us,
             )
             Spacer(Modifier.height(8.u))

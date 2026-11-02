@@ -9,7 +9,7 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 
 /**
- * Fire TV (Amazon) : on ne peut pas y remplacer l'écran d'accueil. iBiProjo s'y ouvre
+ * Fire TV (Amazon) : on ne peut pas y remplacer l'écran d'accueil. iBiTV s'y ouvre
  * donc automatiquement grâce au service d'accessibilité RedirectionAccueil, et masque
  * ce qui n'a pas de sens sur ces boîtiers (entrée HDMI, volume).
  */
@@ -37,7 +37,7 @@ object FireTv {
 
     /**
      * Service activé mais relié avec son ancienne configuration, sans la touche Maison.
-     * Android 9 garde la configuration d'avant une mise à jour d'iBiProjo jusqu'au
+     * Android 9 garde la configuration d'avant une mise à jour d'iBiTV jusqu'au
      * redémarrage, ou jusqu'à ce que le service soit désactivé puis réactivé.
      */
     fun majAFinir(context: Context): Boolean = try {
@@ -70,7 +70,7 @@ object FireTv {
     /**
      * Les commandes à taper dans une app ADB (iPhone, ordinateur) pour activer le service.
      * La première le désactive d'abord, pour qu'Android relise sa configuration (utile
-     * après une mise à jour d'iBiProjo).
+     * après une mise à jour d'iBiTV).
      */
     fun commandesShell(context: Context): List<String> {
         val c = ComponentName(context, RedirectionAccueil::class.java).flattenToString()
@@ -100,7 +100,7 @@ object FireTv {
         false
     }
 
-    /** Paquet de l'écran d'accueil par défaut (autre que iBiProjo), s'il y en a un. */
+    /** Paquet de l'écran d'accueil par défaut (autre que iBiTV), s'il y en a un. */
     fun accueilParDefaut(context: Context): String? = try {
         val ri = context.packageManager.resolveActivity(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY,

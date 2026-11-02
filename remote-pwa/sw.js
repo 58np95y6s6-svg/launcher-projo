@@ -2,7 +2,7 @@
 // La version vient de config.js : la changer suffit à publier une nouvelle version.
 importScripts("config.js");
 
-const VERSION = self.IBIPROJO_CONFIG.versionApp;
+const VERSION = self.IBITV_CONFIG.versionApp;
 const CACHE = `ibiprojo-telecommande-${VERSION}`;
 const FICHIERS = [
   "./",

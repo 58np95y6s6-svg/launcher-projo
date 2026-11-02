@@ -76,7 +76,7 @@ class PucesNfcTest {
         // Nom de paquet d'une app installée
         assertEquals(200, s.repondre("GET", "/o/com.canal.android.canal?c=Code123abc").statut)
         assertEquals("com.canal.android.canal", ouvertes.last())
-        // Accueil d'iBiProjo
+        // Accueil d'iBiTV
         assertEquals(200, s.repondre("GET", "/o/accueil?c=Code123abc").statut)
         assertEquals(soi, ouvertes.last())
         // Pas installée, inconnue, ou adresse bizarre : rien
@@ -185,7 +185,7 @@ class PucesNfcTest {
             AppInfo("com.arte.tv", "Arte", isTvApp = true),
         )
         val noms = PucesNfc.appsProposees(apps, soi).map { it.label }
-        assertEquals(listOf("Netflix", "CANAL+", "Arte", "Zapp", "iBiProjo (accueil)"), noms)
+        assertEquals(listOf("Netflix", "CANAL+", "Arte", "Zapp", "iBiTV (accueil)"), noms)
     }
 
     @Test

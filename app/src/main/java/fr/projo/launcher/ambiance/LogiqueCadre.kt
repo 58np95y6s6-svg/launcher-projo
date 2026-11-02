@@ -7,19 +7,19 @@ package fr.projo.launcher.ambiance
  *  - automatiquement si c'est une app de musique (réglage « Automatique avec les apps de
  *    musique ») ;
  *  - ou si on l'a demandé pour CETTE app : « Ouvrir en mode Ambiance » (menu d'app
- *    d'iBiProjo) ou appui long sur ☰ dans l'app.
- * Jamais sur l'accueil (iBiProjo, accueil Amazon), écran éteint ou économiseur d'écran.
+ *    d'iBiTV) ou appui long sur ☰ dans l'app.
+ * Jamais sur l'accueil (iBiTV, accueil Amazon), écran éteint ou économiseur d'écran.
  * Maison termine la demande : en revenant dans l'app sans passer par le mode, pas de néon
  * (sauf app de musique en automatique).
  */
 class LogiqueCadre(
-    /** Paquet d'iBiProjo (son écran principal est l'accueil). */
+    /** Paquet d'iBiTV (son écran principal est l'accueil). */
     private val monPaquet: String,
     private val horloge: () -> Long,
 ) {
     /** Sorte d'écran annoncé par le service d'accessibilité. */
     enum class Ecran {
-        /** Accueil : iBiProjo ou l'accueil du fabricant. */
+        /** Accueil : iBiTV ou l'accueil du fabricant. */
         ACCUEIL,
 
         /** Une app (son paquet). */
@@ -78,7 +78,7 @@ class LogiqueCadre(
             Ecran.ACCUEIL -> {
                 premierPlan = null
                 // Maison après avoir vu l'app : la demande est finie. Avant (l'app s'ouvre
-                // depuis iBiProjo, dont le menu se ferme), elle reste.
+                // depuis iBiTV, dont le menu se ferme), elle reste.
                 if (demandeVue) arreter()
                 eteintPour = null
             }
@@ -133,7 +133,7 @@ class LogiqueCadre(
 
         /**
          * Sorte d'un écran annoncé (événement « fenêtre au premier plan »).
-         * [classeAccueil] : écran principal d'iBiProjo ; [accueils] : accueils du fabricant ;
+         * [classeAccueil] : écran principal d'iBiTV ; [accueils] : accueils du fabricant ;
          * [clavier] : paquet du clavier actuel.
          */
         fun classer(
@@ -144,7 +144,7 @@ class LogiqueCadre(
             accueils: Set<String>,
             clavier: String?,
         ): Ecran = when {
-            // Claviers (le nôtre compris, même paquet qu'iBiProjo) : l'app reste au premier plan
+            // Claviers (le nôtre compris, même paquet qu'iBiTV) : l'app reste au premier plan
             classe != null && classe.startsWith("android.inputmethodservice.") -> Ecran.IGNORE
             paquet == clavier -> Ecran.IGNORE
             paquet == monPaquet -> if (classe == classeAccueil) Ecran.ACCUEIL else Ecran.IGNORE

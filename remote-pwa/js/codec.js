@@ -1,7 +1,7 @@
 // Encodages et messages du protocole télécommande (docs/telecommande.md).
 // Module pur : aucune dépendance au DOM, testé sous Node.
 
-const cfg = () => globalThis.IBIPROJO_CONFIG || {};
+const cfg = () => globalThis.IBITV_CONFIG || {};
 export const versionProtocole = () => cfg().versionProtocole ?? 1;
 export const versionProtocoleMin = () => cfg().versionProtocoleMin ?? 1;
 
@@ -105,7 +105,7 @@ export function verifierVersion(vTV) {
 
 /**
  * Réaction à `erreur` { code: "version", vMax } envoyé par la TV.
- * « Mettez à jour iBiProjo sur la TV » si la PWA est la plus récente, sinon « Rechargez ».
+ * « Mettez à jour iBiTV sur la TV » si la PWA est la plus récente, sinon « Rechargez ».
  */
 export function verdictErreurVersion(vMax) {
   if (Number.isInteger(vMax) && versionProtocole() > vMax) return "maj_tv";
@@ -113,6 +113,6 @@ export function verdictErreurVersion(vMax) {
 }
 
 export const TEXTES_VERSION = Object.freeze({
-  maj_tv: "Mettez à jour iBiProjo sur la TV",
+  maj_tv: "Mettez à jour iBiTV sur la TV",
   recharger: "Rechargez la télécommande",
 });

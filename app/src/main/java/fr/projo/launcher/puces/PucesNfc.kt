@@ -50,7 +50,7 @@ object PucesNfc {
         "twitch" to listOf("tv.twitch.android.app", "tv.twitch.android.viewer"),
     )
 
-    /** Adresse qui ouvre l'accueil d'iBiProjo. */
+    /** Adresse qui ouvre l'accueil d'iBiTV. */
     const val ACCUEIL = "accueil"
 
     var actif by mutableStateOf(false)
@@ -83,7 +83,7 @@ object PucesNfc {
         codeCourant = code
     }
 
-    /** À l'ouverture d'iBiProjo et au démarrage du service : écoute si la fonction est activée. */
+    /** À l'ouverture d'iBiTV et au démarrage du service : écoute si la fonction est activée. */
     fun demarrerSiActif(context: Context) {
         charger(context)
         if (actif) demarrer(context.applicationContext)
@@ -160,14 +160,14 @@ object PucesNfc {
 
     /**
      * Apps proposées dans Réglages : celles des raccourcis d'abord (Netflix, Prime Video…),
-     * puis les autres par ordre alphabétique, puis l'accueil d'iBiProjo.
+     * puis les autres par ordre alphabétique, puis l'accueil d'iBiTV.
      */
     fun appsProposees(apps: List<AppInfo>, soi: String): List<AppInfo> {
         val vraies = apps.filter { !it.isSpecial && it.packageName != soi }.distinctBy { it.packageName }
         val ordre = RACCOURCIS.values.flatten()
         val connues = vraies.filter { it.packageName in ordre }.sortedBy { ordre.indexOf(it.packageName) }
         val autres = (vraies - connues.toSet()).sortedBy { it.label.lowercase() }
-        return connues + autres + AppInfo(soi, "iBiProjo (accueil)", isTvApp = true)
+        return connues + autres + AppInfo(soi, "iBiTV (accueil)", isTvApp = true)
     }
 
     private fun installee(context: Context, paquet: String): Boolean {
@@ -180,7 +180,7 @@ object PucesNfc {
     }
 
     private fun libelle(context: Context, paquet: String): String {
-        if (paquet == context.packageName) return "iBiProjo"
+        if (paquet == context.packageName) return "iBiTV"
         return try {
             val pm = context.packageManager
             pm.getApplicationLabel(pm.getApplicationInfo(paquet, 0)).toString()
@@ -216,7 +216,7 @@ object PucesNfc {
         try {
             pm?.newWakeLock(
                 PowerManager.FULL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
-                "iBiProjo:puce",
+                "iBiTV:puce",
             )?.acquire(5_000)
         } catch (e: Exception) {
             Log.w(TAG, "Puces NFC : réveil impossible (${e.javaClass.simpleName})")

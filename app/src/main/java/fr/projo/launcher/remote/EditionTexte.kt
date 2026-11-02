@@ -7,7 +7,7 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 
 /**
- * Édition du champ actif par le clavier iBiProjo, séparée de l'IME pour être testée avec un
+ * Édition du champ actif par le clavier iBiTV, séparée de l'IME pour être testée avec un
  * InputConnection factice.
  */
 object EditionTexte {

@@ -401,15 +401,15 @@ class MainActivity : ComponentActivity() {
             // ou à la main dans la page Accessibilité si le Fire TV la propose
             MenuDialog(
                 title = "Ouverture automatique",
-                subtitle = "iBiProjo s'ouvrira au démarrage et à chaque appui sur Maison " +
+                subtitle = "iBiTV s'ouvrira au démarrage et à chaque appui sur Maison " +
                     "(appui long sur Maison : accueil Amazon).\n" +
                     "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
                     "2. Choisis « Activer en un clic » puis accepte la fenêtre « Autoriser le débogage » " +
                     "(coche « Toujours autoriser »).\n" +
                     "Ce service sert aussi à la télécommande smartphone : à la demande d'un téléphone appairé, " +
                     "il lit le contenu des fenêtres pour déplacer la sélection.\n" +
-                    "Après une mise à jour d'iBiProjo, redémarre le Fire TV (ou refais « Activer en un clic ») " +
-                    "pour que Maison ouvre de nouveau iBiProjo tout de suite et que le téléphone puisse naviguer.",
+                    "Après une mise à jour d'iBiTV, redémarre le Fire TV (ou refais « Activer en un clic ») " +
+                    "pour que Maison ouvre de nouveau iBiTV tout de suite et que le téléphone puisse naviguer.",
                 actions = listOf(
                     MenuAction("Activer en un clic") {
                         toast("Activation… accepte la fenêtre du Fire TV si elle apparaît")

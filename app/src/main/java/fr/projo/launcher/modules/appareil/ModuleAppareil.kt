@@ -53,7 +53,7 @@ const val CLE_APPAREIL = "appareil:infos"
 /**
  * Module État de l'appareil : Wi-Fi (nom et qualité du signal), adresse IP, stockage et
  * mémoire libres, température du processeur (si lisible, sinon la version d'Android) et
- * version d'iBiProjo. OK sur le module lance un test de débit léger (5 Mo au plus).
+ * version d'iBiTV. OK sur le module lance un test de débit léger (5 Mo au plus).
  */
 object ModuleAppareil : Module(
     id = "appareil",
@@ -137,7 +137,7 @@ private fun AppareilMoyen(i: InfosAppareil, debit: String) {
                 fontWeight = FontWeight.Bold, style = ligne(12.us), maxLines = 1, modifier = Modifier.weight(1f),
             )
             Text(
-                "iBiProjo " + i.version, color = style.texteDiscret, fontSize = 9.us, style = ligne(12.us),
+                "iBiTV " + i.version, color = style.texteDiscret, fontSize = 9.us, style = ligne(12.us),
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }

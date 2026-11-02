@@ -83,7 +83,7 @@ class NeonServiceTest {
         ShadowLooper.idleMainLooper(1, TimeUnit.SECONDS)
         assertNotNull(ModeAmbiance.diagnostic)
         assertTrue(ModeAmbiance.diagnostic!!, ModeAmbiance.diagnostic!!.startsWith("animation"))
-        // Accueil Amazon : néon retiré aussitôt, et la redirection vers iBiProjo marche toujours
+        // Accueil Amazon : néon retiré aussitôt, et la redirection vers iBiTV marche toujours
         s.ecran(amazon, "com.amazon.tv.launcher.ui.HomeActivity")
         assertEquals(0, s.bandes().size)
         assertNull(ModeAmbiance.affichePour)
@@ -110,7 +110,7 @@ class NeonServiceTest {
         val s = service()
         s.ecran(contexte.packageName, MainActivity::class.java.name)
         assertTrue(ModeAmbiance.ouvrir(contexte, netflix) { true })
-        // Le menu d'iBiProjo se ferme pendant l'ouverture : pas de néon sur l'accueil
+        // Le menu d'iBiTV se ferme pendant l'ouverture : pas de néon sur l'accueil
         s.ecran(contexte.packageName, MainActivity::class.java.name)
         assertEquals(0, s.bandes().size)
         s.ecran(netflix, "com.netflix.ninja.MainActivity")
@@ -126,7 +126,7 @@ class NeonServiceTest {
     fun leClavierNeCachePasLeNeon() {
         val s = service()
         s.ecran(spotify, "com.spotify.tv.android.SpotifyTVActivity")
-        // Notre clavier (télécommande smartphone) vient du même paquet qu'iBiProjo
+        // Notre clavier (télécommande smartphone) vient du même paquet qu'iBiTV
         s.ecran(contexte.packageName, "android.inputmethodservice.SoftInputWindow")
         assertEquals(4, s.bandes().size)
     }
@@ -186,7 +186,7 @@ class NeonServiceTest {
     }
 
     @Test
-    fun menuSurIBiProjoPasseToujours() {
+    fun menuSurIBiTVPasseToujours() {
         val s = service()
         s.ecran(contexte.packageName, MainActivity::class.java.name)
         assertFalse(s.touche(KeyEvent.KEYCODE_MENU, KeyEvent.ACTION_DOWN))
@@ -201,7 +201,7 @@ class NeonServiceTest {
         val s = service()
         s.ecran(spotify, "com.spotify.tv.android.SpotifyTVActivity")
         assertEquals(4, s.bandes().size)
-        // Appui court sur Maison : gardé par le service, iBiProjo s'ouvre
+        // Appui court sur Maison : gardé par le service, iBiTV s'ouvre
         assertTrue(s.touche(KeyEvent.KEYCODE_HOME, KeyEvent.ACTION_DOWN))
         assertTrue(s.touche(KeyEvent.KEYCODE_HOME, KeyEvent.ACTION_UP))
         assertEquals(MainActivity::class.java.name, ouverte())

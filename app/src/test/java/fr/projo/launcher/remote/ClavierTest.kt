@@ -53,7 +53,7 @@ class ChampFactice(texte: String, curseur: Int = texte.length, private val avecE
     override fun sendKeyEvent(event: KeyEvent): Boolean { touches += event; return true }
 }
 
-/** Clavier iBiProjo : remplacement du texte, validation, type de champ. */
+/** Clavier iBiTV : remplacement du texte, validation, type de champ. */
 @RunWith(RobolectricTestRunner::class)
 class ClavierTest {
 

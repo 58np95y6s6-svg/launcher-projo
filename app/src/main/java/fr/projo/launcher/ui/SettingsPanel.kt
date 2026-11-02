@@ -298,7 +298,7 @@ private fun contenuReglages(
     val majEnAvant = Reglage(
         cle = "maj",
         icone = ProjoIcons.MiseAJour,
-        titre = if (prog != null) "Téléchargement… ${(prog * 100).toInt()} %" else "Mettre à jour Projo",
+        titre = if (prog != null) "Téléchargement… ${(prog * 100).toInt()} %" else "Mettre à jour iBiTV",
         valeur = "Nouvelle version : ${maj.info?.remoteName ?: ""}",
         teinte = Teintes.maj,
         accent = true,
@@ -317,7 +317,7 @@ private fun contenuReglages(
             titre = "Ouverture automatique",
             valeur = when {
                 aFinir -> "À finir : redémarre le Fire TV (ou OK → Activer en un clic)"
-                actif -> "Activée ✓ · Maison ouvre iBiProjo, appui long : Amazon"
+                actif -> "Activée ✓ · Maison ouvre iBiTV, appui long : Amazon"
                 else -> "Désactivée · OK pour l'activer"
             },
             teinte = Teintes.accueil,
@@ -377,13 +377,13 @@ private fun contenuReglages(
 
     // ---------------- Projo
     val projo = SectionReglages(
-        "s-projo", "PROJO",
+        "s-projo", "IBITV",
         listOfNotNull(
             Reglage(
                 cle = "accueil",
                 icone = ProjoIcons.Accueil,
                 titre = "Écran d'accueil",
-                valeur = if (isDefaultHome) "Projo est l'écran d'accueil par défaut" else "Projo n'est pas l'écran par défaut",
+                valeur = if (isDefaultHome) "iBiTV est l'écran d'accueil par défaut" else "iBiTV n'est pas l'écran par défaut",
                 teinte = Teintes.accueil,
                 onClick = actions.homeApp,
             ).takeUnless { fireTv },

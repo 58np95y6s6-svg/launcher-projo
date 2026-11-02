@@ -20,15 +20,15 @@ import fr.projo.launcher.puces.PucesNfc
 import fr.projo.launcher.remote.NavigationTelecommande
 
 /**
- * Ouverture automatique d'iBiProjo (Fire TV et appareils où l'on ne peut pas changer
+ * Ouverture automatique d'iBiTV (Fire TV et appareils où l'on ne peut pas changer
  * l'écran d'accueil).
  *
  * 1. Touche Maison de la télécommande : le service la reçoit AVANT le système et la garde
- *    pour lui. Appui court → iBiProjo s'ouvre tout de suite (l'accueil Amazon n'apparaît pas).
+ *    pour lui. Appui court → iBiTV s'ouvre tout de suite (l'accueil Amazon n'apparaît pas).
  *    Appui long → accueil Amazon, sans redirection tant qu'on s'en sert (porte de sortie).
  *    Toutes les autres touches passent sans changement.
  * 2. Filet de sécurité : si l'accueil du fabricant s'affiche quand même (démarrage, Fire OS
- *    qui ne prête pas la touche Maison…), on ouvre iBiProjo à sa place.
+ *    qui ne prête pas la touche Maison…), on ouvre iBiTV à sa place.
  *
  * 3. Navigation depuis le téléphone (télécommande smartphone) : hérité de
  *    [NavigationTelecommande]. C'est le seul rôle qui lit le contenu de la fenêtre active,
@@ -43,12 +43,12 @@ class RedirectionAccueil : NavigationTelecommande() {
     private val principal = Handler(Looper.getMainLooper())
     private var accueils: Set<String> = FireTv.ACCUEILS_AMAZON
 
-    /** Ouverture d'iBiProjo demandée, pas encore affichée (0 = aucune). */
+    /** Ouverture d'iBiTV demandée, pas encore affichée (0 = aucune). */
     private var lancement = 0L
 
     /**
      * Redirection automatique suspendue jusqu'à cet instant (appui long → accueil Amazon).
-     * Prolongée à chaque changement d'écran ; finie dès qu'iBiProjo s'affiche ou en veille.
+     * Prolongée à chaque changement d'écran ; finie dès qu'iBiTV s'affiche ou en veille.
      */
     private var pauseJusqua = 0L
 
@@ -61,7 +61,7 @@ class RedirectionAccueil : NavigationTelecommande() {
 
     private val appuiLong = Runnable {
         appuiLongFait = true
-        // Porte de sortie : accueil Amazon, sans être renvoyé vers iBiProjo tout de suite
+        // Porte de sortie : accueil Amazon, sans être renvoyé vers iBiTV tout de suite
         val maintenant = SystemClock.uptimeMillis()
         pauseJusqua = maintenant + PAUSE_AMAZON
         lancement = 0
@@ -89,7 +89,7 @@ class RedirectionAccueil : NavigationTelecommande() {
 
     /**
      * Regarde ce qui est affiché : si c'est l'accueil Amazon (et pas de pause en cours),
-     * ouvre iBiProjo. Utile quand aucun changement d'écran ne viendra : au démarrage du
+     * ouvre iBiTV. Utile quand aucun changement d'écran ne viendra : au démarrage du
      * Fire TV ou au réveil, l'accueil Amazon est souvent déjà là quand le service est prêt.
      */
     internal fun verifierEcran() {
@@ -98,7 +98,7 @@ class RedirectionAccueil : NavigationTelecommande() {
         val maintenant = SystemClock.uptimeMillis()
         if (maintenant < pauseJusqua) return
         if (lancement != 0L && maintenant - lancement < 1_500) return
-        ouvrirIBiProjo()
+        ouvrirIBiTV()
     }
 
     /** Vérifications de l'écran affiché, à [delais] ms. */
@@ -145,7 +145,7 @@ class RedirectionAccueil : NavigationTelecommande() {
         Log.i(TAG, "Ouverture automatique active (accueils surveillés : $accueils)")
         // Démarrage du Fire TV : l'accueil Amazon est déjà affiché quand le service est relié
         verifierPlusTard(400, 2_000, 5_000)
-        // Puces NFC : écoute dès le démarrage, sans attendre l'ouverture d'iBiProjo
+        // Puces NFC : écoute dès le démarrage, sans attendre l'ouverture d'iBiTV
         PucesNfc.demarrerSiActif(this)
         // Android 9 : après une mise à jour, le service peut être relié avec son ancienne
         // configuration (sans les touches) jusqu'au redémarrage. Voir FireTv.majAFinir.
@@ -157,7 +157,7 @@ class RedirectionAccueil : NavigationTelecommande() {
     /**
      * Touches de la télécommande, reçues avant le système. Seule Maison est gardée :
      * le système ne la voit pas, donc l'accueil Amazon ne s'affiche pas et Android
-     * ne retarde pas l'ouverture d'iBiProjo (sa protection « changement d'app »).
+     * ne retarde pas l'ouverture d'iBiTV (sa protection « changement d'app »).
      *
      * On ouvre au RELÂCHEMENT : c'est le seul moyen de distinguer appui court et appui
      * long, et un appui court dure ~0,1 s, invisible à côté des ~2 s d'avant.
@@ -178,7 +178,7 @@ class RedirectionAccueil : NavigationTelecommande() {
         // Répétitions (touche maintenue) : même chemin que le premier appui
         if (event.repeatCount > 0) return !appuiTransmis
         principal.removeCallbacks(appuiLong)
-        // iBiProjo trop occupé (> 0,5 s) : le système a déjà repris l'appui. On lui laisse
+        // iBiTV trop occupé (> 0,5 s) : le système a déjà repris l'appui. On lui laisse
         // aussi le relâchement pour qu'il reçoive bien la paire appui + relâchement.
         val enRetard = SystemClock.uptimeMillis() - event.eventTime > DELAI_MAX
         appuiTransmis = enReve || enRetard
@@ -188,14 +188,14 @@ class RedirectionAccueil : NavigationTelecommande() {
         return true
     }
 
-    /** Maison relâchée : appui court → iBiProjo (l'appui long a déjà été traité). */
+    /** Maison relâchée : appui court → iBiTV (l'appui long a déjà été traité). */
     private fun relacheMaison(event: KeyEvent): Boolean {
         if (appuiTransmis) {
             appuiTransmis = false
             return false
         }
         principal.removeCallbacks(appuiLong)
-        if (!appuiLongFait && !event.isCanceled) ouvrirIBiProjo()
+        if (!appuiLongFait && !event.isCanceled) ouvrirIBiTV()
         appuiLongFait = false
         return true
     }
@@ -208,10 +208,10 @@ class RedirectionAccueil : NavigationTelecommande() {
         ambiance.fenetre(paquet, event.className?.toString(), accueils)
         val maintenant = SystemClock.uptimeMillis()
         if (paquet == packageName) {
-            // L'écran d'iBiProjo est affiché : ouverture terminée, fin de la pause éventuelle.
+            // L'écran d'iBiTV est affiché : ouverture terminée, fin de la pause éventuelle.
             // Seulement son écran principal : notre clavier (télécommande smartphone), ouvert
             // pour une recherche dans l'accueil Amazon, ne compte pas (sinon la pause était
-            // annulée et l'on était renvoyé vers iBiProjo en plein téléchargement).
+            // annulée et l'on était renvoyé vers iBiTV en plein téléchargement).
             if (event.className?.toString() == MainActivity::class.java.name) {
                 lancement = 0
                 pauseJusqua = 0
@@ -227,11 +227,11 @@ class RedirectionAccueil : NavigationTelecommande() {
         if (paquet !in accueils) return
         // Ouverture déjà demandée il y a moins de 1,5 s et pas encore affichée : inutile de redemander
         if (lancement != 0L && maintenant - lancement < 1_500) return
-        ouvrirIBiProjo()
+        ouvrirIBiTV()
     }
 
-    /** Ouvre iBiProjo comme le ferait un vrai appui sur Maison (retour au début de l'accueil). */
-    private fun ouvrirIBiProjo() {
+    /** Ouvre iBiTV comme le ferait un vrai appui sur Maison (retour au début de l'accueil). */
+    private fun ouvrirIBiTV() {
         pauseJusqua = 0
         lancement = SystemClock.uptimeMillis()
         // Comme le vrai bouton Maison : ferme les fenêtres système (interdit à partir d'Android 12)
@@ -248,7 +248,7 @@ class RedirectionAccueil : NavigationTelecommande() {
             startActivity(intentMaison(this))
         } catch (e: Exception) {
             lancement = 0
-            Log.w(TAG, "Impossible d'ouvrir iBiProjo", e)
+            Log.w(TAG, "Impossible d'ouvrir iBiTV", e)
         }
     }
 
@@ -281,7 +281,7 @@ class RedirectionAccueil : NavigationTelecommande() {
         private const val PAUSE_AMAZON = 10 * 60_000L
 
         /**
-         * Intent d'un appui sur Maison pour iBiProjo : MainActivity (singleTask) passe devant
+         * Intent d'un appui sur Maison pour iBiTV : MainActivity (singleTask) passe devant
          * sans être recréée et reçoit onNewIntent avec la catégorie HOME, qui la remet au
          * début et ferme ses panneaux. Mêmes drapeaux que ceux du système pour l'accueil.
          */

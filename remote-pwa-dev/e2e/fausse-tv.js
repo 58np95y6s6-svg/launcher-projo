@@ -1,4 +1,4 @@
-// Fausse « TV » iBiProjo pour les tests de bout en bout : implémente le côté TV du protocole
+// Fausse « TV » iBiTV pour les tests de bout en bout : implémente le côté TV du protocole
 // (docs/telecommande.md) en JavaScript, INDÉPENDAMMENT du code de la PWA (aucun import),
 // comme le fera l'app Android : signalisation PeerJS brute, réponse WebRTC, hello signés,
 // appairage (QR et code de secours), commandes, révocation.

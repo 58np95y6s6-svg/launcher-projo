@@ -28,7 +28,7 @@ export class Session extends EventTarget {
    * @param {{id:string, cle?:string, empreinte?:string}} o.cible  TV à joindre (id PeerJS) ;
    *        cle = SPKI enregistrée (TV appairée) ; empreinte = attendue (QR code) ; aucune = code de secours
    * @param {{secret:string, nom:string, empreinteTV?:string}|null} o.appairage
-   * @param {object} o.config  IBIPROJO_CONFIG
+   * @param {object} o.config  IBITV_CONFIG
    */
   constructor({ signal, identite, cible, appairage = null, config, RTC = globalThis.RTCPeerConnection }) {
     super();

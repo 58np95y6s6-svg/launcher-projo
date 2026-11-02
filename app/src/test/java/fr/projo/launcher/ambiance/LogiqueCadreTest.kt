@@ -69,7 +69,7 @@ class LogiqueCadreTest {
         val l = logique()
         l.maison()
         l.demander(netflix)
-        // Le menu d'iBiProjo se ferme pendant que l'app s'ouvre : la demande reste
+        // Le menu d'iBiTV se ferme pendant que l'app s'ouvre : la demande reste
         l.ecran(Ecran.ACCUEIL, null)
         l.app(netflix)
         assertTrue("Netflix ouvert en mode Ambiance", l.visible(auto = false))
@@ -135,7 +135,7 @@ class LogiqueCadreTest {
         fun classe(p: String, c: String?, clavier: String? = null) = LogiqueCadre.classer(p, c, moi, accueil, accueils, clavier)
         assertEquals(Ecran.ACCUEIL, classe(moi, accueil))
         assertEquals(Ecran.ACCUEIL, classe(amazon, "com.amazon.tv.launcher.ui.HomeActivity"))
-        // Notre clavier (même paquet qu'iBiProjo) : Spotify reste au premier plan
+        // Notre clavier (même paquet qu'iBiTV) : Spotify reste au premier plan
         assertEquals(Ecran.IGNORE, classe(moi, "android.inputmethodservice.SoftInputWindow"))
         assertEquals(Ecran.IGNORE, classe("com.amazon.tv.ime", "android.inputmethodservice.SoftInputWindow"))
         assertEquals(Ecran.IGNORE, classe("com.amazon.tv.ime", "android.widget.FrameLayout", clavier = "com.amazon.tv.ime"))

@@ -16,7 +16,7 @@ import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 
 /**
- * « ADB local » : iBiProjo se connecte au débogage ADB du Fire TV lui-même (127.0.0.1:5555),
+ * « ADB local » : iBiTV se connecte au débogage ADB du Fire TV lui-même (127.0.0.1:5555),
  * comme le ferait un ordinateur, pour activer son ouverture automatique. Le Fire TV affiche
  * une fenêtre « Autoriser le débogage ? » qu'il faut accepter avec la télécommande.
  *
@@ -53,7 +53,7 @@ object AdbLocal {
             if (FireTv.redirectionActive(context)) {
                 // Laisse au système le temps de relier le service avant de vérifier
                 Thread.sleep(1_000)
-                if (FireTv.majAFinir(context)) "Activée, mais il faut redémarrer le Fire TV pour que Maison ouvre iBiProjo." else null
+                if (FireTv.majAFinir(context)) "Activée, mais il faut redémarrer le Fire TV pour que Maison ouvre iBiTV." else null
             } else "Le Fire TV a refusé l'activation. Réessaie et accepte la fenêtre « Autoriser le débogage »."
         } catch (e: ConnectException) {
             "Connexion refusée : active « Débogage ADB » (Options pour les développeurs). S'il l'est déjà, " +
@@ -64,7 +64,7 @@ object AdbLocal {
         }
     }
 
-    /** Clés RSA de « l'ordinateur » iBiProjo, créées une fois puis gardées dans l'app. */
+    /** Clés RSA de « l'ordinateur » iBiTV, créées une fois puis gardées dans l'app. */
     private fun cles(context: Context): AdbKeyPair {
         val dossier = File(context.filesDir, "adb").apply { mkdirs() }
         val fPrivee = File(dossier, "cle.pk8")
@@ -98,6 +98,6 @@ object AdbLocal {
         repeat(mots) { tampon.putInt(reste.mod(r32).toInt()); reste = reste.shiftRight(32) }
         tampon.putInt(cle.publicExponent.toInt())
         val b64 = Base64.encodeToString(tampon.array(), Base64.NO_WRAP)
-        return "$b64 iBiProjo@firetv".toByteArray()
+        return "$b64 iBiTV@firetv".toByteArray()
     }
 }

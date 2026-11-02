@@ -239,7 +239,7 @@ test("appairage refusé sur la TV, puis TV injoignable", async () => {
   await tv.fermer();
 });
 
-test("versions incompatibles : « Mettez à jour iBiProjo sur la TV » / « Rechargez la télécommande »", async () => {
+test("versions incompatibles : « Mettez à jour iBiTV sur la TV » / « Rechargez la télécommande »", async () => {
   const ancienne = await banc.tv({ vmax: 0 });
   const tel = await banc.telephone("android");
   journaux.push(tel.journal);
@@ -248,7 +248,7 @@ test("versions incompatibles : « Mettez à jour iBiProjo sur la TV » / « Rech
   await page.goto(banc.urlPWA + fragment);
   await page.fill("#champ-nom", "Tel");
   await page.click("#form-nom button[type=submit]");
-  await page.locator("#alerte-titre", { hasText: "Mettez à jour iBiProjo sur la TV" }).waitFor({ timeout: 15000 });
+  await page.locator("#alerte-titre", { hasText: "Mettez à jour iBiTV sur la TV" }).waitFor({ timeout: 15000 });
   await page.click("#alerte-ok");
 
   const recente = await banc.tv({ vhello: 2 });
@@ -282,7 +282,7 @@ test("service worker : hors ligne, puis nouvelle version → bannière « Rechar
   await Promise.all([page.waitForEvent("load"), page.click("#btn-recharger")]);
   await page.locator("#ecran-accueil").waitFor();
   assert.ok(await page.isHidden("#banniere-maj"));
-  const version = await page.evaluate(() => globalThis.IBIPROJO_CONFIG.versionApp);
+  const version = await page.evaluate(() => globalThis.IBITV_CONFIG.versionApp);
   assert.equal(version, "1.0.1-test");
   banc.web.etat.versionApp = "1.0.0-test";
   await tel.fermer();

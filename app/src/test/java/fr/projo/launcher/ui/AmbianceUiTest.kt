@@ -33,7 +33,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * Mode Ambiance côté iBiProjo : entrée « Ouvrir en mode Ambiance » dans le menu de toutes
+ * Mode Ambiance côté iBiTV : entrée « Ouvrir en mode Ambiance » dans le menu de toutes
  * les apps (elle ouvre l'app et allume le néon pour elle), explication avant la demande du
  * micro, réglages et aide (captures).
  */

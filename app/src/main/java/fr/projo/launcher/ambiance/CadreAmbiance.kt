@@ -161,7 +161,7 @@ class CadreAmbiance(private val service: AccessibilityService) {
      * Touche ☰ (Menu). Appui court : passe à l'app, comme avant (rien n'est retenu). Appui
      * long (0,7 s) dans une app : allume ou éteint le néon, et la suite de l'appui
      * (répétitions, relâchement) est gardée pour que l'app ne la traite pas.
-     * Sur iBiProjo et l'accueil : la touche passe toujours sans changement.
+     * Sur iBiTV et l'accueil : la touche passe toujours sans changement.
      */
     fun toucheMenu(event: KeyEvent): Boolean = try {
         suivreMenu(event)
@@ -351,7 +351,7 @@ class CadreAmbiance(private val service: AccessibilityService) {
         x = z.left
         y = z.top
         windowAnimations = 0
-        title = "iBiProjo · néon"
+        title = "iBiTV · néon"
     }
 
     /**

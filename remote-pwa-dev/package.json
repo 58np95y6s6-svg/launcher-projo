@@ -1,7 +1,7 @@
 {
   "name": "ibiprojo-telecommande-dev",
   "private": true,
-  "description": "Outillage de la télécommande iBiProjo : tests, faux serveur PeerJS, fausse TV, captures, icônes. Rien de ceci n'est publié.",
+  "description": "Outillage de la télécommande iBiTV : tests, faux serveur PeerJS, fausse TV, captures, icônes. Rien de ceci n'est publié.",
   "type": "module",
   "scripts": {
     "test": "node --test --test-timeout=30000 \"tests/*.test.mjs\"",
