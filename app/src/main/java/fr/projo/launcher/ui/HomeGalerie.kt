@@ -118,6 +118,8 @@ private const val G_PANNEAU_L = 650f
 private const val G_PANNEAU_T = 600f
 private const val G_PANNEAU_W = 880f
 private const val G_PANNEAU_H = 236f
+/** Points de position affichés au plus sous le synopsis. */
+private const val G_POINTS = 11
 /** Haut du dock au-dessus du bas de l'écran (914 sur un écran de 1080). */
 private const val G_DOCK_BAS = 166f
 /** Haut du dock sur l'écran 2 (modules). */
@@ -324,6 +326,8 @@ fun HomeGalerie(ctx: HomeContext) {
     )
     val tempsLu = { temps }
     val traceLue = { trace }
+    // Écran 2 : l'écran 1 (carrousel, en-tête) s'efface à mesure que la page glisse
+    val presenceEcran1 = { 1f - (ctx.defilement.value / decalagePx.toFloat().coerceAtLeast(1f)).coerceIn(0f, 1f) }
 
     Box(Modifier.fillMaxSize().fondGalerie()) {
         Box(Modifier.fillMaxSize().clipToBounds()) {
@@ -344,6 +348,7 @@ fun HomeGalerie(ctx: HomeContext) {
                         .offset { IntOffset(0, (G_HAUT * k).roundToInt()) }
                         .fillMaxWidth()
                         .height((G_BAS - G_HAUT).mq)
+                        .graphicsLayer { alpha = presenceEcran1() }
                         .gestesPages(Orientation.Horizontal, precedent = { deplacer(-1) }, suivant = { deplacer(1) }),
                 ) {
                     DessinCarrousel(anim, titres, visuels, tempsLu, traceLue, courant, precedent, marques, titres.isNotEmpty(), k)
@@ -365,7 +370,7 @@ fun HomeGalerie(ctx: HomeContext) {
                                     )
                                 }
                             }
-                            CiblesCarrousel(titres, courant, nav, k, focusCarte, heros, regarder, ctx, deplacer)
+                            CiblesCarrousel(titres, courant, nav, k, focusCarte, heros, regarder, ctx, deplacer, tempsLu)
                         }
                     }
                     // ------------------------------------------------ actions et panneau
@@ -411,12 +416,14 @@ fun HomeGalerie(ctx: HomeContext) {
                     }
                 }
                 // ------------------------------------------------ étage 1 : en-tête
-                EnTeteGalerie(
-                    ctx, nav, k, onglets, onglet, focusOnglets,
-                    choisir = { ongletChoisi = it },
-                    credit = titres.any { it is StudioSuggestion.Programme },
-                    versEcran = versEcran,
-                )
+                Box(Modifier.graphicsLayer { alpha = presenceEcran1() }) {
+                    EnTeteGalerie(
+                        ctx, nav, k, onglets, onglet, focusOnglets,
+                        choisir = { ongletChoisi = it },
+                        credit = titres.any { it is StudioSuggestion.Programme },
+                        versEcran = versEcran,
+                    )
+                }
                 // ------------------------------------------------ étage 3 : dock (et écran 2 : modules)
                 DockGalerie(ctx, nav, k, hautDock, versEcran)
                 ModulesGalerie(ctx, nav, k, hauteur, hautDock - G_DOCK_ECRAN2, versEcran)
@@ -801,18 +808,19 @@ private fun ContenuHeros(
             )
             if (droite != null) TexteGalerie(droite, 22f, Color.White.copy(alpha = 0.9f), serif = true, interligne = 28f)
         }
-        val taille = when {
-            nom.length <= 22 -> 60f
-            nom.length <= 34 -> 50f
-            else -> 42f
-        }
-        TexteGalerie(
-            nom, taille, Color.White,
-            Modifier.fillMaxWidth().padding(start = 60.mq, end = 60.mq, top = 104.mq),
-            poids = FontWeight.Normal, serif = true, interligne = taille * 1.04f, lignes = 2, centre = true,
-            ombre = Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 2f * k), 22f * k),
-        )
         if (s is StudioSuggestion.Programme) {
+            // Titre en serif (pas pour une app à la une : son logo est déjà sur l'image)
+            val taille = when {
+                nom.length <= 22 -> 60f
+                nom.length <= 34 -> 50f
+                else -> 42f
+            }
+            TexteGalerie(
+                nom, taille, Color.White,
+                Modifier.fillMaxWidth().padding(start = 60.mq, end = 60.mq, top = 104.mq),
+                poids = FontWeight.Normal, serif = true, interligne = taille * 1.04f, lignes = 2, centre = true,
+                ombre = Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 2f * k), 22f * k),
+            )
             val p = s.programme
             Row(
                 Modifier.align(Alignment.TopCenter).padding(top = 262.mq),
@@ -869,6 +877,7 @@ private fun CiblesCarrousel(
     regarder: (StudioSuggestion) -> Unit,
     ctx: HomeContext,
     deplacer: (Int) -> Unit,
+    temps: () -> Float,
 ) {
     val n = titres.size
     // Tuiles : une par place visible occupée (ordre ◀ ▶ : celui du carrousel)
@@ -910,6 +919,8 @@ private fun CiblesCarrousel(
     }
     CibleTransparente(
         k = k, rayon = c.rayon,
+        // L'anneau suit le contenu du titre : il quitte la carte qui s'en va et revient sur la nouvelle
+        visibilite = { maxOf(CarrouselGalerie.apparitionContenu(temps()), CarrouselGalerie.disparition(temps())) },
         onClick = { heros?.let(regarder) },
         onLongClick = app?.let { a -> { ctx.actions.openMenu(a) } },
         description = when (heros) {
@@ -934,6 +945,7 @@ private fun CibleTransparente(
     modifier: Modifier,
     description: String?,
     onLongClick: (() -> Unit)? = null,
+    visibilite: () -> Float = { 1f },
 ) {
     var focus by remember { mutableStateOf(false) }
     val t by animateFloatAsState(if (focus) 1f else 0f, tween(160), label = "anneau")
@@ -941,7 +953,7 @@ private fun CibleTransparente(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
-            .drawBehind { anneauGalerie(k, rayon * k, t, ombre = false) }
+            .drawBehind { anneauGalerie(k, rayon * k, t * visibilite(), ombre = false) }
             .onFocusChanged { focus = it.hasFocus }
             .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape((rayon / 2f).dp)),
@@ -1117,10 +1129,12 @@ private fun PanneauGalerie(
                 BoutonBandeAnnonce(k, bandeAnnonce, Modifier.testTag("galerie:bande-annonce").then(rememberCibleGalerie(nav, EtageGalerie.ACTIONS, "bande-annonce")))
             }
         }
+        // Points de position : au plus 11 (au-delà, une fenêtre qui suit le titre du centre)
         val n = titres.size
-        if (n in 2..24) {
+        if (n > 1) {
+            val debut = if (n <= G_POINTS) 0 else (courant - G_POINTS / 2).coerceIn(0, n - G_POINTS)
             Row(Modifier.align(Alignment.BottomEnd).padding(end = 30.mq, bottom = 44.mq), horizontalArrangement = Arrangement.spacedBy(7.mq)) {
-                for (i in 0 until n) Point(i == courant)
+                for (i in debut until minOf(n, debut + G_POINTS)) key(i) { Point(i == courant) }
             }
         }
         // Trait de la couleur du service

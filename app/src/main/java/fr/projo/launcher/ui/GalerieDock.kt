@@ -27,6 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
@@ -124,6 +128,7 @@ internal fun DockGalerie(ctx: HomeContext, nav: GalerieNav, k: Float, haut: Floa
                 // Pilule de verre sous les icônes (entre le dessus et le reflet)
                 .verreGalerie(k, 36f, zone = { s -> floatArrayOf(0f, D_DESSUS * k, s.width, D_VERRE * k) })
                 .testTag("rangee:favoris")
+                .fonduDock(ctx.rangeeFavoris, 56f * k)
                 .etageGalerie(nav, EtageGalerie.DOCK, lateral = false, surFocus = versEcran)
                 .onFocusChanged {
                     if (!it.hasFocus) {
@@ -206,6 +211,30 @@ internal fun DockGalerie(ctx: HomeContext, nav: GalerieNav, k: Float, haut: Floa
     }
 }
 
+/**
+ * Bords du dock quand la rangée défile : les icônes s'effacent vers le bord du verre au lieu
+ * d'être coupées net (seulement du côté où il reste des applis à voir). [largeur] en px.
+ */
+private fun Modifier.fonduDock(etat: androidx.compose.foundation.lazy.LazyListState, largeur: Float): Modifier = composed {
+    val gauche by animateFloatAsState(if (etat.canScrollBackward) 1f else 0f, tween(200), label = "fonduGauche")
+    val droite by animateFloatAsState(if (etat.canScrollForward) 1f else 0f, tween(200), label = "fonduDroite")
+    this
+        // Calque séparé : le masque n'agit que sur les icônes, pas sur le verre ni le fond
+        .graphicsLayer { compositingStrategy = if (gauche > 0f || droite > 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto }
+        .drawWithContent {
+            drawContent()
+            if (gauche <= 0f && droite <= 0f || size.width <= 3f * largeur) return@drawWithContent
+            val f = largeur / size.width
+            drawRect(
+                Brush.horizontalGradient(
+                    0f to Color.Black.copy(alpha = 1f - gauche), f to Color.Black,
+                    1f - f to Color.Black, 1f to Color.Black.copy(alpha = 1f - droite),
+                ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+}
+
 /** Case d'un élément : toute la hauteur de la zone, l'icône posée sur le verre (écart [marge] sous elle). */
 @Composable
 private fun CaseDock(taille: Float, k: Float, contenu: @Composable () -> Unit) {
@@ -229,6 +258,8 @@ private fun IconeDock(
     val visuel = rememberAppVisual(ctx.ui.iconSourceOf(app.packageName), ctx.icons, FormatVisuel.CARRE)
     val couleur = visuel?.color ?: if (app.isSpecial) IconLoader.COULEUR_HDMI else IconLoader.COULEUR_PAR_DEFAUT
     val art = visuel?.art
+    // Reflet : copie minuscule et floutée de l'icône (le flou vient de l'agrandissement)
+    val reflet = remember(art) { art?.let { FlousGalerie.reflet(it) } }
     val taille = tailleIcone(g)
     val marge = margeIcone(g)
     val rayon = taille * 0.24f
@@ -236,7 +267,7 @@ private fun IconeDock(
     val cible = rememberCibleGalerie(nav, EtageGalerie.DOCK, e.cle, fr = if (e.premier) ctx.premierFocus else null)
     val selection = ((g - 1f).coerceIn(0f, 1f))
     CaseDock(taille, k) {
-        Box(Modifier.padding(bottom = (D_DESSOUS + marge).mq).drawBehind { refletDock(art, couleur, k, taille, marge, rayon) }) {
+        Box(Modifier.padding(bottom = (D_DESSOUS + marge).mq).drawBehind { refletDock(reflet, couleur, k, taille, marge, rayon) }) {
             SurfaceCliquable(
                 onClick = { ctx.actions.launch(app) },
                 onLongClick = { ctx.actions.openMenu(app) },

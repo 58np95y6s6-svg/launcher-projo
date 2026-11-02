@@ -374,6 +374,23 @@ internal object FlousGalerie {
         }
     }
 
+    /** Reflet d'une icône : copie de 24 px floutée (la dessiner agrandie la rend floue). */
+    fun reflet(icone: ImageBitmap): ImageBitmap? = try {
+        val b = icone.asAndroidBitmap()
+        val w = b.width
+        val h = b.height
+        val pixels = IntArray(w * h)
+        b.getPixels(pixels, 0, w, 0, 0, w, h)
+        val n = 24
+        val c = reduire(pixels, w, h, n, n)
+        repeat(2) { flouBoite(c, n, n, 1) }
+        versImage(c, n, n, null)
+    } catch (e: Exception) {
+        null
+    } catch (e: OutOfMemoryError) {
+        null
+    }
+
     /** Réduction par moyenne des pixels (bonne qualité même pour un grand rapport). */
     private fun reduire(src: IntArray, w: Int, h: Int, dw: Int, dh: Int): Array<FloatArray> {
         val r = FloatArray(dw * dh)
