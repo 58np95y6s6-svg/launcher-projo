@@ -52,13 +52,18 @@ body { width: 1920px; height: 1080px; overflow: hidden; font-family: M, sans-ser
 .carte.loin { filter: blur(3px) saturate(1.2); opacity: .9; }
 .carte.tres-loin { filter: blur(6px) saturate(1.1); opacity: .7; }
 .carte .etiquette { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; color: #fff; font-size: 15px; font-weight: 600; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+.carte.floue { filter: blur(2.5px) saturate(1.3); }
+.carte.nb { filter: grayscale(1) contrast(1.1); }
+.ajout { position: absolute; left: 132px; top: 452px; padding: 12px 28px; font-size: 16px; font-weight: 600; background: rgba(60,62,70,.55) !important; color: #fff; border-color: rgba(255,255,255,.25) !important; z-index: 3; }
+.agrandir { position: absolute; left: 372px; top: 448px; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 3; }
+.agrandir svg { width: 20px; height: 20px; stroke: #3b3d44; fill: none; stroke-width: 2; }
 .reflet-carte { position: absolute; border-radius: 26px; background-size: cover; background-position: center; transform: scaleY(-1); opacity: .2; filter: blur(5px);
   -webkit-mask-image: linear-gradient(180deg, transparent 60%, #000 100%); }
 .fleche { position: absolute; top: 400px; width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 5; }
 .fleche svg { width: 24px; height: 24px; stroke: #34363d; fill: none; stroke-width: 2.2; }
 
-.halo { position: absolute; left: 470px; top: 200px; width: 980px; height: 500px; border-radius: 60px; filter: blur(80px) saturate(1.7); opacity: .7; background-size: cover; background-position: center; }
-.heros { position: absolute; left: 420px; top: 150px; width: 1080px; height: 560px; border-radius: 34px; overflow: hidden; background: #0b0b0e;
+.halo { position: absolute; left: 660px; top: 200px; width: 860px; height: 500px; border-radius: 60px; filter: blur(80px) saturate(1.7); opacity: .7; background-size: cover; background-position: center; }
+.heros { position: absolute; left: 620px; top: 150px; width: 940px; height: 560px; border-radius: 34px; overflow: hidden; background: #0b0b0e;
   box-shadow: 0 40px 80px rgba(20,22,28,.35), 0 0 0 1px rgba(255,255,255,.1) inset; }
 .heros .img { position: absolute; inset: -16px; background-size: cover; background-position: center 30%; filter: blur(3px) saturate(1.35) contrast(1.06); }
 .heros .net { position: absolute; inset: 0; background-size: cover; background-position: center 30%; filter: saturate(1.2);
@@ -68,13 +73,13 @@ body { width: 1920px; height: 1080px; overflow: hidden; font-family: M, sans-ser
 .heros .service { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: .06em; }
 .heros .service i { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 17px; font-weight: 800; }
 .heros .rang { font-family: Serif; font-size: 22px; opacity: .9; }
-.heros h1 { position: absolute; left: 60px; right: 60px; top: 104px; margin: 0; text-align: center; color: #fff; font-family: Serif; font-weight: 400; font-size: 64px; line-height: 1.04; text-shadow: 0 2px 22px rgba(0,0,0,.45); }
+.heros h1 { position: absolute; left: 60px; right: 60px; top: 104px; margin: 0; text-align: center; color: #fff; font-family: Serif; font-weight: 400; font-size: 60px; line-height: 1.04; text-shadow: 0 2px 22px rgba(0,0,0,.45); }
 .heros .infos { position: absolute; left: 0; right: 0; top: 262px; display: flex; justify-content: center; gap: 8px; }
 .badge { padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); color: #fff; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.08); }
 .badge.note { background: rgba(255,255,255,.9); color: #1b1c20; border-color: transparent; }
 
 /* panneau synopsis (verre) à cheval sur le bas du héros */
-.synopsis { position: absolute; left: 480px; top: 600px; width: 960px; height: 236px; border-radius: 32px; padding: 26px 30px 0 30px; z-index: 6; overflow: hidden;
+.synopsis { position: absolute; left: 650px; top: 600px; width: 880px; height: 236px; border-radius: 32px; padding: 26px 30px 0 30px; z-index: 6; overflow: hidden;
   background: linear-gradient(160deg, rgba(255,255,255,.78), rgba(246,247,249,.6) 60%, rgba(255,255,255,.7)) !important; backdrop-filter: blur(30px) saturate(1.2) !important; }
 .synopsis .tete { display: flex; align-items: center; gap: 12px; font-size: 15px; color: #55585f; font-weight: 600; }
 .synopsis .tete b { color: #2b2d33; }
@@ -115,13 +120,15 @@ body { width: 1920px; height: 1080px; overflow: hidden; font-family: M, sans-ser
 <!-- étage 1 -->
 <div class="logo"><span class="pastille verre"><svg viewBox="0 0 24 24" fill="none" stroke="#34363d" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/><circle cx="12" cy="12" r="3.2" fill="#e9eaee"/></svg></span>
   <div>iBiTV<small>20:41 · mardi 3 novembre</small></div></div>
-<div class="onglets verre pilule"><span class="onglet actif">Pour vous</span><span class="onglet">Films</span><span class="onglet">Séries</span></div>
+<div class="onglets verre pilule"><span class="onglet actif">Pour vous</span><span class="onglet">Films</span><span class="onglet">Séries</span><span class="onglet">Ma liste</span></div>
 <div class="meteo verre pilule"><svg viewBox="0 0 64 64"><circle cx="40" cy="22" r="11" fill="#f3c969"/><path d="M18 46h30a10 10 0 000-20 14 14 0 00-26 4 8 8 0 00-4 16z" fill="#fff"/></svg>14°<small>Paris</small></div>
 <div class="reglages verre"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></div>
 <div class="credit" id="credit">Titres et images : TMDB</div>
 
 <!-- étage 2 : galerie -->
 <div id="galerie"></div>
+<div class="ajout verre pilule">Ajouter à ma liste</div>
+<div class="agrandir verre"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></div>
 <div class="halo" id="halo"></div>
 <div class="heros">
   <div class="img" id="h-img"></div><div class="net" id="h-net"></div><div class="voile"></div>
@@ -176,33 +183,25 @@ document.getElementById("trait").style.background = sv.trait;
 document.getElementById("lueur").style.background = sv.trait;
 document.getElementById("points").innerHTML = T.slice(0, 7).map((_, i) => `<i class="${i === 0 ? "on" : ""}"></i>`).join("");
 
-// Autres titres : petites mosaïques de tuiles de part et d'autre, décalées comme une table
-// lumineuse (carrées et 16:9 mélangées). Chaque tuile se choisit à la télécommande.
+// Autres titres (composition de la première version) : à gauche une tuile coupée par le bord,
+// une grande tuile en haut (cochée : déjà vu), « Ajouter à ma liste » + agrandir, deux tuiles
+// côte à côte dessous (une en noir et blanc) ; à droite une grande tuile floue coupée par le bord.
 const g = document.getElementById("galerie");
 const tuiles = [
-  // à gauche : une tuile coupée par le bord, une en haut, deux en bas côte à côte
-  { t: T[7], l: -70, top: 300, w: 150, h: 230, img: "poster", cls: "tres-loin" },
-  { t: T[1], l: 150, top: 196, w: 236, h: 150, img: "backdrop", cls: "" },
-  { t: T[2], l: 92, top: 372, w: 160, h: 160, img: "backdrop", cls: "loin" },
-  { t: T[3], l: 270, top: 372, w: 128, h: 196, img: "poster", cls: "" },
-  // à droite : une grande carrée, une 16:9 décalée en bas, une coupée par le bord
-  { t: T[4], l: 1534, top: 214, w: 176, h: 176, img: "backdrop", cls: "" },
-  { t: T[5], l: 1728, top: 190, w: 144, h: 204, img: "poster", cls: "loin" },
-  { t: T[6], l: 1560, top: 412, w: 250, h: 156, img: "backdrop", cls: "" },
-  { t: T[8], l: 1832, top: 420, w: 150, h: 150, img: "backdrop", cls: "tres-loin" },
+  { t: T[7], l: -76, top: 238, w: 176, h: 310, img: "poster", cls: "" },
+  { t: T[1], l: 300, top: 196, w: 276, h: 232, img: "backdrop", cls: "floue", coche: true },
+  { t: T[2], l: 112, top: 528, w: 250, h: 206, img: "backdrop", cls: "" },
+  { t: T[3], l: 378, top: 528, w: 200, h: 206, img: "backdrop", cls: "nb" },
+  { t: T[4], l: 1600, top: 236, w: 420, h: 300, img: "backdrop", cls: "floue" },
+  { t: T[5], l: 1640, top: 560, w: 230, h: 168, img: "backdrop", cls: "loin" },
 ];
 for (const v of tuiles) {
   const d = document.createElement("div");
   d.className = "carte " + v.cls;
-  Object.assign(d.style, { left: v.l + "px", top: v.top + "px", width: v.w + "px", height: v.h + "px", borderRadius: "22px" });
+  Object.assign(d.style, { left: v.l + "px", top: v.top + "px", width: v.w + "px", height: v.h + "px" });
   fond(d, v.img === "poster" ? v.t.poster : v.t.backdrop);
+  if (v.coche) d.insertAdjacentHTML("beforeend", '<svg style="position:absolute;left:50%;top:52%;margin:-15px;z-index:3" width="30" height="30" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="rgba(255,255,255,.92)"/><path d="M8 14.5l4 4 8-9" stroke="#2b2d33" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>');
   g.appendChild(d);
-}
-// coche sur la tuile vue récemment (comme une sélection), à gauche en haut
-g.children[1].insertAdjacentHTML("beforeend", '<svg style="position:absolute;right:12px;top:12px;z-index:3" width="30" height="30" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="rgba(255,255,255,.92)"/><path d="M8 14.5l4 4 8-9" stroke="#2b2d33" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>');
-// reflet discret au sol sous chaque mosaïque
-for (const [l, w] of [[60, 360], [1520, 380]]) {
-  g.insertAdjacentHTML("beforeend", `<div style="position:absolute;left:${l}px;top:600px;width:${w}px;height:90px;border-radius:30px;background:rgba(255,255,255,.35);filter:blur(28px)"></div>`);
 }
 
 // Dock des applis façon Mac : icônes carrées (sur la TV : les vraies icônes des applis installées)
