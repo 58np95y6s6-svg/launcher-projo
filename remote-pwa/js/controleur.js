@@ -7,6 +7,7 @@
 //   tvs {tvs, active}        liste des TV modifiée
 //   appairage {etape, …}     "connexion" | "confirmation" | "reussi" (tv) | "echec" (raison, refus)
 //   focus_text {type, s, action} | focus_lost
+//   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
 //   version {verdict}
 //   revoquee {tv}
 
@@ -99,7 +100,7 @@ export class Controleur extends EventTarget {
       signal, identite: this.identite, cible: { id: tv.id, cle: tv.cle }, config: this.config, RTC: this.RTC,
     }));
     this._brancher(session);
-    session.addEventListener("tv", (e) => this._majTV(tv.id, { versionApp: e.detail.versionApp, nomTV: e.detail.nomTV }));
+    session.addEventListener("tv", (e) => this._majTV(tv.id, e.detail));
     session.addEventListener("etat", (e) => {
       if (this.session !== session) return;
       if (e.detail.etat === "prete") { this.essais = 0; this._etat("connecte"); }
@@ -112,6 +113,9 @@ export class Controleur extends EventTarget {
     session.addEventListener("focus_text", (e) => this._emettre("focus_text", e.detail));
     session.addEventListener("focus_lost", () => this._emettre("focus_lost"));
     session.addEventListener("version", (e) => this._emettre("version", e.detail));
+    for (const t of ["apps", "app_image", "app_ouverte", "reglages"]) {
+      session.addEventListener(t, (e) => { if (this.session === session) this._emettre(t, e.detail); });
+    }
   }
 
   async _finSession(session, tv, { raison }) {
@@ -162,6 +166,7 @@ export class Controleur extends EventTarget {
 
   async oublier(id, { silencieux = false } = {}) {
     await stockage.oublierTV(id);
+    stockage.effacerReglage(`apps:${id}`).catch(() => {});
     if (!silencieux) journal("tv_oubliee");
     this.tvs = this.tvs.filter((t) => t.id !== id);
     if (this.active === id) {
@@ -177,11 +182,13 @@ export class Controleur extends EventTarget {
     this._emettreTVs();
   }
 
-  async _majTV(id, { versionApp, nomTV }) {
+  async _majTV(id, { versionApp, nomTV, fonctions }) {
     const tv = this.tvs.find((t) => t.id === id);
     if (!tv) return;
     if (typeof versionApp === "string") tv.versionApp = versionApp;
     if (nomTV) tv.nom = nomTV;
+    // Fonctions annoncées (onglets « Applis », « Réglages ») : gardées pour la prochaine ouverture
+    if (Array.isArray(fonctions)) tv.fonctions = fonctions;
     await stockage.enregistrerTV(tv);
     this._emettreTVs();
   }
@@ -216,7 +223,10 @@ export class Controleur extends EventTarget {
     });
     session.addEventListener("paired", async (e) => {
       const { idTV, nomTV, cle, empreinte } = e.detail;
-      const tv = { id: idTV, nom: nomTV, cle, empreinte, ajouteeLe: Date.now(), versionApp: session.versionAppTV };
+      const tv = {
+        id: idTV, nom: nomTV, cle, empreinte, ajouteeLe: Date.now(),
+        versionApp: session.versionAppTV, fonctions: session.fonctionsTV || [],
+      };
       await stockage.enregistrerTV(tv);
       this.tvs = [...this.tvs.filter((t) => t.id !== idTV), tv];
       this.active = idTV;
@@ -231,7 +241,10 @@ export class Controleur extends EventTarget {
       this._etat("connecte");
       this._emettre("appairage", { etape: "reussi", tv });
     });
-    session.addEventListener("tv", (e) => { session.versionAppTV = e.detail.versionApp; });
+    session.addEventListener("tv", (e) => {
+      session.versionAppTV = e.detail.versionApp;
+      session.fonctionsTV = e.detail.fonctions;
+    });
     session.addEventListener("fin", (e) => {
       if (this.sessionAppairage !== session) return;
       this.sessionAppairage = null;
@@ -254,4 +267,16 @@ export class Controleur extends EventTarget {
   touche(k) { return this.session?.touche(k) ?? false; }
   texte(s, curseur) { return this.session?.texte(s, curseur) ?? false; }
   valider() { return this.session?.valider() ?? false; }
+
+  // ---------- Pilotage : applis et réglages ----------
+
+  /** Fonctions annoncées par la TV active (dernier hello). */
+  get fonctions() { return this.tvActive?.fonctions || []; }
+
+  appsListe() { return this.session?.envoyer("apps_liste") ?? false; }
+  appsImages(ids) { return this.session?.envoyer("apps_images", { ids }) ?? false; }
+  appOuvrir(id) { return this.session?.envoyer("app_ouvrir", { id }) ?? false; }
+  reglagesListe() { return this.session?.envoyer("reglages_liste") ?? false; }
+  /** @param {{valeur?:*, bouton?:*}} action */
+  reglage(cle, action) { return this.session?.envoyer("reglage", { cle, ...action }) ?? false; }
 }

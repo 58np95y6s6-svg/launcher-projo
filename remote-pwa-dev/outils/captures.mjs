@@ -70,6 +70,28 @@ async function serie(modele) {
   await salon.envoyer({ t: "focus_lost" });
   await page.waitForFunction(() => !document.querySelector("#saisie").classList.contains("actif"));
 
+  // Onglets « Applis » et « Réglages » (fonctions annoncées par la TV)
+  await page.click("#onglet-applis");
+  await page.waitForFunction(() => document.querySelectorAll(".tuile img").length >= 12);
+  await capture("applis");
+  await page.click('.tuile[data-id="com.amazon.amazonvideo.livingroom"]');
+  await page.locator("#toast.visible").waitFor();
+  await capture("applis-ouverture");
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="volume"]').waitFor();
+  await page.waitForFunction(() => !document.querySelector("#toast").classList.contains("visible"));
+  await capture("reglages");
+  // Mise à jour en cours : progression et rappel « touche OK » (téléchargement arrêté à 42 %)
+  await salon.eval(() => { window.tv.majArret = 0.42; });
+  await page.click('.reglage[data-cle="maj"] .btn-reglage');
+  const installer = page.locator('.reglage[data-cle="maj"] .btn-reglage', { hasText: "Installer" });
+  await installer.waitFor();
+  await installer.click();
+  await page.locator('.reglage[data-cle="maj"] .reglage-detail', { hasText: "42 %" }).waitFor();
+  await page.locator('.reglage[data-cle="maj"]').evaluate((e) => e.scrollIntoView({ block: "center" }));
+  await capture("reglages-mise-a-jour");
+  await page.click("#onglet-telecommande");
+
   // Seconde TV, puis liste des TV
   await page.click("#btn-tvs");
   await page.click("#btn-ajouter-tv");

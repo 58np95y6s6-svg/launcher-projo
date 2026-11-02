@@ -6,6 +6,7 @@ const EVENEMENTS = new Set([
   "connexion", "connectee", "deconnectee", "injoignable", "authentification_echouee",
   "appairage_demande", "appairage_accepte", "appairage_refuse", "revocation",
   "version_incompatible", "tv_oubliee", "mise_a_jour_disponible", "sw_erreur",
+  "appli_ouverte", "appli_refusee", "reglage",
 ]);
 // Codes courts acceptés en complément (raisons, états) : lettres, chiffres et « _ » seulement.
 const RE_CODE = /^[a-z0-9_]{1,24}$/;

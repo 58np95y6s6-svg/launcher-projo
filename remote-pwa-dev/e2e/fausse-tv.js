@@ -1,9 +1,10 @@
 // Fausse « TV » iBiTV pour les tests de bout en bout : implémente le côté TV du protocole
 // (docs/telecommande.md) en JavaScript, INDÉPENDAMMENT du code de la PWA (aucun import),
 // comme le fera l'app Android : signalisation PeerJS brute, réponse WebRTC, hello signés,
-// appairage (QR et code de secours), commandes, révocation.
+// appairage (QR et code de secours), commandes, révocation, pilotage (applis et réglages).
 //
 // Paramètres d'URL : ?ws=<port du faux serveur PeerJS>&nom=<nom de la TV>&vmax=<version max>
+//   &fonctions=apps,reglages (défaut) | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
 
 const params = new URLSearchParams(location.search);
 const PORT = params.get("ws");
@@ -11,6 +12,7 @@ const NOM_TV = params.get("nom") || "Salon";
 const V_MAX = Number(params.get("vmax") || 1);
 const V_HELLO = Number(params.get("vhello") || 1); // version annoncée dans le hello TV
 const VERSION_APP = "test-1.0";
+const FONCTIONS = (params.get("fonctions") ?? "apps,reglages").split(",").filter((f) => f && f !== "aucune");
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 // ---------- Encodages ----------
@@ -35,7 +37,7 @@ const tv = (window.tv = {
   cleSpki: null,
   empreinte: null,
   appareils: new Map(), // id appareil → { nom, cle }
-  recus: [],            // commandes reçues de téléphones authentifiés : {appareil, t, k?, s?}
+  recus: [],            // commandes reçues de téléphones authentifiés : {appareil, t, k?, s?, ids?, id?, cle?, valeur?, bouton?}
   ignores: [],          // types des messages ignorés (non authentifiés / non appairés)
   evenements: [],       // types d'événements (pas de contenu)
   demande: null,        // demande d'appairage en attente de confirmation {nom, appareil}
@@ -156,6 +158,11 @@ function session(pc, canal, viaId) {
       if (m.s !== undefined) r.s = m.s;
       if (m.curseur !== undefined) r.curseur = m.curseur;
       tv.recus.push(r);
+    } else if (PILOTAGE[m.t] && FONCTIONS.length) {
+      const r = { appareil: ses.appareil, t: m.t };
+      for (const c of ["ids", "id", "cle", "valeur", "bouton"]) if (m[c] !== undefined) r[c] = m[c];
+      tv.recus.push(r);
+      PILOTAGE[m.t](ses, m);
     } else tv.ignores.push(m.t);
   };
 }
@@ -163,7 +170,9 @@ function session(pc, canal, viaId) {
 async function envoyerHello(ses, fpTV, fpTel, nonceTel) {
   const nonce = b64u(crypto.getRandomValues(new Uint8Array(16)));
   const sig = b64u(await crypto.subtle.sign(SIG, clePrivee, utf8(`ibiprojo-v1|hello-tv|${fpTV}|${fpTel}|${nonceTel}|${nonce}`)));
-  ses.envoyer({ v: V_HELLO, t: "hello", nonce, sig, nomTV: tv.nom, versionApp: VERSION_APP, cle: tv.cleSpki });
+  const hello = { v: V_HELLO, t: "hello", nonce, sig, nomTV: tv.nom, versionApp: VERSION_APP, cle: tv.cleSpki };
+  if (FONCTIONS.length) hello.fonctions = FONCTIONS;
+  ses.envoyer(hello);
 }
 
 function demandeAppairage(ses, m, viaId) {
@@ -225,6 +234,197 @@ tv.revoquer = (appareil) => {
 
 /** Coupe toutes les connexions WebRTC (simulation de perte du réseau local). */
 tv.couper = () => { for (const s of tv.sessions) { s.pc.close(); } tv.sessions.clear(); log("coupure"); };
+
+// ---------- Pilotage : applis et réglages (données factices) ----------
+
+// Applis : favoris d'abord (ordre de l'accueil), puis les autres par ordre alphabétique.
+// Images dessinées ici (texte et formes simples, pas de logos) : bannière 240×135 ou icône 96×96.
+const APPS = [
+  { id: "com.netflix.ninja", nom: "Netflix", favori: true, forme: "banniere", fond: ["#141414", "#141414"], texte: "NETFLIX", encre: "#e50914" },
+  { id: "com.amazon.amazonvideo.livingroom", nom: "Prime Video", favori: true, forme: "banniere", fond: ["#0f79af", "#00a8e1"], texte: "prime video", encre: "#fff" },
+  { id: "com.disney.disneyplus", nom: "Disney+", favori: true, forme: "banniere", fond: ["#0b1e5b", "#123b9b"], texte: "Disney+", encre: "#fff" },
+  { id: "fr.projo.ibitube", nom: "iBiTube", favori: true, forme: "banniere", fond: ["#0a1020", "#0a1020"], texte: ["iBi", "Tube"], encre: ["#1e90ff", "#fff"] },
+  { id: "tv.arte.plus7", nom: "Arte", forme: "icone", fond: ["#ff4f00", "#ff4f00"], glyphe: "a" },
+  { id: "com.canal.android.canal", nom: "CANAL+", forme: "banniere", fond: ["#000", "#000"], texte: "CANAL+", encre: "#fff" },
+  { id: "fr.francetv.pluzz", nom: "france.tv", forme: "banniere", fond: ["#1f2f6b", "#3256c8"], texte: "france.tv", encre: "#fff" },
+  { id: "org.xbmc.kodi", nom: "Kodi", forme: "icone", fond: ["#31a6dc", "#17608a"], glyphe: "losanges" },
+  { id: "com.plexapp.android", nom: "Plex", forme: "icone", fond: ["#e5a00d", "#e5a00d"], glyphe: "P", encre: "#000" },
+  { id: "com.spotify.tv.android", nom: "Spotify", forme: "banniere", fond: ["#1db954", "#1db954"], texte: "Spotify", encre: "#000" },
+  { id: "tv.twitch.android.app", nom: "Twitch", forme: "icone", fond: ["#6441a5", "#6441a5"], glyphe: "t" },
+  { id: "org.videolan.vlc", nom: "VLC", forme: "icone", fond: ["#ff8800", "#e85d00"], glyphe: "cone" },
+].map((a, i) => ({ ...a, maj: 1730000000000 + i * 86400000 }));
+
+function dessiner(a) {
+  const [l, hh] = a.forme === "banniere" ? [240, 135] : [96, 96];
+  const c = document.createElement("canvas");
+  c.width = l; c.height = hh;
+  const g = c.getContext("2d");
+  const d = g.createLinearGradient(0, 0, l, hh);
+  d.addColorStop(0, a.fond[0]); d.addColorStop(1, a.fond[1]);
+  g.fillStyle = d;
+  g.fillRect(0, 0, l, hh);
+  g.fillStyle = a.encre || "#fff";
+  g.strokeStyle = a.encre || "#fff";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  if (a.forme === "banniere") {
+    const morceaux = [a.texte].flat(), encres = [a.encre].flat();
+    g.font = `700 ${morceaux.join("").length > 8 ? 30 : 36}px system-ui, sans-serif`;
+    g.textAlign = "left";
+    let x = (l - morceaux.reduce((s, m) => s + g.measureText(m).width, 0)) / 2;
+    morceaux.forEach((m, i) => { g.fillStyle = encres[i] || encres[0]; g.fillText(m, x, hh / 2 + 2); x += g.measureText(m).width; });
+  } else {
+    g.lineWidth = 6; g.lineCap = "round";
+    const m = l / 2;
+    switch (a.glyphe) {
+      case "losanges":
+        g.translate(m, m); g.rotate(Math.PI / 4);
+        for (const [x, y] of [[-16, -16], [4, -16], [-16, 4], [4, 4]]) g.fillRect(x, y, 14, 14);
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        break;
+      case "cone":
+        g.beginPath(); g.moveTo(m, 16); g.lineTo(72, 76); g.lineTo(24, 76); g.closePath(); g.fill();
+        g.fillStyle = a.fond[1]; g.fillRect(34, 46, 28, 6); g.fillRect(28, 60, 40, 6);
+        break;
+      default:
+        g.font = "700 46px system-ui, sans-serif";
+        g.fillText(a.glyphe, m, m + 3);
+    }
+  }
+  return c.toDataURL("image/webp", 0.9);
+}
+const IMAGES = new Map(); // id → URL data: (dessinée à la première demande)
+const image = (a) => { if (!IMAGES.has(a.id)) IMAGES.set(a.id, dessiner(a)); return IMAGES.get(a.id); };
+
+// Réglages : état de la TV, décrit avec les types génériques
+const R = {
+  volume: 9, muet: false, design: "verre", nouveautes: true,
+  ambiance_auto: true, ambiance_intensite: "normale", ambiance_couleurs: "pochette", ambiance_decalage: "100",
+  maj: { etape: "a_jour", progression: undefined },
+};
+const VERSION_INSTALLEE = "2.8";
+const VERSION_NOUVELLE = "2.9";
+const DESIGNS = [
+  { id: "verre", nom: "Verre" }, { id: "pastel", nom: "Pastel" }, { id: "console", nom: "Console" },
+  { id: "une", nom: "À la une" }, { id: "chaines", nom: "Chaînes" }, { id: "studio", nom: "Studio" },
+];
+
+function itemsReglages() {
+  const maj = { cle: "maj", type: "boutons", groupe: "Mises à jour", titre: `iBiTV ${VERSION_INSTALLEE}` };
+  const rechercher = { id: "verifier", nom: "Rechercher" };
+  const installer = { id: "installer", nom: `Installer la ${VERSION_NOUVELLE}`, principal: true };
+  switch (R.maj.etape) {
+    case "a_jour":
+      maj.detail = "À jour";
+      maj.boutons = [{ ...rechercher, nom: "Rechercher une mise à jour", principal: true }];
+      break;
+    case "verification":
+      maj.detail = "Recherche d'une mise à jour…";
+      maj.boutons = [{ ...rechercher, nom: "Rechercher une mise à jour", principal: true }];
+      break;
+    case "disponible":
+      maj.titre = `iBiTV ${VERSION_INSTALLEE} → ${VERSION_NOUVELLE}`;
+      maj.detail = "Nouvelle version disponible";
+      maj.boutons = [rechercher, installer];
+      break;
+    case "telechargement":
+      maj.titre = `iBiTV ${VERSION_INSTALLEE} → ${VERSION_NOUVELLE}`;
+      maj.detail = `Téléchargement… ${Math.round(R.maj.progression * 100)} %`;
+      maj.boutons = [rechercher, installer];
+      maj.progression = R.maj.progression;
+      break;
+    case "confirmation":
+      maj.titre = `iBiTV ${VERSION_INSTALLEE} → ${VERSION_NOUVELLE}`;
+      maj.detail = "Prête : confirmez l'installation sur la TV";
+      maj.boutons = [rechercher, installer];
+      break;
+  }
+  const opt = (...l) => l.map(([id, nom]) => ({ id, nom }));
+  return [
+    { cle: "volume", type: "curseur", groupe: "Son", titre: "Volume", min: 0, max: 15, valeur: R.volume },
+    { cle: "muet", type: "interrupteur", groupe: "Son", titre: "Couper le son", valeur: R.muet },
+    { cle: "design", type: "choix", groupe: "Affichage", titre: "Design de l'accueil", valeur: R.design, options: DESIGNS },
+    { cle: "nouveautes", type: "interrupteur", groupe: "Affichage", titre: "Affiches des nouveautés", detail: "Films et séries récents en fond", valeur: R.nouveautes },
+    { cle: "ambiance_auto", type: "interrupteur", groupe: "Mode Ambiance", titre: "Avec les applis de musique", detail: "Néon autour de l'écran", valeur: R.ambiance_auto },
+    { cle: "ambiance_intensite", type: "choix", groupe: "Mode Ambiance", titre: "Intensité", valeur: R.ambiance_intensite,
+      options: opt(["douce", "Douce"], ["normale", "Normale"], ["forte", "Forte"]), actif: R.ambiance_auto },
+    { cle: "ambiance_couleurs", type: "choix", groupe: "Mode Ambiance", titre: "Couleurs du néon", valeur: R.ambiance_couleurs,
+      options: opt(["pochette", "Pochette"], ["arc_en_ciel", "Arc-en-ciel"]), actif: R.ambiance_auto },
+    { cle: "ambiance_decalage", type: "choix", groupe: "Mode Ambiance", titre: "Synchro avec le son", valeur: R.ambiance_decalage,
+      options: opt(["0", "Aucun retard"], ["100", "0,1 s (conseillé)"], ["200", "0,2 s"], ["300", "0,3 s"], ["400", "0,4 s"]), actif: R.ambiance_auto },
+    maj,
+    { cle: "systeme", type: "boutons", groupe: "Ouvrir sur la TV",
+      boutons: [{ id: "wifi", nom: "Wi-Fi" }, { id: "bluetooth", nom: "Bluetooth" }, { id: "reglages", nom: "Réglages" }] },
+  ];
+}
+
+tv.reglages = R;
+tv.refuserApps = new Set(); // identifiants dont l'ouverture échoue (ok: false)
+tv.ouvertes = [];           // applis ouvertes
+tv.systeme = [];            // pages système ouvertes
+tv.majPasMs = 250;          // simulation du téléchargement
+tv.majArret = null;         // progression où le téléchargement s'arrête (captures)
+
+const envoyerReglages = (ses) => ses.envoyer({ t: "reglages", items: itemsReglages() });
+let poussee = null;
+/** Changement côté TV : `reglages` aux téléphones abonnés, au plus toutes les 300 ms. */
+function pousser() {
+  if (poussee) return;
+  poussee = setTimeout(() => {
+    poussee = null;
+    for (const s of tv.sessions) if (s.auth && s.mode === "pilotage" && s.abonne) envoyerReglages(s);
+  }, 300);
+}
+tv.changerReglage = (cle, valeur) => { R[cle] = valeur; pousser(); };
+
+function lancerMaj(etape) {
+  R.maj = { etape };
+  if (etape === "verification") setTimeout(() => { R.maj = { etape: "disponible" }; pousser(); }, 700);
+  if (etape === "telechargement") {
+    R.maj.progression = 0;
+    const pas = () => {
+      if (R.maj.etape !== "telechargement") return;
+      if (tv.majArret !== null && R.maj.progression >= tv.majArret) return;
+      R.maj.progression = Math.min(1, Math.round((R.maj.progression + 0.07) * 100) / 100);
+      if (R.maj.progression >= 1) R.maj = { etape: "confirmation" };
+      pousser();
+      setTimeout(pas, tv.majPasMs);
+    };
+    setTimeout(pas, tv.majPasMs);
+  }
+}
+
+const PILOTAGE = {
+  apps_liste(ses) {
+    ses.envoyer({ t: "apps", liste: APPS.map(({ id, nom, favori = false, maj }) => ({ id, nom, favori, maj })) });
+  },
+  apps_images(ses, m) {
+    if (!Array.isArray(m.ids)) return;
+    for (const id of m.ids.slice(0, 100)) {
+      const a = APPS.find((x) => x.id === id);
+      if (a) ses.envoyer({ t: "app_image", id, maj: a.maj, forme: a.forme, img: image(a) });
+    }
+  },
+  app_ouvrir(ses, m) {
+    const ok = APPS.some((a) => a.id === m.id) && !tv.refuserApps.has(m.id);
+    if (ok) tv.ouvertes.push(m.id);
+    ses.envoyer({ t: "app_ouverte", id: m.id, ok });
+  },
+  reglages_liste(ses) {
+    ses.abonne = true;
+    envoyerReglages(ses);
+  },
+  reglage(ses, m) {
+    const it = itemsReglages().find((i) => i.cle === m.cle);
+    if (it?.type === "curseur" && Number.isFinite(m.valeur)) R[m.cle] = Math.min(it.max, Math.max(it.min, Math.round(m.valeur)));
+    else if (it?.type === "interrupteur" && typeof m.valeur === "boolean") R[m.cle] = m.valeur;
+    else if (it?.type === "choix" && it.options.some((o) => o.id === m.valeur)) R[m.cle] = m.valeur;
+    else if (it?.cle === "maj" && it.boutons.some((b) => b.id === m.bouton)) lancerMaj(m.bouton === "verifier" ? "verification" : "telechargement");
+    else if (it?.cle === "systeme" && it.boutons.some((b) => b.id === m.bouton)) tv.systeme.push(m.bouton);
+    // Réponse à chaque `reglage` (même refusé), puis les autres téléphones abonnés
+    envoyerReglages(ses);
+    for (const s of tv.sessions) if (s !== ses && s.auth && s.mode === "pilotage" && s.abonne) envoyerReglages(s);
+  },
+};
 
 (async () => {
   const paire = await crypto.subtle.generateKey(ECDSA, false, ["sign", "verify"]);

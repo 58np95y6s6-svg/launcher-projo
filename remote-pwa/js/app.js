@@ -5,6 +5,8 @@ import { lireFragment, lireSaisieAppairage } from "./appairage.js";
 import { TEXTES_VERSION } from "./codec.js";
 import { initialiserInstallation, majCartes, estIOS, estInstallee } from "./installation.js";
 import { journal } from "./journal.js";
+import { OngletApplis } from "./applis.js";
+import { OngletReglages } from "./reglages.js";
 
 // Comportement d'appli : pas de zoom au pincement (iOS ignore user-scalable=no).
 // Le zoom au double appui est déjà coupé par touch-action: manipulation (CSS).
@@ -220,13 +222,19 @@ const TEXTES_ETAT = {
 
 function montrerTelecommande() {
   if (!ctrl.tvActive) return montrerAccueil();
+  majOnglets();
   montrer("ecran-telecommande");
   majEtat({ etat: ctrl.etat });
   ctrl.connecter();
 }
 
+let etatAffiche = null;
+
 function majEtat({ etat, raison, prochainEssaiMs }) {
   const tv = ctrl.tvActive;
+  // Nouvelle connexion : les onglets ouverts redemandent leurs données (abonnement aux réglages)
+  if (etat === "connecte" && etatAffiche !== "connecte") { applis.surConnexion(); reglages.surConnexion(); }
+  etatAffiche = etat;
   $("nom-tv").textContent = tv ? tv.nom : "TV";
   $("voyant").dataset.etat = etat;
   $("ecran-telecommande").dataset.etat = etat;
@@ -247,6 +255,7 @@ function majEtat({ etat, raison, prochainEssaiMs }) {
     }
   }
   $("etat-tv").textContent = texte;
+  majPastille(texte);
   $("bandeau-etat").hidden = !bandeau;
   if (bandeau) $("bandeau-texte").textContent = bandeau;
 }
@@ -424,6 +433,8 @@ $("btn-afficher").addEventListener("click", () => {
 });
 
 ctrl.addEventListener("focus_text", ({ detail }) => {
+  // La TV attend du texte : retour à la télécommande, où se trouve le champ
+  if (onglet !== "telecommande") choisirOnglet("telecommande");
   typeChamp = detail.type;
   afficherMdp = false; // mot de passe toujours masqué par défaut
   appliquerType();
@@ -463,6 +474,102 @@ function finSaisie() {
 }
 ctrl.addEventListener("focus_lost", finSaisie);
 appliquerType();
+
+// ---------- Onglets : Télécommande | Applis | Réglages ----------
+// Montrés seulement pour les fonctions annoncées par la TV (hello.fonctions) ; sans annonce,
+// la télécommande reste seule, comme avant.
+
+const ONGLETS = ["telecommande", "applis", "reglages"];
+let onglet = "telecommande";
+let idTVAffichee;
+let minuterieToast = null;
+
+/** Confirmation discrète (au-dessus des onglets), lue par les lecteurs d'écran. */
+function annoncer(texte, { erreur = false } = {}) {
+  const toast = $("toast");
+  clearTimeout(minuterieToast);
+  $("toast-texte").textContent = texte;
+  toast.classList.toggle("erreur", erreur);
+  toast.querySelector("use").setAttribute("href", erreur ? "#i-alerte" : "#i-ok");
+  toast.classList.add("visible");
+  minuterieToast = setTimeout(() => {
+    toast.classList.remove("visible");
+    minuterieToast = setTimeout(() => { $("toast-texte").textContent = ""; }, 300);
+  }, erreur ? 3500 : 2600);
+}
+
+/** Pastille « ● Salon · iBiTV » des onglets Applis et Réglages (point : état de la connexion). */
+function majPastille(texteEtat = TEXTES_ETAT[ctrl.etat] || "") {
+  const nom = ctrl.tvActive?.nom || "TV";
+  $("pastille-nom").textContent = `${nom} · iBiTV`;
+  $("pastille-voyant").dataset.etat = ctrl.etat;
+  $("pastille-tv").setAttribute("aria-label", `${nom} : ${texteEtat}. Changer de TV`);
+}
+
+const applis = new OngletApplis({ ctrl, annoncer, vibrer });
+const reglages = new OngletReglages({ ctrl, annoncer, vibrer });
+
+function ongletsDisponibles() {
+  const f = ctrl.fonctions;
+  return ONGLETS.filter((o) => o === "telecommande" || (o === "applis" ? f.includes("apps") : f.includes("reglages")));
+}
+
+function majOnglets() {
+  if (ctrl.active !== idTVAffichee) {
+    idTVAffichee = ctrl.active;
+    applis.changerTV(ctrl.active);
+    reglages.changerTV();
+  }
+  const dispo = ongletsDisponibles();
+  const avec = dispo.length > 1;
+  $("onglets").hidden = !avec;
+  $("ecran-telecommande").classList.toggle("avec-onglets", avec);
+  for (const b of document.querySelectorAll(".onglet")) b.hidden = !dispo.includes(b.dataset.onglet);
+  $("onglets").style.setProperty("--n", String(dispo.length));
+  if (!dispo.includes(onglet)) choisirOnglet("telecommande");
+  else $("onglets").style.setProperty("--i", String(dispo.indexOf(onglet)));
+}
+
+function choisirOnglet(nom, { focus = false } = {}) {
+  onglet = nom;
+  for (const b of document.querySelectorAll(".onglet")) {
+    const actif = b.dataset.onglet === nom;
+    b.setAttribute("aria-selected", String(actif));
+    b.tabIndex = actif ? 0 : -1;
+    if (actif && focus) b.focus();
+  }
+  $("onglets").style.setProperty("--i", String(Math.max(0, ongletsDisponibles().indexOf(nom))));
+  $("ecran-telecommande").dataset.onglet = nom;
+  $("panneau-telecommande").hidden = nom !== "telecommande";
+  $("panneau-applis").hidden = nom !== "applis";
+  $("panneau-reglages").hidden = nom !== "reglages";
+  // En-tête : télécommande inchangée ; ailleurs, pastille compacte de la TV
+  $("btn-tvs").hidden = nom !== "telecommande";
+  $("btn-mode-nav").hidden = nom !== "telecommande";
+  $("pastille-tv").hidden = nom === "telecommande";
+  majPastille();
+  if (nom !== "telecommande" && document.activeElement === champ) champ.blur();
+  if (nom === "applis") applis.afficher(); else applis.masquer();
+  if (nom === "reglages") reglages.afficher(); else reglages.masquer();
+}
+
+for (const b of document.querySelectorAll(".onglet")) {
+  b.addEventListener("click", () => {
+    vibrer();
+    if (b.dataset.onglet !== onglet) return choisirOnglet(b.dataset.onglet);
+    // Onglet déjà ouvert : retour en haut de la liste
+    $(`${onglet}-defile`)?.scrollTo?.({ top: 0, behavior: "smooth" });
+  });
+}
+// Clavier : flèches entre les onglets (motif « tablist »)
+$("onglets").addEventListener("keydown", (e) => {
+  const dispo = ongletsDisponibles();
+  const i = dispo.indexOf(onglet);
+  const j = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: dispo.length - 1 }[e.key];
+  if (j === undefined) return;
+  e.preventDefault();
+  choisirOnglet(dispo[(j + dispo.length) % dispo.length], { focus: true });
+});
 
 // ---------- Liste des TV ----------
 
@@ -515,12 +622,15 @@ function ouvrirFeuille() {
 function fermerFeuille() { $("feuille-tvs").hidden = true; }
 
 $("btn-tvs").addEventListener("click", () => { vibrer(); ouvrirFeuille(); });
+$("pastille-tv").addEventListener("click", () => { vibrer(); ouvrirFeuille(); });
 $("feuille-tvs").addEventListener("click", (e) => { if (e.target === $("feuille-tvs")) fermerFeuille(); });
 $("btn-ajouter-tv").addEventListener("click", () => { fermerFeuille(); montrerAccueil(); });
 ctrl.addEventListener("tvs", () => {
   if (!$("feuille-tvs").hidden) majListeTVs();
   const tv = ctrl.tvActive;
   if (tv) $("nom-tv").textContent = tv.nom;
+  majPastille();
+  majOnglets(); // fonctions annoncées par la TV, ou autre TV choisie
 });
 addEventListener("keydown", (e) => {
   if (e.key === "Escape") { fermerFeuille(); }

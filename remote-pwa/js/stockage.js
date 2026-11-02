@@ -1,21 +1,31 @@
-// Stockage local (IndexedDB) : identité du téléphone, TV appairées, réglages.
+// Stockage local (IndexedDB) : identité du téléphone, TV appairées, réglages, images des applis.
 // Rien de tout cela ne quitte le téléphone (seule la clé PUBLIQUE est envoyée à la TV).
 
 import { hexAleatoire, versBase64url, depuisBase64url } from "./codec.js";
 import { genererCles, exporterSpki, empreinteCle } from "./crypto.js";
+import { cleImage } from "./pilotage.js";
 
 const NOM_BASE = "ibiprojo-telecommande";
 
 function ouvrirBase() {
   return new Promise((ok, ko) => {
-    const req = indexedDB.open(NOM_BASE, 1);
-    req.onupgradeneeded = () => {
+    const req = indexedDB.open(NOM_BASE, 2);
+    req.onupgradeneeded = (e) => {
       const db = req.result;
-      db.createObjectStore("identite");
-      db.createObjectStore("tvs", { keyPath: "id" });
-      db.createObjectStore("reglages");
+      if (e.oldVersion < 1) {
+        db.createObjectStore("identite");
+        db.createObjectStore("tvs", { keyPath: "id" });
+        db.createObjectStore("reglages");
+      }
+      // v2 : images des applis de la TV (clé « id|maj »)
+      if (e.oldVersion < 2) db.createObjectStore("images", { keyPath: "cle" });
     };
-    req.onsuccess = () => ok(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Une version plus récente (autre onglet) doit pouvoir mettre la base à niveau
+      db.onversionchange = () => { db.close(); basePromise = null; };
+      ok(db);
+    };
     req.onerror = () => ko(req.error);
   });
 }
@@ -91,3 +101,39 @@ export const oublierTV = (id) => operation("tvs", "readwrite", (s) => s.delete(i
 
 export const lireReglage = (cle) => lire("reglages", cle);
 export const ecrireReglage = (cle, valeur) => ecrire("reglages", valeur, cle);
+export const effacerReglage = (cle) => operation("reglages", "readwrite", (s) => s.delete(cle));
+
+// ---------- Images des applis de la TV ----------
+// { cle: "id|maj", id, maj, forme: "banniere" | "icone", img: URL data: }
+
+/** Images connues parmi `cles` : Map cle → enregistrement. */
+export async function lireImages(cles) {
+  const db = await base();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction("images", "readonly");
+    const store = tx.objectStore("images");
+    const trouvees = new Map();
+    for (const c of cles) {
+      const req = store.get(c);
+      req.onsuccess = () => { if (req.result) trouvees.set(c, req.result); };
+    }
+    tx.oncomplete = () => ok(trouvees);
+    tx.onerror = tx.onabort = () => ko(tx.error);
+  });
+}
+
+/** Enregistre une image et retire les versions plus anciennes de la même appli. */
+export async function enregistrerImage({ id, maj, forme, img }) {
+  const db = await base();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction("images", "readwrite");
+    const store = tx.objectStore("images");
+    const anciennes = store.getAllKeys(IDBKeyRange.bound(`${id}|`, `${id}|\uffff`));
+    anciennes.onsuccess = () => {
+      for (const c of anciennes.result) if (Number(c.slice(id.length + 1)) < maj) store.delete(c);
+    };
+    store.put({ cle: cleImage(id, maj), id, maj, forme, img });
+    tx.oncomplete = () => ok();
+    tx.onerror = tx.onabort = () => ko(tx.error);
+  });
+}

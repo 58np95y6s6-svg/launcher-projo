@@ -3,7 +3,8 @@
 //
 // appairage QR → confirmation → paired → key / text / focus_text → reconnexion → coupure
 // → revoked ; code de secours ; plusieurs TV ; versions incompatibles ; TV injoignable ;
-// mise à jour (bannière) ; aucun texte saisi ni secret dans les journaux.
+// mise à jour (bannière) ; pilotage (onglets Applis et Réglages, TV ancienne sans onglets) ;
+// aucun texte saisi, secret, nom d'appli ni valeur de réglage dans les journaux.
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -19,7 +20,8 @@ after(async () => {
   // Aucun texte saisi, secret ou SDP dans les journaux de toutes les pages téléphone
   const tout = journaux.flat().join("\n");
   try {
-    for (const interdit of [MOT_DE_PASSE, TEXTE, "a=fingerprint", "v=0", "candidate:", "BEGIN", "Téléphone de Marie"]) {
+    for (const interdit of [MOT_DE_PASSE, TEXTE, "a=fingerprint", "v=0", "candidate:", "BEGIN", "Téléphone de Marie",
+      "Netflix", "com.netflix", "pastel", "data:image"]) {
       assert.ok(!tout.includes(interdit), `journal : « ${interdit} » trouvé`);
     }
     assert.ok(!/ERREUR PAGE/.test(tout), tout);
@@ -286,4 +288,205 @@ test("service worker : hors ligne, puis nouvelle version → bannière « Rechar
   assert.equal(version, "1.0.1-test");
   banc.web.etat.versionApp = "1.0.0-test";
   await tel.fermer();
+});
+
+// ---------- Pilotage : applis et réglages ----------
+
+const recusDe = async (tv, t) => (await tv.recus()).filter((r) => r.t === t);
+
+test("TV ancienne (sans « fonctions ») : télécommande seule, sans onglets ni erreur", async () => {
+  const tv = await banc.tv({ nom: "Ancienne", fonctions: null });
+  const tel = await banc.telephone("android");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  await page.click('.touche[data-k="home"]');
+  await tv.attendreRecu((r) => r.k === "home");
+  assert.ok(await page.isHidden("#onglets"));
+  assert.ok(await page.isVisible("#btn-mode-nav"));
+  assert.equal(await page.evaluate(() => document.querySelector("#ecran-telecommande").classList.contains("avec-onglets")), false);
+  // Rien du pilotage n'a été envoyé à cette TV
+  assert.deepEqual(await tv.eval(() => window.tv.ignores), []);
+  assert.deepEqual((await tv.recus()).map((r) => r.t), ["key"]);
+  await tel.fermer();
+  await tv.fermer();
+});
+
+test("applis : onglet annoncé, grille, images demandées une seule fois (cache), ouverture", async () => {
+  const tv = await banc.tv({ nom: "Salon" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  let page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  await page.locator("#onglets").waitFor();
+  assert.ok(await page.isVisible("#btn-tvs"));
+  assert.deepEqual(await page.locator(".onglet:visible").allInnerTexts(), ["Télécommande", "Applis", "Réglages"]);
+  assert.equal(await page.getAttribute("#onglet-telecommande", "aria-selected"), "true");
+  assert.equal((await tv.recus()).length, 0, "rien n'est demandé tant qu'aucun onglet n'est ouvert");
+
+  await page.click("#onglet-applis");
+  assert.equal(await page.getAttribute("#onglet-applis", "aria-selected"), "true");
+  assert.ok(await page.isHidden("#btn-mode-nav"));
+  assert.ok(await page.isHidden("#btn-tvs"));
+  assert.equal(await page.textContent("#pastille-nom"), "Salon · iBiTV");
+  assert.equal(await page.getAttribute("#pastille-voyant", "data-etat"), "connecte");
+  await page.locator(".tuile[data-id]").nth(11).waitFor();
+  await page.waitForFunction(() => document.querySelectorAll(".tuile img").length === 12);
+  const ids = await page.$$eval(".tuile[data-id]", (l) => l.map((e) => e.dataset.id));
+  assert.equal(ids.length, 12);
+  assert.deepEqual(ids.slice(0, 4), ["com.netflix.ninja", "com.amazon.amazonvideo.livingroom", "com.disney.disneyplus", "fr.projo.ibitube"]);
+  assert.equal(await page.locator(".tuile-favori:not([hidden])").count(), 4);
+  assert.equal(await page.getAttribute('.tuile[data-id="com.netflix.ninja"]', "data-forme"), "banniere");
+  assert.equal(await page.getAttribute('.tuile[data-id="org.videolan.vlc"]', "data-forme"), "icone");
+  assert.equal((await recusDe(tv, "apps_liste")).length, 1);
+  const demandes = await recusDe(tv, "apps_images");
+  assert.equal(demandes.length, 1);
+  assert.deepEqual([...demandes[0].ids].sort(), [...ids].sort());
+
+  // Ouvrir une appli : app_ouvrir, puis confirmation discrète
+  await page.click('.tuile[data-id="com.netflix.ninja"]');
+  await tv.attendreRecu((r) => r.t === "app_ouvrir" && r.id === "com.netflix.ninja");
+  await page.locator("#toast.visible", { hasText: "Netflix s'ouvre sur la TV" }).waitFor();
+  assert.deepEqual(await tv.eval(() => window.tv.ouvertes), ["com.netflix.ninja"]);
+  // Refus de la TV (ok: false) : message d'erreur
+  await tv.eval(() => window.tv.refuserApps.add("org.videolan.vlc"));
+  await page.click('.tuile[data-id="org.videolan.vlc"]');
+  await page.locator("#toast.visible.erreur", { hasText: "Impossible d'ouvrir VLC" }).waitFor();
+
+  // Retour sur l'onglet : liste redemandée, mais aucune image
+  await page.click("#onglet-telecommande");
+  await page.click("#onglet-applis");
+  await tv.attendreRecu(() => true);
+  await page.waitForFunction(() => document.querySelectorAll(".tuile img").length === 12);
+  await tv.page.waitForFunction(() => window.tv.recus.filter((r) => r.t === "apps_liste").length === 2);
+  await pause(400);
+  assert.equal((await recusDe(tv, "apps_images")).length, 1);
+
+  // Réouverture de l'appli : liste et images affichées depuis le cache, aucune image redemandée
+  await page.close();
+  page = await tel.ouvrir();
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+  await page.click("#onglet-applis");
+  await page.waitForFunction(() => document.querySelectorAll(".tuile img").length === 12);
+  await tv.page.waitForFunction(() => window.tv.recus.filter((r) => r.t === "apps_liste").length === 3);
+  await pause(500);
+  assert.equal((await recusDe(tv, "apps_images")).length, 1, "images gardées dans IndexedDB");
+
+  // Un champ texte s'ouvre sur la TV : retour automatique à la télécommande
+  await tv.envoyer({ t: "focus_text", type: "recherche", s: "", action: "search" });
+  await page.locator("#saisie.actif").waitFor();
+  assert.equal(await page.getAttribute("#onglet-telecommande", "aria-selected"), "true");
+  assert.ok(await page.isHidden("#panneau-applis"));
+  assert.equal(await page.evaluate(() => document.querySelector("#panneau-telecommande").hidden), false);
+  await tel.fermer();
+  await tv.fermer();
+});
+
+test("réglages : rendu générique par groupe, design, interrupteurs, curseur limité, mise à jour, envois poussés", async () => {
+  const tv = await banc.tv({ nom: "Salon" });
+  const tel = await banc.telephone("android");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="volume"]').waitFor();
+  await tv.attendreRecu((r) => r.t === "reglages_liste");
+  assert.deepEqual(await page.locator(".groupe-titre").allTextContents(),
+    ["Son", "Affichage", "Mode Ambiance", "Mises à jour", "Ouvrir sur la TV"]);
+  assert.deepEqual(await page.$$eval(".reglage[data-cle]", (l) => l.map((e) => `${e.dataset.cle}:${e.dataset.type}`)), [
+    "volume:curseur", "muet:interrupteur", "design:choix", "nouveautes:interrupteur", "ambiance_auto:interrupteur",
+    "ambiance_intensite:choix", "ambiance_couleurs:choix", "ambiance_decalage:choix", "maj:boutons", "systeme:boutons",
+  ]);
+  assert.equal(await page.inputValue('.reglage[data-cle="volume"] input[type=range]'), "9");
+  assert.equal(await page.textContent('.reglage[data-cle="volume"] .reglage-valeur'), "60 %");
+  assert.equal(await page.locator('.reglage[data-cle="design"] .options-designs .option').count(), 6);
+  assert.equal(await page.locator('.reglage[data-cle="ambiance_decalage"] .options-pastilles .option').count(), 5);
+  assert.equal(await page.textContent('.reglage[data-cle="design"] .option.choisie .option-nom'), "Verre");
+
+  // Design : une carte → reglage {cle: "design", valeur: "pastel"}
+  await page.click('.reglage[data-cle="design"] .option:has-text("Pastel")');
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "design" && r.valeur === "pastel");
+  assert.equal(await tv.eval(() => window.tv.reglages.design), "pastel");
+  assert.equal(await page.textContent('.reglage[data-cle="design"] .option.choisie .option-nom'), "Pastel");
+
+  // Interrupteur (toute la ligne est touchable)
+  await page.click('.reglage[data-cle="muet"] .reglage-titre');
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "muet" && r.valeur === true);
+  assert.ok(await page.isChecked('.reglage[data-cle="muet"] input'));
+  // Mode Ambiance coupé : la TV grise ses réglages (actif: false)
+  await page.click('.reglage[data-cle="ambiance_auto"] input');
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "ambiance_auto" && r.valeur === false);
+  await page.locator('.reglage[data-cle="ambiance_intensite"].inactif').waitFor();
+  assert.ok(await page.isDisabled('.reglage[data-cle="ambiance_intensite"] input >> nth=0'));
+
+  // Curseur : glissé de 9 à 0 en ~600 ms → envois limités (≤ 1 / 150 ms), valeur finale au relâcher
+  await tv.viderRecus();
+  const piste = await page.locator('.reglage[data-cle="volume"] input[type=range]').boundingBox();
+  const xDe = (v) => piste.x + 12 + (v / 15) * (piste.width - 24);
+  const y = piste.y + piste.height / 2;
+  await page.evaluate(() => { window.__curseur = document.querySelector('.reglage[data-cle="volume"] input'); });
+  await page.mouse.move(xDe(9), y);
+  await page.mouse.down();
+  const t0 = Date.now();
+  for (let v = 8.5; v >= -0.5; v -= 0.5) { await page.mouse.move(xDe(v), y); await pause(32); }
+  // Changements venus de la TV pendant le glissé (valeur, et structure : nouveaux boutons de mise à jour) :
+  // le curseur reste sous le doigt, la reconstruction attend le relâcher
+  await tv.eval(() => { window.tv.reglages.maj = { etape: "disponible" }; window.tv.changerReglage("volume", 12); });
+  for (let i = 0; i < 6; i++) { await page.mouse.move(xDe(0) - i, y); await pause(70); }
+  assert.equal(await page.inputValue('.reglage[data-cle="volume"] input[type=range]'), "0");
+  assert.ok(await page.evaluate(() => document.querySelector('.reglage[data-cle="volume"] input') === window.__curseur));
+  assert.equal(await page.locator('.reglage[data-cle="maj"] .btn-reglage', { hasText: "Installer" }).count(), 0);
+  const duree = Date.now() - t0;
+  await page.mouse.up();
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "volume" && r.valeur === 0);
+  const volumes = (await recusDe(tv, "reglage")).filter((r) => r.cle === "volume").map((r) => r.valeur);
+  assert.ok(volumes.length >= 3, `envois pendant le glissé : ${volumes}`);
+  // au plus 1 envoi / 150 ms pendant le glissé, + la valeur finale (renvoyée : la TV l'a changée entre-temps)
+  assert.ok(volumes.length <= Math.ceil(duree / 150) + 2, `${volumes.length} envois en ${duree} ms`);
+  assert.equal(volumes.at(-1), 0);
+  await tv.page.waitForFunction(() => window.tv.reglages.volume === 0);
+  await page.locator('.reglage[data-cle="maj"] .btn-reglage', { hasText: "Installer" }).waitFor();
+  await pause(400);
+  assert.equal(await page.inputValue('.reglage[data-cle="volume"] input[type=range]'), "0");
+
+  // Changement venu de la TV : mis à jour sur place, sans faire sauter le défilement
+  await page.evaluate(() => {
+    const d = document.querySelector("#reglages-defile");
+    d.scrollTop = 180;
+    window.__volume = document.querySelector('.reglage[data-cle="volume"]');
+  });
+  await tv.eval(() => window.tv.changerReglage("volume", 11));
+  await page.waitForFunction(() => document.querySelector('.reglage[data-cle="volume"] input').value === "11");
+  assert.equal(await page.textContent('.reglage[data-cle="volume"] .reglage-valeur'), "73 %");
+  assert.equal(await page.evaluate(() => document.querySelector("#reglages-defile").scrollTop), 180);
+  assert.ok(await page.evaluate(() => document.querySelector('.reglage[data-cle="volume"]') === window.__volume), "élément conservé");
+
+  // Mise à jour : « Rechercher » → bouton installer → note « touche OK » → progression
+  await page.click('.reglage[data-cle="maj"] .btn-reglage:has-text("Rechercher")');
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "maj" && r.bouton === "verifier");
+  const installer = page.locator('.reglage[data-cle="maj"] .btn-reglage.principal', { hasText: "Installer" });
+  await installer.waitFor();
+  assert.ok(await page.isHidden('.reglage[data-cle="maj"] .reglage-note'));
+  await installer.click();
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "maj" && r.bouton === "installer");
+  await page.locator('.reglage[data-cle="maj"] .reglage-note', { hasText: "appuyez sur OK" }).waitFor();
+  await page.locator('.reglage[data-cle="maj"] .progression:not([hidden])').waitFor();
+  await page.locator('.reglage[data-cle="maj"] .reglage-detail', { hasText: "confirmez" }).waitFor({ timeout: 10000 });
+  assert.ok(await page.isHidden('.reglage[data-cle="maj"] .progression'));
+
+  // Boutons d'un réglage quelconque
+  await page.click('.reglage[data-cle="systeme"] .btn-reglage:has-text("Wi-Fi")');
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "systeme" && r.bouton === "wifi");
+
+  // Reconnexion : l'abonnement est renouvelé (onglet ouvert)
+  const avant = (await recusDe(tv, "reglages_liste")).length;
+  await tv.eval(() => window.tv.couper());
+  await page.waitForFunction(() => document.querySelector("#pastille-voyant").dataset.etat !== "connecte");
+  await page.locator('#pastille-voyant[data-etat="connecte"]').waitFor({ timeout: 20000 });
+  await tv.page.waitForFunction((n) => window.tv.recus.filter((r) => r.t === "reglages_liste").length > n, avant);
+  await tel.fermer();
+  await tv.fermer();
 });
