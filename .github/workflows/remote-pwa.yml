@@ -8,7 +8,7 @@ name: Télécommande (publication)
 
 on:
   push:
-    branches: ["claude/launcher-projo", "main"]
+    branches: ["claude/launcher-projo", "claude/launcher-firetv", "main"]
     paths: ["remote-pwa/**", ".github/workflows/remote-pwa.yml"]
   workflow_dispatch:
 

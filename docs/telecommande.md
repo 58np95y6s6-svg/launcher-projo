@@ -321,7 +321,7 @@ Jamais de texte saisi, de secret, de clé privée ni de SDP complet dans les jou
 
 ## Hébergement
 
-- **PWA** : la GitHub Action `.github/workflows/remote-pwa.yml` copie `remote-pwa/` sur la branche `gh-pages` (commit orphelin poussé en force, avec un fichier `.nojekyll`), quand ce dossier change sur `claude/launcher-projo` ou `main`, ou à la demande (workflow_dispatch).
+- **PWA** : la GitHub Action `.github/workflows/remote-pwa.yml` copie `remote-pwa/` sur la branche `gh-pages` (commit orphelin poussé en force, avec un fichier `.nojekyll`), quand ce dossier change sur `claude/launcher-projo`, `claude/launcher-firetv` ou `main`, ou à la demande (workflow_dispatch). Une seule PWA sert les deux appareils : la dernière publiée gagne, et elle reste compatible avec les TV plus anciennes (onglets Applis et Réglages cachés sans `fonctions`).
   - **Réglage unique dans le dépôt** : Settings → Pages → Source « Deploy from a branch », branche `gh-pages`, dossier `/` → Save. Le site est ensuite servi sur `https://58np95y6s6-svg.github.io/launcher-projo/`.
   - `build.yml` ignore la branche `gh-pages` (pas de compilation d'APK dessus).
 - **Service worker** : version dans `config.js` (`versionApp`). À la publication, l'Action y ajoute le SHA du commit (`1.0.0+abc1234`) : chaque publication est donc détectée. Une nouvelle version affiche la bannière « Nouvelle version disponible — Recharger ».
