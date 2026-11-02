@@ -102,7 +102,7 @@ TV → téléphone :
 
 | `t` | Champs | Rôle |
 |---|---|---|
-| `hello` | `nonce`, `sig`, `nomTV`, `versionApp`, `cle` | réponse authentifiée (`cle` : SPKI de la TV, voir « Précisions ») |
+| `hello` | `nonce`, `sig`, `nomTV`, `versionApp`, `cle`, `fonctions`? | réponse authentifiée (`cle` : SPKI de la TV, voir « Précisions » ; `fonctions` : voir « Pilotage ») |
 | `paired` | `nomTV`, `idTV` | appairage accepté (`idTV` : identifiant PeerJS stable) |
 | `pair_refused` | `raison` : `refuse` `expire` `invalide` `trop_d_essais` | appairage refusé |
 | `revoked` | — | ce téléphone a été révoqué (la PWA oublie la TV) |
@@ -114,6 +114,117 @@ TV → téléphone :
 Compatibilité : à `hello`, chacun annonce `v`. Si la TV reçoit une version qu'elle ne gère pas, elle répond `erreur` avec `code: "version"` et `vMax`. La PWA affiche alors :
 - « Mettez à jour iBiTV sur la TV » si sa propre version est la plus récente ;
 - sinon « Rechargez la télécommande ».
+
+## Pilotage depuis le téléphone : applis et réglages (version 1, ajout compatible)
+
+Le téléphone peut ouvrir n'importe quelle appli de la TV et régler iBiTV (son, design, mode Ambiance,
+mises à jour…). Ce sont de **nouveaux types de messages** dans la version 1 du protocole : une TV qui
+ne les connaît pas les ignore, et une PWA qui ne les voit pas annoncés n'affiche pas les onglets.
+Comme les touches, ils ne sont acceptés que d'un téléphone **authentifié** (après les deux `hello`).
+
+### Annonce
+
+`hello` de la TV contient `fonctions` : liste de chaînes, ici `["apps", "reglages"]`. La PWA montre
+les onglets « Applis » et « Réglages » seulement pour les fonctions annoncées (absent = aucune).
+
+### Applis
+
+Téléphone → TV :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `apps_liste` | — | demande la liste des applis |
+| `apps_images` | `ids` : identifiants (au plus 100) | demande les images manquantes |
+| `app_ouvrir` | `id` | ouvre l'appli sur la TV |
+
+TV → téléphone :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `apps` | `liste` : `[{id, nom, favori, maj}]` | applis qu'on peut ouvrir, dans l'ordre de l'accueil |
+| `app_image` | `id`, `maj`, `forme` : `banniere` \| `icone`, `img` | image d'une appli |
+| `app_ouverte` | `id`, `ok` | résultat d'`app_ouvrir` |
+
+- `id` = nom du paquet Android ; `nom` = nom affiché sur la TV ; `favori` = l'appli est dans les
+  favoris de l'accueil ; `maj` = date de dernière mise à jour de l'appli (ms), qui sert de version de
+  l'image.
+- Ordre : les favoris dans l'ordre de l'accueil, puis les autres par ordre alphabétique. Ni les applis
+  masquées, ni iBiTV, ni la tuile « Source HDMI ».
+- `img` : URL `data:` (`image/webp` ou `image/png`), **48 Ko au plus** (message entier < 64 Ko, limite
+  du codec de la PWA). `banniere` = image 16:9 de l'appli TV (240 × 135), sinon `icone` carrée (96 × 96).
+- La PWA garde les images (clé `id` + `maj`) et ne demande que celles qui lui manquent. La TV répond
+  à `apps_images` par un `app_image` par identifiant connu, dans l'ordre demandé ; elle ignore les
+  identifiants inconnus.
+- `app_ouvrir` : la TV n'ouvre que les identifiants de sa liste actuelle. Sinon `ok: false`, et rien
+  ne s'ouvre.
+
+### Réglages
+
+Téléphone → TV :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `reglages_liste` | — | demande les réglages, et abonne ce téléphone à leurs changements |
+| `reglage` | `cle`, et `valeur` **ou** `bouton` | change un réglage, ou appuie sur un de ses boutons |
+
+TV → téléphone :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `reglages` | `items` : liste de réglages | état complet, dans l'ordre d'affichage |
+
+La TV renvoie `reglages` après chaque `reglage` (même refusé, pour que le téléphone se recale), et de
+lui-même quand une valeur change (volume réglé à la télécommande de la TV, progression d'une mise à
+jour…), au plus toutes les 300 ms, aux seuls téléphones qui ont envoyé `reglages_liste` pendant cette
+connexion.
+
+Un réglage :
+
+| Champ | Rôle |
+|---|---|
+| `cle` | identifiant stable (ex. `volume`) |
+| `type` | `curseur`, `interrupteur`, `choix` ou `boutons` |
+| `groupe` | titre de la section (« Son », « Affichage »…) ; les réglages d'un même groupe se suivent |
+| `titre` | libellé |
+| `detail` | texte secondaire facultatif (état, conseil) |
+| `valeur` | `curseur` : entier ; `interrupteur` : booléen ; `choix` : `id` de l'option choisie |
+| `min`, `max` | `curseur` seulement (entiers) |
+| `options` | `choix` seulement : `[{id, nom, detail?}]` |
+| `boutons` | `boutons` seulement : `[{id, nom, principal?}]` |
+| `progression` | `boutons` seulement, facultatif : 0..1 pendant une opération longue |
+| `actif` | facultatif, `false` = affiché grisé, non modifiable |
+
+`reglage {cle, valeur}` pour `curseur` (entier ramené dans `min..max`), `interrupteur` (booléen),
+`choix` (`id` d'une des options) ; `reglage {cle, bouton}` pour `boutons`. Clé, type ou valeur
+inconnus : ignoré.
+
+Réglages de la TV (version 1) :
+
+| Groupe | `cle` | Type | Effet |
+|---|---|---|---|
+| Son | `volume` | curseur 0..max du flux musique | volume de la TV |
+| Son | `muet` | interrupteur | couper / remettre le son |
+| Affichage | `design` | choix (les designs : Verre, Pastel…) | design de l'accueil |
+| Affichage | `nouveautes` | interrupteur | affiches des nouveautés en fond |
+| Mode Ambiance | `ambiance_auto` | interrupteur | néon automatique avec les applis de musique |
+| Mode Ambiance | `ambiance_intensite` | choix (Douce, Normale, Forte) | intensité du néon |
+| Mode Ambiance | `ambiance_couleurs` | choix (Pochette, Arc-en-ciel) | couleurs du néon |
+| Mode Ambiance | `ambiance_decalage` | choix (0, 100… 400 ms) | synchro avec le son |
+| Mises à jour | `maj` | boutons `verifier`, `installer` | rechercher / télécharger et installer la nouvelle version d'iBiTV |
+| Ouvrir sur la TV | `systeme` | boutons `wifi`, `bluetooth`, `reglages` | ouvre la page système sur la TV |
+
+- `maj` : `detail` donne la version installée et l'état (« à jour », « nouvelle version 1.5 »,
+  « vérification… », message d'erreur) ; `installer` n'est présent que si une version plus récente
+  existe ; `progression` pendant le téléchargement. Android demande toujours de confirmer
+  l'installation **sur l'écran de la TV** : le téléphone le rappelle, et la touche OK de la
+  télécommande suffit. La TV redémarre iBiTV après l'installation : la PWA se reconnecte seule.
+- Si l'écran d'accueil d'iBiTV n'est pas encore créé (rare : iBiTV est l'écran d'accueil), `maj`
+  est `actif: false` avec « Ouvre iBiTV sur la TV ».
+
+### Journaux
+
+Comme pour le reste : types d'événements seulement (« appli ouverte », « réglage design »), jamais de
+liste d'applis ni de valeurs.
 
 ## Côté TV : injection
 
