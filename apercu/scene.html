@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>iBiTV · mise en scène</title>
+<style>
+html, body { margin: 0; }
+body { width: 1600px; height: 1200px; overflow: hidden; position: relative;
+  background: radial-gradient(ellipse 90% 70% at 55% 30%, #a9aaad 0%, #8f9093 55%, #7c7d80 100%); perspective: 2200px; }
+/* socle (cube clair en bas à gauche, comme la photo) */
+.socle { position: absolute; left: -120px; bottom: -40px; width: 1500px; height: 230px; background: linear-gradient(180deg, #8d8e91, #9a9b9e);
+  transform: skewX(-8deg); box-shadow: 0 -1px 0 rgba(255,255,255,.25); }
+.socle-dessus { position: absolute; left: -160px; bottom: 190px; width: 1500px; height: 60px; background: linear-gradient(180deg, #a3a4a7, #98999c); transform: skewX(-40deg); transform-origin: bottom left; }
+/* pied */
+.pied { position: absolute; left: 610px; top: 905px; width: 300px; height: 260px; background: linear-gradient(90deg, #5d5e61, #7b7c7f 40%, #6b6c6f); transform: skewY(-3deg); }
+.pied-ombre { position: absolute; left: 520px; top: 1100px; width: 560px; height: 60px; border-radius: 50%; background: rgba(0,0,0,.25); filter: blur(24px); }
+/* écran */
+.ecran { position: absolute; left: 150px; top: 120px; width: 1920px; height: 1080px; transform-origin: 0 0;
+  transform: translate(0, 0) rotateY(-24deg) rotateX(3deg) rotateZ(1.2deg) scale(.7); transform-style: preserve-3d; }
+.cadre { position: absolute; inset: -22px; border-radius: 14px; background: linear-gradient(135deg, #f4f4f5, #cfd0d3 40%, #e9e9eb 70%, #bfc0c3);
+  box-shadow: 0 0 0 2px #9fa0a3, 30px 50px 80px rgba(0,0,0,.35); }
+.dalle { position: absolute; inset: 0; background: #000; overflow: hidden; border-radius: 3px; box-shadow: 0 0 0 10px #0d0d0f; }
+.dalle img { display: block; width: 100%; height: 100%; }
+.brillance { position: absolute; inset: 0; background: linear-gradient(118deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 28%, rgba(255,255,255,0) 62%, rgba(255,255,255,.08) 78%, rgba(255,255,255,0) 90%); pointer-events: none; }
+.tranche { position: absolute; top: -22px; bottom: -22px; right: -46px; width: 26px; background: linear-gradient(90deg, #a7a8ab, #e2e2e4); transform: skewY(-24deg); transform-origin: left; }
+</style></head>
+<body>
+<div class="socle-dessus"></div><div class="socle"></div>
+<div class="pied-ombre"></div><div class="pied"></div>
+<div class="ecran">
+  <div class="cadre"></div>
+  <div class="dalle"><img id="img" src="ecran.jpg" alt=""><div class="brillance"></div></div>
+</div>
+<script>
+const im = document.getElementById("img");
+const fin = () => { window.pret = true; };
+if (im.complete) fin(); else { im.onload = fin; im.onerror = fin; }
+</script>
+</body></html>

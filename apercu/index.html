@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>iBiTV · Galerie</title>
+<style>
+@font-face { font-family: Serif; src: url(polices/instrument-serif-latin-400-normal.woff2); }
+@font-face { font-family: Serif; font-style: italic; src: url(polices/instrument-serif-latin-400-italic.woff2); }
+@font-face { font-family: M; font-weight: 400; src: url(polices/manrope-latin-400-normal.woff2); }
+@font-face { font-family: M; font-weight: 500; src: url(polices/manrope-latin-500-normal.woff2); }
+@font-face { font-family: M; font-weight: 600; src: url(polices/manrope-latin-600-normal.woff2); }
+@font-face { font-family: M; font-weight: 700; src: url(polices/manrope-latin-700-normal.woff2); }
+:root {
+  --verre: rgba(255,255,255,.22); --verre-fort: rgba(255,255,255,.34); --bord: rgba(255,255,255,.55);
+  --encre: #2b2d33; --encre-2: #5d6069; --encre-3: #8a8d96;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { width: 1920px; height: 1080px; overflow: hidden; font-family: M, sans-serif; color: var(--encre); position: relative;
+  background: radial-gradient(ellipse 120% 80% at 50% 18%, #e4e5e8 0%, #cfd0d4 42%, #b3b5ba 72%, #9fa1a6 100%); }
+/* brume du sol et horizon */
+.sol { position: absolute; left: 0; right: 0; bottom: 0; height: 300px;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(240,241,244,.55) 40%, rgba(200,202,207,.85) 100%); }
+.horizon { position: absolute; left: 0; right: 0; top: 820px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); filter: blur(1px); }
+
+/* ---------- verre ---------- */
+.verre { background: linear-gradient(160deg, rgba(255,255,255,.38), rgba(255,255,255,.14) 55%, rgba(255,255,255,.22));
+  border: 1.5px solid rgba(255,255,255,.6); backdrop-filter: blur(22px) saturate(1.3);
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 -1px 0 rgba(0,0,0,.05) inset, 0 18px 40px rgba(40,44,52,.18), 0 2px 6px rgba(40,44,52,.08); }
+.pilule { border-radius: 999px; display: inline-flex; align-items: center; gap: 12px; }
+.reflet { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 22%, rgba(255,255,255,0) 70%, rgba(255,255,255,.25) 100%); mix-blend-mode: soft-light; }
+
+/* ---------- haut ---------- */
+.logo { position: absolute; left: 70px; top: 52px; display: flex; align-items: center; gap: 14px; font-weight: 700; letter-spacing: .02em; font-size: 26px; color: #3b3d44; }
+.logo .etoile { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.logo .etoile svg { width: 26px; height: 26px; }
+.heure { position: absolute; left: 70px; top: 128px; display: flex; align-items: center; gap: 16px; }
+.heure .rond { width: 62px; height: 62px; border-radius: 50%; background: #2f3137; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+.heure .txt small { display: block; color: var(--encre-3); font-size: 15px; }
+.heure .txt b { font-size: 20px; font-weight: 600; }
+.recherche { position: absolute; left: 600px; top: 46px; width: 840px; height: 54px; padding: 0 26px; font-size: 18px; color: var(--encre-2); justify-content: center; }
+.recherche svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+.filtres { position: absolute; left: 0; right: 0; top: 130px; display: flex; justify-content: center; gap: 14px; }
+.filtre { padding: 10px 22px 10px 26px; min-width: 210px; justify-content: space-between; position: relative; }
+.filtre small { display: block; font-size: 13px; color: var(--encre-3); line-height: 1.1; }
+.filtre b { font-size: 18px; font-weight: 600; }
+.filtre svg { width: 18px; height: 18px; stroke: var(--encre-2); fill: none; stroke-width: 2; }
+.filtre.rond { min-width: 0; width: 62px; height: 62px; padding: 0; justify-content: center; }
+
+/* ---------- héros ---------- */
+.halo { position: absolute; left: 610px; top: 320px; width: 840px; height: 460px; border-radius: 60px; filter: blur(80px) saturate(1.7); opacity: .75; background-size: cover; background-position: center; }
+.heros { position: absolute; left: 600px; top: 300px; width: 860px; height: 470px; border-radius: 34px; overflow: hidden; background: #0b0b0e;
+  box-shadow: 0 40px 80px rgba(20,22,28,.35), 0 0 0 1px rgba(255,255,255,.08) inset; }
+.heros .img { position: absolute; inset: -14px; background-size: cover; background-position: center 35%; filter: blur(4px) saturate(1.35) contrast(1.08); transform: scale(1.04); }
+.heros .img2 { position: absolute; inset: 0; background-size: cover; background-position: center 35%; filter: blur(0.6px) saturate(1.2); mix-blend-mode: screen; opacity: .45;
+  -webkit-mask-image: radial-gradient(ellipse 55% 60% at 50% 62%, #000 30%, transparent 80%); }
+.heros .voile { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,5,8,.92) 0%, rgba(5,5,8,.55) 30%, rgba(5,5,8,.05) 60%, rgba(5,5,8,.35) 100%); }
+.heros .marque { position: absolute; left: 34px; top: 30px; color: #fff; font-size: 13px; line-height: 1.35; letter-spacing: .04em; }
+.heros .marque b { display: block; font-size: 15px; letter-spacing: .08em; }
+.heros .marque i { font-family: Serif; font-style: normal; font-size: 19px; letter-spacing: 0; }
+.heros .coin { position: absolute; right: 30px; top: 34px; color: rgba(255,255,255,.85); font-family: Serif; font-size: 20px; }
+.heros h1 { position: absolute; left: 0; right: 0; top: 104px; margin: 0; text-align: center; color: #fff; font-family: Serif; font-weight: 400; font-size: 58px; line-height: 1.05; letter-spacing: -.005em; text-shadow: 0 2px 20px rgba(0,0,0,.4); }
+.heros h1 .sel { background: rgba(255,255,255,.16); box-shadow: 0 0 0 1px rgba(255,255,255,.22); padding: 0 8px; border-radius: 4px; }
+.heros h1 .curseur { display: inline-block; width: 2px; height: 50px; background: #fff; vertical-align: -6px; margin-left: 2px; }
+
+/* outils flottants au-dessus du héros */
+.outil { position: absolute; padding: 9px 12px 9px 18px; font-size: 16px; font-weight: 600; color: #2f3137; z-index: 4; background: linear-gradient(160deg, rgba(255,255,255,.72), rgba(236,237,240,.55)) !important; }
+.outil svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+.touche { min-width: 28px; height: 28px; padding: 0 7px; border-radius: 9px; background: rgba(40,42,48,.12); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #4b4e57; }
+.outil.focus { background: rgba(255,255,255,.75); color: #111; box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(47,49,55,.85), 0 18px 40px rgba(20,22,28,.3); transform: scale(1.06); }
+.outil.sombre { background: rgba(30,32,38,.55); color: #fff; border-color: rgba(255,255,255,.25); }
+.outil.sombre .touche { background: rgba(255,255,255,.18); color: #fff; }
+.rond-outil { position: absolute; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 4; background: linear-gradient(160deg, rgba(255,255,255,.7), rgba(236,237,240,.5)) !important; }
+.rond-outil svg { width: 22px; height: 22px; stroke: #3b3d44; fill: none; stroke-width: 1.8; }
+.point-guide { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.9); z-index: 4; }
+.badges { position: absolute; left: 0; right: 0; top: 236px; display: flex; justify-content: center; gap: 8px; z-index: 3; }
+.badge { padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.55); color: #fff; font-size: 13px; font-weight: 600; background: rgba(255,255,255,.08); }
+.barre-infos { position: absolute; left: 1010px; top: 596px; padding: 8px 10px 8px 18px; gap: 14px; background: rgba(28,30,36,.55); color: #fff; border-color: rgba(255,255,255,.22); font-size: 15px; z-index: 4; }
+.barre-infos .sep { width: 1px; height: 20px; background: rgba(255,255,255,.25); }
+.barre-infos .pt { width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.barre-infos .net { color: #fff; font-weight: 700; }
+.genie { position: absolute; left: 958px; top: 584px; width: 56px; height: 44px; border-radius: 16px; background: #6c9c79; display: flex; align-items: center; justify-content: center; z-index: 5; box-shadow: 0 10px 24px rgba(40,90,60,.35), 0 0 0 1px rgba(255,255,255,.4) inset; }
+.genie svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; }
+
+/* ---------- galerie de gauche ---------- */
+.tuile { position: absolute; border-radius: 26px; overflow: hidden; background-size: cover; background-position: center; box-shadow: 0 24px 50px rgba(20,22,28,.28); }
+.tuile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 1.5px rgba(255,255,255,.35) inset; background: linear-gradient(140deg, rgba(255,255,255,.25), rgba(255,255,255,0) 35%); }
+.tuile.floue { filter: blur(2.5px) saturate(1.3); }
+.tuile.nb { filter: grayscale(1) contrast(1.1); }
+.tuile .coche { position: absolute; left: 50%; top: 55%; width: 28px; height: 28px; margin: -14px; z-index: 2; }
+.ajout { position: absolute; left: 150px; top: 520px; padding: 10px 26px; font-size: 15px; font-weight: 600; background: rgba(60,62,70,.55); color: #fff; border-color: rgba(255,255,255,.25); }
+.agrandir { position: absolute; left: 370px; top: 517px; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.agrandir svg { width: 20px; height: 20px; stroke: #3b3d44; fill: none; stroke-width: 2; }
+
+/* ---------- reflets au sol ---------- */
+.miroir { position: absolute; transform: scaleY(-1); opacity: .22; filter: blur(6px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 55%, #000 100%); pointer-events: none; }
+
+/* ---------- panneau « reprendre / demander » ---------- */
+.demande { position: absolute; left: 650px; top: 690px; width: 860px; height: 300px; border-radius: 34px; overflow: hidden; z-index: 6; }
+.demande .fond { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.18)); }
+.demande .vignettes { position: absolute; left: 30px; top: 26px; display: flex; gap: 12px; }
+.demande .v { width: 116px; height: 72px; border-radius: 14px; background-size: cover; background-position: center; box-shadow: 0 0 0 1.5px rgba(255,255,255,.6), 0 6px 16px rgba(0,0,0,.18); position: relative; }
+.demande .v .prog { position: absolute; left: 8px; right: 8px; bottom: 7px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.4); }
+.demande .v .prog b { display: block; height: 100%; width: 62%; border-radius: 2px; background: #fff; }
+.demande .plus { width: 72px; height: 72px; border-radius: 14px; border: 1.5px dashed rgba(60,62,70,.35); display: flex; align-items: center; justify-content: center; color: var(--encre-2); font-size: 26px; }
+.demande p { position: absolute; left: 32px; right: 40px; top: 120px; margin: 0; font-size: 19px; line-height: 1.45; color: #3e4048; }
+.demande p em { font-style: normal; font-weight: 700; color: #22242a; }
+.demande p .caret { display: inline-block; width: 2px; height: 22px; background: #e2584a; vertical-align: -4px; margin-left: 2px; }
+.demande .actions { position: absolute; left: 26px; right: 26px; bottom: 30px; display: flex; align-items: center; gap: 12px; }
+.chip { height: 50px; padding: 0 20px; border-radius: 999px; display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: #34363d;
+  background: rgba(255,255,255,.42); box-shadow: 0 0 0 1.2px rgba(255,255,255,.7) inset, 0 6px 16px rgba(0,0,0,.08); }
+.chip.carre { width: 50px; padding: 0; justify-content: center; }
+.chip svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+.chip.noir { background: #2b2d33; color: #fff; box-shadow: 0 10px 22px rgba(0,0,0,.28); }
+.arc { position: absolute; left: 30px; right: 30px; bottom: 0; height: 4px; border-radius: 4px;
+  background: linear-gradient(90deg, #4f8df5 0%, #4f8df5 24%, #f07090 34%, #f0a060 52%, #f2d160 62%, #7dcf8a 78%, #7dcf8a 100%); filter: saturate(1.1); }
+.arc-lueur { position: absolute; left: 60px; right: 60px; bottom: -14px; height: 38px; border-radius: 40px; filter: blur(22px); opacity: .5;
+  background: linear-gradient(90deg, #4f8df5, #f07090 40%, #f2d160 62%, #7dcf8a); }
+
+/* ---------- applis (bas gauche) ---------- */
+.applis { position: absolute; left: 70px; top: 822px; width: 480px; padding: 16px; border-radius: 30px; }
+.applis .titre { position: absolute; left: 50px; top: -26px; padding: 6px 18px; border-radius: 14px 14px 0 0; font-size: 16px; font-weight: 600; color: #3b3d44; background: rgba(255,255,255,.28); border: 1.5px solid rgba(255,255,255,.6); border-bottom: 0; backdrop-filter: blur(20px); }
+.applis .g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.app { height: 78px; border-radius: 20px; padding: 18px 20px; font-size: 19px; font-weight: 600; color: #fff; position: relative; overflow: hidden;
+  box-shadow: 0 0 0 1.2px rgba(255,255,255,.45) inset, 0 10px 22px rgba(0,0,0,.12); }
+.app::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 120% at 85% 120%, rgba(255,255,255,.45), transparent 60%); }
+.app span { position: relative; }
+.app.focus-app { box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(47,49,55,.85); }
+
+/* ---------- module (bas droite) ---------- */
+.module { position: absolute; right: 60px; top: 880px; width: 250px; height: 140px; border-radius: 26px; padding: 22px 24px; }
+.module small { color: var(--encre-3); font-size: 15px; }
+.module b { display: block; font-size: 40px; font-weight: 600; margin-top: 2px; color: #2f3137; }
+.module .nuage { position: absolute; right: 22px; top: 22px; width: 64px; height: 64px; }
+.droite { position: absolute; right: -90px; top: 360px; width: 410px; height: 280px; }
+
+.credit { position: absolute; right: 70px; bottom: 26px; font-size: 13px; color: rgba(60,62,70,.55); }
+</style></head>
+<body>
+<div class="sol"></div><div class="horizon"></div>
+
+<!-- haut -->
+<div class="logo"><span class="etoile verre"><svg viewBox="0 0 24 24" fill="none" stroke="#3b3d44" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/><circle cx="12" cy="12" r="3.2" fill="#e9eaee"/></svg></span>iBiTV</div>
+<div class="heure"><span class="rond">20:41</span><span class="txt"><small>Mardi 3 novembre</small><b>Bonsoir</b></span></div>
+<div class="recherche verre pilule"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Rechercher un film, une série, une appli…</div>
+<div class="filtres">
+  <div class="filtre verre pilule"><div><small>Profil</small><b>Salon</b></div><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+  <div class="filtre verre pilule"><div><small>Explorer</small><b>Films et séries</b></div><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+  <div class="filtre verre pilule"><div><small>Plateforme</small><b>Toutes</b></div><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+  <div class="filtre verre pilule"><div><small>Tendances</small><b>Cette semaine</b></div><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+  <div class="filtre verre pilule rond"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/></svg></div>
+</div>
+
+<!-- galerie gauche -->
+<div id="galerie"></div>
+<div class="ajout verre pilule">Ajouter à ma liste</div>
+<div class="agrandir verre"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></div>
+
+<!-- héros -->
+<div class="halo" id="halo"></div>
+<div class="heros" id="heros">
+  <div class="img" id="heros-img"></div><div class="img2" id="heros-img2"></div><div class="voile"></div>
+  <div class="marque"><i id="heros-plateforme">Netflix</i><b>À LA UNE</b></div>
+  <div class="coin">iBiTV</div>
+  <h1 id="heros-titre"></h1>
+  <div class="badges"><span class="badge">4K</span><span class="badge">Dolby Vision</span><span class="badge">VF</span></div>
+</div>
+<div class="outil verre pilule" style="left:928px; top:236px;"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Bande-annonce<span class="touche">▶</span></div>
+<div class="point-guide" style="left:1026px; top:292px"></div><div class="rond-outil verre" style="left:1000px; top:306px"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg></div>
+<div class="outil verre pilule focus" style="left:800px; top:282px;"><svg viewBox="0 0 24 24" style="fill:#111;stroke:none"><path d="M7 5v14l12-7z"/></svg>Regarder<span class="touche">OK</span></div>
+<div class="outil verre pilule" style="left:1092px; top:282px;"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ma liste<span class="touche">+</span></div>
+<div class="genie"><svg viewBox="0 0 24 24"><path d="M5 19L15 9M14 4v3M18.5 5.5l-2 2M20 10h-3M9 4l.7 1.8L11.5 6.5l-1.8.7L9 9l-.7-1.8L6.5 6.5l1.8-.7z"/></svg></div>
+<div class="barre-infos verre pilule"><span class="net" id="info-plateforme">Netflix</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg><span class="sep"></span><span id="info-sous">Film · 2h46</span><span class="sep"></span><span class="pt"></span><span id="info-note">★ 8,2 TMDB</span></div>
+
+<!-- panneau de droite (aperçu suivant) -->
+<div class="tuile droite floue" id="droite"></div>
+
+<!-- reflets au sol -->
+<div class="miroir" id="miroir-heros" style="left:600px; top:770px; width:860px; height:300px; border-radius:34px; background:#0b0b0e; overflow:hidden;"></div>
+
+<!-- demander / reprendre -->
+<div class="demande verre">
+  <div class="fond"></div>
+  <div class="vignettes" id="vignettes"></div>
+  <p>Reprendre <em id="reprendre-titre">The Bear</em>, saison 3 épisode 4 — il reste 23 min. Ou dites simplement ce que vous voulez regarder : « une comédie courte ce soir »…<span class="caret"></span></p>
+  <div class="actions">
+    <span class="chip carre"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+    <span class="chip carre"><svg viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></svg></span>
+    <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z"/></svg>Films</span>
+    <span class="chip"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Séries</span>
+    <span style="flex:1"></span>
+    <span class="chip carre"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>
+    <span class="chip carre noir"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+  </div>
+  <div class="arc-lueur"></div><div class="arc"></div>
+</div>
+
+<!-- applis -->
+<div class="applis verre">
+  <div class="titre">Mes applis</div>
+  <div class="g">
+    <div class="app focus-app" style="background:linear-gradient(135deg,#e88f74,#d9604a)"><span>Netflix</span></div>
+    <div class="app" style="background:linear-gradient(135deg,#4aa6c9,#1f7fa8)"><span>Prime Video</span></div>
+    <div class="app" style="background:linear-gradient(135deg,#d6d7db,#b4b6bc); color:#2f3137"><span>iBiTube</span></div>
+    <div class="app" style="background:linear-gradient(135deg,#86c39a,#4f9f6c)"><span>Spotify</span></div>
+  </div>
+</div>
+
+<!-- module météo -->
+<div class="module verre"><small>Météo · Paris</small><b>14°</b><small>Nuageux, éclaircies</small>
+  <svg class="nuage" viewBox="0 0 64 64"><circle cx="40" cy="22" r="11" fill="#f3c969"/><path d="M18 46h30a10 10 0 000-20 14 14 0 00-26 4 8 8 0 00-4 16z" fill="#fff" opacity=".92"/></svg></div>
+
+<div class="credit" id="credit">Images : TMDB</div>
+
+<script src="donnees.js"></script>
+<script>
+const T = window.DONNEES.titres;
+const fond = (el, url) => { el.style.backgroundImage = `url("${url}")`; };
+// héros
+const h = T[0];
+fond(document.getElementById("heros-img"), h.backdrop);
+fond(document.getElementById("heros-img2"), h.backdrop);
+fond(document.getElementById("halo"), h.backdrop);
+const mots = h.titre.split(" ");
+// le mot le plus long est « sélectionné », comme un texte édité
+let iSel = mots.reduce((m, w, i) => w.length > mots[m].length ? i : m, 0);
+const coupe = Math.ceil(mots.length / 2);
+document.getElementById("heros-titre").innerHTML = mots.map((w, i) =>
+  (i === coupe && mots.length > 2 ? "<br>" : "") + (i === iSel ? `<span class="sel">${w}</span>` : w)).join(" ") + '<span class="curseur"></span>';
+document.getElementById("heros-plateforme").textContent = h.plateforme || "";
+document.getElementById("info-plateforme").textContent = h.plateforme || "";
+document.getElementById("info-sous").textContent = h.sous + (h.annee ? " · " + h.annee : "");
+document.getElementById("info-note").textContent = h.note ? "★ " + h.note + " TMDB" : "TMDB";
+// galerie gauche : 2 × 2 + une carte coupée par le bord
+const g = document.getElementById("galerie");
+const places = [
+  { l: -70, t: 290, w: 170, h: 290, img: T[5].poster, cls: "" },
+  { l: 320, t: 300, w: 250, h: 210, img: T[1].backdrop, cls: "floue", coche: true },
+  { l: 130, t: 590, w: 230, h: 180, img: T[2].backdrop, cls: "" },
+  { l: 376, t: 590, w: 194, h: 180, img: T[3].backdrop, cls: "nb" },
+];
+for (const p of places) {
+  const d = document.createElement("div");
+  d.className = "tuile " + p.cls;
+  Object.assign(d.style, { left: p.l + "px", top: p.t + "px", width: p.w + "px", height: p.h + "px" });
+  fond(d, p.img);
+  if (p.coche) d.innerHTML = '<svg class="coche" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="rgba(255,255,255,.9)"/><path d="M8 14.5l4 4 8-9" stroke="#2b2d33" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>';
+  g.appendChild(d);
+}
+fond(document.getElementById("droite"), T[4].backdrop);
+// reflet au sol du héros
+const m = document.getElementById("miroir-heros");
+m.innerHTML = '<div style="position:absolute;inset:0;background-size:cover;background-position:center 35%;filter:saturate(1.3)"></div>';
+fond(m.firstChild, h.backdrop);
+// vignettes « reprendre »
+const v = document.getElementById("vignettes");
+for (const k of [2, 6]) { const d = document.createElement("div"); d.className = "v"; fond(d, T[k].backdrop); d.innerHTML = '<div class="prog"><b></b></div>'; v.appendChild(d); }
+v.insertAdjacentHTML("beforeend", '<div class="plus">+</div>');
+document.getElementById("reprendre-titre").textContent = T[2].titre;
+if (window.DONNEES.source !== "tmdb") document.getElementById("credit").textContent = "Images provisoires (remplacées par TMDB)";
+window.pret = true;
+</script>
+</body></html>

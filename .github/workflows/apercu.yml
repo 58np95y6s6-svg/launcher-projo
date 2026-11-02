@@ -1,0 +1,48 @@
+# Aperçu du design « Galerie » (verre flottant) avec les tendances TMDB de la semaine.
+# Branche à part (orpheline) : aucun APK n'est compilé ici. Les deux images rendues sont publiées
+# sur la branche captures/apercu-galerie. La clé TMDB (secret TMDB_KEY) n'est jamais affichée.
+name: Aperçu Galerie
+
+on:
+  push:
+    branches: ["claude/apercu-galerie"]
+
+permissions:
+  contents: write
+
+jobs:
+  apercu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Tendances TMDB de la semaine
+        env:
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: python3 outils/tmdb.py apercu
+
+      - name: Chromium
+        run: |
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.56.1 > /dev/null
+          npx playwright install --with-deps chromium > /dev/null
+
+      - name: Rendu
+        run: node outils/rendre.js
+
+      - name: Publication des images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd sorties
+          git init -q
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Aperçu Galerie (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/captures/apercu-galerie"
+          echo "Aperçus publiés sur captures/apercu-galerie"
