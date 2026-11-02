@@ -30,10 +30,12 @@ export async function demarrerBanc() {
     peerjs, web, navigateur, base,
     urlPWA: `${base}/launcher-projo/`,
 
-    async tv({ nom = "Salon", vmax = 1, vhello = 1 } = {}) {
+    /** @param fonctions fonctions annoncées dans le hello ; null = TV ancienne (sans champ) */
+    async tv({ nom = "Salon", vmax = 1, vhello = 1, fonctions = ["apps", "reglages"] } = {}) {
       const ctx = await navigateur.newContext();
       const page = await ctx.newPage();
-      await page.goto(`${base}/tv/fausse-tv.html?ws=${peerjs.port}&nom=${encodeURIComponent(nom)}&vmax=${vmax}&vhello=${vhello}`);
+      const f = fonctions?.length ? fonctions.join(",") : "aucune";
+      await page.goto(`${base}/tv/fausse-tv.html?ws=${peerjs.port}&nom=${encodeURIComponent(nom)}&vmax=${vmax}&vhello=${vhello}&fonctions=${f}`);
       await page.waitForFunction(() => window.tv && window.tv.pret);
       const tv = {
         page, ctx,

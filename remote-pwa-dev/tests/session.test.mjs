@@ -53,7 +53,7 @@ async function preparer({ appairage = null, cible = null } = {}) {
   cible ??= { id: ID_TV, cle: cleTV };
   const s = new Session({ signal, identite, config, RTC: FauxPC, appairage, cible });
   const evts = [];
-  for (const t of ["etat", "tv", "paired", "focus_text", "focus_lost", "version", "fin"]) {
+  for (const t of ["etat", "tv", "paired", "focus_text", "focus_lost", "version", "fin", "apps", "app_image", "app_ouverte", "reglages"]) {
     s.addEventListener(t, (e) => evts.push({ t, ...e.detail }));
   }
   await s.demarrer();
@@ -64,10 +64,12 @@ async function preparer({ appairage = null, cible = null } = {}) {
   pc.canal.ouvrir();
   await attendre(() => pc.canal.envoyes.length > 0);
   const hello = pc.canal.envoyes[0];
-  const helloTV = async ({ v = 1, cle = cleTV, cleSignature = tv.privateKey, nonceTel = hello.nonce, fpTV = V.empreinteDtlsTV } = {}) => {
+  const helloTV = async ({ v = 1, cle = cleTV, cleSignature = tv.privateKey, nonceTel = hello.nonce, fpTV = V.empreinteDtlsTV, fonctions } = {}) => {
     const nonce = nouveauNonce();
     const sig = await signer(cleSignature, texteHelloTV(fpTV, V.empreinteDtlsTel, nonceTel, nonce));
-    return { v, t: "hello", nonce, sig, nomTV: "Salon", versionApp: "2.0", cle };
+    const h = { v, t: "hello", nonce, sig, nomTV: "Salon", versionApp: "2.0", cle };
+    if (fonctions !== undefined) h.fonctions = fonctions;
+    return h;
   };
   return { s, signal, pc, canal: pc.canal, hello, helloTV, identite, tv, cleTV, evts, offre };
 }
@@ -261,4 +263,37 @@ test("EXPIRE du serveur → TV injoignable ; délai de connexion dépassé → i
   const b = await preparer();
   await attendre(() => b.s.etat === "fermee", 3000);
   assert.ok(b.evts.some((e) => e.t === "fin" && e.raison === "injoignable"));
+});
+
+test("pilotage : fonctions du hello, messages applis / réglages transmis seulement une fois prête", async () => {
+  // TV ancienne : pas de champ fonctions → aucune
+  const a = await preparer();
+  a.canal.recevoir(await a.helloTV());
+  await attendre(() => a.s.prete);
+  assert.deepEqual(a.evts.find((e) => e.t === "tv").fonctions, []);
+  a.s.fermer();
+
+  const b = await preparer();
+  // Avant le hello vérifié : ignorés
+  b.canal.recevoir({ v: 1, t: "apps", liste: [{ id: "x", nom: "X", favori: false, maj: 1 }] });
+  b.canal.recevoir(await b.helloTV({ fonctions: ["apps", "reglages", "inconnue"] }));
+  await attendre(() => b.s.prete);
+  assert.deepEqual(b.evts.find((e) => e.t === "tv").fonctions, ["apps", "reglages"]);
+  b.canal.recevoir({ v: 1, t: "apps", liste: [{ id: "com.a", nom: "A", favori: true, maj: 3 }, { id: 5 }] });
+  b.canal.recevoir({ v: 1, t: "app_image", id: "com.a", maj: 3, forme: "icone", img: "data:image/png;base64,iVBORw0KGgo=" });
+  b.canal.recevoir({ v: 1, t: "app_ouverte", id: "com.a", ok: true });
+  b.canal.recevoir({ v: 1, t: "reglages", items: [{ cle: "muet", type: "interrupteur", groupe: "Son", titre: "Muet", valeur: true }] });
+  await attendre(() => b.evts.some((e) => e.t === "reglages"));
+  assert.equal(b.evts.filter((e) => e.t === "apps").length, 1, "liste reçue avant le hello ignorée");
+  assert.deepEqual(b.evts.find((e) => e.t === "apps").liste, [{ id: "com.a", nom: "A", favori: true, maj: 3 }]);
+  assert.equal(b.evts.find((e) => e.t === "app_image").forme, "icone");
+  assert.deepEqual(b.evts.find((e) => e.t === "app_ouverte"), { t: "app_ouverte", id: "com.a", ok: true });
+  assert.equal(b.evts.find((e) => e.t === "reglages").items[0].valeur, true);
+  // Envois
+  assert.ok(b.s.envoyer("apps_images", { ids: ["com.a"] }));
+  assert.ok(b.s.envoyer("reglage", { cle: "muet", valeur: false }));
+  assert.deepEqual(b.canal.envoyes.slice(-2), [
+    { v: 1, t: "apps_images", ids: ["com.a"] }, { v: 1, t: "reglage", cle: "muet", valeur: false },
+  ]);
+  b.s.fermer();
 });

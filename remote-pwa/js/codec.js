@@ -1,6 +1,8 @@
 // Encodages et messages du protocole télécommande (docs/telecommande.md).
 // Module pur : aucune dépendance au DOM, testé sous Node.
 
+import { normaliserApps, normaliserImage, normaliserReglages } from "./pilotage.js";
+
 const cfg = () => globalThis.IBITV_CONFIG || {};
 export const versionProtocole = () => cfg().versionProtocole ?? 1;
 export const versionProtocoleMin = () => cfg().versionProtocoleMin ?? 1;
@@ -85,6 +87,21 @@ export function decoder(brut) {
       return Number.isInteger(m.n) ? m : null;
     case "erreur":
       return str(m.code) ? m : null;
+    // Pilotage (applis et réglages) : contenu normalisé, entrées invalides écartées
+    case "apps": {
+      const liste = normaliserApps(m.liste);
+      return liste ? { ...m, liste } : null;
+    }
+    case "app_image": {
+      const image = normaliserImage(m);
+      return image ? { v: m.v, t: m.t, ...image } : null;
+    }
+    case "app_ouverte":
+      return str(m.id) ? { ...m, ok: m.ok === true } : null;
+    case "reglages": {
+      const items = normaliserReglages(m.items);
+      return items ? { ...m, items } : null;
+    }
     default:
       return null; // type inconnu : ignoré
   }

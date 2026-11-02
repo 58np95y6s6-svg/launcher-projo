@@ -53,6 +53,10 @@
     <symbol id="i-maj" viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-2.3-5.6"/><path d="M20 4v5h-5"/></symbol>
     <symbol id="i-pave" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M12 8v4"/></symbol>
     <symbol id="i-croix-dir" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-telecommande" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-applis" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
+    <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
   </svg>
 
   <div id="banniere-maj" class="banniere" role="status" hidden>
@@ -140,6 +144,10 @@
         <svg class="ic ic-petit"><use href="#i-chevron"/></svg>
       </button>
       <button type="button" id="btn-mode-nav" class="btn-icone" aria-label="Pavé tactile" aria-pressed="false"><svg class="ic"><use href="#i-pave"/></svg></button>
+      <!-- Onglets Applis et Réglages : pastille compacte de la TV -->
+      <button type="button" id="pastille-tv" class="pastille-tv" aria-haspopup="dialog" hidden>
+        <span id="pastille-voyant" class="voyant" data-etat="connexion"></span><span id="pastille-nom">TV</span>
+      </button>
     </header>
 
     <div id="bandeau-etat" class="bandeau-etat" hidden>
@@ -147,41 +155,82 @@
       <button type="button" id="btn-reessayer" class="btn-petit">Réessayer</button>
     </div>
 
-    <section class="zone-nav" aria-label="Navigation">
-      <div id="dpad" class="dpad">
-        <button type="button" class="dpad-dir dpad-haut" data-k="up" aria-label="Haut"><svg class="ic"><use href="#i-haut"/></svg></button>
-        <button type="button" class="dpad-dir dpad-droite" data-k="right" aria-label="Droite"><svg class="ic"><use href="#i-droite"/></svg></button>
-        <button type="button" class="dpad-dir dpad-bas" data-k="down" aria-label="Bas"><svg class="ic"><use href="#i-bas"/></svg></button>
-        <button type="button" class="dpad-dir dpad-gauche" data-k="left" aria-label="Gauche"><svg class="ic"><use href="#i-gauche"/></svg></button>
-        <button type="button" class="dpad-ok" data-k="ok">OK</button>
-      </div>
-      <div id="pave" class="pave" role="application" aria-label="Pavé tactile : glissez pour vous déplacer, touchez pour valider" hidden>
-        <span class="pave-point" aria-hidden="true"></span>
-        <p class="pave-aide">Glissez pour vous déplacer<br>Touchez pour valider</p>
+    <!-- Télécommande (contenu inchangé ; display: contents, voir styles.css) -->
+    <div id="panneau-telecommande" class="panneau panneau-telecommande" role="tabpanel" aria-labelledby="onglet-telecommande">
+      <section class="zone-nav" aria-label="Navigation">
+        <div id="dpad" class="dpad">
+          <button type="button" class="dpad-dir dpad-haut" data-k="up" aria-label="Haut"><svg class="ic"><use href="#i-haut"/></svg></button>
+          <button type="button" class="dpad-dir dpad-droite" data-k="right" aria-label="Droite"><svg class="ic"><use href="#i-droite"/></svg></button>
+          <button type="button" class="dpad-dir dpad-bas" data-k="down" aria-label="Bas"><svg class="ic"><use href="#i-bas"/></svg></button>
+          <button type="button" class="dpad-dir dpad-gauche" data-k="left" aria-label="Gauche"><svg class="ic"><use href="#i-gauche"/></svg></button>
+          <button type="button" class="dpad-ok" data-k="ok">OK</button>
+        </div>
+        <div id="pave" class="pave" role="application" aria-label="Pavé tactile : glissez pour vous déplacer, touchez pour valider" hidden>
+          <span class="pave-point" aria-hidden="true"></span>
+          <p class="pave-aide">Glissez pour vous déplacer<br>Touchez pour valider</p>
+        </div>
+      </section>
+
+      <section class="rangee rangee-3" aria-label="Touches">
+        <button type="button" class="touche" data-k="back"><svg class="ic"><use href="#i-retour"/></svg><span>Retour</span></button>
+        <button type="button" class="touche" data-k="home"><svg class="ic"><use href="#i-accueil"/></svg><span>Accueil</span></button>
+        <button type="button" class="touche" data-k="menu"><svg class="ic"><use href="#i-menu"/></svg><span>Menu</span></button>
+      </section>
+      <section class="rangee rangee-4" aria-label="Son et lecture">
+        <button type="button" class="touche" data-k="vol-" data-repete aria-label="Volume moins"><svg class="ic"><use href="#i-vol-moins"/></svg></button>
+        <button type="button" class="touche" data-k="mute" aria-label="Muet"><svg class="ic"><use href="#i-muet"/></svg></button>
+        <button type="button" class="touche" data-k="vol+" data-repete aria-label="Volume plus"><svg class="ic"><use href="#i-vol-plus"/></svg></button>
+        <button type="button" class="touche" data-k="playpause" aria-label="Lecture / pause"><svg class="ic"><use href="#i-lecture"/></svg></button>
+      </section>
+
+      <form id="saisie" class="saisie" autocomplete="off" novalidate>
+        <p id="saisie-aide" class="saisie-aide" aria-live="polite" hidden></p>
+        <div class="saisie-ligne">
+          <input id="champ-texte" class="champ champ-texte" type="text" placeholder="Écrire sur la TV…"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Texte envoyé à la TV">
+          <button type="button" id="btn-afficher" class="btn-icone btn-afficher" aria-label="Afficher" aria-pressed="false" hidden><svg class="ic"><use href="#i-oeil"/></svg><span>Afficher</span></button>
+          <button type="submit" id="btn-entree" class="btn-icone btn-entree" aria-label="Entrée"><svg class="ic"><use href="#i-entree"/></svg></button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Applis de la TV (si la TV annonce « apps ») -->
+    <section id="panneau-applis" class="panneau panneau-liste" role="tabpanel" aria-labelledby="onglet-applis" hidden>
+      <h2 class="panneau-titre">Applis</h2>
+      <div id="applis-defile" class="panneau-defile">
+        <div id="applis-grille" class="grille-applis" aria-busy="true"></div>
+        <div id="applis-message" class="message-vide" hidden>
+          <p id="applis-message-texte"></p>
+          <button type="button" id="applis-reessayer" class="btn-petit" hidden>Réessayer</button>
+        </div>
       </div>
     </section>
 
-    <section class="rangee rangee-3" aria-label="Touches">
-      <button type="button" class="touche" data-k="back"><svg class="ic"><use href="#i-retour"/></svg><span>Retour</span></button>
-      <button type="button" class="touche" data-k="home"><svg class="ic"><use href="#i-accueil"/></svg><span>Accueil</span></button>
-      <button type="button" class="touche" data-k="menu"><svg class="ic"><use href="#i-menu"/></svg><span>Menu</span></button>
-    </section>
-    <section class="rangee rangee-4" aria-label="Son et lecture">
-      <button type="button" class="touche" data-k="vol-" data-repete aria-label="Volume moins"><svg class="ic"><use href="#i-vol-moins"/></svg></button>
-      <button type="button" class="touche" data-k="mute" aria-label="Muet"><svg class="ic"><use href="#i-muet"/></svg></button>
-      <button type="button" class="touche" data-k="vol+" data-repete aria-label="Volume plus"><svg class="ic"><use href="#i-vol-plus"/></svg></button>
-      <button type="button" class="touche" data-k="playpause" aria-label="Lecture / pause"><svg class="ic"><use href="#i-lecture"/></svg></button>
+    <!-- Réglages d'iBiTV (si la TV annonce « reglages ») -->
+    <section id="panneau-reglages" class="panneau panneau-liste" role="tabpanel" aria-labelledby="onglet-reglages" hidden>
+      <h2 class="panneau-titre">Réglages</h2>
+      <div id="reglages-defile" class="panneau-defile">
+        <div id="reglages-liste" class="liste-reglages" aria-busy="true"></div>
+        <div id="reglages-message" class="message-vide" hidden>
+          <p id="reglages-message-texte"></p>
+          <button type="button" id="reglages-reessayer" class="btn-petit" hidden>Réessayer</button>
+        </div>
+      </div>
     </section>
 
-    <form id="saisie" class="saisie" autocomplete="off" novalidate>
-      <p id="saisie-aide" class="saisie-aide" aria-live="polite" hidden></p>
-      <div class="saisie-ligne">
-        <input id="champ-texte" class="champ champ-texte" type="text" placeholder="Écrire sur la TV…"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Texte envoyé à la TV">
-        <button type="button" id="btn-afficher" class="btn-icone btn-afficher" aria-label="Afficher" aria-pressed="false" hidden><svg class="ic"><use href="#i-oeil"/></svg><span>Afficher</span></button>
-        <button type="submit" id="btn-entree" class="btn-icone btn-entree" aria-label="Entrée"><svg class="ic"><use href="#i-entree"/></svg></button>
-      </div>
-    </form>
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+      <span class="toast-pastille" aria-hidden="true"><svg class="ic"><use href="#i-ok"/></svg></span>
+      <span id="toast-texte" class="toast-texte"></span>
+    </div>
+
+    <div id="onglets" class="onglets" role="tablist" aria-label="Sections" hidden>
+      <button type="button" role="tab" id="onglet-telecommande" class="onglet" data-onglet="telecommande" aria-controls="panneau-telecommande" aria-selected="true">
+        <svg class="ic"><use href="#i-telecommande"/></svg><span>Télécommande</span></button>
+      <button type="button" role="tab" id="onglet-applis" class="onglet" data-onglet="applis" aria-controls="panneau-applis" aria-selected="false" tabindex="-1">
+        <svg class="ic"><use href="#i-applis"/></svg><span>Applis</span></button>
+      <button type="button" role="tab" id="onglet-reglages" class="onglet" data-onglet="reglages" aria-controls="panneau-reglages" aria-selected="false" tabindex="-1">
+        <svg class="ic"><use href="#i-reglages"/></svg><span>Réglages</span></button>
+    </div>
   </main>
 
   <!-- ============ Liste des TV ============ -->

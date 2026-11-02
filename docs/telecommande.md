@@ -226,6 +226,42 @@ Réglages de la TV (version 1) :
 Comme pour le reste : types d'événements seulement (« appli ouverte », « réglage design »), jamais de
 liste d'applis ni de valeurs.
 
+### Côté téléphone (PWA)
+
+Précisions de comportement (le protocole ci-dessus ne change pas) :
+
+- **Onglets** « Télécommande », « Applis », « Réglages » dans une barre fixe en bas de l'écran,
+  seulement pour les fonctions annoncées (gardées avec la TV pour l'ouverture suivante, mises à jour à
+  chaque `hello`). Sans `fonctions`, la télécommande reste seule et inchangée. Sur Applis et Réglages,
+  l'en-tête est une pastille « ● Salon · iBiTV » (point : état de la connexion ; la toucher ouvre
+  « Mes TV »). Un `focus_text` ramène sur la télécommande.
+- Rien n'est demandé tant qu'aucun onglet n'est ouvert. `apps_liste` part à chaque ouverture de
+  l'onglet Applis, `reglages_liste` à chaque ouverture de l'onglet Réglages, et l'un ou l'autre à
+  chaque reconnexion si l'onglet est ouvert (l'abonnement aux réglages vaut pour une connexion).
+- **Applis** : la dernière liste est gardée par TV (affichage immédiat à la réouverture). Images dans
+  IndexedDB (magasin `images`, clé `id|maj` ; les versions plus anciennes de la même appli sont
+  retirées) ; seules les manquantes sont demandées, par paquets de 100, une fois par connexion. Une
+  image jamais reçue (8 s) est remplacée par l'initiale du nom. Après `app_ouvrir`, confirmation
+  « Netflix s'ouvre sur la TV » à `app_ouverte` ; `ok: false` ou pas de réponse en 6 s : message d'erreur.
+- **Réglages**, rendu générique : sections par `groupe` dans l'ordre reçu ; `curseur` avec sa valeur
+  en % de `min..max` ; `choix` en pastilles (en cartes nom + détail si une option a un `detail`) ;
+  `boutons` côte à côte dans l'ordre reçu, le principal en dégradé ; `progression` en barre ;
+  `actif: false` grisé et désactivé ; `titre` vide : pas de ligne de titre. Un type inconnu n'est pas
+  affiché. Seule exception liée à une clé : `design`, en cartes avec un aperçu coloré par `id`
+  (`verre`, `pastel`, `console`, `une`, `chaines`, `studio` ; aperçu neutre pour un autre `id`).
+- **Curseur** : au plus un `reglage` toutes les 150 ms pendant le glissé, puis la valeur finale au
+  relâcher (renvoyée même identique si la TV a changé la valeur entre-temps). Les `reglages` reçus
+  pendant le glissé ne bougent pas le curseur.
+- **Valeurs envoyées** : affichées tout de suite, et gardées jusqu'à ce que la TV renvoie la même
+  valeur ou 1,5 s (les réponses en retard aux envois intermédiaires sont ignorées) ; ensuite l'écran
+  se recale sur la dernière valeur de la TV.
+- `reglages` reçus : mise à jour sur place (défilement, focus et glissé préservés) ; l'affichage n'est
+  reconstruit que si la structure change (clés, types, groupes, bornes, options, boutons), et jamais
+  pendant un glissé.
+- Bouton `installer` touché : note « La TV va demander de confirmer l'installation : appuyez sur OK
+  avec la télécommande », jusqu'à la fin de la connexion (iBiTV redémarre après l'installation).
+- Journaux de la PWA : `appli_ouverte`, `appli_refusee`, `reglage <cle>`.
+
 ## Côté TV : injection
 
 - **Texte** : clavier iBiTV (IME, `remote/ClavierTelecommande`). Il remplace le contenu du champ actif via `InputConnection` (`setComposingText` / `commitText`, `deleteSurroundingText`) et envoie l'action de l'éditeur pour `submit`. Il détecte le focus : `onStartInput` donne le type du champ via `EditorInfo.inputType` / `imeOptions`, et `onFinishInput` envoie `focus_lost`.
