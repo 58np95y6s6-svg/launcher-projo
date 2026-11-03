@@ -65,7 +65,7 @@ abstract class BancGalerie : BancAccueil("GALERIE") {
     protected fun present(etiquette: String) =
         compose.onAllNodes(hasTestTag(etiquette), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
-    /** Appui puis fin des animations du carrousel (0,9 s, fondus compris). */
+    /** Appui puis fin des animations du carrousel (0,8 s, fondus compris). */
     protected fun appuyerEtAttendre(k: Key) {
         appuyer(k)
         avancer(400)
@@ -440,6 +440,31 @@ class GalerieTest : BancGalerie() {
         if (menus != listOf(ui.homeApps[1].packageName)) fail("[GALERIE] Menu dans le dock : $menus")
         appuyer(Key.DirectionCenter)
         if (lances != listOf(ui.homeApps[1].packageName)) fail("[GALERIE] OK dans le dock : $lances")
+    }
+
+    /**
+     * Loupe du dock (tailles lues à la mise en page) : sélectionnée 128 px de maquette (64 u) et
+     * posée 12 px plus haut, voisines 104 px (52 u), les autres 92 px (46 u) ; elle suit le focus.
+     */
+    @Test
+    fun loupeDuDock() {
+        afficher()
+        avancer(400)
+        val f = ui.favorites.indices.map { favori(it) }
+        if (f.size < 4) fail("[GALERIE] loupe : 4 favoris attendus dans les données factices, ${f.size} trouvés")
+        fun cote(e: String) = (bornesDe(e)?.width ?: 0f) / pxParU
+        fun bas(e: String) = (bornesDe(e)?.bottom ?: 0f) / pxParU
+        fun verifier(attendus: List<Float>, contexte: String) {
+            for ((i, a) in attendus.withIndex()) {
+                val c = cote(f[i])
+                if (kotlin.math.abs(c - a) > 1f) fail("[GALERIE] loupe ($contexte) : favori $i de $c u, attendu $a u")
+            }
+        }
+        verifier(listOf(64f, 52f, 46f, 46f), "1er favori")
+        val ecart = bas(f[3]) - bas(f[0])
+        if (kotlin.math.abs(ecart - 6f) > 1f) fail("[GALERIE] loupe : icône sélectionnée pas posée 6 u plus haut ($ecart u)")
+        appuyer(Key.DirectionRight)
+        verifier(listOf(52f, 64f, 52f, 46f), "après ▶")
     }
 
     /**

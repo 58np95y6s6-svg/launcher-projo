@@ -164,24 +164,29 @@ class GalerieCarrouselTest {
     @Test
     fun courbesEtFondus() {
         assertEquals(0f, c.avancement(0f), 0.001f)
-        assertEquals(1f, c.avancement(900f), 0.001f)
+        assertEquals(1f, c.avancement(750f), 0.001f)
         assertEquals(1f, c.avancement(5000f), 0.001f)
         var avant = 0f
-        for (ms in 0..900 step 30) {
+        for (ms in 0..750 step 30) {
             val v = c.avancement(ms.toFloat())
             if (v < avant - 0.0001f) fail("courbe non monotone à $ms ms")
             avant = v
         }
-        // Départ lent puis arrivée douce (cubic-bezier(.62,.04,.24,1)) : ≈ 8 % à 200 ms, ≈ 90 % à 600 ms
-        assertTrue(c.avancement(200f) < 0.1f)
-        assertTrue(c.avancement(450f) in 0.6f..0.72f)
-        assertTrue(c.avancement(600f) > 0.85f)
-        assertEquals(0f, c.apparitionContenu(500f), 0.001f)
-        assertEquals(1f, c.apparitionContenu(1000f), 0.001f)
+        // Départ immédiat puis arrivée douce (cubic-bezier(.22,.61,.36,1)) : ≈ 12 % dès 33 ms (deux
+        // images), ≈ 62 % à 200 ms, ≈ 93 % à 450 ms
+        assertTrue(c.avancement(33f) > 0.1f)
+        assertTrue(c.avancement(200f) in 0.55f..0.7f)
+        assertTrue(c.avancement(450f) > 0.9f)
+        assertEquals(0f, c.apparitionContenu(380f), 0.001f)
+        assertEquals(1f, c.apparitionContenu(760f), 0.001f)
         assertEquals(1f, c.disparition(0f), 0.001f)
-        assertEquals(0f, c.disparition(350f), 0.001f)
-        assertEquals(0f, c.apparitionSynopsis(400f), 0.001f)
-        assertEquals(1f, c.apparitionSynopsis(950f), 0.001f)
+        assertEquals(0f, c.disparition(220f), 0.001f)
+        assertEquals(0f, c.apparitionSynopsis(320f), 0.001f)
+        assertEquals(1f, c.apparitionSynopsis(740f), 0.001f)
+        // Tout est fini à FIN
+        assertTrue(c.FIN >= c.DUREE)
+        assertEquals(1f, c.apparitionContenu(c.FIN), 0.001f)
+        assertEquals(1f, c.apparitionSynopsis(c.FIN), 0.001f)
     }
 
     /** Aucun vrai trajet (hors fantômes) ne passe d'un côté visible de l'écran à l'autre. */

@@ -46,9 +46,13 @@ object CarrouselGalerie {
     const val MIN = -5
     const val MAX = 3
 
-    /** Durée d'un glissement (ms) et sa courbe : cubic-bezier(.62,.04,.24,1). */
-    const val DUREE = 900
-    val COURBE = CourbeBezier(0.62f, 0.04f, 0.24f, 1f)
+    /**
+     * Durée d'un glissement (ms) et sa courbe : cubic-bezier(.22,.61,.36,1). Départ immédiat (le
+     * carrousel bouge dès l'appui) puis arrivée douce ; un appui pendant le glissement repart sans
+     * marquer d'arrêt.
+     */
+    const val DUREE = 750
+    val COURBE = CourbeBezier(0.22f, 0.61f, 0.36f, 1f)
 
     /** Courbe « ease » des fondus (contenu du titre, synopsis). */
     val DOUCE = CourbeBezier(0.25f, 0.1f, 0.25f, 1f)
@@ -96,17 +100,17 @@ object CarrouselGalerie {
     /** Avancement du glissement [ms] après son départ (0 → 1, avec la courbe). */
     fun avancement(ms: Float): Float = COURBE.transform((ms / DUREE).coerceIn(0f, 1f))
 
-    /** Fondu du contenu du titre qui arrive au centre (0,45 s après 0,55 s). */
-    fun apparitionContenu(ms: Float): Float = DOUCE.transform(((ms - 550f) / 450f).coerceIn(0f, 1f))
+    /** Fondu du contenu du titre qui arrive au centre (0,38 s après 0,38 s). */
+    fun apparitionContenu(ms: Float): Float = DOUCE.transform(((ms - 380f) / 380f).coerceIn(0f, 1f))
 
-    /** Fondu du synopsis et du libellé « Regarder sur … » (0,5 s après 0,45 s). */
-    fun apparitionSynopsis(ms: Float): Float = DOUCE.transform(((ms - 450f) / 500f).coerceIn(0f, 1f))
+    /** Fondu du synopsis et du libellé « Regarder sur … » (0,42 s après 0,32 s). */
+    fun apparitionSynopsis(ms: Float): Float = DOUCE.transform(((ms - 320f) / 420f).coerceIn(0f, 1f))
 
-    /** Disparition du contenu du titre qui quitte le centre (0,35 s). */
-    fun disparition(ms: Float): Float = 1f - DOUCE.transform((ms / 350f).coerceIn(0f, 1f))
+    /** Disparition du contenu du titre qui quitte le centre (0,22 s). */
+    fun disparition(ms: Float): Float = 1f - DOUCE.transform((ms / 220f).coerceIn(0f, 1f))
 
     /** Durée après laquelle toutes les animations d'un glissement sont finies (ms). */
-    const val FIN = 1000f
+    const val FIN = 800f
 }
 
 /** Trajet d'un titre pendant un glissement : de [depart] à [arrivee]. Un fantôme sort par un bord. */

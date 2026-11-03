@@ -333,12 +333,27 @@ internal fun DrawScope.imageArrondie(
 }
 
 /** Images d'un titre prêtes à dessiner : nette, adoucie (flou imité), halo, et affiche éventuelle. */
-internal class VisuelGalerie(net: ImageBitmap?, doux: ImageBitmap?, val halo: ImageBitmap?, affiche: ImageBitmap?) {
+internal class VisuelGalerie(
+    net: ImageBitmap?,
+    doux: ImageBitmap?,
+    val halo: ImageBitmap?,
+    affiche: ImageBitmap?,
+    /** Image nette sans transparence (photo TMDB) : rien ne se voit dessous. */
+    val opaque: Boolean = false,
+) {
     val net: PinceauImage? = net?.let { PinceauImage(it) }
     val doux: PinceauImage? = doux?.let { PinceauImage(it) }
     val affiche: PinceauImage? = affiche?.let { PinceauImage(it) }
     /** Aucune image (pas encore chargée, ou introuvable). */
     val vide: Boolean get() = net == null && affiche == null
+
+    /**
+     * Envoie les images à la carte graphique tout de suite, en arrière-plan : sinon l'envoi se fait
+     * au premier dessin, pendant le glissement qui fait entrer le titre (image sautée).
+     */
+    fun envoyerAuGpu() {
+        for (i in listOfNotNull(net?.image, doux?.image, halo, affiche?.image)) runCatching { i.prepareToDraw() }
+    }
 }
 
 /** Copies adoucies d'une image (flou imité) : calculées hors du thread principal, une fois par image. */

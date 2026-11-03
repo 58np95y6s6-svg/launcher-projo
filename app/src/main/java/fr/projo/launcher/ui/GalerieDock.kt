@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.offset
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import fr.projo.launcher.data.AppInfo
@@ -88,7 +89,10 @@ private sealed class ElementDock(val cle: String) {
 }
 
 /** Taille d'une icône (px de maquette) selon son grossissement [g] : 0 au repos, 1 voisine, 2 sélectionnée. */
-private fun tailleIcone(g: Float): Float = if (g <= 1f) 92f + 12f * g else 104f + 24f * (g - 1f)
+private fun tailleIcone(g: Float): Float = if (g <= 1f) TAILLE_REPOS + 12f * g else 104f + 24f * (g - 1f)
+
+/** Taille d'une icône au repos (px de maquette). */
+private const val TAILLE_REPOS = 92f
 
 /** Écart sous l'icône (px) : 18 au repos, 30 sélectionnée. */
 private fun margeIcone(g: Float): Float = if (g <= 1f) 18f else 18f + 12f * (g - 1f)
@@ -145,7 +149,9 @@ internal fun DockGalerie(ctx: HomeContext, nav: GalerieNav, k: Float, haut: Floa
             items(elements.size, key = { elements[it].cle }) { i ->
                 val e = elements[i]
                 val ecart = if (choisi < 0) 99 else abs(i - choisi)
-                val g by animateFloatAsState(
+                // Grossissement lu seulement à la mise en page et au dessin : l'animation ne recompose
+                // pas les icônes à chaque image
+                val loupe = animateFloatAsState(
                     when (ecart) {
                         0 -> 2f
                         1 -> if (e is ElementDock.Separateur) 0f else 1f
@@ -153,6 +159,7 @@ internal fun DockGalerie(ctx: HomeContext, nav: GalerieNav, k: Float, haut: Floa
                     },
                     tween(180), label = "loupe",
                 )
+                val g = remember(loupe) { { loupe.value } }
                 val surFocus: (Boolean, String) -> Unit = { f, nom ->
                     if (f) {
                         choisi = i
@@ -237,11 +244,35 @@ private fun Modifier.fonduDock(etat: androidx.compose.foundation.lazy.LazyListSt
 
 /** Case d'un élément : toute la hauteur de la zone, l'icône posée sur le verre (écart [marge] sous elle). */
 @Composable
-private fun CaseDock(taille: Float, k: Float, contenu: @Composable () -> Unit) {
-    Box(Modifier.width(taille.mq).fillMaxHeight()) {
+private fun CaseDock(g: () -> Float, k: Float, contenu: @Composable () -> Unit) {
+    Box(Modifier.largeurDock(g, k).fillMaxHeight()) {
         Box(Modifier.align(Alignment.BottomCenter)) { contenu() }
     }
 }
+
+/** Largeur de la case selon la loupe [g] (lue à la mise en page). */
+private fun Modifier.largeurDock(g: () -> Float, k: Float): Modifier = layout { m, c ->
+    val w = (tailleIcone(g()) * k).roundToInt()
+    val p = m.measure(c.copy(minWidth = w, maxWidth = w))
+    layout(w, p.height) { p.place(0, 0) }
+}
+
+/** Côté de l'icône carrée selon la loupe [g] (lu à la mise en page). */
+private fun Modifier.coteDock(g: () -> Float, k: Float): Modifier = layout { m, _ ->
+    val s = (tailleIcone(g()) * k).roundToInt()
+    val p = m.measure(Constraints.fixed(s, s))
+    layout(s, s) { p.place(0, 0) }
+}
+
+/** Écart sous l'icône (au-dessus du bas du verre) selon la loupe [g] (lu à la mise en page). */
+private fun Modifier.ecartDock(g: () -> Float, k: Float): Modifier = layout { m, c ->
+    val b = ((D_DESSOUS + margeIcone(g())) * k).roundToInt()
+    val p = m.measure(c.offset(vertical = -b))
+    layout(p.width, p.height + b) { p.place(0, 0) }
+}
+
+/** Arrondi des icônes : 24 % du côté (comme taille × 0,24), sans dépendre de la loupe. */
+private val FormeIconeDock = RoundedCornerShape(24)
 
 /** Icône carrée d'une app (son visuel CARRE réel), qui grossit à la sélection. */
 @Composable
@@ -249,7 +280,7 @@ private fun IconeDock(
     ctx: HomeContext,
     nav: GalerieNav,
     e: ElementDock.App,
-    g: Float,
+    g: () -> Float,
     k: Float,
     surFocus: (Boolean, String) -> Unit,
     positionner: (LayoutCoordinates) -> Unit,
@@ -260,14 +291,16 @@ private fun IconeDock(
     val art = visuel?.art
     // Reflet : copie minuscule et floutée de l'icône (le flou vient de l'agrandissement)
     val reflet = remember(art) { art?.let { FlousGalerie.reflet(it) } }
-    val taille = tailleIcone(g)
-    val marge = margeIcone(g)
-    val rayon = taille * 0.24f
     val etiquette = (if (e.favori) "favori:" else "app:") + app.packageName
     val cible = rememberCibleGalerie(nav, EtageGalerie.DOCK, e.cle, fr = if (e.premier) ctx.premierFocus else null)
-    val selection = ((g - 1f).coerceIn(0f, 1f))
-    CaseDock(taille, k) {
-        Box(Modifier.padding(bottom = (D_DESSOUS + marge).mq).drawBehind { refletDock(reflet, couleur, k, taille, marge, rayon) }) {
+    CaseDock(g, k) {
+        Box(
+            Modifier.ecartDock(g, k).drawBehind {
+                val gg = g()
+                val taille = tailleIcone(gg)
+                refletDock(reflet, couleur, k, taille, margeIcone(gg), taille * 0.24f)
+            },
+        ) {
             SurfaceCliquable(
                 onClick = { ctx.actions.launch(app) },
                 onLongClick = { ctx.actions.openMenu(app) },
@@ -275,10 +308,9 @@ private fun IconeDock(
                     .testTag(etiquette)
                     .then(cible)
                     .onGloballyPositioned(positionner)
-                    .onFocusChanged {
-                        surFocus(it.hasFocus, app.label)
-                        if (it.hasFocus) ctx.surFocus(app, couleur)
-                    }
+                    // Pas de ctx.surFocus : Galerie n'affiche pas l'app sélectionnée ailleurs, et ce
+                    // changement recomposerait tout l'accueil à chaque déplacement dans le dock
+                    .onFocusChanged { surFocus(it.hasFocus, app.label) }
                     .onPreviewKeyEvent {
                         if (it.key == Key.Menu && it.type == KeyEventType.KeyUp) {
                             ctx.actions.openMenu(app)
@@ -286,11 +318,12 @@ private fun IconeDock(
                         } else false
                     }
                     .drawBehind {
+                        val selection = (g() - 1f).coerceIn(0f, 1f)
                         OmbreGalerie.dessiner(this, 0f, 0f, size.width, size.height, 20f * k, 10f * k, Color.Black.copy(alpha = 0.18f * (1f - selection)))
-                        anneauGalerie(k, rayon * k, selection)
+                        anneauGalerie(k, size.width * 0.24f, selection)
                     }
-                    .size(taille.mq),
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(rayon.mq)),
+                    .coteDock(g, k),
+                shape = ClickableSurfaceDefaults.shape(FormeIconeDock),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = lerp(couleur, Color.Black, 0.35f), contentColor = Color.White,
                     focusedContainerColor = lerp(couleur, Color.Black, 0.35f), focusedContentColor = Color.White,
@@ -305,11 +338,17 @@ private fun IconeDock(
                     )
                     app.isSpecial -> Icon(
                         ProjoIcons.Sources, contentDescription = app.label, tint = Color.White,
-                        modifier = Modifier.align(Alignment.Center).size((taille * 0.42f).mq),
+                        modifier = Modifier.align(Alignment.Center).fillMaxSize(0.42f),
                     )
+                    // Initiale à la taille de repos, agrandie avec l'icône au dessin
                     else -> TexteGalerie(
-                        app.label.take(1).uppercase(), taille * 0.42f, Color.White, Modifier.align(Alignment.Center),
-                        poids = FontWeight.Bold, interligne = taille * 0.5f,
+                        app.label.take(1).uppercase(), TAILLE_REPOS * 0.42f, Color.White,
+                        Modifier.align(Alignment.Center).graphicsLayer {
+                            val echelle = tailleIcone(g()) / TAILLE_REPOS
+                            scaleX = echelle
+                            scaleY = echelle
+                        },
+                        poids = FontWeight.Bold, interligne = TAILLE_REPOS * 0.5f,
                     )
                 }
                 // Reflet en haut à gauche et liseré clair, comme une icône de verre
@@ -318,7 +357,7 @@ private fun IconeDock(
                         drawRect(degradeCss(160f, size.width, size.height, 0f to Color.White.copy(alpha = 0.35f), 0.45f to Color.White.copy(alpha = 0f)))
                         drawRoundRect(
                             Color.White.copy(alpha = 0.35f), topLeft = Offset(k / 2f, k / 2f), size = Size(size.width - k, size.height - k),
-                            cornerRadius = CornerRadius(rayon * k), style = Stroke(k),
+                            cornerRadius = CornerRadius(size.width * 0.24f), style = Stroke(k),
                         )
                     },
                 )
@@ -376,17 +415,13 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.refletDock(
 private fun BiblioDock(
     ctx: HomeContext,
     nav: GalerieNav,
-    g: Float,
+    g: () -> Float,
     k: Float,
     surFocus: (Boolean, String) -> Unit,
     positionner: (LayoutCoordinates) -> Unit,
 ) {
-    val taille = tailleIcone(g)
-    val marge = margeIcone(g)
-    val rayon = taille * 0.24f
-    val selection = ((g - 1f).coerceIn(0f, 1f))
-    CaseDock(taille, k) {
-        Box(Modifier.padding(bottom = (D_DESSOUS + marge).mq)) {
+    CaseDock(g, k) {
+        Box(Modifier.ecartDock(g, k)) {
             SurfaceCliquable(
                 onClick = ctx.actions.openLibrary,
                 modifier = Modifier
@@ -398,11 +433,12 @@ private fun BiblioDock(
                         if (it.hasFocus) ctx.sansSelection()
                     }
                     .drawBehind {
+                        val selection = (g() - 1f).coerceIn(0f, 1f)
                         OmbreGalerie.dessiner(this, 0f, 0f, size.width, size.height, 20f * k, 10f * k, Color.Black.copy(alpha = 0.12f * (1f - selection)))
-                        anneauGalerie(k, rayon * k, selection)
+                        anneauGalerie(k, size.width * 0.24f, selection)
                     }
-                    .size(taille.mq),
-                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(rayon.mq)),
+                    .coteDock(g, k),
+                shape = ClickableSurfaceDefaults.shape(FormeIconeDock),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = Color.White.copy(alpha = 0.55f), contentColor = GalerieEncreTitre,
                     focusedContainerColor = Color.White.copy(alpha = 0.8f), focusedContentColor = GalerieEncreTitre,
@@ -410,8 +446,9 @@ private fun BiblioDock(
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.95f),
             ) {
+                // Pictogramme sur 44 % du côté, centré (marge de 28 % de chaque côté)
                 Spacer(
-                    Modifier.fillMaxSize().padding((taille * 0.28f).mq).drawWithContent {
+                    Modifier.align(Alignment.Center).fillMaxSize(0.44f).drawWithContent {
                         pictogramme(GalerieEncreTitre, 1.8f) {
                             for ((x, y) in listOf(4f to 4f, 13.5f to 4f, 4f to 13.5f, 13.5f to 13.5f)) {
                                 addRoundRect(androidx.compose.ui.geometry.RoundRect(x, y, x + 6.5f, y + 6.5f, CornerRadius(2f)))

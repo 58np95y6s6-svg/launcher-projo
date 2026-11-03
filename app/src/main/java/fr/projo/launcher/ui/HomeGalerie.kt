@@ -60,6 +60,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -543,13 +544,13 @@ private fun chargerVisuel(
         val net = adresse?.let { source.image(it, largeurNet) }
         val affiche = t.programme.affiche?.let { source.image(it, largeurAffiche) }
         val flous = if (net != null && adresse != null) FlousGalerie.preparer(adresse, net) else null
-        VisuelGalerie(net, flous?.first, flous?.second, affiche)
+        VisuelGalerie(net, flous?.first, flous?.second, affiche, opaque = true).also { it.envoyerAuGpu() }
     }
     is StudioSuggestion.AppUne -> {
         val paquet = ui.iconSourceOf(t.app.packageName)
         val net = (icons.cached(paquet, FormatVisuel.BANNIERE) ?: icons.load(paquet, FormatVisuel.BANNIERE)).art
         val flous = net?.let { FlousGalerie.preparer("app:$paquet", it) }
-        VisuelGalerie(net, flous?.first, flous?.second, null)
+        VisuelGalerie(net, flous?.first, flous?.second, null).also { it.envoyerAuGpu() }
     }
 }
 
@@ -664,13 +665,17 @@ private fun DessinCarrousel(
     k: Float,
 ) {
     Spacer(
-        Modifier.fillMaxSize().drawBehind {
-            trace()
-            // Repère de l'écran (la zone du carrousel commence à G_HAUT)
-            translate(0f, -G_HAUT * k) {
-                dessinerCarrousel(anim, titres, visuels, temps(), courant, precedent, marques, panneau, k)
-            }
-        },
+        Modifier
+            .fillMaxSize()
+            // Calque à lui : redessiné à chaque image du glissement sans réenregistrer le reste de l'écran
+            .graphicsLayer()
+            .drawBehind {
+                trace()
+                // Repère de l'écran (la zone du carrousel commence à G_HAUT)
+                translate(0f, -G_HAUT * k) {
+                    dessinerCarrousel(anim, titres, visuels, temps(), courant, precedent, marques, panneau, k)
+                }
+            },
     )
 }
 
@@ -764,11 +769,15 @@ private fun DrawScope.dessinerCarte(g: PlaceGalerie, v: VisuelGalerie?, contenu:
         this, l, t, w, h, (50f + 30f * g.heros) * k, (26f + 14f * g.heros) * k,
         Color(0xFF14161C).copy(alpha = (0.28f + 0.07f * g.heros) * a),
     )
-    drawRoundRect(Color(0xFF0B0B0E), topLeft = Offset(l, t), size = Size(w, h), cornerRadius = CornerRadius(r), alpha = a)
     val filtre = FiltresGalerie.pour(g.saturation * (1f - g.gris), g.contraste)
     val affiche = v?.affiche
     val partFond = if (affiche == null) 1f else 1f - g.affiche
     val net = v?.net
+    // Fond sombre : inutile sous une photo opaque qui couvre toute la carte (une surface de moins à remplir)
+    val couverte = net != null && v.opaque && partFond >= 0.999f && a >= 0.999f
+    if (!couverte) {
+        drawRoundRect(Color(0xFF0B0B0E), topLeft = Offset(l, t), size = Size(w, h), cornerRadius = CornerRadius(r), alpha = a)
+    }
     if (net != null && partFond > 0.003f) {
         val doux = v.doux
         if (doux != null && g.flou > 0.01f) {
@@ -842,7 +851,11 @@ private fun ContenuHeros(
         Modifier
             .dansGalerie(place.l, place.t, k)
             .size(place.w.mq, place.h.mq)
-            .graphicsLayer { this.alpha = alpha() }
+            // Fondu appliqué à chaque dessin (pas de calque intermédiaire à remplir à chaque image)
+            .graphicsLayer {
+                this.alpha = alpha()
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            }
             .then(if (tag != null) Modifier.testTag(tag) else Modifier),
     ) {
         Row(
@@ -1008,6 +1021,8 @@ private fun CibleTransparente(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier
+            // Calque à lui : l'anneau suit le glissement (relu à chaque image) sans réenregistrer l'écran
+            .graphicsLayer()
             .drawBehind { anneauGalerie(k, rayon * k, t * visibilite(), ombre = false) }
             .onFocusChanged { focus = it.hasFocus }
             .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
@@ -1258,7 +1273,10 @@ private fun TexteSynopsis(s: StudioSuggestion, etat: StudioEtat, k: Float, alpha
         Modifier
             .fillMaxWidth()
             .padding(start = 30.mq, end = 30.mq, top = 26.mq)
-            .graphicsLayer { this.alpha = alpha() },
+            .graphicsLayer {
+                this.alpha = alpha()
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TexteGalerie(titre, 15f, GalerieEncre, Modifier.widthIn(max = 520.mq), poids = FontWeight.Bold, interligne = 20f)
@@ -1310,6 +1328,7 @@ private fun BoutonRegarder(
                         libelleRegarder(s), 18f, Color.White,
                         Modifier.graphicsLayer {
                             alpha = if (entrant) CarrouselGalerie.apparitionSynopsis(temps()) else CarrouselGalerie.disparition(temps())
+                            compositingStrategy = CompositingStrategy.ModulateAlpha
                         },
                         poids = FontWeight.Bold, interligne = 24f,
                     )
