@@ -53,6 +53,21 @@ class RedirectionAccueilTest {
         assertEquals(MainActivity::class.java.name, ouverte())
     }
 
+    /** Bug corrigé : Prime Video (com.amazon.firebat sur Fire TV) était pris pour l'accueil Amazon et refermé aussitôt. */
+    @Test
+    fun primeVideoResteOuvert() {
+        val s = service()
+        for (prime in listOf("com.amazon.firebat", "com.amazon.avod", "com.amazon.avod.thirdpartyclient")) {
+            s.ecran(prime, "com.amazon.firebatcore.deeplink.DeepLinkRoutingActivity")
+            assertNull("$prime renvoyé vers iBiTV", ouverte())
+        }
+        // Aucune app de streaming connue n'est un accueil
+        for (p in listOf("com.netflix.ninja", "com.disney.disneyplus", "com.amazon.firetv.youtube")) {
+            s.ecran(p, "Main")
+            assertNull("$p renvoyé vers iBiTV", ouverte())
+        }
+    }
+
     @Test
     fun leClavierIBiTVNAnnulePasLaPause() {
         val s = service()

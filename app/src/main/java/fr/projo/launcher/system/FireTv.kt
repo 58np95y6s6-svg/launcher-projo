@@ -20,10 +20,13 @@ object FireTv {
         context.packageManager.hasSystemFeature("amazon.hardware.fire_tv") ||
             android.os.Build.MANUFACTURER.equals("Amazon", ignoreCase = true)
 
-    /** Écrans d'accueil d'Amazon connus (selon les versions de Fire OS). */
+    /**
+     * Écrans d'accueil d'Amazon connus (selon les versions de Fire OS). Jamais une app : tout
+     * écran de ces paquets est remplacé par iBiTV. « com.amazon.firebat » n'y est pas : c'est
+     * Prime Video, qui était renvoyé vers iBiTV dès son ouverture.
+     */
     val ACCUEILS_AMAZON = setOf(
         "com.amazon.tv.launcher",
-        "com.amazon.firebat",
         "com.amazon.tv.leanbacklauncher",
     )
 
