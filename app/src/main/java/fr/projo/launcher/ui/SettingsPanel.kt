@@ -30,6 +30,7 @@ import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.puces.PucesNfc
 import fr.projo.launcher.data.CleTmdb
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.IconesModules
@@ -258,6 +259,9 @@ private fun contenuReglages(
     // « Affiches des nouveautés » : réglage enregistré, lu une fois
     LaunchedEffect(Unit) { ReglageNouveautes.charger(contexte) }
     val nouveautes = ReglageNouveautes.actif
+    // Galerie : défilement automatique des affiches (lu une fois)
+    remember { DefilementGalerie.charger(contexte) }
+    val defilement = DefilementGalerie.secondes
     // Mode Ambiance : réglages enregistrés, lus une fois (résumé et source utilisée sur la tuile)
     remember { ModeAmbiance.charger(contexte) }
     remember { PucesNfc.charger(contexte) }
@@ -422,6 +426,21 @@ private fun contenuReglages(
                 teinte = Teintes.suggestions,
                 onClick = actions.suggestions,
             ),
+            // Galerie seulement : OK passe au choix suivant (désactivé, 5 s, 8 s, 15 s)
+            if (design != Design.GALERIE) null else Reglage(
+                cle = "defilement",
+                icone = ProjoIcons.Photo,
+                titre = "Défilement des affiches",
+                valeur = if (defilement == 0) {
+                    "Désactivé · les affiches ne changent qu'avec ◀ ▶ · changer"
+                } else {
+                    "Toutes les $defilement s quand on ne touche à rien · changer"
+                },
+                teinte = Teintes.defilement,
+                options = DefilementGalerie.possibles.map { if (it == 0) "Non" else "$it s" },
+                optionActive = DefilementGalerie.possibles.indexOf(defilement),
+                onClick = { DefilementGalerie.ecrire(contexte, DefilementGalerie.suivant(defilement)) },
+            ),
             Reglage(
                 cle = "masquees",
                 icone = ProjoIcons.Apps,
@@ -538,6 +557,7 @@ object Teintes {
     val design = Color(0xFF8B5CF6)
     val modules = Color(0xFFEC4899)
     val suggestions = Color(0xFFE11D48)
+    val defilement = Color(0xFF0EA5A0)
     val masquees = Color(0xFF64748B)
     val nouveautes = Color(0xFF14B8A6)
     val ambiance = Color(0xFFE879F9)

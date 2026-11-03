@@ -3,6 +3,7 @@ package fr.projo.launcher.remote
 import fr.projo.launcher.ambiance.CouleursNeon
 import fr.projo.launcher.ambiance.Intensite
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.ui.Design
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -146,6 +147,8 @@ data class EtatTv(
     val muet: Boolean,
     val design: Design,
     val nouveautes: Boolean,
+    /** Galerie : secondes entre deux titres quand on ne touche à rien (0 : désactivé). */
+    val defilementGalerie: Int = DefilementGalerie.DEFAUT,
     val ambianceAuto: Boolean,
     val intensite: Intensite,
     val couleurs: CouleursNeon,
@@ -163,6 +166,7 @@ object ReglagesTv {
     const val MUET = "muet"
     const val DESIGN = "design"
     const val NOUVEAUTES = "nouveautes"
+    const val GALERIE_DEFILEMENT = "galerie_defilement"
     const val AMBIANCE_AUTO = "ambiance_auto"
     const val AMBIANCE_INTENSITE = "ambiance_intensite"
     const val AMBIANCE_COULEURS = "ambiance_couleurs"
@@ -186,7 +190,7 @@ object ReglagesTv {
     fun decrire(e: EtatTv): List<ReglageTv> {
         val max = e.volumeMax.coerceAtLeast(1)
         val decalages = (e.decalages + e.decalageMs).distinct().sorted()
-        return listOf(
+        return listOfNotNull(
             ReglageTv.Curseur(
                 VOLUME, GROUPE_SON, "Volume",
                 valeur = e.volume.coerceIn(0, max), min = 0, max = max,
@@ -201,6 +205,13 @@ object ReglagesTv {
             ReglageTv.Interrupteur(
                 NOUVEAUTES, GROUPE_AFFICHAGE, "Affiches des nouveautés", e.nouveautes,
                 detail = "Photos des films et séries récents en fond de l'accueil",
+            ),
+            // Design Galerie seulement (la liste est renvoyée quand le design change)
+            if (e.design != Design.GALERIE) null else ReglageTv.Choix(
+                GALERIE_DEFILEMENT, GROUPE_AFFICHAGE, "Défilement des affiches",
+                valeur = e.defilementGalerie.toString(),
+                options = DefilementGalerie.possibles.map { OptionReglage(it.toString(), DefilementGalerie.nom(it), DefilementGalerie.detail(it)) },
+                detail = "Galerie : titre suivant quand on ne touche à rien",
             ),
             ReglageTv.Interrupteur(
                 AMBIANCE_AUTO, GROUPE_AMBIANCE, "Automatique avec les apps de musique", e.ambianceAuto,

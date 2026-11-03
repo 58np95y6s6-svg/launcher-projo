@@ -20,6 +20,7 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppRepository
 import fr.projo.launcher.data.LauncherPrefs
 import fr.projo.launcher.data.PrefsState
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.system.DeviceStatus
 import fr.projo.launcher.system.SystemActions
@@ -225,6 +226,7 @@ class PilotageLauncher(
     /** Fil principal. */
     private fun lireEtat(): EtatTv {
         ReglageNouveautes.charger(app)
+        DefilementGalerie.charger(app)
         ModeAmbiance.charger(app)
         val vm = modele()
         val p = prefsCourantes ?: vm?.ui?.value?.prefs
@@ -243,6 +245,7 @@ class PilotageLauncher(
             muet = (vm?.device ?: appareil).estMuet(),
             design = Design.from(p?.design),
             nouveautes = ReglageNouveautes.actif,
+            defilementGalerie = DefilementGalerie.secondes,
             ambianceAuto = ModeAmbiance.auto,
             intensite = ModeAmbiance.intensite,
             couleurs = ModeAmbiance.couleurs,
@@ -288,6 +291,7 @@ class PilotageLauncher(
                 scope.launch { prefs.setDesign(v) }
             }
             ReglagesTv.NOUVEAUTES -> if (v is Boolean) ReglageNouveautes.ecrire(app, v)
+            ReglagesTv.GALERIE_DEFILEMENT -> (v as? String)?.toIntOrNull()?.let { DefilementGalerie.ecrire(app, it) }
             ReglagesTv.AMBIANCE_AUTO -> if (v is Boolean) ModeAmbiance.ecrireAuto(app, v)
             ReglagesTv.AMBIANCE_INTENSITE -> if (v is String) ModeAmbiance.ecrireIntensite(app, Intensite.de(v))
             ReglagesTv.AMBIANCE_COULEURS -> if (v is String) ModeAmbiance.ecrireCouleurs(app, CouleursNeon.de(v))
@@ -334,11 +338,13 @@ class PilotageLauncher(
         }
         // Réglages gardés en mémoire (états Compose) : changés depuis les dialogues de la TV
         ReglageNouveautes.charger(app)
+        DefilementGalerie.charger(app)
         ModeAmbiance.charger(app)
         scope.launch {
             snapshotFlow {
                 listOf<Any>(
                     ReglageNouveautes.actif,
+                    DefilementGalerie.secondes,
                     ModeAmbiance.auto,
                     ModeAmbiance.intensite,
                     ModeAmbiance.couleurs,

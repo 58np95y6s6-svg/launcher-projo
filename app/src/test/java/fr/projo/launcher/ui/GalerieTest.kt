@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import fr.projo.launcher.HomeUi
 import fr.projo.launcher.LauncherViewModel
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.system.DeviceSnapshot
 import fr.projo.launcher.system.UpdateInfo
 import org.junit.Assert.fail
@@ -439,6 +440,43 @@ class GalerieTest : BancGalerie() {
         if (menus != listOf(ui.homeApps[1].packageName)) fail("[GALERIE] Menu dans le dock : $menus")
         appuyer(Key.DirectionCenter)
         if (lances != listOf(ui.homeApps[1].packageName)) fail("[GALERIE] OK dans le dock : $lances")
+    }
+
+    /**
+     * Défilement automatique (5 s) : titre suivant quand on ne touche à rien, le focus restant
+     * dans le dock ; chaque appui relance l'attente ; en pause sur la carte ; désactivé : plus rien.
+     */
+    @Test
+    fun defilementAutomatique() {
+        val appli = RuntimeEnvironment.getApplication()
+        DefilementGalerie.ecrire(appli, 5)
+        afficher()
+        avancer(500)
+        // Appui dans le dock : point de départ connu (appuyer avance déjà de 0,8 s)
+        appuyer(Key.DirectionRight)
+        val dansLeDock = focus()?.etiquette
+        avancer(3_500)
+        attendreHeros("prog:tv:101", "4,3 s sans rien toucher")
+        avancer(1_800)
+        attendreHeros("prog:movie:202", "6,1 s sans rien toucher")
+        if (focus()?.etiquette != dansLeDock) fail("[GALERIE] défilement : le focus a quitté le dock (${decrire(focus())})")
+        avancer(5_000)
+        attendreHeros("prog:tv:302", "deuxième défilement")
+        // Un appui relance l'attente
+        appuyer(Key.DirectionLeft)
+        avancer(3_500)
+        attendreHeros("prog:tv:302", "4,3 s après un appui")
+        avancer(1_500)
+        attendreHeros("prog:tv:402", "5,8 s après un appui")
+        // Focus sur la carte : on lit, rien ne bouge
+        donnerFocus("galerie:carte")
+        avancer(16_000)
+        attendreHeros("prog:tv:402", "focus sur la carte")
+        // Désactivé : rien ne bouge non plus depuis le dock
+        compose.runOnIdle { DefilementGalerie.ecrire(appli, 0) }
+        donnerFocus(favori(0))
+        avancer(16_000)
+        attendreHeros("prog:tv:402", "défilement désactivé")
     }
 }
 

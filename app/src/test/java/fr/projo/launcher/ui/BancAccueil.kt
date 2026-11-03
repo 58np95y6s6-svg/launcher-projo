@@ -29,11 +29,13 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import fr.projo.launcher.HomeUi
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.modules.HoteModules
 import fr.projo.launcher.modules.LocalHoteModules
 import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Rule
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
@@ -70,6 +72,12 @@ abstract class BancAccueil(nomDesign: String) {
 
     @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
+
+    /** Galerie : pas de défilement automatique des affiches, sauf dans le test qui l'active. */
+    @Before
+    fun sansDefilementAutomatique() {
+        DefilementGalerie.ecrire(RuntimeEnvironment.getApplication(), 0)
+    }
 
     /** Données affichées : celles de DonneesFactices (passées par [preparer]), sauf si un test en donne d'autres à [afficher]. */
     private var uiTest: HomeUi? = null

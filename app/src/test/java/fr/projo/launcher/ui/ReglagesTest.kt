@@ -122,14 +122,18 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         if (cle() != "reglage:volume") fail("[${design.name}] ▲ jusqu'en haut : obtenu ${cle()}")
     }
 
-    /** Toutes les tuiles de l'app, celles ajoutées depuis comprises ; « Suggestions » pour Studio et Galerie seulement. */
+    /**
+     * Toutes les tuiles de l'app, celles ajoutées depuis comprises ; « Suggestions » pour Studio et
+     * Galerie seulement, « Défilement des affiches » pour Galerie seulement.
+     */
     @Test
     fun tuilesDuPanneau() {
         ouvrir()
         attendreFocus("reglage:volume", "ouverture")
         val attendues = listOfNotNull(
             "volume", "maj", "wifi", "bluetooth", "stockage",
-            "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design.suggestionsTmdb }, "masquees", "nouveautes", "ambiance",
+            "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design.suggestionsTmdb },
+            "defilement".takeIf { design == Design.GALERIE }, "masquees", "nouveautes", "ambiance",
             "appairer", "telephones", "puces", "aide-telecommande",
             "langue", "date", "son", "tous",
         ).map { "reglage:$it" }.toSet()

@@ -3,6 +3,7 @@ package fr.projo.launcher.remote
 import fr.projo.launcher.ambiance.CouleursNeon
 import fr.projo.launcher.ambiance.Intensite
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.ui.Design
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -79,6 +80,27 @@ class ReglagesTvTest {
         assertEquals(Design.entries.map { it.id }, d.options.map { it.id })
         assertEquals(Design.entries.map { it.nom }, d.options.map { it.nom })
         assertEquals("studio", d.valeur)
+    }
+
+    /** Galerie seulement : « Défilement des affiches », juste après les affiches des nouveautés. */
+    @Test
+    fun defilementDesAffichesAvecGalerieSeulement() {
+        assertFalse(items().any { it.cle == ReglagesTv.GALERIE_DEFILEMENT })
+        val r = items(etatTv().copy(design = Design.GALERIE, defilementGalerie = 15))
+        val cles = r.map { it.cle }
+        assertEquals(cles.indexOf("nouveautes") + 1, cles.indexOf(ReglagesTv.GALERIE_DEFILEMENT))
+        val d = r.de<ReglageTv.Choix>(ReglagesTv.GALERIE_DEFILEMENT)
+        assertEquals("Affichage", d.groupe)
+        assertEquals("15", d.valeur)
+        assertEquals(listOf("0", "5", "8", "15"), d.options.map { it.id })
+        assertEquals(listOf("Désactivé", "Toutes les 5 s", "Toutes les 8 s", "Toutes les 15 s"), d.options.map { it.nom })
+        assertEquals(Changement(ReglagesTv.GALERIE_DEFILEMENT, "0"), ReglagesTv.valider(r, ReglagesTv.GALERIE_DEFILEMENT, "0", null))
+        assertEquals(Changement(ReglagesTv.GALERIE_DEFILEMENT, "8"), ReglagesTv.valider(r, ReglagesTv.GALERIE_DEFILEMENT, 8, null))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.GALERIE_DEFILEMENT, "7", null))
+        // Un autre design : le réglage n'existe pas, le changement est ignoré
+        assertNull(ReglagesTv.valider(items(), ReglagesTv.GALERIE_DEFILEMENT, "5", null))
+        // Tuile de la TV : chaque OK passe au choix suivant, en boucle
+        assertEquals(listOf(15, 0, 5, 8), listOf(8, 15, 0, 5).map { DefilementGalerie.suivant(it) })
     }
 
     @Test

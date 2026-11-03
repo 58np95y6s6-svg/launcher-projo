@@ -43,7 +43,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +74,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -84,10 +88,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import fr.projo.launcher.data.AppInfo
+import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.FormatVisuel
 import fr.projo.launcher.data.GenreTmdb
 import fr.projo.launcher.data.IconLoader
@@ -100,6 +108,8 @@ import fr.projo.launcher.modules.meteo.MeteoDonnees
 import fr.projo.launcher.modules.meteo.ModuleMeteo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -147,6 +157,8 @@ private fun Modifier.dansGalerie(x: Float, y: Float, k: Float): Modifier =
  *     titres de l'onglet).
  *  3. En bas : le dock des applis façon Mac (favoris puis « Mes apps », « Toutes les applis »).
  *  Écran 2 (▼ depuis le dock) : les modules choisis dans Réglages → Modules.
+ *  Défilement automatique (Réglages → Défilement des affiches) : titre suivant après quelques
+ *  secondes sans rien toucher, en pause tant que le focus est sur le carrousel ou ses boutons.
  *
  * Sans clé TMDB ou sans réseau : les apps à la une (repli de Studio). Focus initial : 1re app
  * du dock. Navigation : GalerieNav (étages, ◀ ▶ dans l'ordre du carrousel).
@@ -324,12 +336,54 @@ fun HomeGalerie(ctx: HomeContext) {
         precedent = { if (surEcran2()) nav.allerVers(EtageGalerie.GALERIE, CLE_CARTE) || nav.allerVers(EtageGalerie.HAUT) },
         suivant = { if (!surEcran2()) nav.allerVers(EtageGalerie.MODULES) },
     )
+    // ------------------------------------------------ défilement automatique
+    // Personne ne touche à rien (ni touche ni pointeur) depuis le temps choisi : titre suivant. En
+    // pause sur le carrousel et ses boutons (on lit, on va choisir), sur l'écran 2, dans la grille,
+    // quand le focus a quitté l'accueil (Réglages ouverts) et quand une app est au premier plan.
+    LaunchedEffect(Unit) { DefilementGalerie.charger(contexte) }
+    val intervalle = DefilementGalerie.secondes * 1_000L
+    val cycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    var focusDedans by remember { mutableStateOf(false) }
+    // Compteur d'activité : lu seulement par le défilement (une touche ne recompose rien)
+    val activite = remember { mutableIntStateOf(0) }
+    val deplacerAJour by rememberUpdatedState(deplacer)
+    val defilementActif = intervalle > 0 && titres.size > 1 && !grille && focusDedans && cycle == Lifecycle.State.RESUMED
+    LaunchedEffect(defilementActif, intervalle, anim) {
+        if (!defilementActif) return@LaunchedEffect
+        // Chaque activité relance l'attente complète
+        snapshotFlow { activite.intValue }.collectLatest {
+            while (true) {
+                delay(intervalle)
+                val etage = nav.focus?.first
+                if (etage == EtageGalerie.GALERIE || etage == EtageGalerie.ACTIONS || surEcran2()) continue
+                deplacerAJour(1)
+            }
+        }
+    }
+
     val tempsLu = { temps }
     val traceLue = { trace }
     // Écran 2 : l'écran 1 (carrousel, en-tête) s'efface à mesure que la page glisse
     val presenceEcran1 = { 1f - (ctx.defilement.value / decalagePx.toFloat().coerceAtLeast(1f)).coerceIn(0f, 1f) }
 
-    Box(Modifier.fillMaxSize().fondGalerie()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .fondGalerie()
+            .onFocusChanged { focusDedans = it.hasFocus }
+            .onPreviewKeyEvent {
+                activite.intValue++
+                false
+            }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        awaitPointerEvent(PointerEventPass.Initial)
+                        activite.intValue++
+                    }
+                }
+            },
+    ) {
         Box(Modifier.fillMaxSize().clipToBounds()) {
             Box(
                 Modifier

@@ -206,6 +206,7 @@ Réglages de la TV (version 1) :
 | Son | `muet` | interrupteur | couper / remettre le son |
 | Affichage | `design` | choix (les designs : Verre, Pastel…) | design de l'accueil |
 | Affichage | `nouveautes` | interrupteur | affiches des nouveautés en fond |
+| Affichage | `galerie_defilement` | choix (`0`, `5`, `8`, `15` s) | design Galerie seulement : titre suivant quand on ne touche à rien (`0` : jamais) |
 | Mode Ambiance | `ambiance_auto` | interrupteur | néon automatique avec les applis de musique |
 | Mode Ambiance | `ambiance_intensite` | choix (Douce, Normale, Forte) | intensité du néon |
 | Mode Ambiance | `ambiance_couleurs` | choix (Pochette, Arc-en-ciel) | couleurs du néon |
