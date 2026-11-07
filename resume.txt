@@ -1,0 +1,16 @@
+# Test de démarrage (émulateur Android TV)
+## debug
+TotalTime: 2907
+Total frames rendered: 162
+Janky frames: 162 (100.00%)
+50th percentile: 101ms
+90th percentile: 150ms
+99th percentile: 150ms
+## release
+TotalTime: 2244
+Total frames rendered: 174
+Janky frames: 174 (100.00%)
+50th percentile: 93ms
+90th percentile: 113ms
+99th percentile: 150ms
+RESULTAT: OK
