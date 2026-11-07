@@ -133,6 +133,47 @@ class CapturesGalerieTest : BancGalerie() {
         ouvrirReglages()
         capturer("g6_reglages")
     }
+
+    /** Envoyer sur la TV : pastille VPN verte, puis bandeau « … envoyé par … — Ouverture dans VYPN… ». */
+    @Test
+    fun lienRecu() {
+        installerLecteurYoutube()
+        vpnTv = EtatVpnTv(actif = true, garde = true, appli = "VYPN") {}
+        afficher()
+        avancer(1000)
+        capturer("g10a_pastille_vpn")
+        val b = fr.projo.launcher.liens.BandeauLien("Les grands documentaires", "arte.tv", "l'iPhone de Paul", "VYPN")
+        compose.runOnIdle {
+            pardessus.value = { BandeauLienTv(b) }
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        }
+        avancer(600)
+        capturer("g10b_lien_recu")
+    }
+
+    /** Raccourci iOS, VPN coupé : pastille rouge « VPN coupé », puis le garde-fou à l'écran. */
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    @Test
+    fun gardeFou() {
+        installerLecteurYoutube()
+        vpnTv = EtatVpnTv(actif = false, garde = true, appli = "VYPN") {}
+        afficher()
+        avancer(1000)
+        capturer("g11a_vpn_coupe")
+        val q = fr.projo.launcher.liens.QuestionVpn(
+            fr.projo.launcher.liens.Liens.lien("https://www.arte.tv/fr/videos/1/", "Les grands documentaires")!!,
+            expediteur = "l'iPhone",
+            appliVpn = "VYPN",
+        )
+        compose.runOnIdle {
+            pardessus.value = { GardeFouVpnDialog(q, onAllumer = {}, onSansVpn = {}, onAnnuler = {}) }
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        }
+        avancer(1500)
+        val fichier = java.io.File("build/captures/galerie_g11b_garde_fou.png")
+        fichier.parentFile?.mkdirs()
+        com.github.takahirom.roborazzi.captureScreenRoboImage(fichier.path)
+    }
 }
 
 /**

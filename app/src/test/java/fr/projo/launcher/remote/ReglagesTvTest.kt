@@ -42,16 +42,22 @@ class ReglagesTvTest {
     fun reglagesDansLOrdreDeLaSpecification() {
         val r = items()
         assertEquals(
-            listOf("volume", "muet", "design", "nouveautes", "ambiance_auto", "ambiance_intensite", "ambiance_couleurs", "ambiance_decalage", "maj", "systeme"),
+            listOf(
+                "volume", "muet", "design", "nouveautes", "ambiance_auto", "ambiance_intensite", "ambiance_couleurs", "ambiance_decalage",
+                "liens_seulement_vpn", "liens_pages", "liens_raccourci", "liens_code", "maj", "systeme",
+            ),
             r.map { it.cle },
         )
         assertEquals(
-            listOf("curseur", "interrupteur", "choix", "interrupteur", "interrupteur", "choix", "choix", "choix", "boutons", "boutons"),
+            listOf(
+                "curseur", "interrupteur", "choix", "interrupteur", "interrupteur", "choix", "choix", "choix",
+                "interrupteur", "choix", "interrupteur", "boutons", "boutons", "boutons",
+            ),
             r.map { it.type },
         )
         // Les réglages d'un même groupe se suivent
         val groupes = r.map { it.groupe }
-        assertEquals(listOf("Son", "Affichage", "Mode Ambiance", "Mises à jour", "Ouvrir sur la TV"), groupes.distinct())
+        assertEquals(listOf("Son", "Affichage", "Mode Ambiance", "Envoyer sur la TV", "Mises à jour", "Ouvrir sur la TV"), groupes.distinct())
         groupes.distinct().forEach { g ->
             val indices = groupes.indices.filter { groupes[it] == g }
             assertEquals("groupe $g contigu", indices.last() - indices.first() + 1, indices.size)
@@ -160,6 +166,46 @@ class ReglagesTvTest {
         assertTrue(m.boutons.none { it.id == "installer" })
         // Rien n'est accepté sur un réglage grisé
         assertNull(ReglagesTv.valider(items(etatTv(maj = null)), "maj", null, "verifier"))
+    }
+
+    /** Groupe « Envoyer sur la TV » : valeurs par défaut, applis des pages web, raccourci iOS et son code. */
+    @Test
+    fun envoyerSurLaTv() {
+        // Par défaut : seulement avec le VPN, pages en automatique, raccourci coupé
+        val defaut = items()
+        assertTrue(defaut.de<ReglageTv.Interrupteur>(ReglagesTv.LIENS_SEULEMENT_VPN).valeur)
+        assertFalse(defaut.de<ReglageTv.Interrupteur>(ReglagesTv.LIENS_RACCOURCI).valeur)
+        val pagesSeules = defaut.de<ReglageTv.Choix>(ReglagesTv.LIENS_PAGES)
+        assertEquals("auto", pagesSeules.valeur)
+        assertEquals(listOf("auto"), pagesSeules.options.map { it.id })
+        assertEquals("Aucune appli de la TV n'ouvre les pages web", pagesSeules.options[0].detail)
+        assertEquals(listOf("nouveau"), defaut.de<ReglageTv.Boutons>(ReglagesTv.LIENS_CODE).boutons.map { it.id })
+        assertEquals("Nouveau code", defaut.de<ReglageTv.Boutons>(ReglagesTv.LIENS_CODE).boutons[0].nom)
+        assertTrue(defaut.filter { it.cle.startsWith("liens_") }.all { it.groupe == "Envoyer sur la TV" })
+
+        val navigateurs = listOf(OptionReglage("net.vypn.app", "VYPN"), OptionReglage("com.amazon.cloud9", "Silk"))
+        val e = etatTv().copy(envoi = EtatEnvoi(seulementVpn = false, pages = "com.amazon.cloud9", navigateurs = navigateurs, raccourci = true))
+        val r = items(e)
+        assertFalse(r.de<ReglageTv.Interrupteur>(ReglagesTv.LIENS_SEULEMENT_VPN).valeur)
+        assertTrue(r.de<ReglageTv.Interrupteur>(ReglagesTv.LIENS_RACCOURCI).valeur)
+        val pages = r.de<ReglageTv.Choix>(ReglagesTv.LIENS_PAGES)
+        assertEquals("com.amazon.cloud9", pages.valeur)
+        assertEquals(listOf("auto", "net.vypn.app", "com.amazon.cloud9"), pages.options.map { it.id })
+        assertEquals(listOf("Automatique", "VYPN", "Silk"), pages.options.map { it.nom })
+        assertEquals("Aujourd'hui : VYPN", pages.options[0].detail)
+        // Choix enregistré qui n'est plus installé : automatique
+        val parti = items(e.copy(envoi = e.envoi.copy(pages = "org.desinstalle"))).de<ReglageTv.Choix>(ReglagesTv.LIENS_PAGES)
+        assertEquals("auto", parti.valeur)
+
+        // Validation : interrupteurs, choix parmi les applis installées, bouton « nouveau »
+        assertEquals(Changement(ReglagesTv.LIENS_SEULEMENT_VPN, true), ReglagesTv.valider(r, ReglagesTv.LIENS_SEULEMENT_VPN, true, null))
+        assertEquals(Changement(ReglagesTv.LIENS_RACCOURCI, false), ReglagesTv.valider(r, ReglagesTv.LIENS_RACCOURCI, false, null))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.LIENS_RACCOURCI, "oui", null))
+        assertEquals(Changement(ReglagesTv.LIENS_PAGES, "net.vypn.app"), ReglagesTv.valider(r, ReglagesTv.LIENS_PAGES, "net.vypn.app", null))
+        assertEquals(Changement(ReglagesTv.LIENS_PAGES, "auto"), ReglagesTv.valider(r, ReglagesTv.LIENS_PAGES, "auto", null))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.LIENS_PAGES, "com.android.settings", null))
+        assertEquals(Changement(ReglagesTv.LIENS_CODE, "nouveau"), ReglagesTv.valider(r, ReglagesTv.LIENS_CODE, null, "nouveau"))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.LIENS_CODE, null, "afficher"))
     }
 
     @Test

@@ -34,7 +34,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.ambiance.ModeAmbiance
+import fr.projo.launcher.liens.ChoixQuestion
+import fr.projo.launcher.liens.EnvoiTv
+import fr.projo.launcher.liens.Liens
+import fr.projo.launcher.liens.OuvertureLiens
 import fr.projo.launcher.puces.PucesNfc
+import fr.projo.launcher.ui.BandeauLienTv
+import fr.projo.launcher.ui.EnvoyerTvDialog
+import fr.projo.launcher.ui.EtatVpnTv
+import fr.projo.launcher.ui.GardeFouVpnDialog
+import fr.projo.launcher.ui.LocalVpnTv
 import fr.projo.launcher.ui.AidePucesDialog
 import fr.projo.launcher.ui.LienPuceDialog
 import fr.projo.launcher.ui.PucesNfcDialog
@@ -98,7 +107,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Puces NFC : le Fire TV écoute sur le Wi-Fi si la fonction est activée
+        // Envoyer sur la TV : réglages et suivi du VPN (pastille, liens en attente du VPN)
+        EnvoiTv.demarrer(this)
+        // Puces NFC et raccourci iOS : la TV écoute sur le Wi-Fi si l'une des deux fonctions est activée
         PucesNfc.demarrerSiActif(this)
 
         // Le bouton Retour ne quitte jamais l'écran d'accueil.
@@ -129,11 +140,17 @@ class MainActivity : ComponentActivity() {
             val hoteModules = remember(modules, reglagesModules) {
                 HoteModules(modules, reglagesModules, vm.donneesModules, vm::setReglageModule)
             }
+            // VPN de la TV (pastille de Galerie) : relu quand il s'allume ou se coupe
+            val vpnActif = EnvoiTv.vpnActif
+            val garde = EnvoiTv.seulementVpn
+            val appliVpn = remember(vpnActif, garde) { EnvoiTv.appliVpn(this)?.second }
+            val etatVpn = remember(vpnActif, garde, appliVpn) { EtatVpnTv(vpnActif, garde, appliVpn) { ouvrirAppliVpn() } }
             CompositionLocalProvider(
                 LocalScale provides echelle,
                 LocalFireTv provides FireTv.estFireTv(this),
                 LocalDesign provides Design.from(etat.prefs.design),
                 LocalHoteModules provides hoteModules,
+                LocalVpnTv provides etatVpn,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Contenu()
@@ -176,6 +193,8 @@ class MainActivity : ComponentActivity() {
         var lienPuce by remember { mutableStateOf<Pair<String, String>?>(null) }
         var montrerAidePuces by remember { mutableStateOf(false) }
         var montrerAideAmbiance by remember { mutableStateOf(false) }
+        // Envoyer sur la TV : réglages
+        var montrerEnvoyer by remember { mutableStateOf(false) }
         var versionAutorisations by remember { mutableIntStateOf(0) }
         val demandeMicro = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { accorde ->
             versionAutorisations++
@@ -308,6 +327,7 @@ class MainActivity : ComponentActivity() {
                     aideTelecommande = { montrerAideTelecommande = true },
                     ambiance = { montrerAmbiance = true },
                     pucesNfc = { montrerPuces = true },
+                    envoyerTv = { montrerEnvoyer = true },
                 ),
             )
         }
@@ -530,6 +550,31 @@ class MainActivity : ComponentActivity() {
         lienPuce?.let { (app, lien) -> LienPuceDialog(app, lien, onDismiss = { lienPuce = null }) }
         if (montrerAidePuces) AidePucesDialog(FireTv.adresseIp(), onDismiss = { montrerAidePuces = false })
 
+        // ---------------- Envoyer sur la TV
+        if (montrerEnvoyer) {
+            val ip = remember { FireTv.adresseIp() }
+            val navigateurs = remember { OuvertureLiens.ordrePages(this, Liens.PAGES_AUTO) }
+            val appliVpn = remember { EnvoiTv.appliVpn(this)?.second }
+            EnvoyerTvDialog(
+                navigateurs = navigateurs,
+                appliVpn = appliVpn,
+                ip = ip,
+                onOuvrirVpn = { ouvrirAppliVpn() },
+                onDismiss = { montrerEnvoyer = false },
+            )
+        }
+        // Bandeau « … envoyé par … — Ouverture dans … » (environ 1 s avant l'ouverture d'un lien)
+        EnvoiTv.bandeau?.let { BandeauLienTv(it) }
+        // Garde-fou du raccourci iOS (VPN coupé) : par-dessus tout, même au retour sur l'accueil
+        EnvoiTv.question?.let { q ->
+            GardeFouVpnDialog(
+                q,
+                onAllumer = if (q.appliVpn != null) ({ EnvoiTv.repondre(ChoixQuestion.ALLUMER_VPN) }) else null,
+                onSansVpn = { EnvoiTv.repondre(ChoixQuestion.SANS_VPN) },
+                onAnnuler = { EnvoiTv.repondre(ChoixQuestion.ANNULER) },
+            )
+        }
+
         // ---------------- Télécommande smartphone
         if (montrerAppairage) {
             AppairageDialog(
@@ -597,6 +642,11 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (!FireTv.redirectionActive(this)) toast("Néon : active d'abord « Ouverture automatique » (Réglages)")
+    }
+
+    /** OK sur la pastille VPN ou sur l'état du VPN (Réglages → Envoyer sur la TV) : l'appli VPN connue. */
+    private fun ouvrirAppliVpn() {
+        if (!EnvoiTv.ouvrirAppliVpn(this)) toast("Aucune appli VPN connue sur la TV (VYPN, Proton VPN, WireGuard…)")
     }
 
     /** Page « Accès aux notifications » (absente sur certains Fire TV : false). */

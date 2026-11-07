@@ -412,6 +412,51 @@ class GalerieTest : BancGalerie() {
         if (present("galerie:meteo")) fail("[GALERIE] pilule météo sans module Météo")
     }
 
+    /**
+     * Pastille VPN (Envoyer sur la TV) : verte « VPN » et l'appli VPN quand un VPN est actif, à
+     * gauche de Réglages sur la même ligne ; dans l'étage du haut (▶ ◀ entre Ma liste, elle et
+     * Réglages) ; OK ouvre l'appli VPN.
+     */
+    @Test
+    fun piluleVpn() {
+        var ouvertures = 0
+        vpnTv = EtatVpnTv(actif = true, garde = true, appli = "VYPN") { ouvertures++ }
+        afficher()
+        if (!present("galerie:vpn") || !textePresent("VYPN")) fail("[GALERIE] VPN actif : pastille verte « VPN · VYPN » absente")
+        val pilule = bornesDe("galerie:vpn")!!
+        val reglages = bornesDe("rapide:Réglages")!!
+        if (pilule.right > reglages.left || kotlin.math.abs(pilule.center.y - reglages.center.y) > 3f * pxParU) {
+            fail("[GALERIE] pastille VPN ${pilule.enU()} : attendue à gauche de Réglages ${reglages.enU()}, sur la même ligne")
+        }
+        donnerFocus("onglet:maliste")
+        appuyer(Key.DirectionRight)
+        attendre("galerie:vpn", "▶ depuis Ma liste")
+        appuyer(Key.DirectionRight)
+        attendre("rapide:Réglages", "▶ depuis la pastille VPN")
+        appuyer(Key.DirectionLeft)
+        attendre("galerie:vpn", "◀ depuis Réglages")
+        appuyer(Key.DirectionCenter)
+        if (ouvertures != 1) fail("[GALERIE] OK sur la pastille VPN : l'appli VPN devait s'ouvrir (ouvertures : $ouvertures)")
+        if (lances.isNotEmpty() || rapides.isNotEmpty()) fail("[GALERIE] OK sur la pastille VPN : rien d'autre ($lances, $rapides)")
+    }
+
+    /** VPN coupé avec « Seulement avec le VPN » : pastille rouge « VPN coupé ». */
+    @Test
+    fun piluleVpnCoupe() {
+        vpnTv = EtatVpnTv(actif = false, garde = true, appli = "VYPN") {}
+        afficher()
+        if (!present("galerie:vpn") || !textePresent("coupé")) fail("[GALERIE] VPN coupé : pastille « VPN coupé » absente")
+        if (textePresent("VYPN")) fail("[GALERIE] VPN coupé : l'appli VPN ne s'affiche pas")
+    }
+
+    /** VPN coupé sans le garde-fou, ou pas d'état (aperçus) : pas de pastille. */
+    @Test
+    fun pasDePiluleVpn() {
+        vpnTv = EtatVpnTv(actif = false, garde = false, appli = "VYPN") {}
+        afficher()
+        if (present("galerie:vpn")) fail("[GALERIE] VPN coupé sans « Seulement avec le VPN » : pas de pastille")
+    }
+
     /** Réglages : la pastille reçoit le focus de retour du panneau ; OK ouvre le panneau. */
     @Test
     fun reglages() {

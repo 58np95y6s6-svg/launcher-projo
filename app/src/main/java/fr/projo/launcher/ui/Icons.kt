@@ -56,6 +56,11 @@ object ProjoIcons {
         "M20,2H4c-1.1,0 -2,0.9 -2,2v16c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2zM20,20H4V4h16v16zM18,6h-5c-1.1,0 -2,0.9 -2,2v2.28c-0.6,0.35 -1,0.98 -1,1.72 0,1.1 0.9,2 2,2s2,-0.9 2,-2c0,-0.74 -0.4,-1.38 -1,-1.72V8h3v8H8V8h2V6H6v12h12V6z",
     )
 
+    /** Envoyer sur la TV : écran et flèche (pictogramme Material « screen_share »). */
+    val EnvoyerTv = icone(
+        "M20,18c1.1,0 1.99,-0.9 1.99,-2L22,6c0,-1.11 -0.9,-2 -2,-2H4c-1.11,0 -2,0.89 -2,2v10c0,1.1 0.89,2 2,2H0v2h24v-2h-4zM13,14.47V12.28c-2.78,0 -4.61,0.85 -6,2.72 0.56,-2.67 2.11,-5.33 6,-5.87V7l4,3.73 -4,3.74z",
+    )
+
     private fun icone(path: String): ImageVector =
         ImageVector.Builder(
             defaultWidth = 24.dp, defaultHeight = 24.dp,

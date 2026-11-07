@@ -211,6 +211,10 @@ Réglages de la TV (version 1) :
 | Mode Ambiance | `ambiance_intensite` | choix (Douce, Normale, Forte) | intensité du néon |
 | Mode Ambiance | `ambiance_couleurs` | choix (Pochette, Arc-en-ciel) | couleurs du néon |
 | Mode Ambiance | `ambiance_decalage` | choix (0, 100… 400 ms) | synchro avec le son |
+| Envoyer sur la TV | `liens_seulement_vpn` | interrupteur | n'ouvrir les liens que si un VPN est actif (voir « Envoyer sur la TV ») |
+| Envoyer sur la TV | `liens_pages` | choix (`auto`, puis les applis qui ouvrent les pages web) | appli des pages web |
+| Envoyer sur la TV | `liens_raccourci` | interrupteur | accepter les liens du bouton Partager de l'iPhone |
+| Envoyer sur la TV | `liens_code` | boutons `nouveau` | nouveau code du raccourci iOS |
 | Mises à jour | `maj` | boutons `verifier`, `installer` | rechercher / télécharger et installer la nouvelle version d'iBiTV |
 | Ouvrir sur la TV | `systeme` | boutons `wifi`, `bluetooth`, `reglages` | ouvre la page système sur la TV |
 
@@ -443,6 +447,47 @@ Types d'événements seulement : « lien envoyé (téléphone | raccourci) », �
 
 ### Côté TV : précisions
 
+- **Fichiers** : `liens/Liens.kt` (sans Android, testé sur la JVM : vérification de l'URL, titre,
+  genre du lien, ordre des applis, appli VPN), `liens/EnvoiLiens.kt` (sans Android : déroulé,
+  garde-fou, attente du VPN), `liens/OuvertureLiens.kt` (résolution `ACTION_VIEW` par paquet,
+  ouverture), `liens/EnvoiTv.kt` (réglages, suivi du VPN, bandeau, garde-fou, code du raccourci),
+  `remote/LiensTelecommande.kt` + `remote/LiensLauncher.kt` (`HoteSession.liens` ; null : pas de
+  `liens` dans `fonctions`), `puces/ServeurPuces.kt` (route `/envoyer`), `system/AdresseLocale.kt`
+  (adresse sur le réseau local), `ui/EnvoyerTvDialogs.kt` (réglages, bandeau, garde-fou).
+- **Annonce** : `fonctions` = `["apps", "reglages", "liens"]` (`liens` est ajouté à la fin).
+- **Fils** : comme le pilotage, les messages arrivent sur le fil de la télécommande ; tout le reste
+  (état du VPN, réglages, ouverture, bandeau, garde-fou) sur le fil principal ; la route HTTP attend
+  la réponse (10 s au plus) sur le fil du serveur.
+- **`lien_ouvrir`** : l'URL est rognée de ses espaces ; schéma et hôte passent en minuscules (filtres
+  d'intention des applis) ; refusée si elle contient un espace ou un caractère de contrôle, ou si le
+  port est invalide. `sansVpn` / `vpnDabord` : seulement le booléen `true`. Les deux à la fois :
+  `vpnDabord` l'emporte. `vpnDabord` avec un VPN déjà actif : ouverture tout de suite.
+  `lien_ouvert.url` : l'URL de la demande telle quelle (`""` si ce n'était pas une chaîne).
+- **« envoyé par »** : nom du téléphone appairé, avec l'article quand il commence par un nom commun
+  (« Téléphone de Marie » → « le téléphone de Marie », « iPhone de Paul » → « l'iPhone de Paul ») ;
+  « l'iPhone » pour le raccourci.
+- **Ouverture** : réponse `ok: true` une fois l'appli lancée (après le bandeau d'1 s si iBiTV est à
+  l'écran). Une appli qui refuse le lancement est sautée au profit de la suivante. Avant d'ouvrir :
+  `PauseMusique.pauser` (toujours, quel que soit le genre du lien). Rien n'est écrit dans le journal
+  à propos de l'intention.
+- **`liens_pages`** : options = `auto` puis les applis qui ouvrent `https://example.com/`
+  (`MATCH_DEFAULT_ONLY | MATCH_ALL`), dans l'ordre « auto » ; une appli choisie qui n'est plus
+  installée revient à `auto`. Le choix est essayé en premier, puis l'ordre « auto ».
+- **Adresse du raccourci** : IPv4 d'une interface Wi-Fi ou Ethernet, jamais celle d'un VPN (tun0,
+  wg0… ou interface point à point), ni 127.x / 169.254.x ; adresse privée d'abord. Changement de
+  réseau (`registerDefaultNetworkCallback`) : `liens` renvoyé.
+- **Raccourci iOS, compléments** (le tableau des statuts ci-dessus ne change pas) : `/envoyer/`
+  accepté aussi ; corps du POST : JSON, texte (l'URL seule) ou formulaire `url=…&titre=…`, 16 Ko au
+  plus, `Content-Length` ou envoi par morceaux ; GET : `c` et `url` seulement. Pendant le blocage
+  (plus de 10 codes faux dans la minute) : **429** « Trop d'essais : réessaie dans une minute » (au
+  lieu de 403, pour ne pas faire croire que le bon code est faux) ; autre méthode que GET / POST :
+  405 ; pas de réponse de la TV en 10 s : 500 « La TV n'a pas répondu ». Le code des puces NFC et
+  celui du raccourci ont chacun leur compte d'échecs. Serveur démarré pour le raccourci seulement :
+  une puce NFC reçoit la page 404 « Puces NFC désactivées ». La TV n'est pas réveillée (contrairement
+  aux puces NFC).
+- **Journal** : « lien envoyé (téléphone | raccourci) », « lien ouvert », « lien refusé <raison> »
+  (`attente_vpn` compris), « garde-fou affiché », « lien refusé annule », « raccourci : code refusé »,
+  « VPN allumé / coupé ». Jamais l'URL, le titre ni le code.
 - **VPN actif** : un réseau de `ConnectivityManager` a le transport `TRANSPORT_VPN` ; suivi par
   `registerNetworkCallback` (renvoi de `liens`, pastille de l'accueil).
 - **Appli VPN** (`appliVpn`, « Allumer le VPN ») : première installée de VYPN (`net.vypn.app`),
@@ -453,6 +498,17 @@ Types d'événements seulement : « lien envoyé (téléphone | raccourci) », �
 - **Pastille VPN** (design Galerie, en-tête, à gauche de Réglages) : verte « VPN » quand un VPN est
   actif ; rouge « VPN coupé » si « Seulement avec le VPN » est activé et le VPN coupé ; cachée sinon.
   OK dessus ouvre l'appli VPN.
+  - Verre de l'en-tête, point de couleur, « VPN » en gras et, en petit gris, le nom de l'appli VPN
+    (verte) ou « coupé » (rouge). Dans l'étage du haut de Galerie : ◀ ▶ entre les onglets, elle et
+    Réglages. Sans appli VPN connue, OK l'annonce (« Aucune appli VPN connue sur la TV »).
+- **Bandeau et garde-fou** : Galerie a son dessin (pilule d'encre sous les onglets ; carte de verre
+  claire, bouclier rouge barré, titre à empattements, boutons en pilules) ; les autres designs
+  prennent l'habillage de leurs dialogues. Focus du garde-fou sur « Allumer le VPN et ouvrir »
+  (sinon « Ouvrir sans VPN ») ; Retour = « Annuler ».
+- **Réglages de la TV** : tuile « Envoyer sur la TV » (section Télécommande smartphone, tous les
+  designs) → dialogue : « Seulement avec le VPN », état du VPN (OK : son appli), pages web
+  (« Automatique » puis les applis), « Envoyer depuis l'iPhone » (avec l'adresse du raccourci) et
+  « Nouveau code » (confirmé par un second OK).
 
 ### Côté téléphone (PWA)
 

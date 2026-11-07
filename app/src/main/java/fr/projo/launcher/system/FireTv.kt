@@ -84,16 +84,11 @@ object FireTv {
         )
     }
 
-    /** Adresse IP du Fire TV sur le réseau local (pour s'y connecter depuis un téléphone). */
-    fun adresseIp(): String? = try {
-        java.net.NetworkInterface.getNetworkInterfaces().toList()
-            .filter { it.isUp && !it.isLoopback }
-            .flatMap { it.inetAddresses.toList() }
-            .firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }
-            ?.hostAddress
-    } catch (e: Exception) {
-        null
-    }
+    /**
+     * Adresse IP du Fire TV sur le réseau local (pour s'y connecter depuis un téléphone) : Wi-Fi
+     * ou Ethernet, jamais celle d'un VPN actif (voir AdresseLocale).
+     */
+    fun adresseIp(): String? = AdresseLocale.lire()
 
     /** Ouvre les réglages d'accessibilité (renvoie false si le Fire TV ne les propose pas). */
     fun ouvrirAccessibilite(context: Context): Boolean = try {

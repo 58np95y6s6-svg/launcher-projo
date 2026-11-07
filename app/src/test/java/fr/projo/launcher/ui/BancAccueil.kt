@@ -122,6 +122,9 @@ abstract class BancAccueil(nomDesign: String) {
      */
     protected var hoteModules: HoteModules? = null
 
+    /** VPN de la TV (pastille de Galerie) ; null : pas de pastille, comme avant. */
+    protected var vpnTv: EtatVpnTv? = null
+
     /** Appuis sur la touche Maison (launcher déjà affiché) : à incrémenter pour la simuler. */
     protected val appuisMaison = androidx.compose.runtime.mutableIntStateOf(0)
 
@@ -169,6 +172,7 @@ abstract class BancAccueil(nomDesign: String) {
                 LocalDesign provides design,
                 LocalHoteModules provides hoteModules,
                 LocalStudioSource provides sourceStudio,
+                LocalVpnTv provides vpnTv,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                   androidx.compose.foundation.layout.Box {

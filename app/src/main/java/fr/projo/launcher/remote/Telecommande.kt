@@ -19,6 +19,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.MainActivity
+import fr.projo.launcher.liens.EnvoiTv
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -102,12 +103,25 @@ object Telecommande : HoteSession {
     private var _pilotage: PilotageLauncher? = null
     override val pilotage: Pilotage? get() = _pilotage
 
+    /** « Envoyer sur la TV » (créé par [demarrer]). */
+    @Volatile
+    private var _liens: LiensLauncher? = null
+    override val liens: LiensTv? get() = _liens
+
     /** Renvoi de `reglages` aux téléphones abonnés, au plus toutes les 300 ms (fil de la télécommande). */
     private val regroupementReglages = Regroupement(
         RemoteConfig.REGLAGES_INTERVALLE_MS,
         horloge = { SystemClock.uptimeMillis() },
         planifier = { delai, tache -> fil.postDelayed({ tache() }, delai) },
         action = { envoyerReglages() },
+    )
+
+    /** Renvoi de `liens` aux téléphones abonnés, au plus toutes les 300 ms (fil de la télécommande). */
+    private val regroupementLiens = Regroupement(
+        RemoteConfig.REGLAGES_INTERVALLE_MS,
+        horloge = { SystemClock.uptimeMillis() },
+        planifier = { delai, tache -> fil.postDelayed({ tache() }, delai) },
+        action = { envoyerLiens() },
     )
 
     private var principal: ClientPeerJs? = null
@@ -133,6 +147,9 @@ object Telecommande : HoteSession {
         fil = Handler(HandlerThread("telecommande").apply { start() }.looper)
         _injecteur = InjectionAndroid(app)
         _pilotage = PilotageLauncher(app, retour = { executer(it) }, surChangement = { reglagesChanges() })
+        _liens = LiensLauncher(app, retour = { executer(it) })
+        // VPN allumé ou coupé, réglage du groupe « Envoyer sur la TV » changé : `liens` (et `reglages`) renvoyés
+        EnvoiTv.ecouter { liensChanges(); reglagesChanges() }
         (app as? Application)?.registerActivityLifecycleCallbacks(suiviActivites)
         fil.post {
             try {
@@ -157,7 +174,13 @@ object Telecommande : HoteSession {
                         .registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                             override fun onAvailable(network: Network) {
                                 fil.post { principal?.relancer(); temporaire?.relancer() }
+                                // Adresse locale peut-être changée : `liens.raccourci`
+                                liensChanges()
                             }
+
+                            override fun onLost(network: Network) = liensChanges()
+
+                            override fun onLinkPropertiesChanged(network: Network, linkProperties: android.net.LinkProperties) = liensChanges()
                         })
                 }
                 evaluer()
@@ -500,6 +523,21 @@ object Telecommande : HoteSession {
         p.reglages { items ->
             val message = Protocole.reglages(items)
             connexions.forEach { it.session?.envoyerReglagesSiAbonne(message) }
+        }
+    }
+
+    // ------------------------------------------------------------------ envoyer sur la TV (liens)
+
+    /** VPN, réglage « Envoyer sur la TV » ou adresse changés : `liens` renvoyé aux abonnés. N'importe quel fil. */
+    fun liensChanges() = surFil { regroupementLiens.signaler() }
+
+    private fun envoyerLiens() {
+        val l = _liens ?: return
+        // Personne d'abonné : rien à lire
+        if (connexions.none { c -> c.session?.let { it.authentifiee && it.abonneLiens } == true }) return
+        l.etat { e ->
+            val message = Protocole.liens(e)
+            connexions.forEach { it.session?.envoyerLiensSiAbonne(message) }
         }
     }
 

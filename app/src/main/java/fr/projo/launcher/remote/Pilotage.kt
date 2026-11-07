@@ -4,6 +4,7 @@ import fr.projo.launcher.ambiance.CouleursNeon
 import fr.projo.launcher.ambiance.Intensite
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.DefilementGalerie
+import fr.projo.launcher.liens.Liens
 import fr.projo.launcher.ui.Design
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -140,6 +141,18 @@ data class EtatMaj(
     val verifiee: Boolean = false,
 )
 
+/** Réglages « Envoyer sur la TV » (docs/telecommande.md, « Envoyer sur la TV : liens »). */
+data class EtatEnvoi(
+    /** N'ouvrir les liens que si un VPN est actif (activé par défaut). */
+    val seulementVpn: Boolean = true,
+    /** Appli des pages web : `auto` ou un paquet. */
+    val pages: String = Liens.PAGES_AUTO,
+    /** Applis installées qui ouvrent une page https, dans l'ordre « auto » : `id` = paquet, `nom`. */
+    val navigateurs: List<OptionReglage> = emptyList(),
+    /** Accepter les liens du bouton Partager de l'iPhone (désactivé par défaut). */
+    val raccourci: Boolean = false,
+)
+
 /** Valeurs courantes des réglages de la TV (lues sur le fil principal). */
 data class EtatTv(
     val volume: Int,
@@ -158,6 +171,8 @@ data class EtatTv(
     val decalageConseille: Int,
     /** null : écran d'accueil pas encore créé (pas de ViewModel) → `maj` grisé. */
     val maj: EtatMaj?,
+    /** Groupe « Envoyer sur la TV ». */
+    val envoi: EtatEnvoi = EtatEnvoi(),
 )
 
 /** Réglages de la TV (version 1) : description envoyée au téléphone, validation de `reglage`. */
@@ -171,6 +186,10 @@ object ReglagesTv {
     const val AMBIANCE_INTENSITE = "ambiance_intensite"
     const val AMBIANCE_COULEURS = "ambiance_couleurs"
     const val AMBIANCE_DECALAGE = "ambiance_decalage"
+    const val LIENS_SEULEMENT_VPN = "liens_seulement_vpn"
+    const val LIENS_PAGES = "liens_pages"
+    const val LIENS_RACCOURCI = "liens_raccourci"
+    const val LIENS_CODE = "liens_code"
     const val MAJ = "maj"
     const val SYSTEME = "systeme"
 
@@ -179,10 +198,12 @@ object ReglagesTv {
     const val BOUTON_WIFI = "wifi"
     const val BOUTON_BLUETOOTH = "bluetooth"
     const val BOUTON_REGLAGES = "reglages"
+    const val BOUTON_NOUVEAU_CODE = "nouveau"
 
     const val GROUPE_SON = "Son"
     const val GROUPE_AFFICHAGE = "Affichage"
     const val GROUPE_AMBIANCE = "Mode Ambiance"
+    const val GROUPE_ENVOI = "Envoyer sur la TV"
     const val GROUPE_MAJ = "Mises à jour"
     const val GROUPE_SYSTEME = "Ouvrir sur la TV"
 
@@ -233,6 +254,7 @@ object ReglagesTv {
                 options = decalages.map { OptionReglage(it.toString(), nomDecalage(it, e.decalageConseille), detailDecalage(it, e.decalageConseille)) },
                 detail = "Retard du néon sur le son joué",
             ),
+            *reglagesEnvoi(e.envoi).toTypedArray(),
             reglageMaj(e.maj),
             ReglageTv.Boutons(
                 SYSTEME, GROUPE_SYSTEME, "Pages système",
@@ -242,6 +264,41 @@ object ReglagesTv {
                     BoutonReglage(BOUTON_REGLAGES, "Paramètres"),
                 ),
                 detail = "S'ouvre sur l'écran de la TV",
+            ),
+        )
+    }
+
+    /**
+     * Groupe « Envoyer sur la TV » : seulement avec le VPN, appli des pages web (`auto` puis les
+     * applis installées), raccourci iOS et son code. Un choix enregistré qui n'est plus installé
+     * revient à `auto` (c'est ce que fait l'ouverture).
+     */
+    private fun reglagesEnvoi(e: EtatEnvoi): List<ReglageTv> {
+        val navigateurs = e.navigateurs.filter { it.id != Liens.PAGES_AUTO }.distinctBy { it.id }
+        val auto = OptionReglage(
+            Liens.PAGES_AUTO, "Automatique",
+            navigateurs.firstOrNull()?.let { "Aujourd'hui : ${it.nom}" } ?: "Aucune appli de la TV n'ouvre les pages web",
+        )
+        val pages = if (navigateurs.any { it.id == e.pages }) e.pages else Liens.PAGES_AUTO
+        return listOf(
+            ReglageTv.Interrupteur(
+                LIENS_SEULEMENT_VPN, GROUPE_ENVOI, "Seulement avec le VPN", e.seulementVpn,
+                detail = "N'ouvre les liens que si un VPN est actif sur la TV",
+            ),
+            ReglageTv.Choix(
+                LIENS_PAGES, GROUPE_ENVOI, "Appli des pages web",
+                valeur = pages,
+                options = listOf(auto) + navigateurs,
+                detail = "YouTube, Netflix, vidéos : leur appli si elle est installée",
+            ),
+            ReglageTv.Interrupteur(
+                LIENS_RACCOURCI, GROUPE_ENVOI, "Envoyer depuis l'iPhone", e.raccourci,
+                detail = "Bouton Partager de Safari, avec un raccourci iOS",
+            ),
+            ReglageTv.Boutons(
+                LIENS_CODE, GROUPE_ENVOI, "Code du raccourci",
+                boutons = listOf(BoutonReglage(BOUTON_NOUVEAU_CODE, "Nouveau code")),
+                detail = "L'ancien raccourci ne marchera plus",
             ),
         )
     }

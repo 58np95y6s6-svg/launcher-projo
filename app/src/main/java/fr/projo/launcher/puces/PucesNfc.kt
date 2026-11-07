@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppRepository
+import fr.projo.launcher.liens.EnvoiTv
 import java.security.SecureRandom
 
 /**
@@ -60,7 +61,7 @@ object PucesNfc {
     var code by mutableStateOf("")
         private set
 
-    /** Le Fire TV écoute bien (false : port pris, ou fonction désactivée). */
+    /** La TV écoute bien (false : port pris, ou ni les puces ni le raccourci iOS activés). */
     var ecoute by mutableStateOf(false)
         private set
 
@@ -70,6 +71,10 @@ object PucesNfc {
 
     @Volatile
     private var codeCourant = ""
+
+    /** Copie de [actif] lue par le fil du serveur. */
+    @Volatile
+    private var actifCourant = false
     private var lu = false
     private var serveur: ServeurPuces? = null
     private val principal = Handler(Looper.getMainLooper())
@@ -79,14 +84,26 @@ object PucesNfc {
         lu = true
         val p = context.getSharedPreferences(FICHIER, Context.MODE_PRIVATE)
         actif = p.getBoolean(CLE_ACTIF, false)
+        actifCourant = actif
         code = p.getString(CLE_CODE, "") ?: ""
         codeCourant = code
     }
 
-    /** À l'ouverture d'iBiTV et au démarrage du service : écoute si la fonction est activée. */
+    /**
+     * À l'ouverture d'iBiTV et au démarrage du service : le serveur écoute si les puces ou le
+     * raccourci iOS « Envoyer sur la TV » sont activés.
+     */
     fun demarrerSiActif(context: Context) {
         charger(context)
-        if (actif) demarrer(context.applicationContext)
+        EnvoiTv.demarrer(context)
+        evaluerServeur(context.applicationContext)
+    }
+
+    /** Serveur (port 8642) démarré dès qu'une des deux fonctions est activée, arrêté sinon. */
+    fun evaluerServeur(app: Context) {
+        charger(app)
+        EnvoiTv.charger(app)
+        if (actif || EnvoiTv.raccourci) demarrer(app) else arreter()
     }
 
     fun activer(context: Context, oui: Boolean) {
@@ -99,7 +116,8 @@ object PucesNfc {
         }
         p.putBoolean(CLE_ACTIF, oui).apply()
         actif = oui
-        if (oui) demarrer(context.applicationContext) else arreter()
+        actifCourant = oui
+        evaluerServeur(context.applicationContext)
     }
 
     /** Nouveau code : toutes les puces déjà écrites cessent de marcher. */
@@ -119,6 +137,8 @@ object PucesNfc {
             resoudre = { nom -> resoudre(nom, app.packageName) { installee(app, it) } },
             libelle = { paquet -> libelle(app, paquet) },
             ouvrir = { paquet -> principal.post { lancer(app, paquet) } },
+            pucesActives = { actifCourant },
+            raccourci = EnvoiTv.routeRaccourci(app),
         ).also { serveur = it }
         // Ouverture du port hors du fil principal (réseau)
         Thread {
@@ -235,6 +255,7 @@ object PucesNfc {
         arreter()
         lu = false
         actif = false
+        actifCourant = false
         code = ""
         codeCourant = ""
         enReve = false

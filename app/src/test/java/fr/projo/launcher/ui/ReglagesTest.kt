@@ -11,11 +11,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -62,6 +65,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     private val volumes = mutableListOf<Int>()
     private var suggestions = 0
     private var ambiances = 0
+    private var envois = 0
     private var ouvert by mutableStateOf(false)
 
     // ------------------------------------------------------------------ tests
@@ -134,7 +138,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
             "volume", "maj", "wifi", "bluetooth", "stockage",
             "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design.suggestionsTmdb },
             "defilement".takeIf { design == Design.GALERIE }, "masquees", "nouveautes", "ambiance",
-            "appairer", "telephones", "puces", "aide-telecommande",
+            "appairer", "telephones", "envoyer", "puces", "aide-telecommande",
             "langue", "date", "son", "tous",
         ).map { "reglage:$it" }.toSet()
         val composees = etiquettesTuiles()
@@ -195,6 +199,81 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
                 onMicro = {}, onNotifications = {}, onService = {}, onAide = {}, onDismiss = {},
             )
         }
+    }
+
+    /** « Envoyer sur la TV » : présente dans tous les designs, OK ouvre ses réglages sans fermer le panneau. */
+    @Test
+    fun tuileEnvoyerSurLaTv() {
+        fr.projo.launcher.liens.EnvoiTv.oublier()
+        ouvrir()
+        attendreFocus("reglage:volume", "ouverture")
+        donnerFocus("reglage:envoyer")
+        if (!texteAffiche("Envoyer sur la TV")) fail("[${design.name}] tuile « Envoyer sur la TV » sans son titre")
+        touche(Key.DirectionCenter)
+        if (envois != 1) fail("[${design.name}] OK sur « Envoyer sur la TV » : réglages attendus (appels : $envois)")
+        if (fermetures != 0) fail("[${design.name}] le panneau ne devait pas se fermer")
+    }
+
+    /** Réglages → Envoyer sur la TV : VPN, pages web, bouton Partager de l'iPhone, aux couleurs du design. */
+    @Test
+    fun captureDialogueEnvoyer() {
+        val contexte = RuntimeEnvironment.getApplication()
+        fr.projo.launcher.liens.EnvoiTv.oublier()
+        try {
+            fr.projo.launcher.liens.EnvoiTv.ecrireRaccourci(contexte, true)
+            capturerDialogue("r9_dialogue_envoyer", "Envoyer sur la TV") {
+                EnvoyerTvDialog(
+                    navigateurs = listOf("net.vypn.app" to "VYPN", "com.amazon.cloud9" to "Silk", "org.mozilla.tv.firefox" to "Firefox"),
+                    appliVpn = "VYPN",
+                    ip = "192.168.1.42",
+                    onOuvrirVpn = {},
+                    onDismiss = {},
+                )
+            }
+            if (!texteAffiche("Seulement avec le VPN")) fail("[${design.name}] dialogue Envoyer : « Seulement avec le VPN » absent")
+        } finally {
+            fr.projo.launcher.liens.EnvoiTv.ecrireRaccourci(contexte, false)
+            fr.projo.launcher.puces.PucesNfc.oublier()
+            fr.projo.launcher.liens.EnvoiTv.oublier()
+        }
+    }
+
+    /** Garde-fou du raccourci iOS (VPN coupé), aux couleurs du design (Galerie : sa maquette). */
+    @Test
+    fun captureGardeFou() {
+        val q = fr.projo.launcher.liens.QuestionVpn(
+            fr.projo.launcher.liens.Liens.lien("https://www.arte.tv/fr/videos/1/", "Les grands documentaires")!!,
+            expediteur = "l'iPhone",
+            appliVpn = "VYPN",
+        )
+        var choix = ""
+        capturerDialogue("r10_garde_fou", "Le VPN de la TV est coupé") {
+            GardeFouVpnDialog(q, onAllumer = { choix = "allumer" }, onSansVpn = { choix = "sans" }, onAnnuler = { choix = "annuler" })
+        }
+        for (t in listOf("Allumer le VPN et ouvrir", "Ouvrir sans VPN", "Annuler", "Les grands documentaires")) {
+            if (compose.onAllNodes(hasText(t, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+                fail("[${design.name}] garde-fou : « $t » absent")
+            }
+        }
+        // Focus initial sur « Allumer le VPN et ouvrir »
+        val f = focus()
+        if (f == null || "garde-fou:Allumer le VPN et ouvrir" !in f.chaine) {
+            fail("[${design.name}] garde-fou : focus attendu sur « Allumer le VPN et ouvrir », obtenu ${decrire(f)}")
+        }
+        compose.onAllNodes(hasText("Allumer le VPN et ouvrir")).onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        avancer(300)
+        if (choix != "allumer") fail("[${design.name}] garde-fou : le bouton devait allumer le VPN (choix : « $choix »)")
+    }
+
+    /** Bandeau « … envoyé par … — Ouverture dans … », aux couleurs du design (Galerie : sa maquette). */
+    @Test
+    fun captureBandeau() {
+        val b = fr.projo.launcher.liens.BandeauLien("Les grands documentaires", "arte.tv", "le téléphone de Marie", "VYPN")
+        ouvrirAccueilSeul { BandeauLienTv(b) }
+        avancer(600)
+        if (!texteAffiche("Les grands documentaires")) fail("[${design.name}] bandeau : titre absent")
+        if (compose.onAllNodes(hasTestTag("bandeau-lien"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) fail("[${design.name}] bandeau absent")
+        capturer("r11_bandeau_lien")
     }
 
     @Test
@@ -291,6 +370,38 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         captureScreenRoboImage(fichier.path)
     }
 
+    /** Accueil du design seul (sans panneau), avec [pardessus] affiché par-dessus (bandeau d'un lien…). */
+    private fun ouvrirAccueilSeul(pardessus: @Composable () -> Unit) {
+        val contexte = RuntimeEnvironment.getApplication()
+        DonneesFactices.installer(contexte)
+        val icons = IconLoader(contexte)
+        for (p in DonneesFactices.paquets) {
+            icons.load(p)
+            icons.load(p, fr.projo.launcher.data.FormatVisuel.CARRE)
+        }
+        val actions = HomeActions(
+            launch = {}, openMenu = {}, openLibrary = {}, sources = {}, sourcesLong = {},
+            wifi = {}, bluetooth = {}, settings = {}, settingsLong = {}, update = {},
+        )
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            val echelle = LocalConfiguration.current.screenWidthDp / 960f
+            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design, LocalStudioSource provides SourceStudioFactice()) {
+                MaterialTheme(colorScheme = darkColorScheme()) {
+                    Box {
+                        HomeScreen(
+                            ui = ui, icons = icons, wifiLabel = "Maison-5G", homePressCount = 0,
+                            actions = actions, nbaData = DonneesFactices.nba(), nbaErreur = false,
+                            nbaRepo = NbaRepository(contexte), design = design,
+                        )
+                        pardessus()
+                    }
+                }
+            }
+        }
+        avancer(2000)
+    }
+
     /** Accueil du design, puis le panneau Réglages ouvert par-dessus (comme MainActivity). */
     private fun ouvrir(maj: Boolean = true) {
         val contexte = RuntimeEnvironment.getApplication()
@@ -344,6 +455,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
                                     close = { fermetures++; ouvert = false },
                                     suggestions = { suggestions++ },
                                     ambiance = { ambiances++ },
+                                    envoyerTv = { envois++ },
                                 ),
                             )
                         }

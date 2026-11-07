@@ -1,5 +1,7 @@
 package fr.projo.launcher.remote
 
+import fr.projo.launcher.liens.Liens
+import fr.projo.launcher.liens.ResultatLien
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -34,6 +36,12 @@ interface HoteSession {
      * `hello` de la TV n'annonce alors pas `fonctions` et ces messages sont ignorés.
      */
     val pilotage: Pilotage? get() = null
+
+    /**
+     * « Envoyer sur la TV » (liens). null : non proposé, `fonctions` n'annonce pas `liens` et
+     * `liens_etat` / `lien_ouvrir` sont ignorés.
+     */
+    val liens: LiensTv? get() = null
 
     /**
      * Affiche « Autoriser le téléphone de Marie ? ». [reponse] est appelée une fois (sur le
@@ -93,6 +101,10 @@ class SessionTelecommande(
     var abonneReglages = false
         private set
 
+    /** Le téléphone a envoyé `liens_etat` pendant cette connexion : il reçoit les changements de `liens`. */
+    var abonneLiens = false
+        private set
+
     /** Message reçu du téléphone. */
     fun recevoir(texte: String) {
         if (etat == Etat.FERMEE || texte.length > Protocole.TAILLE_MAX) return
@@ -121,6 +133,11 @@ class SessionTelecommande(
     /** `reglages` envoyé de lui-même par la TV (valeur changée) : seulement aux téléphones abonnés. */
     fun envoyerReglagesSiAbonne(message: String) {
         if (abonneReglages) envoyerSiAuthentifiee(message)
+    }
+
+    /** `liens` envoyé de lui-même par la TV (VPN, réglage, adresse) : seulement aux téléphones abonnés. */
+    fun envoyerLiensSiAbonne(message: String) {
+        if (abonneLiens) envoyerSiAuthentifiee(message)
     }
 
     /** Ce téléphone vient d'être révoqué sur la TV. */
@@ -208,9 +225,18 @@ class SessionTelecommande(
                 versionApp = hote.versionApp,
                 idTv = hote.registre.idTv(),
                 cle = Base64Url.encoder(hote.identite.spki),
-                fonctions = if (hote.pilotage != null) Protocole.FONCTIONS else null,
+                fonctions = fonctions(),
             ),
         )
+    }
+
+    /** Fonctions annoncées : `apps` et `reglages` avec le pilotage, `liens` avec l'envoi de liens ; null si aucune. */
+    private fun fonctions(): List<String>? {
+        val f = buildList {
+            if (hote.pilotage != null) addAll(Protocole.FONCTIONS)
+            if (hote.liens != null) add(Protocole.FONCTION_LIENS)
+        }
+        return f.ifEmpty { null }
     }
 
     /** Vérification ratée : canal fermé, sans détail. */
@@ -290,6 +316,43 @@ class SessionTelecommande(
             // Déjà appairé (la PWA a pu oublier la TV) : on confirme sans redemander
             "pair_request" -> envoyer(Protocole.paired(hote.nomTv, hote.registre.idTv(), Base64Url.encoder(hote.identite.spki)))
             "apps_liste", "apps_images", "app_ouvrir", "reglages_liste", "reglage" -> hote.pilotage?.let { pilotage(it, t, m) }
+            "liens_etat", "lien_ouvrir" -> hote.liens?.let { liens(it, t, m) }
+        }
+    }
+
+    // ------------------------------------------------------------------ envoyer sur la TV (liens)
+
+    /**
+     * `liens_etat` (état, et abonnement de cette connexion) et `lien_ouvrir` (docs/telecommande.md,
+     * « Envoyer sur la TV »). L'URL est vérifiée ici ; `lien_ouvert.url` reprend celle de la
+     * demande. Journal : types d'événements seulement, jamais l'URL ni le titre.
+     */
+    private fun liens(l: LiensTv, t: String, m: JSONObject) {
+        when (t) {
+            "liens_etat" -> {
+                abonneLiens = true
+                hote.journal("état des liens demandé")
+                l.etat { envoyerSiAuthentifiee(Protocole.liens(it)) }
+            }
+            "lien_ouvrir" -> {
+                val brut = m.opt("url")
+                val demandee = brut as? String ?: ""
+                hote.journal("lien envoyé (téléphone)")
+                val lien = Liens.lien(brut, m.opt("titre"))
+                if (lien == null) {
+                    hote.journal("lien refusé ${ResultatLien.INVALIDE}")
+                    envoyerSiAuthentifiee(Protocole.lienOuvert(demandee, ResultatLien.Refuse(ResultatLien.INVALIDE)))
+                    return
+                }
+                // Nom donné au téléphone à l'appairage (bandeau « envoyé par … »)
+                val nom = appareil?.let { hote.registre.trouver(it)?.nom } ?: ""
+                l.ouvrir(
+                    lien,
+                    sansVpn = m.opt("sansVpn") == true,
+                    vpnDabord = m.opt("vpnDabord") == true,
+                    expediteur = Liens.expediteur(nom),
+                ) { r -> envoyerSiAuthentifiee(Protocole.lienOuvert(demandee, r)) }
+            }
         }
     }
 

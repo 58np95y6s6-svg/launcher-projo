@@ -1455,6 +1455,10 @@ private fun EnTeteGalerie(
                 PiluleMiseAJour(k, a.update, Modifier.testTag("rapide:Mise à jour").then(rememberCibleGalerie(nav, EtageGalerie.HAUT, "maj")))
             }
             meteoGalerie()?.let { PiluleMeteo(it, k) }
+            // VPN de la TV (Envoyer sur la TV) : à gauche de Réglages
+            LocalVpnTv.current?.takeIf { it.visible }?.let { v ->
+                PiluleVpn(v, k, Modifier.testTag("galerie:vpn").then(rememberCibleGalerie(nav, EtageGalerie.HAUT, "vpn")))
+            }
             BoutonRond(
                 k = k, taille = 60f, onClick = a.settings, onLongClick = a.settingsLong,
                 modifier = Modifier.testTag("rapide:Réglages")
@@ -1544,6 +1548,52 @@ private fun PiluleMiseAJour(k: Float, onClick: () -> Unit, modifier: Modifier) {
             Icon(ProjoIcons.MiseAJour, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.mq))
             Spacer(Modifier.width(10.mq))
             TexteGalerie("Mise à jour", 17f, Color.White, poids = FontWeight.Bold, interligne = 22f)
+        }
+    }
+}
+
+/**
+ * VPN de la TV (« Envoyer sur la TV ») : pilule de verre, point vert et « VPN » (petit : l'appli
+ * VPN) quand un VPN est actif ; point rouge et « VPN coupé » si « Seulement avec le VPN » est
+ * activé et le VPN coupé. OK ouvre l'appli VPN.
+ */
+@Composable
+private fun PiluleVpn(v: EtatVpnTv, k: Float, modifier: Modifier) {
+    var focus by remember { mutableStateOf(false) }
+    val t by animateFloatAsState(if (focus) 1f else 0f, tween(160), label = "anneau")
+    val point = if (v.actif) Color(0xFF22C55E) else Color(0xFFEF4444)
+    val petit = if (v.actif) v.appli else "coupé"
+    SurfaceCliquable(
+        onClick = v.ouvrir,
+        modifier = modifier
+            .height(58.mq)
+            .verreGalerie(k, 999f)
+            .drawBehind { anneauGalerie(k, size.height / 2f, t) }
+            .onFocusChanged { focus = it.hasFocus }
+            .semantics { contentDescription = if (v.actif) "VPN actif" else "VPN coupé" },
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors = couleursTransparentes(),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
+    ) {
+        Row(Modifier.fillMaxHeight().padding(start = 18.mq, end = 22.mq), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(
+                Modifier.size(13.mq).drawBehind {
+                    // Halo (14 px de flou) puis anneau de 4 px, comme la maquette
+                    val r = size.minDimension / 2f
+                    drawCircle(
+                        Brush.radialGradient(listOf(point.copy(alpha = 0.45f), point.copy(alpha = 0f)), center = center, radius = r + 12f * k),
+                        radius = r + 12f * k,
+                    )
+                    drawCircle(point.copy(alpha = 0.18f), radius = r + 4f * k)
+                    drawCircle(point, radius = r)
+                },
+            )
+            Spacer(Modifier.width(12.mq))
+            TexteGalerie("VPN", 21f, GalerieEncreTitre, poids = FontWeight.Bold, interligne = 26f, espacement = 0.4f)
+            if (petit != null) {
+                Spacer(Modifier.width(12.mq))
+                TexteGalerie(petit, 18f, Color(0xFF6C6F78), Modifier.widthIn(max = 220.mq), interligne = 22f)
+            }
         }
     }
 }
