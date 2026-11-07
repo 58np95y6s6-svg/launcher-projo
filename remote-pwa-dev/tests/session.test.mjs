@@ -53,7 +53,7 @@ async function preparer({ appairage = null, cible = null } = {}) {
   cible ??= { id: ID_TV, cle: cleTV };
   const s = new Session({ signal, identite, config, RTC: FauxPC, appairage, cible });
   const evts = [];
-  for (const t of ["etat", "tv", "paired", "focus_text", "focus_lost", "version", "fin", "apps", "app_image", "app_ouverte", "reglages"]) {
+  for (const t of ["etat", "tv", "paired", "focus_text", "focus_lost", "version", "fin", "apps", "app_image", "app_ouverte", "reglages", "liens", "lien_ouvert"]) {
     s.addEventListener(t, (e) => evts.push({ t, ...e.detail }));
   }
   await s.demarrer();
@@ -296,4 +296,31 @@ test("pilotage : fonctions du hello, messages applis / réglages transmis seulem
     { v: 1, t: "apps_images", ids: ["com.a"] }, { v: 1, t: "reglage", cle: "muet", valeur: false },
   ]);
   b.s.fermer();
+});
+
+test("envoyer sur la TV : liens et lien_ouvert transmis une fois prête ; liens_etat et lien_ouvrir envoyés", async () => {
+  const { s, canal, helloTV, evts } = await preparer();
+  canal.recevoir({ v: 1, t: "liens", vpn: true, seulementVpn: true, appliPages: "VYPN" });
+  assert.equal(s.envoyer("lien_ouvrir", { url: "https://a.fr/" }), false, "rien avant l'authentification");
+  canal.recevoir(await helloTV({ fonctions: ["apps", "liens"] }));
+  await attendre(() => s.prete);
+  assert.deepEqual(evts.find((e) => e.t === "tv").fonctions, ["apps", "liens"]);
+  canal.recevoir({ v: 1, t: "liens", vpn: false, seulementVpn: true, appliPages: "VYPN", appliVpn: "VYPN",
+    raccourci: { adresse: "http://192.168.1.42:8642/envoyer?c=K7Q2M9XD" } });
+  canal.recevoir({ v: 1, t: "lien_ouvert", url: "https://a.fr/", ok: false, raison: "vpn_coupe" });
+  canal.recevoir({ v: 1, t: "lien_ouvert", ok: true }); // sans url : ignoré
+  await attendre(() => evts.some((e) => e.t === "lien_ouvert"));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(evts.filter((e) => e.t === "liens").length, 1, "état reçu avant le hello ignoré");
+  assert.deepEqual(evts.find((e) => e.t === "liens"), {
+    t: "liens", vpn: false, seulementVpn: true, appliPages: "VYPN", appliVpn: "VYPN",
+    raccourci: { adresse: "http://192.168.1.42:8642/envoyer?c=K7Q2M9XD" },
+  });
+  assert.deepEqual(evts.filter((e) => e.t === "lien_ouvert"), [{ t: "lien_ouvert", url: "https://a.fr/", ok: false, raison: "vpn_coupe" }]);
+  assert.ok(s.envoyer("liens_etat"));
+  assert.ok(s.envoyer("lien_ouvrir", { url: "https://a.fr/", vpnDabord: true }));
+  assert.deepEqual(canal.envoyes.slice(-2), [
+    { v: 1, t: "liens_etat" }, { v: 1, t: "lien_ouvrir", url: "https://a.fr/", vpnDabord: true },
+  ]);
+  s.fermer();
 });

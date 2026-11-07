@@ -1,10 +1,11 @@
 // Fausse « TV » iBiTV pour les tests de bout en bout : implémente le côté TV du protocole
 // (docs/telecommande.md) en JavaScript, INDÉPENDAMMENT du code de la PWA (aucun import),
 // comme le fera l'app Android : signalisation PeerJS brute, réponse WebRTC, hello signés,
-// appairage (QR et code de secours), commandes, révocation, pilotage (applis et réglages).
+// appairage (QR et code de secours), commandes, révocation, pilotage (applis et réglages),
+// Envoyer sur la TV (liens : VPN, raccourci iOS).
 //
 // Paramètres d'URL : ?ws=<port du faux serveur PeerJS>&nom=<nom de la TV>&vmax=<version max>
-//   &fonctions=apps,reglages (défaut) | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
+//   &fonctions=apps,reglages,liens (défaut) | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
 
 const params = new URLSearchParams(location.search);
 const PORT = params.get("ws");
@@ -12,7 +13,8 @@ const NOM_TV = params.get("nom") || "Salon";
 const V_MAX = Number(params.get("vmax") || 1);
 const V_HELLO = Number(params.get("vhello") || 1); // version annoncée dans le hello TV
 const VERSION_APP = "test-1.0";
-const FONCTIONS = (params.get("fonctions") ?? "apps,reglages").split(",").filter((f) => f && f !== "aucune");
+const FONCTIONS = (params.get("fonctions") ?? "apps,reglages,liens").split(",").filter((f) => f && f !== "aucune");
+const AVEC_LIENS = FONCTIONS.includes("liens");
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 // ---------- Encodages ----------
@@ -37,7 +39,7 @@ const tv = (window.tv = {
   cleSpki: null,
   empreinte: null,
   appareils: new Map(), // id appareil → { nom, cle }
-  recus: [],            // commandes reçues de téléphones authentifiés : {appareil, t, k?, s?, ids?, id?, cle?, valeur?, bouton?}
+  recus: [],            // commandes reçues de téléphones authentifiés : {appareil, t, k?, s?, ids?, id?, cle?, valeur?, bouton?, url?…}
   ignores: [],          // types des messages ignorés (non authentifiés / non appairés)
   evenements: [],       // types d'événements (pas de contenu)
   demande: null,        // demande d'appairage en attente de confirmation {nom, appareil}
@@ -158,9 +160,9 @@ function session(pc, canal, viaId) {
       if (m.s !== undefined) r.s = m.s;
       if (m.curseur !== undefined) r.curseur = m.curseur;
       tv.recus.push(r);
-    } else if (PILOTAGE[m.t] && FONCTIONS.length) {
+    } else if (PILOTAGE[m.t] && FONCTIONS.length && (AVEC_LIENS || !m.t.startsWith("lien"))) {
       const r = { appareil: ses.appareil, t: m.t };
-      for (const c of ["ids", "id", "cle", "valeur", "bouton"]) if (m[c] !== undefined) r[c] = m[c];
+      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord"]) if (m[c] !== undefined) r[c] = m[c];
       tv.recus.push(r);
       PILOTAGE[m.t](ses, m);
     } else tv.ignores.push(m.t);
@@ -351,6 +353,7 @@ function itemsReglages() {
       options: opt(["pochette", "Pochette"], ["arc_en_ciel", "Arc-en-ciel"]), actif: R.ambiance_auto },
     { cle: "ambiance_decalage", type: "choix", groupe: "Mode Ambiance", titre: "Synchro avec le son", valeur: R.ambiance_decalage,
       options: opt(["0", "Aucun retard"], ["100", "0,1 s (conseillé)"], ["200", "0,2 s"], ["300", "0,3 s"], ["400", "0,4 s"]), actif: R.ambiance_auto },
+    ...(AVEC_LIENS ? itemsLiens() : []),
     maj,
     { cle: "systeme", type: "boutons", groupe: "Ouvrir sur la TV",
       boutons: [{ id: "wifi", nom: "Wi-Fi" }, { id: "bluetooth", nom: "Bluetooth" }, { id: "reglages", nom: "Réglages" }] },
@@ -415,7 +418,8 @@ const PILOTAGE = {
   },
   reglage(ses, m) {
     const it = itemsReglages().find((i) => i.cle === m.cle);
-    if (it?.type === "curseur" && Number.isFinite(m.valeur)) R[m.cle] = Math.min(it.max, Math.max(it.min, Math.round(m.valeur)));
+    if (it?.cle.startsWith("liens_")) reglageLiens(it, m);
+    else if (it?.type === "curseur" && Number.isFinite(m.valeur)) R[m.cle] = Math.min(it.max, Math.max(it.min, Math.round(m.valeur)));
     else if (it?.type === "interrupteur" && typeof m.valeur === "boolean") R[m.cle] = m.valeur;
     else if (it?.type === "choix" && it.options.some((o) => o.id === m.valeur)) R[m.cle] = m.valeur;
     else if (it?.cle === "maj" && it.boutons.some((b) => b.id === m.bouton)) lancerMaj(m.bouton === "verifier" ? "verification" : "telechargement");
@@ -424,7 +428,134 @@ const PILOTAGE = {
     envoyerReglages(ses);
     for (const s of tv.sessions) if (s !== ses && s.auth && s.mode === "pilotage" && s.abonne) envoyerReglages(s);
   },
+
+  // ---------- Envoyer sur la TV ----------
+  liens_etat(ses) {
+    ses.abonneLiens = true;
+    ses.envoyer(etatLiens());
+  },
+  lien_ouvrir(ses, m) {
+    const repondre = (r) => ses.envoyer({ t: "lien_ouvert", url: typeof m.url === "string" ? m.url : "", ...r });
+    const url = lienValable(m.url);
+    if (!url) return repondre({ ok: false, raison: "invalide" });
+    const force = tv.liensForcer.shift(); // issue imposée par un test
+    if (force === "silence") return;
+    if (force) return repondre(force);
+    const appli = appliPour(url);
+    if (!appli) return repondre({ ok: false, raison: "aucune_appli" });
+    if (L.seulementVpn && !L.vpn && m.sansVpn !== true) {
+      if (m.vpnDabord !== true) return repondre({ ok: false, raison: "vpn_coupe" });
+      if (!L.appliVpn) return repondre({ ok: false, raison: "pas_d_appli_vpn" });
+      // Une seule attente à la fois : la précédente est remplacée
+      if (attenteVpn) {
+        clearTimeout(attenteVpn.minuterie);
+        attenteVpn.ses.envoyer({ t: "lien_ouvert", url: attenteVpn.url, ok: false, raison: "remplace" });
+      }
+      const a = { ses, url: m.url, appli };
+      a.minuterie = setTimeout(() => {
+        if (attenteVpn !== a) return;
+        attenteVpn = null;
+        a.ses.envoyer({ t: "lien_ouvert", url: a.url, ok: false, raison: "delai_vpn" });
+      }, L.attenteMs);
+      attenteVpn = a;
+      tv.applisVpnOuvertes++;
+      log("attente-vpn");
+      return repondre({ ok: false, raison: "attente_vpn" });
+    }
+    tv.liensOuverts.push({ url: m.url, appli, sansVpn: m.sansVpn === true });
+    log("lien-ouvert");
+    repondre({ ok: true, ouvertDans: appli });
+  },
 };
+
+// ---------- Envoyer sur la TV : liens (docs/telecommande.md, « Envoyer sur la TV ») ----------
+
+const L = {
+  vpn: true,              // un VPN est actif sur la TV
+  seulementVpn: true,     // réglage « Seulement avec le VPN » (activé par défaut)
+  pages: "auto",          // réglage liens_pages
+  applisPages: [{ id: "net.vypn.app", nom: "VYPN" }, { id: "com.amazon.cloud9", nom: "Silk" }],
+  appliVpn: "VYPN",       // appli VPN que la TV sait ouvrir ; null : aucune
+  raccourci: false,       // réglage liens_raccourci (désactivé par défaut)
+  ip: "192.168.1.42",     // adresse IPv4 sur le réseau local ; null : aucune
+  code: "K7Q2M9XD",       // code du raccourci
+  attenteMs: 60000,       // attente du VPN (vpnDabord)
+};
+tv.liens = L;
+tv.liensOuverts = [];      // liens ouverts : {url, appli, sansVpn}
+tv.liensForcer = [];       // issues imposées aux prochains lien_ouvrir : {ok, raison?, ouvertDans?} | "silence"
+tv.applisVpnOuvertes = 0;  // « Allumer le VPN » : appli VPN ouverte
+let attenteVpn = null;     // lien qui attend le VPN : {ses, url, appli, minuterie}
+
+function lienValable(url) {
+  if (typeof url !== "string" || url.length > 2048) return null;
+  try {
+    const u = new URL(url);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.hostname ? u : null;
+  } catch { return null; }
+}
+
+const nomAppliPages = () => (L.pages === "auto" ? L.applisPages[0] : L.applisPages.find((a) => a.id === L.pages))?.nom ?? "";
+
+/** Appli qui ouvre le lien (règles « Ouverture sur la TV », simplifiées), ou null. */
+function appliPour(u) {
+  const hote = u.hostname.replace(/^(www|m)\./, "");
+  if (hote === "youtube.com" || hote === "youtu.be") return "iBiTube";
+  if (hote === "netflix.com") return "Netflix";
+  if (/\.(mp4|m4v|mkv|webm|mov|avi|ts|m3u8|mpd)$/i.test(u.pathname)) return "VLC";
+  return nomAppliPages() || null;
+}
+
+function etatLiens() {
+  const e = { t: "liens", vpn: L.vpn, seulementVpn: L.seulementVpn, appliPages: nomAppliPages() };
+  if (L.appliVpn) e.appliVpn = L.appliVpn;
+  if (L.raccourci && L.ip) e.raccourci = { adresse: `http://${L.ip}:8642/envoyer?c=${L.code}` };
+  return e;
+}
+
+let pousseeLiens = null;
+/** Changement côté TV : `liens` aux téléphones abonnés, au plus toutes les 300 ms. */
+function pousserLiens() {
+  if (pousseeLiens) return;
+  pousseeLiens = setTimeout(() => {
+    pousseeLiens = null;
+    for (const s of tv.sessions) if (s.auth && s.mode === "pilotage" && s.abonneLiens) s.envoyer(etatLiens());
+  }, 300);
+}
+
+/** Change l'état (VPN allumé ou coupé, adresse, appli VPN…) ; un VPN qui s'allume ouvre le lien en attente. */
+tv.changerLiens = (champs) => {
+  Object.assign(L, champs);
+  if (L.vpn && attenteVpn) {
+    const a = attenteVpn;
+    attenteVpn = null;
+    clearTimeout(a.minuterie);
+    tv.liensOuverts.push({ url: a.url, appli: a.appli, sansVpn: false });
+    a.ses.envoyer({ t: "lien_ouvert", url: a.url, ok: true, ouvertDans: a.appli });
+  }
+  pousserLiens();
+};
+
+function itemsLiens() {
+  const groupe = "Envoyer sur la TV";
+  return [
+    { cle: "liens_seulement_vpn", type: "interrupteur", groupe, titre: "Seulement avec le VPN", detail: "N'ouvrir les liens que si un VPN est actif", valeur: L.seulementVpn },
+    { cle: "liens_pages", type: "choix", groupe, titre: "Pages web", valeur: L.pages, options: [{ id: "auto", nom: "Automatique" }, ...L.applisPages] },
+    { cle: "liens_raccourci", type: "interrupteur", groupe, titre: "Bouton Partager de l'iPhone", detail: "Accepter les liens du raccourci iOS", valeur: L.raccourci },
+    { cle: "liens_code", type: "boutons", groupe, titre: "Code du raccourci", detail: "L'ancien code ne marchera plus", boutons: [{ id: "nouveau", nom: "Nouveau code" }] },
+  ];
+}
+
+function reglageLiens(it, m) {
+  if (it.type === "interrupteur" && typeof m.valeur === "boolean") {
+    if (m.cle === "liens_seulement_vpn") L.seulementVpn = m.valeur;
+    if (m.cle === "liens_raccourci") L.raccourci = m.valeur;
+  } else if (it.type === "choix" && it.options.some((o) => o.id === m.valeur)) L.pages = m.valeur;
+  else if (m.cle === "liens_code" && m.bouton === "nouveau") {
+    L.code = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
+  } else return;
+  pousserLiens();
+}
 
 (async () => {
   const paire = await crypto.subtle.generateKey(ECDSA, false, ["sign", "verify"]);

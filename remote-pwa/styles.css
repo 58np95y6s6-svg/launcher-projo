@@ -308,7 +308,7 @@ body.clavier .saisie { order: -1; margin-top: 0; }
 .ecran-telecommande[data-etat="erreur"] .zone-nav,
 .ecran-telecommande[data-etat="erreur"] .rangee { opacity: .45; }
 
-/* ---------- Onglets : Télécommande | Applis | Réglages ---------- */
+/* ---------- Onglets : Télécommande | Applis | Envoyer | Réglages ---------- */
 
 /* Le contenu de la télécommande garde exactement sa mise en page (pas de boîte intermédiaire) */
 .panneau-telecommande { display: contents; }
@@ -333,6 +333,10 @@ body.clavier .saisie { order: -1; margin-top: 0; }
 .onglet[aria-selected="true"] { color: var(--texte); }
 .onglet[aria-selected="true"] .ic { stroke: url(#degrade); }
 .onglet[aria-selected="true"] span { background: var(--degrade); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* Quatre onglets : un peu plus de place pour « Télécommande » */
+.onglets[data-n="4"] { padding-left: 6px; padding-right: 6px; }
+.onglets[data-n="4"] .onglet { padding-left: 2px; padding-right: 2px; }
+.onglets[data-n="4"] .onglet span { font-size: 11.5px; letter-spacing: -0.01em; }
 
 /* Télécommande au-dessus de la barre ; le pavé se réduit si la hauteur manque (petits téléphones) */
 .ecran-telecommande.avec-onglets { padding-bottom: calc(var(--h-onglets) + 14px + var(--bas)); }
@@ -341,7 +345,7 @@ body.clavier .saisie { order: -1; margin-top: 0; }
 body.clavier .onglets { display: none; }
 body.clavier .ecran-telecommande.avec-onglets { padding-bottom: calc(12px + var(--bas)); }
 
-/* En-tête des onglets Applis et Réglages : pastille de la TV, puis grand titre */
+/* En-tête des onglets Applis, Envoyer et Réglages : pastille de la TV, puis grand titre */
 .pastille-tv {
   display: inline-flex; align-items: center; gap: 8px; min-height: 36px; max-width: 100%;
   padding: 7px 13px 7px 11px; border-radius: 999px;
@@ -350,7 +354,8 @@ body.clavier .ecran-telecommande.avec-onglets { padding-bottom: calc(12px + var(
 .pastille-tv:active { background: var(--surface-2); }
 .pastille-tv .voyant { width: 8px; height: 8px; }
 .pastille-tv span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ecran-telecommande[data-onglet="applis"], .ecran-telecommande[data-onglet="reglages"] { gap: 10px; padding-bottom: 0; }
+.ecran-telecommande[data-onglet="applis"], .ecran-telecommande[data-onglet="envoyer"],
+.ecran-telecommande[data-onglet="reglages"] { gap: 10px; padding-bottom: 0; }
 
 .panneau-liste { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; animation: entree .24s ease-out; }
 .panneau-titre { margin: 0; padding: 2px 2px 8px; font-size: 26px; font-weight: 700; line-height: 1.2; }
@@ -533,6 +538,117 @@ body.clavier .ecran-telecommande.avec-onglets { padding-bottom: calc(12px + var(
 .progression { height: 6px; margin-top: 11px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .progression-barre { display: block; width: 0; height: 100%; background: var(--degrade); transition: width .3s ease; }
 .reglage-note { margin: 9px 0 0; font-size: 13px; line-height: 1.35; color: var(--texte-2); }
+
+/* ---------- Envoyer ---------- */
+
+/* Deux vues dans le panneau : l'onglet, et l'écran « Bouton Partager » */
+.vue-envoyer { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.titre-retour { display: flex; align-items: center; gap: 2px; margin-left: -10px; }
+.titre-retour .panneau-titre { flex: 1; min-width: 0; }
+.titre-retour .btn-icone { width: 40px; height: 40px; margin-bottom: 8px; color: var(--texte); }
+
+.envoi { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.envoi-ligne { display: flex; gap: 8px; align-items: center; }
+/* 16 px : pas de zoom automatique sur iOS */
+.champ-lien { flex: 1; min-width: 0; min-height: 48px; height: 48px; border-radius: 14px; font-size: 16px; padding: 0 14px; }
+.btn-coller {
+  flex: none; min-height: 48px; height: 48px; padding: 0 14px; border-radius: 14px; gap: 6px;
+  font-size: 14px; font-weight: 600;
+}
+.btn-coller .ic { width: 20px; height: 20px; }
+.envoi-aide { margin: -4px 2px 0; font-size: 13px; line-height: 1.35; color: var(--orange); }
+.btn-envoyer { min-height: 52px; height: 52px; border-radius: 16px; gap: 9px; font-size: 16px; font-weight: 700; }
+.btn-envoyer .ic { width: 22px; height: 22px; }
+.btn-envoyer:disabled { opacity: .45; box-shadow: none; cursor: default; }
+.btn-envoyer.en-cours { opacity: .8; animation: ouverture-bouton 1.1s ease-in-out infinite; }
+@keyframes ouverture-bouton { 50% { filter: brightness(1.25); } }
+
+/* État du VPN de la TV (dernier `liens`) */
+.etat-vpn { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 0 2px; font-size: 13px; line-height: 1.4; color: var(--texte-2); }
+.etat-vpn-point {
+  flex: none; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-1px);
+  background: var(--vert); box-shadow: 0 0 8px rgba(52, 211, 153, .55);
+}
+.etat-vpn[data-etat="coupe"] .etat-vpn-point { background: #fb7185; box-shadow: 0 0 8px rgba(251, 113, 133, .55); }
+.etat-vpn[data-etat="libre"] .etat-vpn-point { background: var(--texte-3); box-shadow: none; }
+.etat-vpn b { color: var(--texte); font-weight: 600; }
+
+/* Récents */
+.recent { display: flex; align-items: center; gap: 12px; padding: 11px 13px; transition: background .3s; }
+.recent + .recent { border-top: 1px solid var(--bord); }
+.recent.nouveau { background: linear-gradient(90deg, rgba(34, 211, 238, .12), transparent 70%); }
+.recent.en-cours .recent-icone { animation: ouverture 1.1s ease-in-out infinite; box-shadow: 0 0 0 2px var(--cyan); }
+.recent-icone {
+  flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  background: hsl(var(--teinte, 250) 62% 48%); color: #fff; font-weight: 800; font-size: 16px;
+}
+.recent-textes { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.recent-titre { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-detail { margin-top: 1px; font-size: 12.5px; color: var(--texte-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-detail.libre { white-space: normal; }
+.recents-vide { margin: 0; padding: 16px 14px; font-size: 14px; color: var(--texte-3); text-align: center; }
+.btn-ligne {
+  flex: none; min-height: 34px; padding: 0 11px; border-radius: 11px; display: inline-flex; align-items: center; gap: 5px;
+  background: var(--surface-2); border: 1px solid var(--bord-fort); font-size: 13px; font-weight: 600; color: var(--texte);
+}
+.btn-ligne:active { background: var(--surface-3); }
+.btn-ligne .ic { width: 15px; height: 15px; }
+
+/* « Depuis Safari » */
+.raccourci { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 14px; text-align: left; border-radius: 18px; }
+.raccourci:active { background: var(--surface-2); }
+.raccourci-icone {
+  flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #ff5f6d, var(--violet)); color: #fff;
+}
+.raccourci-icone .ic { width: 20px; height: 20px; }
+.raccourci.alerte .recent-detail { color: var(--orange); }
+.attenue { opacity: .6; }
+
+/* Écran « Bouton Partager » */
+.texte-intro { margin: 0 2px 12px; color: var(--texte-2); font-size: 14.5px; line-height: 1.45; }
+.texte-intro strong { color: var(--texte); font-weight: 600; }
+.texte-note { margin: 12px 4px 0; color: var(--texte-2); font-size: 13px; line-height: 1.4; }
+.texte-note b { color: var(--texte); font-weight: 600; }
+.bandeau-info {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 11px 13px;
+  border-radius: var(--rayon-petit); background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .35);
+  color: #fde68a; font-size: 14px; font-weight: 600; line-height: 1.35;
+}
+.bandeau-info .ic { width: 20px; height: 20px; color: var(--orange); }
+.etapes-raccourci { margin: 0; padding: 0; list-style: none; }
+.etapes-raccourci li { display: flex; gap: 12px; padding: 12px 14px; font-size: 14.5px; line-height: 1.4; color: var(--texte-2); }
+.etapes-raccourci li + li { border-top: 1px solid var(--bord); }
+.etapes-raccourci .num {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--degrade); color: #fff; font-size: 13px; font-weight: 800;
+}
+.etapes-raccourci b { color: var(--texte); font-weight: 600; }
+.etapes-raccourci code, .adresse code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--cyan);
+}
+.etapes-raccourci code { padding: 2px 6px; border-radius: 6px; background: var(--surface-2); white-space: nowrap; }
+.adresse {
+  display: flex; align-items: center; gap: 8px; margin: 2px 14px 14px; padding: 10px 12px;
+  border-radius: 14px; background: var(--surface-2); border: 1px dashed var(--bord-fort);
+}
+.adresse code { flex: 1; min-width: 0; word-break: break-all; -webkit-user-select: text; user-select: text; }
+.guide-activer { display: flex; flex-direction: column; gap: 10px; margin: 2px 14px 14px; }
+.guide-activer p { margin: 0; font-size: 14px; color: var(--texte-2); }
+.guide-activer .btn-principal { min-height: 48px; border-radius: 14px; font-size: 16px; }
+.guide-attente { margin: 2px 14px 14px; font-size: 13.5px; color: var(--texte-3); }
+
+/* Feuille « Le VPN de la TV est coupé » */
+.feuille-vpn { gap: 10px; padding-left: 18px; padding-right: 18px; padding-bottom: calc(22px + var(--bas)); }
+.feuille-vpn h2 { font-size: 21px; }
+.feuille-lien {
+  margin: -4px 0 0; font-size: 13px; color: var(--texte-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.feuille-texte { margin: 0 0 6px; font-size: 14.5px; line-height: 1.4; color: var(--texte-2); }
+.feuille-vpn .btn-principal, .feuille-vpn .btn-secondaire { min-height: 52px; border-radius: 16px; font-size: 16px; }
+.btn-texte { min-height: 44px; border-radius: 14px; color: var(--texte-2); font-size: 15px; }
+.btn-texte:active { background: var(--surface-2); }
 
 /* ---------- Confirmation discrète (au-dessus des onglets) ---------- */
 

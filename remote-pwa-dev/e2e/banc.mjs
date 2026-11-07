@@ -31,7 +31,7 @@ export async function demarrerBanc() {
     urlPWA: `${base}/launcher-projo/`,
 
     /** @param fonctions fonctions annoncées dans le hello ; null = TV ancienne (sans champ) */
-    async tv({ nom = "Salon", vmax = 1, vhello = 1, fonctions = ["apps", "reglages"] } = {}) {
+    async tv({ nom = "Salon", vmax = 1, vhello = 1, fonctions = ["apps", "reglages", "liens"] } = {}) {
       const ctx = await navigateur.newContext();
       const page = await ctx.newPage();
       const f = fonctions?.length ? fonctions.join(",") : "aucune";
@@ -48,6 +48,8 @@ export async function demarrerBanc() {
         },
         confirmer: (ok = true) => page.evaluate((o) => window.tv.confirmer(o), ok),
         envoyer: (msg) => page.evaluate((m) => window.tv.envoyer(m), msg),
+        /** Envoyer sur la TV : change l'état des liens (vpn, seulementVpn, appliVpn, raccourci, ip, code…). */
+        liens: (champs) => page.evaluate((c) => window.tv.changerLiens(c), champs),
         recus: () => page.evaluate(() => window.tv.recus),
         viderRecus: () => page.evaluate(() => { window.tv.recus.length = 0; }),
         attendreRecu: (pred, timeout = 8000) => page.waitForFunction(

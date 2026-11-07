@@ -273,9 +273,10 @@ liste d'applis ni de valeurs.
 
 Précisions de comportement (le protocole ci-dessus ne change pas) :
 
-- **Onglets** « Télécommande », « Applis », « Réglages » dans une barre fixe en bas de l'écran,
-  seulement pour les fonctions annoncées (gardées avec la TV pour l'ouverture suivante, mises à jour à
-  chaque `hello`). Sans `fonctions`, la télécommande reste seule et inchangée. Sur Applis et Réglages,
+- **Onglets** « Télécommande », « Applis », « Réglages » (et « Envoyer », voir « Envoyer sur la TV »)
+  dans une barre fixe en bas de l'écran, seulement pour les fonctions annoncées (gardées avec la TV
+  pour l'ouverture suivante, mises à jour à chaque `hello`). Sans `fonctions`, la télécommande reste
+  seule et inchangée. Sur Applis, Envoyer et Réglages,
   l'en-tête est une pastille « ● Salon · iBiTV » (point : état de la connexion ; la toucher ouvre
   « Mes TV »). Un `focus_text` ramène sur la télécommande.
 - Rien n'est demandé tant qu'aucun onglet n'est ouvert. `apps_liste` part à chaque ouverture de
@@ -455,26 +456,48 @@ Types d'événements seulement : « lien envoyé (téléphone | raccourci) », �
 
 ### Côté téléphone (PWA)
 
+Fichiers : `remote-pwa/js/liens.js` (logique pure, testée sous Node : adresses, messages, état du VPN,
+résultats, récents) et `remote-pwa/js/envoyer.js` (onglet). Précisions de comportement :
+
 - **Onglet « Envoyer »** (icône écran + flèche), entre « Applis » et « Réglages », si `liens` est
   annoncé. `liens_etat` part à chaque ouverture de l'onglet, et à chaque reconnexion s'il est ouvert.
+  Avec quatre onglets, les libellés passent à 11,5 px.
 - **Champ** + « Coller » (presse-papiers ; si l'accès est refusé, invitation à coller à la main).
   « Envoyer sur la TV » n'est actif que pour une URL valable ; un domaine sans schéma est complété
-  (`arte.tv/x` → `https://arte.tv/x`).
+  (`arte.tv/x` → `https://arte.tv/x`). Un texte partagé qui contient une adresse `http(s)://`
+  (« Regarde : https://… ») envoie cette adresse (la première ; ponctuation finale retirée). Tout
+  autre schéma, une adresse e-mail ou un mot seul ne sont pas des liens. L'URL envoyée est la forme
+  normalisée (`new URL(…).href`) ; la PWA n'envoie pas de `titre` (elle n'en a pas).
 - **Ligne d'état** sous le bouton : « VPN de la TV actif · les pages s'ouvrent dans X », ou « VPN de
-  la TV coupé » (avec « · la TV demandera de l'allumer » si `seulementVpn`).
+  la TV coupé » (avec « · la TV demandera de l'allumer » si `seulementVpn`). Point vert (actif),
+  rouge (coupé avec `seulementVpn`), gris (coupé sans). Cachée tant qu'aucun `liens` n'est reçu.
 - **Résultat** : `ok` → « Envoyé sur <TV> · ouverture dans X », champ vidé, lien en tête des récents ;
   `vpn_coupe` → feuille « Le VPN de la TV est coupé » : « Allumer le VPN (<appliVpn>) et ouvrir »
   (renvoi avec `vpnDabord`, seulement si `appliVpn`), « Ouvrir sans VPN » (renvoi avec `sansVpn`),
-  « Annuler » ; `attente_vpn` → « Allume le VPN sur la TV : le lien s'ouvrira ensuite » ; `delai_vpn`,
-  `pas_d_appli_vpn`, `remplace`, `invalide`, `aucune_appli` → message clair ; sans réponse en 6 s :
-  erreur.
-- **Récents** : les 20 derniers liens de chaque TV (titre ou hôte ; « hôte · ouvert dans X · date » ;
-  bouton « Renvoyer ») ; un lien renvoyé remonte en tête, sans doublon. Gardés sur le téléphone.
-- **« Depuis Safari »** → écran « Bouton Partager » : les 4 étapes du raccourci et `raccourci.adresse`
-  avec « Copier » ; sans adresse, bouton « Activer sur la TV » (`reglage {cle: "liens_raccourci",
-  valeur: true}`). Si l'adresse a changé depuis la dernière copie (gardée par TV) : bandeau
-  « L'adresse de la TV a changé : mets à jour ton raccourci ».
-- Journaux de la PWA : `lien_envoye`, `lien_refuse <raison>` (jamais l'URL).
+  « Annuler » ; `attente_vpn` → « Allume le VPN sur la TV : le lien s'ouvrira ensuite » (puis
+  attente du second `lien_ouvert`, 75 s au plus) ; `delai_vpn`, `pas_d_appli_vpn`, `remplace`,
+  `invalide`, `aucune_appli` → message clair ; sans réponse en 6 s : erreur (« La TV n'a pas
+  confirmé l'envoi du lien » ; une réponse tardive est encore prise en compte 60 s). Un lien en
+  route ne peut pas être renvoyé tant que la réponse n'est pas arrivée.
+- **Récents** : les 20 derniers liens ouverts (`ok`) de chaque TV, gardés sur le téléphone (IndexedDB,
+  magasin `reglages`, clé `liens:<idTV>`, effacée avec la TV). Libellé : le titre, sinon un titre
+  tiré de l'adresse (nom d'un fichier vidéo, ou dernier segment fait de mots :
+  `…/les-grands-documentaires` → « Les grands documentaires »), sinon l'adresse sans `https://` ni
+  `www.` (plus parlant que l'hôte seul quand plusieurs liens viennent du même site) ; détail
+  « hôte · ouvert dans X · date » ; bouton « Renvoyer ». Un lien renvoyé remonte en tête, sans doublon.
+- **« Depuis Safari »** → écran « Bouton Partager » (flèche de retour ; toucher l'onglet « Envoyer »
+  y ramène aussi) : les 4 étapes du raccourci et `raccourci.adresse` avec « Copier » ; sans adresse,
+  bouton « Activer sur la TV » (`reglage {cle: "liens_raccourci", valeur: true}`) ; si un `liens`
+  arrive sans adresse et que rien ne change en 6 s : « La TV n'a pas d'adresse sur le réseau local ».
+  Si l'adresse a changé depuis la dernière copie (gardée par TV : clé `raccourci:<idTV>`) : bandeau
+  « L'adresse de la TV a changé : mets à jour ton raccourci », repris dans la carte « Depuis Safari »
+  de l'onglet. Étapes : 1. Raccourcis → « + », nom « Envoyer sur la TV », détails (ⓘ) → « Afficher
+  dans la feuille de partage », bloc « Recevoir » limité à **URL** (une page Safari convertie en
+  texte ne donne pas toujours son adresse) ; 2. « Obtenir le contenu de l'URL » avec l'adresse,
+  méthode POST, corps JSON ; 3. champ Texte `url` = « Entrée du raccourci » ; 4. « Afficher la
+  notification » avec « Contenu de l'URL ».
+- Journaux de la PWA : `lien_envoye` (à `lien_ouvert {ok: true}`), `lien_refuse <raison>` (la
+  `raison` reçue, ou `sans_reponse` après 6 s), `reglage liens_raccourci` ; jamais l'URL ni l'adresse.
 
 ## Côté TV : injection
 

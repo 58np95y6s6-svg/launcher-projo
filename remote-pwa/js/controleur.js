@@ -8,6 +8,7 @@
 //   appairage {etape, …}     "connexion" | "confirmation" | "reussi" (tv) | "echec" (raison, refus)
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
+//   liens {vpn, seulementVpn, appliPages, appliVpn?, raccourci?} | lien_ouvert {url, ok, ouvertDans?, raison?}
 //   version {verdict}
 //   revoquee {tv}
 
@@ -113,7 +114,7 @@ export class Controleur extends EventTarget {
     session.addEventListener("focus_text", (e) => this._emettre("focus_text", e.detail));
     session.addEventListener("focus_lost", () => this._emettre("focus_lost"));
     session.addEventListener("version", (e) => this._emettre("version", e.detail));
-    for (const t of ["apps", "app_image", "app_ouverte", "reglages"]) {
+    for (const t of ["apps", "app_image", "app_ouverte", "reglages", "liens", "lien_ouvert"]) {
       session.addEventListener(t, (e) => { if (this.session === session) this._emettre(t, e.detail); });
     }
   }
@@ -166,7 +167,8 @@ export class Controleur extends EventTarget {
 
   async oublier(id, { silencieux = false } = {}) {
     await stockage.oublierTV(id);
-    stockage.effacerReglage(`apps:${id}`).catch(() => {});
+    // Données gardées pour cette TV : applis, liens récents, adresse du raccourci copiée
+    for (const cle of ["apps", "liens", "raccourci"]) stockage.effacerReglage(`${cle}:${id}`).catch(() => {});
     if (!silencieux) journal("tv_oubliee");
     this.tvs = this.tvs.filter((t) => t.id !== id);
     if (this.active === id) {
@@ -187,7 +189,7 @@ export class Controleur extends EventTarget {
     if (!tv) return;
     if (typeof versionApp === "string") tv.versionApp = versionApp;
     if (nomTV) tv.nom = nomTV;
-    // Fonctions annoncées (onglets « Applis », « Réglages ») : gardées pour la prochaine ouverture
+    // Fonctions annoncées (onglets « Applis », « Envoyer », « Réglages ») : gardées pour la prochaine ouverture
     if (Array.isArray(fonctions)) tv.fonctions = fonctions;
     await stockage.enregistrerTV(tv);
     this._emettreTVs();
@@ -279,4 +281,11 @@ export class Controleur extends EventTarget {
   reglagesListe() { return this.session?.envoyer("reglages_liste") ?? false; }
   /** @param {{valeur?:*, bouton?:*}} action */
   reglage(cle, action) { return this.session?.envoyer("reglage", { cle, ...action }) ?? false; }
+
+  // ---------- Envoyer sur la TV ----------
+
+  /** `liens_etat` : état (VPN, raccourci) et abonnement à ses changements pour cette connexion. */
+  liensEtat() { return this.session?.envoyer("liens_etat") ?? false; }
+  /** @param {{url:string, titre?:string, sansVpn?:true, vpnDabord?:true}} champs */
+  lienOuvrir(champs) { return this.session?.envoyer("lien_ouvrir", champs) ?? false; }
 }

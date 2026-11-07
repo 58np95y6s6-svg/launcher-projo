@@ -2,6 +2,7 @@
 // Module pur : aucune dépendance au DOM, testé sous Node.
 
 import { normaliserApps, normaliserImage, normaliserReglages } from "./pilotage.js";
+import { normaliserLiens, normaliserLienOuvert } from "./liens.js";
 
 const cfg = () => globalThis.IBITV_CONFIG || {};
 export const versionProtocole = () => cfg().versionProtocole ?? 1;
@@ -101,6 +102,15 @@ export function decoder(brut) {
     case "reglages": {
       const items = normaliserReglages(m.items);
       return items ? { ...m, items } : null;
+    }
+    // Envoyer sur la TV : état (VPN, raccourci iOS) et résultat d'un lien_ouvrir
+    case "liens": {
+      const etat = normaliserLiens(m);
+      return etat ? { v: m.v, t: m.t, ...etat } : null;
+    }
+    case "lien_ouvert": {
+      const r = normaliserLienOuvert(m);
+      return r ? { v: m.v, t: m.t, ...r } : null;
     }
     default:
       return null; // type inconnu : ignoré

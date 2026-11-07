@@ -57,6 +57,10 @@
     <symbol id="i-applis" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></symbol>
     <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
     <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.5l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+    <symbol id="i-envoyer" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/><path d="M12 14V8.5M9.3 11l2.7-2.7 2.7 2.7"/></symbol>
+    <symbol id="i-coller" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4.5V3.5h6v1"/><path d="M9.5 10h5M9.5 14h5"/></symbol>
+    <symbol id="i-copier" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="12" rx="2"/><path d="M15.5 5.5v-.5a2 2 0 00-2-2h-7a2 2 0 00-2 2v9a2 2 0 002 2h.5"/></symbol>
+    <symbol id="i-renvoyer" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
   </svg>
 
   <div id="banniere-maj" class="banniere" role="status" hidden>
@@ -144,7 +148,7 @@
         <svg class="ic ic-petit"><use href="#i-chevron"/></svg>
       </button>
       <button type="button" id="btn-mode-nav" class="btn-icone" aria-label="Pavé tactile" aria-pressed="false"><svg class="ic"><use href="#i-pave"/></svg></button>
-      <!-- Onglets Applis et Réglages : pastille compacte de la TV -->
+      <!-- Onglets Applis, Envoyer et Réglages : pastille compacte de la TV -->
       <button type="button" id="pastille-tv" class="pastille-tv" aria-haspopup="dialog" hidden>
         <span id="pastille-voyant" class="voyant" data-etat="connexion"></span><span id="pastille-nom">TV</span>
       </button>
@@ -206,6 +210,74 @@
       </div>
     </section>
 
+    <!-- Envoyer un lien sur la TV (si la TV annonce « liens ») -->
+    <section id="panneau-envoyer" class="panneau panneau-liste" role="tabpanel" aria-labelledby="onglet-envoyer" hidden>
+      <div id="envoyer-principal" class="vue-envoyer">
+        <h2 class="panneau-titre">Envoyer</h2>
+        <div id="envoyer-defile" class="panneau-defile">
+          <section class="groupe" aria-labelledby="envoyer-titre-lien">
+            <h3 id="envoyer-titre-lien" class="groupe-titre">Lien à ouvrir sur la TV</h3>
+            <form id="form-envoyer" class="groupe-carte envoi" autocomplete="off" novalidate>
+              <div class="envoi-ligne">
+                <input id="champ-lien" class="champ champ-lien" type="url" inputmode="url" maxlength="4096"
+                  placeholder="Colle un lien : page, vidéo, YouTube…" aria-labelledby="envoyer-titre-lien"
+                  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send">
+                <button type="button" id="btn-coller" class="btn-secondaire btn-coller"><svg class="ic"><use href="#i-coller"/></svg>Coller</button>
+              </div>
+              <p id="envoyer-aide" class="envoi-aide" role="status" hidden></p>
+              <button type="submit" id="btn-envoyer" class="btn-principal btn-envoyer" disabled><svg class="ic"><use href="#i-envoyer"/></svg>Envoyer sur la TV</button>
+              <p id="etat-vpn" class="etat-vpn" aria-live="polite" hidden><span class="etat-vpn-point" aria-hidden="true"></span><span id="etat-vpn-texte"></span></p>
+            </form>
+          </section>
+          <section class="groupe" aria-labelledby="envoyer-titre-recents">
+            <h3 id="envoyer-titre-recents" class="groupe-titre">Récents</h3>
+            <div id="recents" class="groupe-carte liste-recents"></div>
+          </section>
+          <section class="groupe" aria-labelledby="envoyer-titre-safari">
+            <h3 id="envoyer-titre-safari" class="groupe-titre">Depuis Safari</h3>
+            <div class="groupe-carte">
+              <button type="button" id="btn-raccourci" class="raccourci">
+                <span class="raccourci-icone" aria-hidden="true"><svg class="ic"><use href="#i-partager"/></svg></span>
+                <span class="recent-textes"><span class="recent-titre">Ajouter au bouton Partager</span>
+                  <span id="raccourci-detail" class="recent-detail libre"></span></span>
+                <svg class="ic ic-petit attenue" aria-hidden="true"><use href="#i-droite"/></svg>
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- « Bouton Partager » : raccourci iOS qui envoie la page de Safari à la TV -->
+      <div id="envoyer-guide" class="vue-envoyer" hidden>
+        <div class="titre-retour">
+          <button type="button" id="btn-guide-retour" class="btn-icone" aria-label="Retour à Envoyer"><svg class="ic"><use href="#i-gauche"/></svg></button>
+          <h2 class="panneau-titre">Bouton Partager</h2>
+        </div>
+        <div id="guide-defile" class="panneau-defile">
+          <p id="guide-bandeau" class="bandeau-info" role="status" hidden><svg class="ic"><use href="#i-alerte"/></svg><span>L'adresse de la TV a changé : mets à jour ton raccourci</span></p>
+          <p class="texte-intro">Une fois pour toutes, en 2 minutes : ensuite, dans Safari, <strong>Partager → Envoyer sur la TV</strong> ouvre la page sur <strong id="guide-nom-tv">la TV</strong>. L'iPhone doit être sur le même Wi-Fi que la TV.</p>
+          <div class="groupe-carte">
+            <ol class="etapes-raccourci">
+              <li><span class="num" aria-hidden="true">1</span><span>Dans l'app <b>Raccourcis</b>, touche <b>+</b> et nomme le raccourci <b>Envoyer sur la TV</b>. Dans ses détails (bouton ⓘ), active <b>Afficher dans la feuille de partage</b>, puis dans le bloc <b>Recevoir</b>, ne garde que <b>URL</b>.</span></li>
+              <li><span class="num" aria-hidden="true">2</span><span>Ajoute l'action <b>Obtenir le contenu de l'URL</b> et mets-y l'adresse ci-dessous. Déplie ses options : méthode <b>POST</b>, corps de la requête <b>JSON</b>.</span></li>
+              <li><span class="num" aria-hidden="true">3</span><span>Touche <b>Ajouter un nouveau champ</b> → <b>Texte</b> : clé <code>url</code>, valeur <b>Entrée du raccourci</b> (variable).</span></li>
+              <li><span class="num" aria-hidden="true">4</span><span>Ajoute l'action <b>Afficher la notification</b> avec <b>Contenu de l'URL</b> : la réponse de la TV s'affichera (« Envoyé sur… »).</span></li>
+            </ol>
+            <div id="guide-adresse" class="adresse" hidden>
+              <code id="guide-adresse-texte"></code>
+              <button type="button" id="btn-copier" class="btn-ligne"><svg class="ic"><use href="#i-copier"/></svg><span>Copier</span></button>
+            </div>
+            <div id="guide-activer" class="guide-activer" hidden>
+              <p>L'envoi depuis l'iPhone est désactivé sur la TV.</p>
+              <button type="button" id="btn-activer" class="btn-principal">Activer sur la TV</button>
+            </div>
+            <p id="guide-attente" class="guide-attente">L'adresse s'affichera dès que la TV sera connectée.</p>
+          </div>
+          <p class="texte-note">Au premier envoi, iOS demande d'autoriser le raccourci à se connecter à la TV : choisis <b>Toujours autoriser</b>. Si l'adresse de la TV change (box redémarrée, nouveau code), la télécommande te prévient : recopie-la dans le raccourci.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- Réglages d'iBiTV (si la TV annonce « reglages ») -->
     <section id="panneau-reglages" class="panneau panneau-liste" role="tabpanel" aria-labelledby="onglet-reglages" hidden>
       <h2 class="panneau-titre">Réglages</h2>
@@ -228,6 +300,8 @@
         <svg class="ic"><use href="#i-telecommande"/></svg><span>Télécommande</span></button>
       <button type="button" role="tab" id="onglet-applis" class="onglet" data-onglet="applis" aria-controls="panneau-applis" aria-selected="false" tabindex="-1">
         <svg class="ic"><use href="#i-applis"/></svg><span>Applis</span></button>
+      <button type="button" role="tab" id="onglet-envoyer" class="onglet" data-onglet="envoyer" aria-controls="panneau-envoyer" aria-selected="false" tabindex="-1">
+        <svg class="ic"><use href="#i-envoyer"/></svg><span>Envoyer</span></button>
       <button type="button" role="tab" id="onglet-reglages" class="onglet" data-onglet="reglages" aria-controls="panneau-reglages" aria-selected="false" tabindex="-1">
         <svg class="ic"><use href="#i-reglages"/></svg><span>Réglages</span></button>
     </div>
@@ -242,6 +316,19 @@
       <button type="button" id="btn-ajouter-tv" class="btn-secondaire btn-large"><svg class="ic"><use href="#i-plus"/></svg>Ajouter une TV</button>
       <section class="carte-install" data-install hidden></section>
       <p id="version-app" class="pied"></p>
+    </section>
+  </div>
+
+  <!-- ============ Envoyer : VPN de la TV coupé ============ -->
+  <div id="feuille-vpn" class="voile" hidden>
+    <section class="feuille feuille-vpn" role="dialog" aria-modal="true" aria-labelledby="titre-vpn" aria-describedby="texte-vpn">
+      <div class="poignee" aria-hidden="true"></div>
+      <h2 id="titre-vpn">Le VPN de la TV est coupé</h2>
+      <p id="lien-vpn" class="feuille-lien"></p>
+      <p id="texte-vpn" class="feuille-texte"></p>
+      <button type="button" id="btn-vpn-allumer" class="btn-principal">Allumer le VPN et ouvrir</button>
+      <button type="button" id="btn-vpn-sans" class="btn-secondaire">Ouvrir sans VPN</button>
+      <button type="button" id="btn-vpn-annuler" class="btn-texte">Annuler</button>
     </section>
   </div>
 

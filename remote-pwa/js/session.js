@@ -3,10 +3,11 @@
 //
 // Événements émis (CustomEvent, détail entre accolades) :
 //   etat {etat}            "connexion" → "authentification" → ("appairage") → "prete" ; "fermee"
-//   tv {nomTV, versionApp, cle, fonctions}   hello de la TV vérifié (fonctions : ["apps", "reglages"]…)
+//   tv {nomTV, versionApp, cle, fonctions}   hello de la TV vérifié (fonctions : ["apps", "reglages", "liens"]…)
 //   paired {nomTV, idTV, cle, empreinte}
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
+//   liens {vpn, seulementVpn, appliPages, appliVpn?, raccourci?} | lien_ouvert {url, ok, ouvertDans?, raison?}
 //   version {verdict}      "maj_tv" | "recharger"
 //   fin {raison}           "injoignable" | "auth" | "perdue" | "version" | "revoked"
 //                          | "refus" (+ detail.refus) | "fermee"
@@ -190,6 +191,11 @@ export class Session extends EventTarget {
       case "app_image": return this._emettre("app_image", { id: m.id, maj: m.maj, forme: m.forme, img: m.img });
       case "app_ouverte": return this._emettre("app_ouverte", { id: m.id, ok: m.ok });
       case "reglages": return this._emettre("reglages", { items: m.items });
+      case "liens":
+      case "lien_ouvert": {
+        const { v, t, ...detail } = m;
+        return this._emettre(t, detail);
+      }
     }
   }
 

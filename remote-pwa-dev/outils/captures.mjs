@@ -77,6 +77,48 @@ async function serie(modele) {
   await page.click('.tuile[data-id="com.amazon.amazonvideo.livingroom"]');
   await page.locator("#toast.visible").waitFor();
   await capture("applis-ouverture");
+
+  // Onglet « Envoyer » : lien collé, envoyé, VPN coupé, bouton Partager (raccourci iOS)
+  await tel.ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: banc.base });
+  const cacherToast = () => page.waitForFunction(() => !document.querySelector("#toast").classList.contains("visible"), null, { timeout: 8000 });
+  const envoyerLien = async (lien) => {
+    await page.fill("#champ-lien", lien);
+    await page.click("#btn-envoyer");
+    await page.locator("#toast.visible", { hasText: "Envoyé" }).waitFor();
+  };
+  await page.click("#onglet-envoyer");
+  await page.locator("#etat-vpn:not([hidden])").waitFor();
+  await envoyerLien("http://nas.local/films/conference-keynote.mp4");
+  await envoyerLien("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  await cacherToast();
+  await page.fill("#champ-lien", "https://www.arte.tv/fr/videos/RC-014035/les-grands-documentaires/");
+  await page.evaluate(() => { const c = document.querySelector("#champ-lien"); c.setSelectionRange(0, 0); c.blur(); c.scrollLeft = 0; });
+  await capture("envoyer");
+  await page.click("#btn-envoyer");
+  await page.locator("#toast.visible", { hasText: "Envoyé" }).waitFor();
+  await capture("envoyer-envoye");
+  await cacherToast();
+  await salon.liens({ vpn: false });
+  await page.locator('#etat-vpn[data-etat="coupe"]').waitFor();
+  await page.click('.recent:has-text("Les grands documentaires") .btn-ligne');
+  await page.locator("#feuille-vpn:not([hidden])").waitFor();
+  await capture("envoyer-vpn-coupe");
+  await page.click("#btn-vpn-annuler");
+  await salon.liens({ vpn: true });
+  await page.click("#btn-raccourci");
+  await page.locator("#guide-activer:not([hidden])").waitFor();
+  await capture("envoyer-bouton-partager-desactive");
+  await page.click("#btn-activer");
+  await page.locator("#guide-adresse:not([hidden])").waitFor();
+  await page.click("#btn-copier");
+  await cacherToast();
+  await salon.liens({ ip: "192.168.1.57" });
+  await page.locator("#guide-bandeau:not([hidden])").waitFor();
+  await capture("envoyer-bouton-partager");
+  await page.locator(".adresse").evaluate((e) => e.scrollIntoView({ block: "center" }));
+  await capture("envoyer-bouton-partager-adresse");
+  await page.click("#btn-guide-retour");
+  await capture("envoyer-adresse-changee");
   await page.click("#onglet-reglages");
   await page.locator('.reglage[data-cle="volume"]').waitFor();
   await page.waitForFunction(() => !document.querySelector("#toast").classList.contains("visible"));

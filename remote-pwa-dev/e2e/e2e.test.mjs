@@ -4,7 +4,8 @@
 // appairage QR → confirmation → paired → key / text / focus_text → reconnexion → coupure
 // → revoked ; code de secours ; plusieurs TV ; versions incompatibles ; TV injoignable ;
 // mise à jour (bannière) ; pilotage (onglets Applis et Réglages, TV ancienne sans onglets) ;
-// aucun texte saisi, secret, nom d'appli ni valeur de réglage dans les journaux.
+// Envoyer sur la TV (liens, VPN coupé, raccourci iOS) ;
+// aucun texte saisi, secret, nom d'appli, valeur de réglage ni lien dans les journaux.
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -21,7 +22,8 @@ after(async () => {
   const tout = journaux.flat().join("\n");
   try {
     for (const interdit of [MOT_DE_PASSE, TEXTE, "a=fingerprint", "v=0", "candidate:", "BEGIN", "Téléphone de Marie",
-      "Netflix", "com.netflix", "pastel", "data:image"]) {
+      "Netflix", "com.netflix", "pastel", "data:image",
+      "arte.tv", "youtu", "exemple.fr", "192.168.1", "K7Q2M9XD", "envoyer?c="]) {
       assert.ok(!tout.includes(interdit), `journal : « ${interdit} » trouvé`);
     }
     assert.ok(!/ERREUR PAGE/.test(tout), tout);
@@ -314,7 +316,8 @@ test("TV ancienne (sans « fonctions ») : télécommande seule, sans onglets ni
 });
 
 test("applis : onglet annoncé, grille, images demandées une seule fois (cache), ouverture", async () => {
-  const tv = await banc.tv({ nom: "Salon" });
+  // TV qui n'annonce pas « liens » : pas d'onglet « Envoyer »
+  const tv = await banc.tv({ nom: "Salon", fonctions: ["apps", "reglages"] });
   const tel = await banc.telephone("iphone");
   journaux.push(tel.journal);
   let page = await tel.ouvrir();
@@ -323,6 +326,7 @@ test("applis : onglet annoncé, grille, images demandées une seule fois (cache)
   await page.locator("#onglets").waitFor();
   assert.ok(await page.isVisible("#btn-tvs"));
   assert.deepEqual(await page.locator(".onglet:visible").allInnerTexts(), ["Télécommande", "Applis", "Réglages"]);
+  assert.ok(await page.isHidden("#onglet-envoyer"));
   assert.equal(await page.getAttribute("#onglet-telecommande", "aria-selected"), "true");
   assert.equal((await tv.recus()).length, 0, "rien n'est demandé tant qu'aucun onglet n'est ouvert");
 
@@ -394,11 +398,13 @@ test("réglages : rendu générique par groupe, design, interrupteurs, curseur l
   await page.click("#onglet-reglages");
   await page.locator('.reglage[data-cle="volume"]').waitFor();
   await tv.attendreRecu((r) => r.t === "reglages_liste");
-  assert.deepEqual(await page.locator(".groupe-titre").allTextContents(),
-    ["Son", "Affichage", "Mode Ambiance", "Mises à jour", "Ouvrir sur la TV"]);
+  assert.deepEqual(await page.locator("#reglages-liste .groupe-titre").allTextContents(),
+    ["Son", "Affichage", "Mode Ambiance", "Envoyer sur la TV", "Mises à jour", "Ouvrir sur la TV"]);
   assert.deepEqual(await page.$$eval(".reglage[data-cle]", (l) => l.map((e) => `${e.dataset.cle}:${e.dataset.type}`)), [
     "volume:curseur", "muet:interrupteur", "design:choix", "nouveautes:interrupteur", "ambiance_auto:interrupteur",
-    "ambiance_intensite:choix", "ambiance_couleurs:choix", "ambiance_decalage:choix", "maj:boutons", "systeme:boutons",
+    "ambiance_intensite:choix", "ambiance_couleurs:choix", "ambiance_decalage:choix",
+    "liens_seulement_vpn:interrupteur", "liens_pages:choix", "liens_raccourci:interrupteur", "liens_code:boutons",
+    "maj:boutons", "systeme:boutons",
   ]);
   assert.equal(await page.inputValue('.reglage[data-cle="volume"] input[type=range]'), "9");
   assert.equal(await page.textContent('.reglage[data-cle="volume"] .reglage-valeur'), "60 %");
@@ -490,3 +496,248 @@ test("réglages : rendu générique par groupe, design, interrupteurs, curseur l
   await tel.fermer();
   await tv.fermer();
 });
+
+// ---------- Envoyer sur la TV ----------
+
+const ARTE = "https://arte.tv/fr/videos/RC-014035/les-grands-documentaires/";
+const YOUTUBE = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+const ADRESSE = "http://192.168.1.42:8642/envoyer?c=K7Q2M9XD";
+/** Efface la confirmation affichée : la suivante est forcément nouvelle. */
+const viderToast = (page) => page.evaluate(() => {
+  document.querySelector("#toast").classList.remove("visible", "erreur");
+  document.querySelector("#toast-texte").textContent = "";
+});
+const toast = (page, texte, { erreur = false, timeout = 8000 } = {}) =>
+  page.locator(erreur ? "#toast.visible.erreur" : "#toast.visible:not(.erreur)", { hasText: texte }).waitFor({ timeout });
+const titresRecents = (page) => page.locator(".recent .recent-titre").allTextContents();
+const renvoyer = async (page, texte) => { await viderToast(page); await page.click(`.recent:has-text("${texte}") .btn-ligne`); };
+
+test("envoyer : envoi, récents, VPN coupé (feuille : annuler, sans VPN, allumer), refus, sans réponse, reconnexion", async () => {
+  const tv = await banc.tv({ nom: "Salon" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  let page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  assert.deepEqual(await page.locator(".onglet:visible").allInnerTexts(), ["Télécommande", "Applis", "Envoyer", "Réglages"]);
+  assert.equal((await tv.recus()).length, 0, "rien n'est demandé tant qu'aucun onglet n'est ouvert");
+
+  // Ouverture de l'onglet : liens_etat, ligne d'état du VPN
+  await page.click("#onglet-envoyer");
+  await tv.attendreRecu((r) => r.t === "liens_etat");
+  await page.locator("#etat-vpn-texte", { hasText: "VPN de la TV actif · les pages s'ouvrent dans VYPN" }).waitFor();
+  assert.equal(await page.getAttribute("#etat-vpn", "data-etat"), "actif");
+  assert.equal(await page.textContent("#pastille-nom"), "Salon · iBiTV");
+  assert.ok(await page.isDisabled("#btn-envoyer"));
+  assert.ok(await page.isVisible(".recents-vide"));
+
+  // Bouton actif seulement pour un lien ; domaine sans schéma complété en https://
+  await page.fill("#champ-lien", "bonjour");
+  assert.ok(await page.isDisabled("#btn-envoyer"));
+  await page.fill("#champ-lien", "arte.tv/fr/videos/RC-014035/les-grands-documentaires/");
+  assert.ok(await page.isEnabled("#btn-envoyer"));
+  await page.click("#btn-envoyer");
+  await toast(page, "Envoyé sur Salon · ouverture dans VYPN");
+  assert.deepEqual(await recusDe(tv, "lien_ouvrir"), [{ appareil: (await recusDe(tv, "liens_etat"))[0].appareil, t: "lien_ouvrir", url: ARTE }]);
+  assert.equal(await page.inputValue("#champ-lien"), "", "champ vidé");
+  assert.deepEqual(await titresRecents(page), ["Les grands documentaires"]);
+  assert.equal(await page.textContent(".recent .recent-detail"), "arte.tv · ouvert dans VYPN · à l'instant");
+
+  // YouTube (touche Entrée) : ouvert dans iBiTube, en tête des récents
+  await viderToast(page);
+  await page.fill("#champ-lien", YOUTUBE);
+  await page.press("#champ-lien", "Enter");
+  await toast(page, "Envoyé sur Salon · ouverture dans iBiTube");
+  assert.deepEqual(await titresRecents(page), ["youtube.com/watch?v=dQw4w9WgXcQ", "Les grands documentaires"]);
+  // Renvoyer : le lien remonte en tête, sans doublon
+  await renvoyer(page, "Les grands documentaires");
+  await toast(page, "ouverture dans VYPN");
+  assert.deepEqual(await titresRecents(page), ["Les grands documentaires", "youtube.com/watch?v=dQw4w9WgXcQ"]);
+  assert.equal((await recusDe(tv, "lien_ouvrir")).length, 3);
+
+  // Le VPN de la TV se coupe : état poussé par la TV
+  await tv.liens({ vpn: false });
+  await page.locator("#etat-vpn-texte", { hasText: "VPN de la TV coupé · la TV demandera de l'allumer" }).waitFor();
+  assert.equal(await page.getAttribute("#etat-vpn", "data-etat"), "coupe");
+  // vpn_coupe → feuille ; « Annuler » n'envoie rien de plus
+  await renvoyer(page, "youtube.com");
+  await page.locator("#feuille-vpn:not([hidden])").waitFor();
+  assert.equal(await page.textContent("#titre-vpn"), "Le VPN de la TV est coupé");
+  assert.equal(await page.textContent("#btn-vpn-allumer"), "Allumer le VPN (VYPN) et ouvrir");
+  assert.equal(await page.textContent("#lien-vpn"), "youtube.com/watch?v=dQw4w9WgXcQ");
+  const n = (await recusDe(tv, "lien_ouvrir")).length;
+  await page.click("#btn-vpn-annuler");
+  assert.ok(await page.isHidden("#feuille-vpn"));
+  await pause(400);
+  assert.equal((await recusDe(tv, "lien_ouvrir")).length, n);
+  // « Ouvrir sans VPN » : renvoi avec sansVpn
+  await renvoyer(page, "youtube.com");
+  await page.locator("#feuille-vpn:not([hidden])").waitFor();
+  await page.click("#btn-vpn-sans");
+  await tv.attendreRecu((r) => r.t === "lien_ouvrir" && r.url === "https://www.youtube.com/watch?v=dQw4w9WgXcQ" && r.sansVpn === true);
+  await toast(page, "Envoyé sur Salon · ouverture dans iBiTube");
+  assert.ok(await page.isHidden("#feuille-vpn"));
+  assert.deepEqual((await tv.eval(() => window.tv.liensOuverts)).at(-1), { url: YOUTUBE, appli: "iBiTube", sansVpn: true });
+  // « Allumer le VPN et ouvrir » : vpnDabord → attente_vpn, puis ouverture quand le VPN s'allume
+  await renvoyer(page, "Les grands documentaires");
+  await page.locator("#feuille-vpn:not([hidden])").waitFor();
+  await page.click("#btn-vpn-allumer");
+  await tv.attendreRecu((r) => r.t === "lien_ouvrir" && r.url === "https://arte.tv/fr/videos/RC-014035/les-grands-documentaires/" && r.vpnDabord === true);
+  await toast(page, "Allume le VPN sur la TV : le lien s'ouvrira ensuite");
+  assert.equal(await tv.eval(() => window.tv.applisVpnOuvertes), 1);
+  await page.locator('.recent.en-cours:has-text("Les grands documentaires")').waitFor();
+  await viderToast(page);
+  await tv.liens({ vpn: true });
+  await toast(page, "Envoyé sur Salon · ouverture dans VYPN");
+  assert.equal(await page.locator(".recent.en-cours").count(), 0);
+  await page.locator("#etat-vpn-texte", { hasText: "VPN de la TV actif" }).waitFor();
+
+  // Une seule attente à la fois (remplace), puis délai dépassé (delai_vpn)
+  await tv.liens({ vpn: false, attenteMs: 1500 });
+  await page.locator('#etat-vpn[data-etat="coupe"]').waitFor();
+  for (const titre of ["Les grands documentaires", "youtube.com"]) {
+    await renvoyer(page, titre);
+    await page.locator("#feuille-vpn:not([hidden])").waitFor();
+    await page.click("#btn-vpn-allumer");
+    await toast(page, "Allume le VPN sur la TV");
+  }
+  await viderToast(page);
+  await toast(page, "Le VPN de la TV ne s'est pas allumé à temps", { erreur: true });
+  assert.ok(tel.journal.includes("[iBiTV] lien_refuse remplace"));
+
+  // Sans appli VPN connue : pas de « Allumer le VPN »
+  await tv.liens({ appliVpn: null, attenteMs: 60000 });
+  await pause(500);
+  await renvoyer(page, "youtube.com");
+  await page.locator("#feuille-vpn:not([hidden])").waitFor();
+  assert.ok(await page.isHidden("#btn-vpn-allumer"));
+  await page.keyboard.press("Escape");
+  assert.ok(await page.isHidden("#feuille-vpn"));
+  await tv.liens({ vpn: true, appliVpn: "VYPN" });
+
+  // Refus de la TV : message clair, champ gardé, rien dans les récents
+  await tv.eval(() => window.tv.liensForcer.push({ ok: false, raison: "aucune_appli" }));
+  await viderToast(page);
+  await page.fill("#champ-lien", "https://exemple.fr/page");
+  await page.click("#btn-envoyer");
+  await toast(page, "Aucune appli de la TV ne sait ouvrir ce lien", { erreur: true });
+  assert.equal(await page.inputValue("#champ-lien"), "https://exemple.fr/page");
+  // Pas de réponse en 6 s : erreur
+  await tv.eval(() => window.tv.liensForcer.push("silence"));
+  await viderToast(page);
+  await page.click("#btn-envoyer");
+  await page.locator("#btn-envoyer.en-cours").waitFor();
+  await toast(page, "La TV n'a pas confirmé l'envoi du lien", { erreur: true, timeout: 9000 });
+  assert.ok(await page.isEnabled("#btn-envoyer"));
+  assert.equal(await page.locator(".recent").count(), 2);
+  assert.ok(tel.journal.includes("[iBiTV] lien_refuse sans_reponse"));
+
+  // Réouverture : récents gardés sur le téléphone, liens_etat redemandé
+  await page.close();
+  page = await tel.ouvrir();
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+  const avant = (await recusDe(tv, "liens_etat")).length;
+  await page.click("#onglet-envoyer");
+  await tv.page.waitForFunction((n) => window.tv.recus.filter((r) => r.t === "liens_etat").length > n, avant);
+  assert.deepEqual(await titresRecents(page), ["Les grands documentaires", "youtube.com/watch?v=dQw4w9WgXcQ"]);
+  // Reconnexion pendant que l'onglet est ouvert : liens_etat renvoyé (abonnement par connexion)
+  const avant2 = (await recusDe(tv, "liens_etat")).length;
+  await tv.eval(() => window.tv.couper());
+  await page.waitForFunction(() => document.querySelector("#pastille-voyant").dataset.etat !== "connecte");
+  await page.locator('#pastille-voyant[data-etat="connecte"]').waitFor({ timeout: 20000 });
+  await tv.page.waitForFunction((n) => window.tv.recus.filter((r) => r.t === "liens_etat").length > n, avant2);
+  // Un champ texte sur la TV ramène sur la télécommande
+  await tv.envoyer({ t: "focus_text", type: "url", s: "", action: "go" });
+  await page.locator("#saisie.actif").waitFor();
+  assert.ok(await page.isHidden("#panneau-envoyer"));
+  assert.equal(tel.journal.filter((l) => l === "[iBiTV] lien_envoye").length, 5, "un par lien ouvert");
+  await tel.fermer();
+  await tv.fermer();
+});
+
+test("envoyer : coller (presse-papiers), bouton Partager (activer, copier, adresse changée)", async () => {
+  const tv = await banc.tv({ nom: "Salon" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  await page.click("#onglet-envoyer");
+  await page.locator("#etat-vpn:not([hidden])").waitFor();
+
+  // Presse-papiers refusé : invitation à coller à la main
+  await page.click("#btn-coller");
+  await page.locator("#envoyer-aide", { hasText: "colle le lien dans le champ" }).waitFor();
+  // Accordé : le texte partagé est collé, son lien envoyé
+  await tel.ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: banc.base });
+  await page.evaluate(() => navigator.clipboard.writeText("Regarde ça : https://youtu.be/dQw4w9WgXcQ"));
+  await page.click("#btn-coller");
+  await page.waitForFunction(() => document.querySelector("#champ-lien").value.includes("youtu.be"));
+  assert.ok(await page.isHidden("#envoyer-aide"));
+  assert.ok(await page.isEnabled("#btn-envoyer"));
+  await page.click("#btn-envoyer");
+  await tv.attendreRecu((r) => r.t === "lien_ouvrir" && r.url === "https://youtu.be/dQw4w9WgXcQ");
+  await toast(page, "ouverture dans iBiTube");
+  await page.evaluate(() => navigator.clipboard.writeText("bonjour"));
+  await page.click("#btn-coller");
+  await page.locator("#envoyer-aide", { hasText: "ne contient pas de lien" }).waitFor();
+  assert.ok(await page.isDisabled("#btn-envoyer"));
+
+  // « Depuis Safari » → écran « Bouton Partager » ; envoi depuis l'iPhone désactivé sur la TV
+  await page.click("#btn-raccourci");
+  assert.ok(await page.isVisible("#envoyer-guide"));
+  assert.ok(await page.isHidden("#envoyer-principal"));
+  assert.equal(await page.locator(".etapes-raccourci li").count(), 4);
+  assert.equal(await page.textContent("#guide-nom-tv"), "Salon");
+  await page.locator("#guide-activer:not([hidden])").waitFor();
+  assert.ok(await page.isHidden("#guide-adresse"));
+  await viderToast(page);
+  await page.click("#btn-activer");
+  await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "liens_raccourci" && r.valeur === true);
+  await page.locator("#guide-adresse-texte", { hasText: ADRESSE }).waitFor();
+  await toast(page, "Envoi depuis l'iPhone activé sur la TV");
+  assert.ok(await page.isHidden("#guide-activer"));
+  assert.ok(await page.isHidden("#guide-bandeau"), "jamais copiée : pas de bandeau");
+
+  // Copier : presse-papiers, adresse retenue pour cette TV
+  await page.click("#btn-copier");
+  await toast(page, "Adresse copiée");
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), ADRESSE);
+  assert.equal(await page.textContent("#btn-copier"), "Copiée");
+  // L'adresse change (box redémarrée) : bandeau, ici et sur la carte « Depuis Safari »
+  await tv.liens({ ip: "192.168.1.57" });
+  await page.locator("#guide-bandeau:not([hidden])", { hasText: "L'adresse de la TV a changé : mets à jour ton raccourci" }).waitFor();
+  await page.click("#btn-guide-retour");
+  assert.ok(await page.isVisible("#envoyer-principal"));
+  assert.equal(await page.textContent("#raccourci-detail"), "L'adresse de la TV a changé : mets à jour ton raccourci");
+  // Onglet touché de nouveau depuis « Bouton Partager » : retour à l'onglet
+  await page.click("#btn-raccourci");
+  await page.click("#onglet-envoyer");
+  assert.ok(await page.isVisible("#envoyer-principal"));
+  // Nouvelle adresse copiée : plus de bandeau, même après réouverture
+  await page.click("#btn-raccourci");
+  await page.click("#btn-copier");
+  await page.locator("#guide-bandeau").waitFor({ state: "hidden" });
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), ADRESSE.replace(".42", ".57"));
+  await page.reload();
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+  await page.click("#onglet-envoyer");
+  await page.locator("#etat-vpn:not([hidden])").waitFor();
+  assert.equal(await page.textContent("#raccourci-detail"), "Envoie la page que tu regardes, sans quitter Safari");
+  // Nouveau code sur la TV : l'adresse change aussi
+  await tv.liens({ code: "ABCD2345" });
+  await page.locator("#raccourci-detail", { hasText: "L'adresse de la TV a changé" }).waitFor();
+
+  // TV sans adresse sur le réseau local : l'activation n'aboutit pas, message clair
+  await tv.liens({ raccourci: false, ip: null });
+  await page.click("#btn-raccourci");
+  await page.locator("#guide-activer:not([hidden])").waitFor();
+  await viderToast(page);
+  await page.click("#btn-activer");
+  assert.equal(await page.textContent("#btn-activer"), "Activation…");
+  await toast(page, "La TV n'a pas d'adresse sur le réseau local", { erreur: true, timeout: 9000 });
+  assert.equal(await page.textContent("#btn-activer"), "Activer sur la TV");
+  await tel.fermer();
+  await tv.fermer();
+});
+

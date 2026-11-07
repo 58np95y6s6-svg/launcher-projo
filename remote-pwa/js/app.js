@@ -7,6 +7,7 @@ import { initialiserInstallation, majCartes, estIOS, estInstallee } from "./inst
 import { journal } from "./journal.js";
 import { OngletApplis } from "./applis.js";
 import { OngletReglages } from "./reglages.js";
+import { OngletEnvoyer } from "./envoyer.js";
 
 // Comportement d'appli : pas de zoom au pincement (iOS ignore user-scalable=no).
 // Le zoom au double appui est déjà coupé par touch-action: manipulation (CSS).
@@ -233,7 +234,7 @@ let etatAffiche = null;
 function majEtat({ etat, raison, prochainEssaiMs }) {
   const tv = ctrl.tvActive;
   // Nouvelle connexion : les onglets ouverts redemandent leurs données (abonnement aux réglages)
-  if (etat === "connecte" && etatAffiche !== "connecte") { applis.surConnexion(); reglages.surConnexion(); }
+  if (etat === "connecte" && etatAffiche !== "connecte") { applis.surConnexion(); envoyer.surConnexion(); reglages.surConnexion(); }
   etatAffiche = etat;
   $("nom-tv").textContent = tv ? tv.nom : "TV";
   $("voyant").dataset.etat = etat;
@@ -475,17 +476,18 @@ function finSaisie() {
 ctrl.addEventListener("focus_lost", finSaisie);
 appliquerType();
 
-// ---------- Onglets : Télécommande | Applis | Réglages ----------
+// ---------- Onglets : Télécommande | Applis | Envoyer | Réglages ----------
 // Montrés seulement pour les fonctions annoncées par la TV (hello.fonctions) ; sans annonce,
 // la télécommande reste seule, comme avant.
 
-const ONGLETS = ["telecommande", "applis", "reglages"];
+const ONGLETS = ["telecommande", "applis", "envoyer", "reglages"];
+const FONCTION_ONGLET = { applis: "apps", envoyer: "liens", reglages: "reglages" };
 let onglet = "telecommande";
 let idTVAffichee;
 let minuterieToast = null;
 
 /** Confirmation discrète (au-dessus des onglets), lue par les lecteurs d'écran. */
-function annoncer(texte, { erreur = false } = {}) {
+function annoncer(texte, { erreur = false, duree = erreur ? 3500 : 2600 } = {}) {
   const toast = $("toast");
   clearTimeout(minuterieToast);
   $("toast-texte").textContent = texte;
@@ -495,10 +497,10 @@ function annoncer(texte, { erreur = false } = {}) {
   minuterieToast = setTimeout(() => {
     toast.classList.remove("visible");
     minuterieToast = setTimeout(() => { $("toast-texte").textContent = ""; }, 300);
-  }, erreur ? 3500 : 2600);
+  }, duree);
 }
 
-/** Pastille « ● Salon · iBiTV » des onglets Applis et Réglages (point : état de la connexion). */
+/** Pastille « ● Salon · iBiTV » des onglets Applis, Envoyer et Réglages (point : état de la connexion). */
 function majPastille(texteEtat = TEXTES_ETAT[ctrl.etat] || "") {
   const nom = ctrl.tvActive?.nom || "TV";
   $("pastille-nom").textContent = `${nom} · iBiTV`;
@@ -508,16 +510,18 @@ function majPastille(texteEtat = TEXTES_ETAT[ctrl.etat] || "") {
 
 const applis = new OngletApplis({ ctrl, annoncer, vibrer });
 const reglages = new OngletReglages({ ctrl, annoncer, vibrer });
+const envoyer = new OngletEnvoyer({ ctrl, annoncer, vibrer });
 
 function ongletsDisponibles() {
   const f = ctrl.fonctions;
-  return ONGLETS.filter((o) => o === "telecommande" || (o === "applis" ? f.includes("apps") : f.includes("reglages")));
+  return ONGLETS.filter((o) => o === "telecommande" || f.includes(FONCTION_ONGLET[o]));
 }
 
 function majOnglets() {
   if (ctrl.active !== idTVAffichee) {
     idTVAffichee = ctrl.active;
     applis.changerTV(ctrl.active);
+    envoyer.changerTV(ctrl.active);
     reglages.changerTV();
   }
   const dispo = ongletsDisponibles();
@@ -526,6 +530,7 @@ function majOnglets() {
   $("ecran-telecommande").classList.toggle("avec-onglets", avec);
   for (const b of document.querySelectorAll(".onglet")) b.hidden = !dispo.includes(b.dataset.onglet);
   $("onglets").style.setProperty("--n", String(dispo.length));
+  $("onglets").dataset.n = String(dispo.length); // 4 onglets : libellés un peu plus petits
   if (!dispo.includes(onglet)) choisirOnglet("telecommande");
   else $("onglets").style.setProperty("--i", String(dispo.indexOf(onglet)));
 }
@@ -542,6 +547,7 @@ function choisirOnglet(nom, { focus = false } = {}) {
   $("ecran-telecommande").dataset.onglet = nom;
   $("panneau-telecommande").hidden = nom !== "telecommande";
   $("panneau-applis").hidden = nom !== "applis";
+  $("panneau-envoyer").hidden = nom !== "envoyer";
   $("panneau-reglages").hidden = nom !== "reglages";
   // En-tête : télécommande inchangée ; ailleurs, pastille compacte de la TV
   $("btn-tvs").hidden = nom !== "telecommande";
@@ -550,6 +556,7 @@ function choisirOnglet(nom, { focus = false } = {}) {
   majPastille();
   if (nom !== "telecommande" && document.activeElement === champ) champ.blur();
   if (nom === "applis") applis.afficher(); else applis.masquer();
+  if (nom === "envoyer") envoyer.afficher(); else envoyer.masquer();
   if (nom === "reglages") reglages.afficher(); else reglages.masquer();
 }
 
@@ -557,8 +564,9 @@ for (const b of document.querySelectorAll(".onglet")) {
   b.addEventListener("click", () => {
     vibrer();
     if (b.dataset.onglet !== onglet) return choisirOnglet(b.dataset.onglet);
-    // Onglet déjà ouvert : retour en haut de la liste
-    $(`${onglet}-defile`)?.scrollTo?.({ top: 0, behavior: "smooth" });
+    // Onglet déjà ouvert : retour en haut de la liste (« Envoyer » : de l'écran « Bouton Partager » à l'onglet)
+    if (onglet === "envoyer" && envoyer.guideOuvert) return envoyer.fermerGuide();
+    (onglet === "envoyer" ? envoyer.defile : $(`${onglet}-defile`))?.scrollTo?.({ top: 0, behavior: "smooth" });
   });
 }
 // Clavier : flèches entre les onglets (motif « tablist »)
