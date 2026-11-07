@@ -655,6 +655,74 @@ test("envoyer : envoi, récents, VPN coupé (feuille : annuler, sans VPN, allume
   await tv.fermer();
 });
 
+test("envoyer : effacer les récents (retirer un lien, tout effacer avec confirmation, gardé à la réouverture)", async () => {
+  const tv = await banc.tv({ nom: "Salon" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  let page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  await page.click("#onglet-envoyer");
+  await tv.attendreRecu((r) => r.t === "liens_etat");
+  // Aucun récent : pas de « Modifier »
+  assert.ok(await page.isHidden("#btn-recents-modifier"));
+  for (const url of [ARTE, YOUTUBE, "https://exemple.fr/videos/le-grand-film"]) {
+    await viderToast(page);
+    await page.fill("#champ-lien", url);
+    await page.click("#btn-envoyer");
+    await toast(page, "Envoyé sur Salon");
+  }
+  assert.deepEqual(await titresRecents(page), ["Le grand film", "youtube.com/watch?v=dQw4w9WgXcQ", "Les grands documentaires"]);
+  // « Modifier » : « Retirer » à la place de « Renvoyer », « Tout effacer » sous la liste
+  await page.click("#btn-recents-modifier");
+  assert.equal(await page.textContent("#btn-recents-modifier"), "OK");
+  assert.equal(await page.getAttribute("#btn-recents-modifier", "aria-pressed"), "true");
+  assert.equal(await page.locator(".recent .btn-retirer").count(), 3);
+  assert.equal(await page.locator(".recent .btn-ligne:not(.btn-retirer)").count(), 0);
+  assert.ok(await page.isVisible("#btn-recents-effacer"));
+  const envois = (await recusDe(tv, "lien_ouvrir")).length;
+  await page.click('.recent:has-text("youtube.com") .btn-retirer');
+  assert.deepEqual(await titresRecents(page), ["Le grand film", "Les grands documentaires"]);
+  assert.equal((await recusDe(tv, "lien_ouvrir")).length, envois, "retirer n'envoie rien à la TV");
+  // « OK » : retour aux boutons « Renvoyer »
+  await page.click("#btn-recents-modifier");
+  assert.equal(await page.textContent("#btn-recents-modifier"), "Modifier");
+  assert.ok(await page.isHidden("#btn-recents-effacer"));
+  assert.equal(await page.locator(".recent .btn-retirer").count(), 0);
+  // Réouverture : le lien retiré ne revient pas
+  await page.close();
+  page = await tel.ouvrir();
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+  await page.click("#onglet-envoyer");
+  await page.locator(".recent").first().waitFor();
+  assert.deepEqual(await titresRecents(page), ["Le grand film", "Les grands documentaires"]);
+  // « Tout effacer » : confirmation ; Annuler ne change rien, Effacer vide la liste
+  await page.click("#btn-recents-modifier");
+  await page.click("#btn-recents-effacer");
+  await page.locator("#alerte:not([hidden])").waitFor();
+  assert.equal(await page.textContent("#alerte-titre"), "Effacer les liens récents ?");
+  assert.equal(await page.textContent("#alerte-texte"), "Les 2 liens envoyés seront retirés de ce téléphone.");
+  await page.click("#alerte-annuler");
+  assert.equal(await page.locator(".recent").count(), 2);
+  await page.click("#btn-recents-effacer");
+  await page.locator("#alerte:not([hidden])").waitFor();
+  await viderToast(page);
+  await page.click("#alerte-ok");
+  await toast(page, "Liens récents effacés");
+  assert.ok(await page.isVisible(".recents-vide"));
+  assert.ok(await page.isHidden("#btn-recents-modifier"));
+  assert.ok(await page.isHidden("#btn-recents-effacer"));
+  await page.close();
+  page = await tel.ouvrir();
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+  await page.click("#onglet-envoyer");
+  await tv.attendreRecu((r) => r.t === "liens_etat");
+  await pause(300);
+  assert.ok(await page.isVisible(".recents-vide"), "liste vide après réouverture");
+  await tel.fermer();
+  await tv.fermer();
+});
+
 test("envoyer : coller (presse-papiers), bouton Partager (activer, copier, adresse changée)", async () => {
   const tv = await banc.tv({ nom: "Salon" });
   const tel = await banc.telephone("iphone");

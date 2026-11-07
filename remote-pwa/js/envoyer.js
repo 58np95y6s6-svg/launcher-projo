@@ -6,7 +6,7 @@
 
 import {
   lireLien, champsLienOuvrir, interpreterResultat, etatVpn, ajouterRecent, normaliserRecents,
-  libelleLien, detailRecent, hoteDe, teinteDe, adresseAChange,
+  libelleLien, detailRecent, hoteDe, teinteDe, adresseAChange, retirerRecent,
   DELAI_REPONSE_MS, DELAI_ATTENTE_VPN_MS, TEXTE_SANS_REPONSE,
 } from "./liens.js";
 import * as stockage from "./stockage.js";
@@ -23,15 +23,16 @@ export class OngletEnvoyer {
    * @param {import("./controleur.js").Controleur} o.ctrl
    * @param {(texte:string, o?:{erreur?:boolean, duree?:number}) => void} o.annoncer
    * @param {(ms?:number|number[]) => void} o.vibrer
+   * @param {(o:{titre:string, texte:string, ok?:string, annuler?:string}) => Promise<boolean>} [o.confirmer]
    */
-  constructor({ ctrl, annoncer, vibrer }) {
-    Object.assign(this, { ctrl, annoncer, vibrer });
+  constructor({ ctrl, annoncer, vibrer, confirmer = async () => true }) {
+    Object.assign(this, { ctrl, annoncer, vibrer, confirmer });
     const $ = (id) => document.getElementById(id);
     this.el = {
       principal: $("envoyer-principal"), defile: $("envoyer-defile"),
       form: $("form-envoyer"), champ: $("champ-lien"), coller: $("btn-coller"), aide: $("envoyer-aide"),
       bouton: $("btn-envoyer"), vpn: $("etat-vpn"), vpnTexte: $("etat-vpn-texte"),
-      recents: $("recents"),
+      recents: $("recents"), modifier: $("btn-recents-modifier"), effacer: $("btn-recents-effacer"),
       raccourci: $("btn-raccourci"), raccourciDetail: $("raccourci-detail"),
       guide: $("envoyer-guide"), guideDefile: $("guide-defile"), guideRetour: $("btn-guide-retour"),
       bandeau: $("guide-bandeau"), nomTV: $("guide-nom-tv"),
@@ -45,6 +46,7 @@ export class OngletEnvoyer {
     this.idTV = null;
     this.etat = null;        // dernier `liens` de la TV active
     this.recents = [];
+    this.edition = false;    // « Modifier » : boutons « Retirer » à la place de « Renvoyer »
     this.copiee = null;      // dernière adresse du raccourci copiée sur ce téléphone (TV active)
     this.envois = new Map(); // url → { phase: "envoi" | "attente_vpn" | "expire", minuterie }
     this.lignes = new Map(); // url → ligne des récents
@@ -59,6 +61,8 @@ export class OngletEnvoyer {
     e.raccourci.addEventListener("click", () => { this.vibrer(); this.ouvrirGuide(); });
     e.guideRetour.addEventListener("click", () => { this.vibrer(); this.fermerGuide(); });
     e.copier.addEventListener("click", () => this.copier());
+    e.modifier.addEventListener("click", () => { this.vibrer(); this.basculerEdition(); });
+    e.effacer.addEventListener("click", () => this.effacerTout());
     e.btnActiver.addEventListener("click", () => this.activer());
     e.allumer.addEventListener("click", () => this.choixVpn({ vpnDabord: true }));
     e.sansVpn.addEventListener("click", () => this.choixVpn({ sansVpn: true }));
@@ -80,6 +84,7 @@ export class OngletEnvoyer {
     this.idTV = idTV;
     this.etat = null;
     this.recents = [];
+    this.edition = false;
     this.copiee = null;
     for (const x of this.envois.values()) clearTimeout(x.minuterie);
     this.envois.clear();
@@ -107,7 +112,10 @@ export class OngletEnvoyer {
     this.demanderEtat();
   }
 
-  masquer() { this.visible = false; }
+  masquer() {
+    this.visible = false;
+    if (this.edition) { this.edition = false; this.rendreRecents(); }
+  }
 
   /** Nouvelle connexion : l'abonnement à `liens` vaut pour une connexion, renouvelé si l'onglet est ouvert. */
   surConnexion() {
@@ -288,13 +296,56 @@ export class OngletEnvoyer {
 
   ajouterRecent(entree) {
     this.recents = ajouterRecent(this.recents, entree);
-    if (this.idTV) stockage.ecrireReglage(`liens:${this.idTV}`, this.recents).catch(() => {});
+    this.garderRecents();
     this.rendreRecents(entree.url);
+  }
+
+  garderRecents() {
+    if (this.idTV) stockage.ecrireReglage(`liens:${this.idTV}`, this.recents).catch(() => {});
+  }
+
+  /** « Modifier » / « OK ». */
+  basculerEdition(oui = !this.edition) {
+    this.edition = oui && this.recents.length > 0;
+    this.rendreRecents();
+  }
+
+  /** Retire un lien des récents (gardés sur ce téléphone seulement). */
+  retirer(url) {
+    this.vibrer();
+    this.recents = retirerRecent(this.recents, url);
+    this.garderRecents();
+    if (!this.recents.length) this.edition = false;
+    this.rendreRecents();
+  }
+
+  /** « Tout effacer », après confirmation. */
+  async effacerTout() {
+    this.vibrer();
+    const n = this.recents.length;
+    if (!n) return;
+    const ok = await this.confirmer({
+      titre: "Effacer les liens récents ?",
+      texte: n === 1 ? "Le lien envoyé sera retiré de ce téléphone." : `Les ${n} liens envoyés seront retirés de ce téléphone.`,
+      ok: "Effacer", annuler: "Annuler",
+    });
+    if (!ok) return;
+    this.recents = [];
+    this.garderRecents();
+    this.edition = false;
+    this.rendreRecents();
+    this.annoncer("Liens récents effacés");
   }
 
   rendreRecents(nouveau = null) {
     this.lignes.clear();
-    if (!this.recents.length) {
+    const vide = !this.recents.length;
+    if (vide) this.edition = false;
+    this.el.modifier.hidden = vide;
+    this.el.modifier.textContent = this.edition ? "OK" : "Modifier";
+    this.el.modifier.setAttribute("aria-pressed", String(this.edition));
+    this.el.effacer.hidden = !this.edition;
+    if (vide) {
       this.el.recents.replaceChildren(h("p", { class: "recents-vide" }, "Les liens envoyés sur la TV s'afficheront ici."));
       return;
     }
@@ -304,9 +355,10 @@ export class OngletEnvoyer {
       const libelle = libelleLien(e);
       const pastille = h("span", { class: "recent-icone", "aria-hidden": "true" }, (hote.match(/[\p{L}\p{N}]/u)?.[0] || "?").toUpperCase());
       pastille.style.setProperty("--teinte", String(teinteDe(hote)));
-      const renvoyer = h("button", { type: "button", class: "btn-ligne", "aria-label": `Renvoyer ${libelle}` },
-        icone("i-renvoyer"), "Renvoyer");
-      renvoyer.addEventListener("click", () => this.envoyer(e.url, { titre: e.titre }));
+      const renvoyer = this.edition
+        ? h("button", { type: "button", class: "btn-ligne btn-retirer", "aria-label": `Retirer ${libelle}` }, icone("i-croix"), "Retirer")
+        : h("button", { type: "button", class: "btn-ligne", "aria-label": `Renvoyer ${libelle}` }, icone("i-renvoyer"), "Renvoyer");
+      renvoyer.addEventListener("click", () => (this.edition ? this.retirer(e.url) : this.envoyer(e.url, { titre: e.titre })));
       const ligne = h("div", { class: e.url === nouveau ? "recent nouveau" : "recent" },
         pastille,
         h("span", { class: "recent-textes" },

@@ -510,7 +510,7 @@ function majPastille(texteEtat = TEXTES_ETAT[ctrl.etat] || "") {
 
 const applis = new OngletApplis({ ctrl, annoncer, vibrer });
 const reglages = new OngletReglages({ ctrl, annoncer, vibrer });
-const envoyer = new OngletEnvoyer({ ctrl, annoncer, vibrer });
+const envoyer = new OngletEnvoyer({ ctrl, annoncer, vibrer, confirmer: alerte });
 
 function ongletsDisponibles() {
   const f = ctrl.fonctions;

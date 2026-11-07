@@ -230,8 +230,12 @@
             </form>
           </section>
           <section class="groupe" aria-labelledby="envoyer-titre-recents">
-            <h3 id="envoyer-titre-recents" class="groupe-titre">Récents</h3>
+            <div class="groupe-entete">
+              <h3 id="envoyer-titre-recents" class="groupe-titre">Récents</h3>
+              <button type="button" id="btn-recents-modifier" class="btn-titre" aria-pressed="false" hidden>Modifier</button>
+            </div>
             <div id="recents" class="groupe-carte liste-recents"></div>
+            <button type="button" id="btn-recents-effacer" class="btn-effacer-tout" hidden><svg class="ic"><use href="#i-croix"/></svg>Tout effacer</button>
           </section>
           <section class="groupe" aria-labelledby="envoyer-titre-safari">
             <h3 id="envoyer-titre-safari" class="groupe-titre">Depuis Safari</h3>

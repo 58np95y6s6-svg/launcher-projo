@@ -98,6 +98,10 @@ async function serie(modele) {
   await page.locator("#toast.visible", { hasText: "Envoyé" }).waitFor();
   await capture("envoyer-envoye");
   await cacherToast();
+  // Modifier les récents : « Retirer » sur chaque lien, « Tout effacer » sous la liste
+  await page.click("#btn-recents-modifier");
+  await capture("envoyer-modifier");
+  await page.click("#btn-recents-modifier");
   await salon.liens({ vpn: false });
   await page.locator('#etat-vpn[data-etat="coupe"]').waitFor();
   await page.click('.recent:has-text("Les grands documentaires") .btn-ligne');

@@ -541,6 +541,10 @@ résultats, récents) et `remote-pwa/js/envoyer.js` (onglet). Précisions de com
   `…/les-grands-documentaires` → « Les grands documentaires »), sinon l'adresse sans `https://` ni
   `www.` (plus parlant que l'hôte seul quand plusieurs liens viennent du même site) ; détail
   « hôte · ouvert dans X · date » ; bouton « Renvoyer ». Un lien renvoyé remonte en tête, sans doublon.
+- **Modifier les récents** : « Modifier » (à droite du titre « Récents ») remplace « Renvoyer » par
+  « Retirer » sur chaque lien et affiche « Tout effacer » sous la liste (confirmation « Effacer les liens
+  récents ? ») ; « OK » revient à l'affichage normal. Rien n'est envoyé à la TV : les récents ne sont
+  gardés que sur le téléphone.
 - **« Depuis Safari »** → écran « Bouton Partager » (flèche de retour ; toucher l'onglet « Envoyer »
   y ramène aussi) : les 4 étapes du raccourci et `raccourci.adresse` avec « Copier » ; sans adresse,
   bouton « Activer sur la TV » (`reglage {cle: "liens_raccourci", valeur: true}`) ; si un `liens`

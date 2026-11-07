@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import "../../remote-pwa/config.js";
 import {
   lireLien, urlValable, hoteDe, adresseLisible, titreDeduit, libelleLien, teinteDe, champsLienOuvrir,
-  normaliserLiens, normaliserLienOuvert, etatVpn, interpreterResultat, normaliserRecents, ajouterRecent,
+  normaliserLiens, normaliserLienOuvert, etatVpn, interpreterResultat, normaliserRecents, ajouterRecent, retirerRecent,
   dateRelative, detailRecent, adresseAChange, MAX_RECENTS,
 } from "../../remote-pwa/js/liens.js";
 import { decoder } from "../../remote-pwa/js/codec.js";
@@ -132,6 +132,14 @@ test("résultat d'un envoi : confirmation, feuille VPN, attente, messages d'erre
   }
   assert.equal(textes.size, 6, "un message propre à chaque raison connue");
   assert.match(interpreterResultat({ url: "u", ok: false, raison: "aucune_appli" }, o).texte, /Aucune appli de la TV/);
+});
+
+test("récents : retirer un lien garde l'ordre des autres ; lien absent : rien ne change", () => {
+  const l = [{ url: "https://a.fr/1", date: 3 }, { url: "https://a.fr/2", date: 2 }, { url: "https://a.fr/3", date: 1 }];
+  assert.deepEqual(retirerRecent(l, "https://a.fr/2").map((e) => e.url), ["https://a.fr/1", "https://a.fr/3"]);
+  assert.deepEqual(retirerRecent(l, "https://autre.fr/"), l);
+  assert.deepEqual(retirerRecent([], "https://a.fr/1"), []);
+  assert.equal(l.length, 3, "liste d'origine intacte");
 });
 
 test("récents : en tête, sans doublon, 20 au plus, titre gardé, données invalides écartées", () => {

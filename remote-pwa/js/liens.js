@@ -213,6 +213,11 @@ export function ajouterRecent(liste, entree, max = MAX_RECENTS) {
   return normaliserRecents([e, ...liste.filter((x) => x.url !== entree.url)], max);
 }
 
+/** Lien retiré des récents (les autres gardent leur ordre). */
+export function retirerRecent(liste, url) {
+  return liste.filter((e) => e.url !== url);
+}
+
 const jour = (t) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
 const FORMAT_HEURE = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
 const FORMAT_JOUR = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
