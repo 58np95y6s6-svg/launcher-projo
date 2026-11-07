@@ -22,7 +22,8 @@ data class UpdateInfo(
 
 /**
  * Mise à jour de Projo depuis GitHub Releases, sans Downloader :
- *  - version de TEST installée → compare avec la release « test » (numéro de compilation) ;
+ *  - version de TEST installée → compare avec la release de test de l'appareil (numéro de
+ *    compilation) : « firetv » sur un Fire TV, « test » sur le projecteur ;
  *  - version STABLE installée → compare avec la dernière release « v… ».
  * L'installation passe par la fenêtre « Installer ? » d'Android (obligatoire).
  */
@@ -43,15 +44,18 @@ class UpdateManager(private val context: Context) {
     /** true pour une version de test (nom « test-NN »). */
     val canalTest: Boolean = versionInstallee.startsWith("test") || versionInstallee.endsWith("-dev")
 
-    val versionAffichee: String = if (canalTest) "Fire TV #$codeInstalle" else versionInstallee
+    /** Release de test suivie : même code sur les deux appareils, une release chacun. */
+    private val canal: CanalTest = CanalTest.pour(FireTv.estFireTv(context))
+
+    val versionAffichee: String = if (canalTest) "${canal.nom} #$codeInstalle" else versionInstallee
 
     /** À appeler hors du thread principal. */
     fun check(): UpdateInfo {
-        // Version Fire TV : sa propre release « firetv » (branche claude/launcher-firetv)
-        val url = if (canalTest) "$API/releases/tags/$TAG_TEST" else "$API/releases/latest"
+        // Fire TV : release « firetv » (branche claude/launcher-firetv) ; projecteur : « test » (claude/launcher-projo)
+        val url = if (canalTest) "$API/releases/tags/${canal.tag}" else "$API/releases/latest"
         val json = JSONObject(lireTexte(url))
         val assets = json.optJSONArray("assets")
-        val nomFichier = if (canalTest) APK_TEST else "launcher.apk"
+        val nomFichier = if (canalTest) canal.apk else "launcher.apk"
         var lien: String? = null
         if (assets != null) {
             for (i in 0 until assets.length()) {
@@ -166,8 +170,15 @@ class UpdateManager(private val context: Context) {
 
     companion object {
         private const val API = "https://api.github.com/repos/58np95y6s6-svg/launcher-projo"
-        /** Canal de test de cette branche : la version Fire TV a sa propre release. */
-        private const val TAG_TEST = "firetv"
-        private const val APK_TEST = "launcher-firetv.apk"
+    }
+}
+
+/** Release de test d'un appareil : son tag GitHub, son APK et le nom affiché (« Fire TV #319 »). */
+enum class CanalTest(val tag: String, val apk: String, val nom: String) {
+    FIRE_TV("firetv", "launcher-firetv.apk", "Fire TV"),
+    PROJECTEUR("test", "launcher-test.apk", "test");
+
+    companion object {
+        fun pour(fireTv: Boolean): CanalTest = if (fireTv) FIRE_TV else PROJECTEUR
     }
 }
