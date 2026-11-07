@@ -1578,8 +1578,12 @@ private fun PiluleVpn(v: EtatVpnTv, k: Float, modifier: Modifier) {
         Row(Modifier.fillMaxHeight().padding(start = 18.mq, end = 22.mq), verticalAlignment = Alignment.CenterVertically) {
             Spacer(
                 Modifier.size(13.mq).drawBehind {
+                    // Halo (14 px de flou) puis anneau de 4 px, comme la maquette
                     val r = size.minDimension / 2f
-                    drawCircle(point.copy(alpha = 0.16f), radius = r + 9f * k)
+                    drawCircle(
+                        Brush.radialGradient(listOf(point.copy(alpha = 0.45f), point.copy(alpha = 0f)), center = center, radius = r + 12f * k),
+                        radius = r + 12f * k,
+                    )
                     drawCircle(point.copy(alpha = 0.18f), radius = r + 4f * k)
                     drawCircle(point, radius = r)
                 },

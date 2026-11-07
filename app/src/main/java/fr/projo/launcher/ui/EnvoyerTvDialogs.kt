@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -48,8 +51,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import android.view.WindowManager
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -255,6 +260,8 @@ private fun BandeauHabille(b: BandeauLien, modifier: Modifier, progression: () -
         modifier
             .testTag("bandeau-lien")
             .widthIn(min = 360.u, max = 760.u)
+            // Largeur du texte (la barre suit), pas toute la largeur permise
+            .width(IntrinsicSize.Max)
             .fondDialogue(h)
             .padding(start = 16.u, end = 22.u, top = 12.u, bottom = 10.u),
     ) {
@@ -342,15 +349,19 @@ private fun GardeFouGalerie(q: QuestionVpn, onAllumer: (() -> Unit)?, onSansVpn:
         val k = pxMaquette()
         val focus = remember { FocusRequester() }
         PremierFocus(focus)
+        // Voile de la maquette (sombre à 35 %) plutôt que celui, plus fort, des dialogues d'Android
+        val fenetre = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            fenetre?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            fenetre?.setDimAmount(0.35f)
+        }
         Column(
             Modifier
                 .testTag("garde-fou")
                 .width(880.mq)
+                // Verre laiteux opaque : sans flou d'arrière-plan, l'accueil ne doit pas transparaître
                 .verreGalerie(k, 40f, fond = { w, h ->
-                    degradeCss(
-                        160f, w, h,
-                        0f to Color.White.copy(alpha = 0.96f), 0.55f to Color(0xFFF1F2F5).copy(alpha = 0.94f), 1f to Color(0xFFF6F7F9).copy(alpha = 0.95f),
-                    )
+                    degradeCss(160f, w, h, 0f to Color(0xFFFBFBFC), 0.55f to Color(0xFFEFF0F3), 1f to Color(0xFFF4F5F7))
                 }, lisere = Color.White.copy(alpha = 0.75f))
                 .padding(start = 56.mq, end = 56.mq, top = 52.mq, bottom = 50.mq),
             horizontalAlignment = Alignment.CenterHorizontally,
