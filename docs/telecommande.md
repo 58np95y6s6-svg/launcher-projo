@@ -305,6 +305,177 @@ Précisions de comportement (le protocole ci-dessus ne change pas) :
   avec la télécommande », jusqu'à la fin de la connexion (iBiTV redémarre après l'installation).
 - Journaux de la PWA : `appli_ouverte`, `appli_refusee`, `reglage <cle>`.
 
+## Envoyer sur la TV : liens (version 1, ajout compatible)
+
+Le téléphone envoie un lien (page web, vidéo, YouTube…) que la TV ouvre dans la bonne appli. Avec
+« Seulement avec le VPN », la TV n'ouvre un lien que si un VPN est actif sur elle (VYPN, Proton VPN,
+WireGuard… n'importe lequel). Mêmes règles que le pilotage : nouveaux types de messages de la
+version 1, acceptés seulement d'un téléphone **authentifié** ; une TV qui ne les connaît pas les
+ignore, une PWA qui ne voit pas `liens` annoncé n'affiche pas l'onglet.
+
+### Annonce
+
+`hello` de la TV : `fonctions` contient `"liens"` → onglet « Envoyer » dans la PWA.
+
+### Messages
+
+Téléphone → TV :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `liens_etat` | — | demande l'état, et abonne ce téléphone à ses changements (pour cette connexion) |
+| `lien_ouvrir` | `url`, `titre`?, `sansVpn`?, `vpnDabord`? | ouvre le lien sur la TV |
+
+TV → téléphone :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `liens` | `vpn`, `seulementVpn`, `appliPages`, `appliVpn`?, `raccourci`? | état |
+| `lien_ouvert` | `url`, `ok`, `ouvertDans`?, `raison`? | résultat d'un `lien_ouvrir` |
+
+`liens` :
+
+- `vpn` (booléen) : un VPN est actif sur la TV (réseau Android de type VPN, quelle que soit l'appli).
+- `seulementVpn` (booléen) : réglage « Seulement avec le VPN ».
+- `appliPages` (chaîne) : nom de l'appli qui ouvrira les pages web (« VYPN », « Silk »…) ; `""` si aucune.
+- `appliVpn` (chaîne, facultatif) : nom de l'appli VPN que la TV sait ouvrir (la première installée
+  de la liste de « Côté TV ») ; absent s'il n'y en a pas.
+- `raccourci` (objet, facultatif) : `{adresse}`, l'URL complète à mettre dans le raccourci iOS, par
+  ex. `http://192.168.1.42:8642/envoyer?c=K7Q2M9XD`. Présent seulement si le réglage
+  `liens_raccourci` est activé **et** que la TV a une adresse IPv4 sur le réseau local.
+
+La TV envoie `liens` après chaque `liens_etat`, puis d'elle-même quand le VPN s'allume ou se coupe,
+quand un réglage du groupe « Envoyer sur la TV » change ou quand son adresse change : au plus un envoi
+toutes les 300 ms (comme `reglages`), aux seuls téléphones abonnés.
+
+`lien_ouvrir` :
+
+- `url` : chaîne `http://` ou `https://` avec un hôte, 2 048 caractères au plus ; sinon
+  `lien_ouvert {ok: false, raison: "invalide"}`. La TV n'ouvre jamais d'autre schéma (`file:`,
+  `intent:`, `javascript:`, `content:`…).
+- `titre` (facultatif, 200 caractères au plus, caractères de contrôle retirés) : montré sur la TV au
+  lieu de l'hôte.
+- `sansVpn: true` : ouvre même si le VPN est coupé (choix explicite « Ouvrir sans VPN »).
+- `vpnDabord: true` : si le VPN est coupé, la TV ouvre l'appli VPN (`appliVpn`) et attend au plus
+  60 s qu'un VPN s'allume, puis ouvre le lien.
+
+`lien_ouvert` (`url` : celle de la demande) :
+
+- `ok: true`, `ouvertDans` : nom de l'appli qui s'ouvre.
+- `ok: false`, `raison` :
+  - `vpn_coupe` : « Seulement avec le VPN » est activé, le VPN est coupé, sans `sansVpn` ni
+    `vpnDabord` : rien ne s'ouvre ;
+  - `attente_vpn` : (`vpnDabord`) l'appli VPN s'ouvre sur la TV ; un second `lien_ouvert` suivra,
+    `ok: true` dès que le VPN s'allume, ou `raison: "delai_vpn"` après 60 s ;
+  - `pas_d_appli_vpn` : `vpnDabord`, mais aucune appli VPN connue n'est installée ;
+  - `remplace` : un autre lien attendait le VPN et le remplace (une seule attente à la fois) ;
+  - `invalide` : URL refusée ;
+  - `aucune_appli` : aucune appli de la TV ne sait ouvrir ce lien.
+
+### Ouverture sur la TV
+
+Mêmes règles pour un lien du téléphone et un lien du raccourci iOS :
+
+1. **YouTube** (`youtube.com`, `www.` / `m.youtube.com`, `youtu.be`) → iBiTube (`com.ibi.ibitube`),
+   sinon SmartTube (`com.teamsmart.videomanager.tv`), sinon YouTube pour TV
+   (`com.google.android.youtube.tv`, `com.amazon.firetv.youtube`).
+2. **Netflix** (`netflix.com`) → `com.netflix.ninja` ; **Prime Video** (`primevideo.com`,
+   `amazon.<pays>/gp/video/…`) → `com.amazon.firebat`, `com.amazon.avod.thirdpartyclient`,
+   `com.amazon.avod` ; **Disney+** (`disneyplus.com`) → `com.disney.disneyplus`.
+3. **Vidéo directe** (chemin en `.mp4`, `.m4v`, `.mkv`, `.webm`, `.mov`, `.avi`, `.ts`, `.m3u8`,
+   `.mpd`) → VLC (`org.videolan.vlc`), Kodi (`org.xbmc.kodi`), MX Player (`com.mxtech.videoplayer.ad`),
+   sinon toute appli qui ouvre `video/*`.
+4. **Page web** (tout le reste, et les cas 1 à 3 quand aucune appli ne prend le lien) → appli du
+   réglage `liens_pages`. `auto` (par défaut) : VYPN (`net.vypn.app`, ou une appli nommée « VYPN »),
+   Silk (`com.amazon.cloud9`), TV Bro (`com.phlox.tvwebbrowser`), Firefox (`org.mozilla.tv.firefox`,
+   `org.mozilla.firefox`), Chrome (`com.android.chrome`), puis toute appli qui ouvre une page `https`,
+   iBiTV exclue.
+
+Chaque appli reçoit `ACTION_VIEW` avec l'URL (et le type `video/*` au cas 3), limité à son paquet ;
+une appli qui ne déclare pas cette ouverture est sautée. Avant d'ouvrir, si iBiTV est à l'écran, un
+bandeau s'affiche environ 1 s : « <titre ou hôte> · envoyé par <nom du téléphone, ou « l'iPhone »
+pour le raccourci> — Ouverture dans <appli>… ». La musique en arrière-plan se met en pause, comme à
+l'ouverture d'une appli vidéo.
+
+### Raccourci iOS (bouton Partager de Safari)
+
+Si `liens_raccourci` est activé, le petit serveur HTTP de la TV (port 8642, celui des puces NFC,
+démarré dès qu'une des deux fonctions est activée) accepte :
+
+- `POST /envoyer?c=<code>`, corps JSON `{"url": "…", "titre"?: "…"}` ou corps texte contenant
+  seulement l'URL ;
+- `GET /envoyer?c=<code>&url=<URL encodée>`.
+
+Code : 8 caractères (lettres A–Z sans I ni O, chiffres 2–9), propre au raccourci (différent de celui
+des puces NFC), comparé en temps constant ; au-delà de 10 codes faux en une minute, tout est refusé
+jusqu'à la fin de la minute. Réponse `text/plain; charset=utf-8`, que le raccourci montre en
+notification :
+
+| Statut | Texte |
+|---|---|
+| 200 | « Envoyé sur <nom de la TV> · ouverture dans <appli> » |
+| 202 | « Le VPN de la TV est coupé : réponds sur la TV » (garde-fou ci-dessous) |
+| 400 | « Lien invalide » |
+| 403 | « Code incorrect » |
+| 404 | « Envoi depuis l'iPhone désactivé sur la TV » (réglage coupé ; même réponse pour toute autre adresse) |
+| 422 | « Aucune appli de la TV ne sait ouvrir ce lien » |
+
+**Garde-fou à l'écran** (lien du raccourci, « Seulement avec le VPN », VPN coupé) : iBiTV passe au
+premier plan et demande « Le VPN de la TV est coupé » : « Allumer le VPN et ouvrir » (seulement si
+`appliVpn` existe ; même attente de 60 s que `vpnDabord`), « Ouvrir sans VPN », « Annuler ».
+
+### Réglages (groupe « Envoyer sur la TV »)
+
+Dans `reglages` (télécommande) et dans Réglages de la TV :
+
+| `cle` | Type | Effet |
+|---|---|---|
+| `liens_seulement_vpn` | interrupteur | n'ouvrir les liens que si un VPN est actif (**activé** par défaut) |
+| `liens_pages` | choix : `auto` puis les applis installées qui ouvrent une page `https` (`id` = paquet) | appli des pages web |
+| `liens_raccourci` | interrupteur | accepter les liens du bouton Partager de l'iPhone (**désactivé** par défaut) |
+| `liens_code` | boutons `nouveau` (« Nouveau code ») | nouveau code du raccourci : l'ancien ne marche plus |
+
+### Journaux
+
+Types d'événements seulement : « lien envoyé (téléphone | raccourci) », « lien ouvert », « lien refusé
+<raison> ». Jamais l'URL, le titre ni le code.
+
+### Côté TV : précisions
+
+- **VPN actif** : un réseau de `ConnectivityManager` a le transport `TRANSPORT_VPN` ; suivi par
+  `registerNetworkCallback` (renvoi de `liens`, pastille de l'accueil).
+- **Appli VPN** (`appliVpn`, « Allumer le VPN ») : première installée de VYPN (`net.vypn.app`),
+  Proton VPN (`ch.protonvpn.android`), WireGuard (`com.wireguard.android`), Cloudflare WARP
+  (`com.cloudflare.onedotonedotonedotone`), NordVPN (`com.nordvpn.android`), Surfshark
+  (`com.surfshark.vpnclient.android`), ExpressVPN (`com.expressvpn.vpn`), Windscribe
+  (`com.windscribe.vpn`), Mullvad (`net.mullvad.mullvadvpn`) ; ouverte comme une appli.
+- **Pastille VPN** (design Galerie, en-tête, à gauche de Réglages) : verte « VPN » quand un VPN est
+  actif ; rouge « VPN coupé » si « Seulement avec le VPN » est activé et le VPN coupé ; cachée sinon.
+  OK dessus ouvre l'appli VPN.
+
+### Côté téléphone (PWA)
+
+- **Onglet « Envoyer »** (icône écran + flèche), entre « Applis » et « Réglages », si `liens` est
+  annoncé. `liens_etat` part à chaque ouverture de l'onglet, et à chaque reconnexion s'il est ouvert.
+- **Champ** + « Coller » (presse-papiers ; si l'accès est refusé, invitation à coller à la main).
+  « Envoyer sur la TV » n'est actif que pour une URL valable ; un domaine sans schéma est complété
+  (`arte.tv/x` → `https://arte.tv/x`).
+- **Ligne d'état** sous le bouton : « VPN de la TV actif · les pages s'ouvrent dans X », ou « VPN de
+  la TV coupé » (avec « · la TV demandera de l'allumer » si `seulementVpn`).
+- **Résultat** : `ok` → « Envoyé sur <TV> · ouverture dans X », champ vidé, lien en tête des récents ;
+  `vpn_coupe` → feuille « Le VPN de la TV est coupé » : « Allumer le VPN (<appliVpn>) et ouvrir »
+  (renvoi avec `vpnDabord`, seulement si `appliVpn`), « Ouvrir sans VPN » (renvoi avec `sansVpn`),
+  « Annuler » ; `attente_vpn` → « Allume le VPN sur la TV : le lien s'ouvrira ensuite » ; `delai_vpn`,
+  `pas_d_appli_vpn`, `remplace`, `invalide`, `aucune_appli` → message clair ; sans réponse en 6 s :
+  erreur.
+- **Récents** : les 20 derniers liens de chaque TV (titre ou hôte ; « hôte · ouvert dans X · date » ;
+  bouton « Renvoyer ») ; un lien renvoyé remonte en tête, sans doublon. Gardés sur le téléphone.
+- **« Depuis Safari »** → écran « Bouton Partager » : les 4 étapes du raccourci et `raccourci.adresse`
+  avec « Copier » ; sans adresse, bouton « Activer sur la TV » (`reglage {cle: "liens_raccourci",
+  valeur: true}`). Si l'adresse a changé depuis la dernière copie (gardée par TV) : bandeau
+  « L'adresse de la TV a changé : mets à jour ton raccourci ».
+- Journaux de la PWA : `lien_envoye`, `lien_refuse <raison>` (jamais l'URL).
+
 ## Côté TV : injection
 
 - **Texte** : clavier iBiTV (IME, `remote/ClavierTelecommande`). Il remplace le contenu du champ actif via `InputConnection` (`setComposingText` / `commitText`, `deleteSurroundingText`) et envoie l'action de l'éditeur pour `submit`. Il détecte le focus : `onStartInput` donne le type du champ via `EditorInfo.inputType` / `imeOptions`, et `onFinishInput` envoie `focus_lost`.
