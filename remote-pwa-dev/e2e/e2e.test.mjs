@@ -689,7 +689,8 @@ test("envoyer : effacer les récents (retirer un lien, tout effacer avec confirm
   assert.equal(await page.textContent("#btn-recents-modifier"), "Modifier");
   assert.ok(await page.isHidden("#btn-recents-effacer"));
   assert.equal(await page.locator(".recent .btn-retirer").count(), 0);
-  // Réouverture : le lien retiré ne revient pas
+  // Réouverture : le lien retiré ne revient pas (écriture sur le téléphone terminée)
+  await pause(300);
   await page.close();
   page = await tel.ouvrir();
   await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });

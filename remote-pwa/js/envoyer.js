@@ -300,8 +300,10 @@ export class OngletEnvoyer {
     this.rendreRecents(entree.url);
   }
 
+  /** Écrit les récents de la TV active ; la promesse se résout une fois l'écriture terminée. */
   garderRecents() {
-    if (this.idTV) stockage.ecrireReglage(`liens:${this.idTV}`, this.recents).catch(() => {});
+    if (!this.idTV) return Promise.resolve();
+    return stockage.ecrireReglage(`liens:${this.idTV}`, this.recents).catch(() => {});
   }
 
   /** « Modifier » / « OK ». */
@@ -331,9 +333,10 @@ export class OngletEnvoyer {
     });
     if (!ok) return;
     this.recents = [];
-    this.garderRecents();
     this.edition = false;
     this.rendreRecents();
+    // Confirmation seulement une fois l'effacement enregistré (appli fermée juste après : rien ne revient)
+    await this.garderRecents();
     this.annoncer("Liens récents effacés");
   }
 
