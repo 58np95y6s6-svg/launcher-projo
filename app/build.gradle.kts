@@ -24,6 +24,8 @@ android {
         // x86_64 (émulateurs), ~25 Mo de bibliothèques natives en moins.
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            // Test de démarrage de la CI dans un émulateur x86 (-PabiEmulateur=x86) : jamais publié
+            providers.gradleProperty("abiEmulateur").orNull?.let { abiFilters += it.split(",") }
         }
         // Clé TMDB du design « Studio » (suggestions) : secret GitHub TMDB_KEY, jamais dans le
         // dépôt ; chaîne vide si absente (la clé peut aussi être saisie dans Réglages)
