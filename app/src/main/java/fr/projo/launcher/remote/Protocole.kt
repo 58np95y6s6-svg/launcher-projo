@@ -1,5 +1,6 @@
 package fr.projo.launcher.remote
 
+import fr.projo.launcher.liens.ResultatLien
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -41,6 +42,12 @@ object Protocole {
 
     /** Fonctions annoncées dans le `hello` de la TV quand le pilotage est disponible. */
     val FONCTIONS = listOf("apps", "reglages")
+
+    /** Fonction annoncée quand « Envoyer sur la TV » est disponible (onglet « Envoyer » de la PWA). */
+    const val FONCTION_LIENS = "liens"
+
+    /** `lien_ouvert.url` : l'URL de la demande, coupée à cette longueur (message sous la limite de la PWA). */
+    const val URL_REPONSE_MAX = 8_192
 
     /** `apps_images` : identifiants examinés au plus (les suivants sont ignorés). */
     const val IDS_IMAGES_MAX = 100
@@ -119,6 +126,27 @@ object Protocole {
         message("app_image").put("id", image.id).put("maj", image.maj).put("forme", image.forme).put("img", image.img).toString()
 
     fun appOuverte(id: String, ok: Boolean): String = message("app_ouverte").put("id", id).put("ok", ok).toString()
+
+    // ------------------------------------------------------------------ envoyer sur la TV (liens)
+
+    fun liens(e: EtatLiens): String {
+        val m = message("liens").put("vpn", e.vpn).put("seulementVpn", e.seulementVpn).put("appliPages", e.appliPages)
+        e.appliVpn?.let { m.put("appliVpn", it) }
+        e.raccourci?.let { m.put("raccourci", JSONObject().put("adresse", it)) }
+        return m.toString()
+    }
+
+    /** `lien_ouvert` : [url] = celle de la demande. */
+    fun lienOuvert(url: String, r: ResultatLien): String {
+        val m = message("lien_ouvert").put("url", url.take(URL_REPONSE_MAX))
+        when (r) {
+            is ResultatLien.Ouvert -> m.put("ok", true).put("ouvertDans", r.appli)
+            is ResultatLien.Refuse -> m.put("ok", false).put("raison", r.raison)
+            // Le téléphone ne reçoit jamais de garde-fou (réservé au raccourci) : même sens que vpn_coupe
+            ResultatLien.Question -> m.put("ok", false).put("raison", ResultatLien.VPN_COUPE)
+        }
+        return m.toString()
+    }
 
     fun reglages(items: List<ReglageTv>): String {
         val tableau = JSONArray()

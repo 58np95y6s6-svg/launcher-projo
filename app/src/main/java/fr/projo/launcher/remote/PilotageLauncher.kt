@@ -22,6 +22,9 @@ import fr.projo.launcher.data.LauncherPrefs
 import fr.projo.launcher.data.PrefsState
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
+import fr.projo.launcher.liens.EnvoiTv
+import fr.projo.launcher.liens.Liens
+import fr.projo.launcher.liens.OuvertureLiens
 import fr.projo.launcher.system.DeviceStatus
 import fr.projo.launcher.system.SystemActions
 import fr.projo.launcher.ui.Design
@@ -228,6 +231,7 @@ class PilotageLauncher(
         ReglageNouveautes.charger(app)
         DefilementGalerie.charger(app)
         ModeAmbiance.charger(app)
+        EnvoiTv.charger(app)
         val vm = modele()
         val p = prefsCourantes ?: vm?.ui?.value?.prefs
         val m = vm?.maj?.value
@@ -253,6 +257,12 @@ class PilotageLauncher(
             decalages = ModeAmbiance.decalagesPossibles,
             decalageConseille = ModeAmbiance.DECALAGE_CONSEILLE,
             maj = maj,
+            envoi = EtatEnvoi(
+                seulementVpn = EnvoiTv.seulementVpn,
+                pages = EnvoiTv.pages,
+                navigateurs = OuvertureLiens.ordrePages(app, Liens.PAGES_AUTO).map { (paquet, nom) -> OptionReglage(paquet, nom) },
+                raccourci = EnvoiTv.raccourci,
+            ),
         )
     }
 
@@ -301,6 +311,10 @@ class PilotageLauncher(
                 ReglagesTv.BOUTON_VERIFIER -> vm?.checkUpdate(force = true)
                 ReglagesTv.BOUTON_INSTALLER -> vm?.installUpdate()
             }
+            ReglagesTv.LIENS_SEULEMENT_VPN -> if (v is Boolean) EnvoiTv.ecrireSeulementVpn(app, v)
+            ReglagesTv.LIENS_PAGES -> if (v is String) EnvoiTv.ecrirePages(app, v)
+            ReglagesTv.LIENS_RACCOURCI -> if (v is Boolean) EnvoiTv.ecrireRaccourci(app, v)
+            ReglagesTv.LIENS_CODE -> if (v == ReglagesTv.BOUTON_NOUVEAU_CODE) EnvoiTv.nouveauCode(app)
             ReglagesTv.SYSTEME -> when (v) {
                 ReglagesTv.BOUTON_WIFI -> systeme.openWifi()
                 ReglagesTv.BOUTON_BLUETOOTH -> systeme.openBluetooth()

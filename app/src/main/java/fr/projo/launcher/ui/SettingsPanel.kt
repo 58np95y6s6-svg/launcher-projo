@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.testTag
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.puces.PucesNfc
+import fr.projo.launcher.liens.EnvoiTv
 import fr.projo.launcher.data.CleTmdb
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
@@ -82,6 +83,8 @@ class SettingsActions(
     val ambiance: () -> Unit = {},
     /** Puces NFC : une puce touchée avec le téléphone ouvre une app sur la TV. */
     val pucesNfc: () -> Unit = {},
+    /** Envoyer sur la TV : liens du téléphone, VPN, bouton Partager de l'iPhone. */
+    val envoyerTv: () -> Unit = {},
 )
 
 /**
@@ -265,6 +268,7 @@ private fun contenuReglages(
     // Mode Ambiance : réglages enregistrés, lus une fois (résumé et source utilisée sur la tuile)
     remember { ModeAmbiance.charger(contexte) }
     remember { PucesNfc.charger(contexte) }
+    remember { EnvoiTv.charger(contexte) }
     // Studio, Galerie : résumé de la clé TMDB, relu quand elle change (dialogue ouvert depuis le panneau)
     val versionCle = CleTmdb.version
     val resumeCle = if (design.suggestionsTmdb) remember(versionCle) { resumeCleTmdb(contexte) } else ""
@@ -507,6 +511,15 @@ private fun contenuReglages(
                 teinte = Teintes.telephones,
                 onClick = actions.telephones,
             ),
+            // Envoyer sur la TV : un lien du téléphone (ou du bouton Partager de l'iPhone) s'ouvre ici
+            Reglage(
+                cle = "envoyer",
+                icone = ProjoIcons.EnvoyerTv,
+                titre = "Envoyer sur la TV",
+                valeur = resumeEnvoi(),
+                teinte = Teintes.envoyer,
+                onClick = actions.envoyerTv,
+            ),
             // Puces NFC : le téléphone touche une puce, l'app s'ouvre sur la TV
             Reglage(
                 cle = "puces",
@@ -562,6 +575,7 @@ object Teintes {
     val nouveautes = Color(0xFF14B8A6)
     val ambiance = Color(0xFFE879F9)
     val puces = Color(0xFF2DD4BF)
+    val envoyer = Color(0xFF7C5CFF)
     val appairer = Color(0xFF0EA5E9)
     val telephones = Color(0xFF22C55E)
     val clavier = Color(0xFFA855F7)
@@ -569,6 +583,13 @@ object Teintes {
     val date = Color(0xFFEF4444)
     val son = Color(0xFFF43F5E)
     val tous = Color(0xFF6B7280)
+}
+
+/** Tuile « Envoyer sur la TV » : le garde-fou du VPN et l'état du VPN, le raccourci iOS. */
+private fun resumeEnvoi(): String = buildString {
+    append(if (EnvoiTv.seulementVpn) "Seulement avec le VPN" else "Avec ou sans VPN")
+    append(if (EnvoiTv.vpnActif) " · VPN actif ✓" else " · VPN coupé")
+    if (EnvoiTv.raccourci) append(" · iPhone ✓")
 }
 
 private fun libelleSignal(n: Int) = when {
