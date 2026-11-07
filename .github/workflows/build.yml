@@ -9,6 +9,13 @@ name: Build test
 on:
   push:
     branches: ["**", "!captures/**", "!gh-pages"]
+    # Télécommande (PWA) et documentation seules : rien à recompiler côté TV (la PWA a ses
+    # propres workflows), et pas de nouvelle version de l'appli identique à la précédente
+    paths-ignore:
+      - "remote-pwa/**"
+      - "remote-pwa-dev/**"
+      - "docs/**"
+      - "**.md"
   workflow_dispatch:
 
 permissions:
