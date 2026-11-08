@@ -2,6 +2,7 @@ package fr.projo.launcher.remote
 
 import fr.projo.launcher.ambiance.CouleursNeon
 import fr.projo.launcher.ambiance.Intensite
+import fr.projo.launcher.boxscore.DecalageNba
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.liens.Liens
@@ -173,6 +174,8 @@ data class EtatTv(
     val maj: EtatMaj?,
     /** Groupe « Envoyer sur la TV ». */
     val envoi: EtatEnvoi = EtatEnvoi(),
+    /** Box score NBA : retard des scores sur le direct (secondes). */
+    val nbaDecalage: Int = DecalageNba.DEFAUT,
 )
 
 /** Réglages de la TV (version 1) : description envoyée au téléphone, validation de `reglage`. */
@@ -190,6 +193,7 @@ object ReglagesTv {
     const val LIENS_PAGES = "liens_pages"
     const val LIENS_RACCOURCI = "liens_raccourci"
     const val LIENS_CODE = "liens_code"
+    const val NBA_DECALAGE = "nba_decalage"
     const val MAJ = "maj"
     const val SYSTEME = "systeme"
 
@@ -204,6 +208,7 @@ object ReglagesTv {
     const val GROUPE_AFFICHAGE = "Affichage"
     const val GROUPE_AMBIANCE = "Mode Ambiance"
     const val GROUPE_ENVOI = "Envoyer sur la TV"
+    const val GROUPE_NBA = "Box score NBA"
     const val GROUPE_MAJ = "Mises à jour"
     const val GROUPE_SYSTEME = "Ouvrir sur la TV"
 
@@ -255,6 +260,12 @@ object ReglagesTv {
                 detail = "Retard du néon sur le son joué",
             ),
             *reglagesEnvoi(e.envoi).toTypedArray(),
+            ReglageTv.Choix(
+                NBA_DECALAGE, GROUPE_NBA, "Retard des scores",
+                valeur = (e.nbaDecalage.takeIf { it in DecalageNba.possibles } ?: DecalageNba.DEFAUT).toString(),
+                options = DecalageNba.possibles.map { OptionReglage(it.toString(), DecalageNba.nom(it)) },
+                detail = "Scores et stats retardés pour suivre la vidéo, sans spoiler",
+            ),
             reglageMaj(e.maj),
             ReglageTv.Boutons(
                 SYSTEME, GROUPE_SYSTEME, "Pages système",

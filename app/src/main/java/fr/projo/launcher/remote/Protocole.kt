@@ -1,5 +1,7 @@
 package fr.projo.launcher.remote
 
+import fr.projo.launcher.boxscore.EquipeEtat
+import fr.projo.launcher.boxscore.EtatNba
 import fr.projo.launcher.liens.ResultatLien
 import org.json.JSONArray
 import org.json.JSONObject
@@ -45,6 +47,12 @@ object Protocole {
 
     /** Fonction annoncée quand « Envoyer sur la TV » est disponible (onglet « Envoyer » de la PWA). */
     const val FONCTION_LIENS = "liens"
+
+    /** Fonction annoncée quand le box score NBA est disponible (bandeau de la PWA). */
+    const val FONCTION_NBA = "nba"
+
+    /** `nba_afficher.id`, `nba_choisir.id` (« LAL-BOS ») : longueur maximale acceptée. */
+    const val ID_MATCH_MAX = 20
 
     /** `lien_ouvert.url` : l'URL de la demande, coupée à cette longueur (message sous la limite de la PWA). */
     const val URL_REPONSE_MAX = 8_192
@@ -153,6 +161,26 @@ object Protocole {
         }
         return m.toString()
     }
+
+    // ------------------------------------------------------------------ box score NBA
+
+    /** `nba` : matchs (15 au plus), match choisi (null), format, décalage, erreur facultative. */
+    fun nba(e: EtatNba): String {
+        val matchs = JSONArray()
+        for (match in e.matchs) {
+            matchs.put(
+                JSONObject().put("id", match.id).put("ext", equipeNba(match.ext)).put("dom", equipeNba(match.dom))
+                    .put("statut", match.statut).put("direct", match.direct),
+            )
+        }
+        val m = message("nba").put("matchs", matchs).put("choisi", e.choisi ?: JSONObject.NULL)
+            .put("affichage", e.affichage.id).put("decalage", e.decalage)
+        e.erreur?.let { m.put("erreur", it) }
+        return m.toString()
+    }
+
+    private fun equipeNba(e: EquipeEtat): JSONObject =
+        JSONObject().put("code", e.code).put("nom", e.nom).put("score", e.score).put("couleur", e.couleur).put("texte", e.texte)
 
     fun reglages(items: List<ReglageTv>): String {
         val tableau = JSONArray()

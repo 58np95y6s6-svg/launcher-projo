@@ -4,9 +4,12 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.graphics.Rect
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.View
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import fr.projo.launcher.MainActivity
+import fr.projo.launcher.boxscore.BoxScoreNba
 import java.lang.ref.WeakReference
 
 /**
@@ -128,6 +131,11 @@ object HoteNavigation {
  *
  * Classe ouverte : sur Fire TV, le service d'ouverture automatique en hérite (rôle
  * « redirection » en plus du rôle « navigation »).
+ *
+ * Il porte aussi la fenêtre du box score NBA (boxscore/BoxScoreNba), qu'il soit seul ou hérité :
+ * fenêtre par-dessus l'appli au premier plan, cachée au retour sur l'accueil d'iBiTV, touches
+ * ◀ ▶ et Retour en format détails (seulement si le service reçoit les touches, comme
+ * l'ouverture automatique).
  */
 open class NavigationTelecommande : AccessibilityService() {
 
@@ -135,19 +143,33 @@ open class NavigationTelecommande : AccessibilityService() {
         super.onServiceConnected()
         HoteNavigation.attacher(this)
         Telecommande.demarrer(this)
+        BoxScoreNba.attacher(this)
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // Box score NBA : caché quand l'accueil d'iBiTV revient au premier plan
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event.packageName?.toString() == packageName &&
+            event.className?.toString() == MainActivity::class.java.name
+        ) {
+            BoxScoreNba.accueilAffiche()
+        }
+    }
+
+    /** Box score NBA en format détails : ◀ ▶ et Retour gardés (appui et relâchement) ; le reste passe. */
+    override fun onKeyEvent(event: KeyEvent?): Boolean = event != null && BoxScoreNba.touche(event)
 
     override fun onInterrupt() {}
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         HoteNavigation.detacher(this)
+        BoxScoreNba.detacher(this)
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         HoteNavigation.detacher(this)
+        BoxScoreNba.detacher(this)
         super.onDestroy()
     }
 }

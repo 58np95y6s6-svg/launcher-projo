@@ -163,6 +163,8 @@ class RedirectionAccueil : NavigationTelecommande() {
      * long, et un appui court dure ~0,1 s, invisible à côté des ~2 s d'avant.
      */
     override fun onKeyEvent(event: KeyEvent?): Boolean {
+        // Box score NBA en format détails : ◀ ▶ et Retour (voir NavigationTelecommande)
+        if (super.onKeyEvent(event)) return true
         // ☰ : appui long = néon allumé ou éteint (mode Ambiance) ; appui court : passe à l'app
         if (event != null && event.keyCode == KeyEvent.KEYCODE_MENU) return ambiance.toucheMenu(event)
         if (event == null || event.keyCode != KeyEvent.KEYCODE_HOME) return false
@@ -202,6 +204,8 @@ class RedirectionAccueil : NavigationTelecommande() {
 
     /** Filet de sécurité : l'accueil du fabricant vient de s'afficher. */
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // Box score NBA : caché au retour sur l'accueil d'iBiTV (voir NavigationTelecommande)
+        super.onAccessibilityEvent(event)
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val paquet = event.packageName?.toString() ?: return
         // Mode Ambiance : néon affiché seulement tant que son app est au premier plan

@@ -1,0 +1,884 @@
+{
+ "boxscore": {
+  "teams": [
+   {
+    "team": {
+     "id": "x",
+     "abbreviation": "LAL"
+    },
+    "homeAway": "away",
+    "displayOrder": 1,
+    "statistics": [
+     {
+      "name": "fieldGoalsMade-fieldGoalsAttempted",
+      "displayValue": "38-79",
+      "label": "FG"
+     },
+     {
+      "name": "fieldGoalPct",
+      "displayValue": "48.1",
+      "label": "Field Goal %"
+     },
+     {
+      "name": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+      "displayValue": "11-32",
+      "label": "3PT"
+     },
+     {
+      "name": "threePointFieldGoalPct",
+      "displayValue": "34.4",
+      "label": "Three Point %"
+     },
+     {
+      "name": "totalRebounds",
+      "displayValue": "42",
+      "label": "Rebounds"
+     },
+     {
+      "name": "assists",
+      "displayValue": "25",
+      "label": "Assists"
+     },
+     {
+      "name": "turnovers",
+      "displayValue": "12",
+      "label": "Turnovers"
+     },
+     {
+      "name": "totalTurnovers",
+      "displayValue": "13",
+      "label": "Total Turnovers"
+     }
+    ]
+   },
+   {
+    "team": {
+     "id": "x",
+     "abbreviation": "BOS"
+    },
+    "homeAway": "home",
+    "displayOrder": 2,
+    "statistics": [
+     {
+      "name": "fieldGoalsMade-fieldGoalsAttempted",
+      "displayValue": "39-76",
+      "label": "FG"
+     },
+     {
+      "name": "fieldGoalPct",
+      "displayValue": "51.3",
+      "label": "Field Goal %"
+     },
+     {
+      "name": "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+      "displayValue": "13-34",
+      "label": "3PT"
+     },
+     {
+      "name": "threePointFieldGoalPct",
+      "displayValue": "38.2",
+      "label": "Three Point %"
+     },
+     {
+      "name": "totalRebounds",
+      "displayValue": "39",
+      "label": "Rebounds"
+     },
+     {
+      "name": "assists",
+      "displayValue": "22",
+      "label": "Assists"
+     },
+     {
+      "name": "turnovers",
+      "displayValue": "9",
+      "label": "Turnovers"
+     },
+     {
+      "name": "totalTurnovers",
+      "displayValue": "10",
+      "label": "Total Turnovers"
+     }
+    ]
+   }
+  ],
+  "players": [
+   {
+    "team": {
+     "id": "x",
+     "abbreviation": "LAL",
+     "displayName": "LAL"
+    },
+    "displayOrder": 1,
+    "statistics": [
+     {
+      "names": [
+       "MIN",
+       "FG",
+       "3PT",
+       "FT",
+       "OREB",
+       "DREB",
+       "REB",
+       "AST",
+       "STL",
+       "BLK",
+       "TO",
+       "PF",
+       "+/-",
+       "PTS"
+      ],
+      "keys": [
+       "minutes",
+       "fieldGoalsMade-fieldGoalsAttempted",
+       "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+       "freeThrowsMade-freeThrowsAttempted",
+       "offensiveRebounds",
+       "defensiveRebounds",
+       "rebounds",
+       "assists",
+       "steals",
+       "blocks",
+       "turnovers",
+       "fouls",
+       "plusMinus",
+       "points"
+      ],
+      "labels": [
+       "MIN",
+       "FG",
+       "3PT",
+       "FT",
+       "OREB",
+       "DREB",
+       "REB",
+       "AST",
+       "STL",
+       "BLK",
+       "TO",
+       "PF",
+       "+/-",
+       "PTS"
+      ],
+      "descriptions": [],
+      "athletes": [
+       {
+        "active": true,
+        "athlete": {
+         "id": "1001",
+         "displayName": "Luka Dončić",
+         "shortName": "L. Doncic",
+         "jersey": "1"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "38",
+         "12-24",
+         "4-11",
+         "0-0",
+         "0",
+         "8",
+         "8",
+         "9",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-3",
+         "34"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1002",
+         "displayName": "LeBron James",
+         "shortName": "L. James",
+         "jersey": "2"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "35",
+         "9-17",
+         "1-4",
+         "0-0",
+         "0",
+         "7",
+         "7",
+         "6",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-5",
+         "22"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1003",
+         "displayName": "Austin Reaves",
+         "shortName": "A. Reaves",
+         "jersey": "3"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "34",
+         "6-13",
+         "3-7",
+         "0-0",
+         "0",
+         "3",
+         "3",
+         "4",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+2",
+         "17"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1004",
+         "displayName": "Deandre Ayton",
+         "shortName": "D. Ayton",
+         "jersey": "4"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "26",
+         "5-7",
+         "0-0",
+         "0-0",
+         "0",
+         "11",
+         "11",
+         "1",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-8",
+         "10"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1005",
+         "displayName": "Rui Hachimura",
+         "shortName": "R. Hachimura",
+         "jersey": "5"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "30",
+         "3-8",
+         "2-5",
+         "0-0",
+         "0",
+         "4",
+         "4",
+         "1",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-4",
+         "8"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1006",
+         "displayName": "Marcus Smart",
+         "shortName": "M. Smart",
+         "jersey": "6"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "21",
+         "2-5",
+         "1-3",
+         "0-0",
+         "0",
+         "2",
+         "2",
+         "3",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+1",
+         "5"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1007",
+         "displayName": "Jarred Vanderbilt",
+         "shortName": "J. Vanderbilt",
+         "jersey": "7"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "14",
+         "1-2",
+         "0-0",
+         "0-0",
+         "0",
+         "5",
+         "5",
+         "0",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-2",
+         "2"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1008",
+         "displayName": "Jake LaRavia",
+         "shortName": "J. LaRavia",
+         "jersey": "8"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "11",
+         "0-3",
+         "0-2",
+         "0-0",
+         "0",
+         "2",
+         "2",
+         "1",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-1",
+         "0"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1009",
+         "displayName": "Gabe Vincent",
+         "shortName": "G. Vincent",
+         "jersey": "9"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "7",
+         "0-1",
+         "0-1",
+         "0-0",
+         "0",
+         "0",
+         "0",
+         "0",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+1",
+         "0"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1010",
+         "displayName": "Jaxson Hayes",
+         "shortName": "J. Hayes",
+         "jersey": "10"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "4",
+         "0-0",
+         "0-0",
+         "0-0",
+         "0",
+         "0",
+         "0",
+         "0",
+         "0",
+         "0",
+         "1",
+         "2",
+         "0",
+         "0"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1011",
+         "displayName": "Maxi Kleber",
+         "shortName": "M. Kleber",
+         "jersey": "11"
+        },
+        "starter": false,
+        "didNotPlay": true,
+        "reason": "COACH'S DECISION",
+        "ejected": false,
+        "stats": []
+       }
+      ],
+      "totals": []
+     }
+    ]
+   },
+   {
+    "team": {
+     "id": "x",
+     "abbreviation": "BOS",
+     "displayName": "BOS"
+    },
+    "displayOrder": 2,
+    "statistics": [
+     {
+      "names": [
+       "MIN",
+       "FG",
+       "3PT",
+       "FT",
+       "OREB",
+       "DREB",
+       "REB",
+       "AST",
+       "STL",
+       "BLK",
+       "TO",
+       "PF",
+       "+/-",
+       "PTS"
+      ],
+      "keys": [
+       "minutes",
+       "fieldGoalsMade-fieldGoalsAttempted",
+       "threePointFieldGoalsMade-threePointFieldGoalsAttempted",
+       "freeThrowsMade-freeThrowsAttempted",
+       "offensiveRebounds",
+       "defensiveRebounds",
+       "rebounds",
+       "assists",
+       "steals",
+       "blocks",
+       "turnovers",
+       "fouls",
+       "plusMinus",
+       "points"
+      ],
+      "labels": [
+       "MIN",
+       "FG",
+       "3PT",
+       "FT",
+       "OREB",
+       "DREB",
+       "REB",
+       "AST",
+       "STL",
+       "BLK",
+       "TO",
+       "PF",
+       "+/-",
+       "PTS"
+      ],
+      "descriptions": [],
+      "athletes": [
+       {
+        "active": true,
+        "athlete": {
+         "id": "1001",
+         "displayName": "Jaylen Brown",
+         "shortName": "J. Brown",
+         "jersey": "1"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "37",
+         "11-21",
+         "3-7",
+         "0-0",
+         "0",
+         "6",
+         "6",
+         "4",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+6",
+         "29"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1002",
+         "displayName": "Derrick White",
+         "shortName": "D. White",
+         "jersey": "2"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "36",
+         "6-13",
+         "4-9",
+         "0-0",
+         "0",
+         "4",
+         "4",
+         "7",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+5",
+         "18"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1003",
+         "displayName": "Payton Pritchard",
+         "shortName": "P. Pritchard",
+         "jersey": "3"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "33",
+         "5-12",
+         "3-8",
+         "0-0",
+         "0",
+         "3",
+         "3",
+         "5",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+3",
+         "15"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1004",
+         "displayName": "Sam Hauser",
+         "shortName": "S. Hauser",
+         "jersey": "4"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "25",
+         "3-6",
+         "3-5",
+         "0-0",
+         "0",
+         "4",
+         "4",
+         "1",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+1",
+         "9"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1005",
+         "displayName": "Neemias Queta",
+         "shortName": "N. Queta",
+         "jersey": "5"
+        },
+        "starter": true,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "29",
+         "6-8",
+         "0-0",
+         "0-0",
+         "0",
+         "12",
+         "12",
+         "1",
+         "0",
+         "0",
+         "1",
+         "2",
+         "+8",
+         "12"
+        ]
+       },
+       {
+        "active": true,
+        "athlete": {
+         "id": "1006",
+         "displayName": "Anfernee Simons",
+         "shortName": "A. Simons",
+         "jersey": "6"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "24",
+         "5-10",
+         "0-4",
+         "0-0",
+         "0",
+         "2",
+         "2",
+         "3",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-1",
+         "13"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1007",
+         "displayName": "Jordan Walsh",
+         "shortName": "J. Walsh",
+         "jersey": "7"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "14",
+         "2-3",
+         "0-1",
+         "0-0",
+         "0",
+         "3",
+         "3",
+         "1",
+         "0",
+         "0",
+         "1",
+         "2",
+         "0",
+         "4"
+        ]
+       },
+       {
+        "active": false,
+        "athlete": {
+         "id": "1008",
+         "displayName": "Luka Garza",
+         "shortName": "L. Garza",
+         "jersey": "8"
+        },
+        "starter": false,
+        "didNotPlay": false,
+        "reason": "",
+        "ejected": false,
+        "stats": [
+         "8",
+         "1-3",
+         "0-0",
+         "0-0",
+         "0",
+         "5",
+         "5",
+         "0",
+         "0",
+         "0",
+         "1",
+         "2",
+         "-2",
+         "2"
+        ]
+       }
+      ],
+      "totals": []
+     }
+    ]
+   }
+  ]
+ },
+ "header": {
+  "id": "401810201",
+  "competitions": [
+   {
+    "competitors": [
+     {
+      "id": "0",
+      "type": "team",
+      "order": 0,
+      "homeAway": "home",
+      "winner": false,
+      "team": {
+       "id": "1",
+       "location": "X",
+       "name": "Celtics",
+       "abbreviation": "BOS",
+       "displayName": "X Celtics",
+       "shortDisplayName": "Celtics",
+       "color": "000000",
+       "logo": "https://a.espncdn.com/x.png"
+      },
+      "score": "102",
+      "linescores": [
+       {
+        "value": 25.0,
+        "displayValue": "25",
+        "period": 1
+       },
+       {
+        "value": 30.0,
+        "displayValue": "30",
+        "period": 2
+       },
+       {
+        "value": 24.0,
+        "displayValue": "24",
+        "period": 3
+       },
+       {
+        "value": 23.0,
+        "displayValue": "23",
+        "period": 4
+       }
+      ],
+      "statistics": []
+     },
+     {
+      "id": "1",
+      "type": "team",
+      "order": 1,
+      "homeAway": "away",
+      "winner": false,
+      "team": {
+       "id": "1",
+       "location": "X",
+       "name": "Lakers",
+       "abbreviation": "LAL",
+       "displayName": "X Lakers",
+       "shortDisplayName": "Lakers",
+       "color": "000000",
+       "logo": "https://a.espncdn.com/x.png"
+      },
+      "score": "98",
+      "linescores": [
+       {
+        "value": 27.0,
+        "displayValue": "27",
+        "period": 1
+       },
+       {
+        "value": 24.0,
+        "displayValue": "24",
+        "period": 2
+       },
+       {
+        "value": 29.0,
+        "displayValue": "29",
+        "period": 3
+       },
+       {
+        "value": 18.0,
+        "displayValue": "18",
+        "period": 4
+       }
+      ],
+      "statistics": []
+     }
+    ],
+    "status": {
+     "clock": 151.0,
+     "displayClock": "2:31",
+     "period": 4,
+     "type": {
+      "id": "2",
+      "name": "STATUS_IN_PROGRESS",
+      "state": "in",
+      "completed": false,
+      "description": "",
+      "detail": "",
+      "shortDetail": ""
+     }
+    },
+    "date": "2025-11-09T00:30Z",
+    "id": "401810201"
+   }
+  ]
+ },
+ "gameInfo": {
+  "venue": {
+   "fullName": "TD Garden"
+  }
+ }
+}

@@ -16,6 +16,7 @@ import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.ambiance.CouleursNeon
 import fr.projo.launcher.ambiance.Intensite
 import fr.projo.launcher.ambiance.ModeAmbiance
+import fr.projo.launcher.boxscore.DecalageNba
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppRepository
 import fr.projo.launcher.data.LauncherPrefs
@@ -231,6 +232,7 @@ class PilotageLauncher(
         DefilementGalerie.charger(app)
         ModeAmbiance.charger(app)
         EnvoiTv.charger(app)
+        DecalageNba.charger(app)
         val vm = modele()
         val p = prefsCourantes ?: vm?.ui?.value?.prefs
         val m = vm?.maj?.value
@@ -262,6 +264,7 @@ class PilotageLauncher(
                 navigateurs = OuvertureLiens.choixPages(app).map { (paquet, nom) -> OptionReglage(paquet, nom) },
                 raccourci = EnvoiTv.raccourci,
             ),
+            nbaDecalage = DecalageNba.secondes,
         )
     }
 
@@ -314,6 +317,8 @@ class PilotageLauncher(
             ReglagesTv.LIENS_PAGES -> if (v is String) EnvoiTv.ecrirePages(app, v)
             ReglagesTv.LIENS_RACCOURCI -> if (v is Boolean) EnvoiTv.ecrireRaccourci(app, v)
             ReglagesTv.LIENS_CODE -> if (v == ReglagesTv.BOUTON_NOUVEAU_CODE) EnvoiTv.nouveauCode(app)
+            // Le box score suit aussitôt le nouveau retard (et `nba` est renvoyé aux abonnés)
+            ReglagesTv.NBA_DECALAGE -> (v as? String)?.toIntOrNull()?.let { DecalageNba.ecrire(app, it) }
             ReglagesTv.SYSTEME -> when (v) {
                 ReglagesTv.BOUTON_WIFI -> systeme.openWifi()
                 ReglagesTv.BOUTON_BLUETOOTH -> systeme.openBluetooth()
@@ -353,11 +358,13 @@ class PilotageLauncher(
         ReglageNouveautes.charger(app)
         DefilementGalerie.charger(app)
         ModeAmbiance.charger(app)
+        DecalageNba.charger(app)
         scope.launch {
             snapshotFlow {
                 listOf<Any>(
                     ReglageNouveautes.actif,
                     DefilementGalerie.secondes,
+                    DecalageNba.secondes,
                     ModeAmbiance.auto,
                     ModeAmbiance.intensite,
                     ModeAmbiance.couleurs,
