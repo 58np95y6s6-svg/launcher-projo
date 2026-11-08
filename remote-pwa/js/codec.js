@@ -86,6 +86,9 @@ export function decoder(brut) {
       };
     case "pong":
       return Number.isInteger(m.n) ? m : null;
+    // Design de l'accueil de la TV changé : thème de la télécommande (id inconnu → thème par défaut)
+    case "design":
+      return str(m.id) && m.id.length <= 64 ? { v: m.v, t: m.t, id: m.id } : null;
     case "erreur":
       return str(m.code) ? m : null;
     // Pilotage (applis et réglages) : contenu normalisé, entrées invalides écartées

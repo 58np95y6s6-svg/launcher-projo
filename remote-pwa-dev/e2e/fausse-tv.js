@@ -6,6 +6,7 @@
 //
 // Paramètres d'URL : ?ws=<port du faux serveur PeerJS>&nom=<nom de la TV>&vmax=<version max>
 //   &fonctions=apps,reglages,liens (défaut) | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
+//   &design=verre (défaut) | galerie | pastel… | aucun (TV ancienne : ni `design` dans hello, ni message `design`)
 
 const params = new URLSearchParams(location.search);
 const PORT = params.get("ws");
@@ -15,6 +16,8 @@ const V_HELLO = Number(params.get("vhello") || 1); // version annoncée dans le 
 const VERSION_APP = "test-1.0";
 const FONCTIONS = (params.get("fonctions") ?? "apps,reglages,liens").split(",").filter((f) => f && f !== "aucune");
 const AVEC_LIENS = FONCTIONS.includes("liens");
+const DESIGN = params.get("design") ?? "verre";
+const AVEC_DESIGN = DESIGN !== "aucun";
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 // ---------- Encodages ----------
@@ -174,6 +177,7 @@ async function envoyerHello(ses, fpTV, fpTel, nonceTel) {
   const sig = b64u(await crypto.subtle.sign(SIG, clePrivee, utf8(`ibiprojo-v1|hello-tv|${fpTV}|${fpTel}|${nonceTel}|${nonce}`)));
   const hello = { v: V_HELLO, t: "hello", nonce, sig, nomTV: tv.nom, versionApp: VERSION_APP, cle: tv.cleSpki };
   if (FONCTIONS.length) hello.fonctions = FONCTIONS;
+  if (AVEC_DESIGN) hello.design = R.design;
   ses.envoyer(hello);
 }
 
@@ -299,7 +303,7 @@ const image = (a) => { if (!IMAGES.has(a.id)) IMAGES.set(a.id, dessiner(a)); ret
 
 // Réglages : état de la TV, décrit avec les types génériques
 const R = {
-  volume: 9, muet: false, design: "verre", nouveautes: true,
+  volume: 9, muet: false, design: AVEC_DESIGN ? DESIGN : "verre", nouveautes: true,
   ambiance_auto: true, ambiance_intensite: "normale", ambiance_couleurs: "pochette", ambiance_decalage: "100",
   maj: { etape: "a_jour", progression: undefined },
 };
@@ -308,6 +312,7 @@ const VERSION_NOUVELLE = "2.9";
 const DESIGNS = [
   { id: "verre", nom: "Verre" }, { id: "pastel", nom: "Pastel" }, { id: "console", nom: "Console" },
   { id: "une", nom: "À la une" }, { id: "chaines", nom: "Chaînes" }, { id: "studio", nom: "Studio" },
+  { id: "galerie", nom: "Galerie" },
 ];
 
 function itemsReglages() {
@@ -379,6 +384,17 @@ function pousser() {
 }
 tv.changerReglage = (cle, valeur) => { R[cle] = valeur; pousser(); };
 
+/** Le design de l'accueil change (Réglages de la TV, ou réglage du téléphone) : `design` à CHAQUE
+ *  téléphone authentifié, sans abonnement (thème de la télécommande), puis `reglages` aux abonnés. */
+function changerDesign(id) {
+  if (R.design === id) return;
+  R.design = id;
+  if (AVEC_DESIGN) tv.envoyer({ t: "design", id });
+  log("design");
+  pousser();
+}
+tv.changerDesign = changerDesign;
+
 function lancerMaj(etape) {
   R.maj = { etape };
   if (etape === "verification") setTimeout(() => { R.maj = { etape: "disponible" }; pousser(); }, 700);
@@ -421,6 +437,7 @@ const PILOTAGE = {
     if (it?.cle.startsWith("liens_")) reglageLiens(it, m);
     else if (it?.type === "curseur" && Number.isFinite(m.valeur)) R[m.cle] = Math.min(it.max, Math.max(it.min, Math.round(m.valeur)));
     else if (it?.type === "interrupteur" && typeof m.valeur === "boolean") R[m.cle] = m.valeur;
+    else if (it?.cle === "design" && it.options.some((o) => o.id === m.valeur)) changerDesign(m.valeur);
     else if (it?.type === "choix" && it.options.some((o) => o.id === m.valeur)) R[m.cle] = m.valeur;
     else if (it?.cle === "maj" && it.boutons.some((b) => b.id === m.bouton)) lancerMaj(m.bouton === "verifier" ? "verification" : "telechargement");
     else if (it?.cle === "systeme" && it.boutons.some((b) => b.id === m.bouton)) tv.systeme.push(m.bouton);

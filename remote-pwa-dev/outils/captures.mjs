@@ -1,5 +1,6 @@
-// Captures de chaque écran, en profil iPhone (390×844) et Android (412×915).
-// Usage : node remote-pwa-dev/outils/captures.mjs [dossier de sortie]
+// Captures de chaque écran, en profil iPhone (390×844) et Android (412×915) :
+// télécommande dans les 7 thèmes (un par design de la TV), feuille du clavier, onglets, alertes…
+// Usage : node remote-pwa-dev/outils/captures.mjs [dossier de sortie] [iphone,android]
 
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -8,11 +9,12 @@ import { demarrerBanc, appairerParQR } from "../e2e/banc.mjs";
 const SORTIE = path.resolve(process.argv[2] || "captures-pwa");
 await mkdir(SORTIE, { recursive: true });
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const DESIGNS = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio"];
 const banc = await demarrerBanc();
 
 async function serie(modele) {
-  const salon = await banc.tv({ nom: "Salon" });
-  const chambre = await banc.tv({ nom: "Chambre" });
+  const salon = await banc.tv({ nom: "Salon", design: "galerie" });
+  const chambre = await banc.tv({ nom: "Chambre", design: "une" });
   const tel = await banc.telephone(modele);
   let page = await tel.ouvrir();
   let n = 0;
@@ -29,6 +31,8 @@ async function serie(modele) {
     e.userChoice = Promise.resolve({ outcome: "dismissed" });
     dispatchEvent(e);
   });
+  const theme = (t) => page.waitForFunction((x) => document.documentElement.dataset.theme === x, t);
+  const cacherToast = () => page.waitForFunction(() => !document.querySelector("#toast").classList.contains("visible"), null, { timeout: 8000 });
 
   await page.locator("#ecran-accueil").waitFor();
   await inviterInstallation();
@@ -52,25 +56,33 @@ async function serie(modele) {
 
   await page.click("#btn-resultat");
   await page.locator('#voyant[data-etat="connecte"]').waitFor();
+  await theme("galerie");
   await capture("telecommande");
 
-  await page.click("#btn-mode-nav");
-  await capture("pave-tactile");
-  await page.click("#btn-mode-nav");
-
-  await salon.envoyer({ t: "focus_text", type: "motdepasse", s: "", action: "go" });
+  // La TV attend une recherche : la feuille du clavier s'ouvre seule
+  await salon.envoyer({ t: "focus_text", type: "recherche", s: "", action: "search" });
   await page.locator("#saisie.actif").waitFor();
   await pause(600);
-  await capture("focus-text-invite");
+  await page.click("#champ-texte");
+  await page.keyboard.type("dune");
+  await capture("clavier-recherche");
+  await salon.envoyer({ t: "focus_text", type: "motdepasse", s: "", action: "go" });
+  await page.locator("#btn-afficher:not([hidden])").waitFor();
+  await pause(600);
+  await capture("clavier-mot-de-passe-invite");
   await page.click("#champ-texte");
   await page.keyboard.type("Tr3s-S3cret!");
-  await capture("mot-de-passe-masque");
   await page.click("#btn-afficher");
-  await capture("mot-de-passe-affiche");
+  await capture("clavier-mot-de-passe-affiche");
   await salon.envoyer({ t: "focus_lost" });
-  await page.waitForFunction(() => !document.querySelector("#saisie").classList.contains("actif"));
+  await page.locator("#feuille-clavier").waitFor({ state: "hidden" });
+  // « Aa » : texte libre
+  await page.click("#btn-clavier");
+  await page.locator("#feuille-clavier:not([hidden])").waitFor();
+  await capture("clavier-libre");
+  await page.click("#btn-fermer-clavier");
 
-  // Onglets « Applis » et « Réglages » (fonctions annoncées par la TV)
+  // Onglet « Applis »
   await page.click("#onglet-applis");
   await page.waitForFunction(() => document.querySelectorAll(".tuile img").length >= 12);
   await capture("applis");
@@ -80,7 +92,6 @@ async function serie(modele) {
 
   // Onglet « Envoyer » : lien collé, envoyé, VPN coupé, bouton Partager (raccourci iOS)
   await tel.ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: banc.base });
-  const cacherToast = () => page.waitForFunction(() => !document.querySelector("#toast").classList.contains("visible"), null, { timeout: 8000 });
   const envoyerLien = async (lien) => {
     await page.fill("#champ-lien", lien);
     await page.click("#btn-envoyer");
@@ -100,8 +111,10 @@ async function serie(modele) {
   await cacherToast();
   // Modifier les récents : « Retirer » sur chaque lien, « Tout effacer » sous la liste
   await page.click("#btn-recents-modifier");
+  await page.locator("#btn-recents-effacer").evaluate((e) => e.scrollIntoView({ block: "center" }));
   await capture("envoyer-modifier");
   await page.click("#btn-recents-modifier");
+  await page.locator("#envoyer-defile").evaluate((e) => { e.scrollTop = 0; });
   await salon.liens({ vpn: false });
   await page.locator('#etat-vpn[data-etat="coupe"]').waitFor();
   await page.click('.recent:has-text("Les grands documentaires") .btn-ligne');
@@ -123,10 +136,14 @@ async function serie(modele) {
   await capture("envoyer-bouton-partager-adresse");
   await page.click("#btn-guide-retour");
   await capture("envoyer-adresse-changee");
+
+  // Onglet « Réglages »
   await page.click("#onglet-reglages");
   await page.locator('.reglage[data-cle="volume"]').waitFor();
-  await page.waitForFunction(() => !document.querySelector("#toast").classList.contains("visible"));
+  await cacherToast();
   await capture("reglages");
+  await page.locator('.reglage[data-cle="design"]').evaluate((e) => e.scrollIntoView({ block: "start" }));
+  await capture("reglages-design");
   // Mise à jour en cours : progression et rappel « touche OK » (téléchargement arrêté à 42 %)
   await salon.eval(() => { window.tv.majArret = 0.42; });
   await page.click('.reglage[data-cle="maj"] .btn-reglage');
@@ -136,16 +153,60 @@ async function serie(modele) {
   await page.locator('.reglage[data-cle="maj"] .reglage-detail', { hasText: "42 %" }).waitFor();
   await page.locator('.reglage[data-cle="maj"]').evaluate((e) => e.scrollIntoView({ block: "center" }));
   await capture("reglages-mise-a-jour");
+
+  // Thème qui suit la TV : le design choisi dans Réglages, puis les 7 designs sur la télécommande
+  await page.locator("#reglages-defile").evaluate((e) => { e.scrollTop = 0; });
+  await salon.design("une");
+  await theme("une");
+  await capture("reglages-theme-une");
+  await page.click("#onglet-applis");
+  await salon.design("console");
+  await theme("console");
+  await capture("applis-theme-console");
+  await page.click("#onglet-envoyer");
+  await salon.design("pastel");
+  await theme("pastel");
+  await capture("envoyer-theme-pastel");
+  await page.click("#onglet-telecommande");
+  for (const d of DESIGNS) {
+    await salon.design(d);
+    await theme(d);
+    await capture(`telecommande-${d}`);
+  }
+  await salon.envoyer({ t: "focus_text", type: "recherche", s: "", action: "search" });
+  await page.locator("#saisie.actif").waitFor();
+  await pause(600);
+  await capture("clavier-studio");
+  await salon.envoyer({ t: "focus_lost" });
+  await salon.design("verre");
+  await theme("verre");
+  await salon.envoyer({ t: "focus_text", type: "texte", s: "Salut", action: "done" });
+  await page.locator("#saisie.actif").waitFor();
+  await pause(600);
+  await capture("clavier-verre");
+  await salon.envoyer({ t: "focus_lost" });
+  await salon.design("galerie");
+  await theme("galerie");
+
+  // Texte agrandi (Dynamic Type, ici simulé) : la télécommande et Réglages restent utilisables
+  await page.evaluate(() => { document.documentElement.style.fontSize = "23px"; });
+  await capture("texte-agrandi-telecommande");
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="volume"]').waitFor();
+  await capture("texte-agrandi-reglages");
+  await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
   await page.click("#onglet-telecommande");
 
-  // Seconde TV, puis liste des TV
+  // Seconde TV (design « À la une »), puis liste des TV
   await page.click("#btn-tvs");
   await page.click("#btn-ajouter-tv");
   await appairerParQR(page, chambre, "Téléphone de Marie");
+  await theme("une");
   await page.click("#btn-tvs");
   await page.locator("#feuille-tvs").waitFor();
   await capture("mes-tv");
   await page.click('.tv-choix:has-text("Salon")');
+  await theme("galerie");
   await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
 
   // Box injoignable : la TV « Salon » s'éteint
@@ -165,7 +226,7 @@ async function serie(modele) {
 
   // Appairage refusé
   const tv3 = await banc.tv({ nom: "Bureau" });
-  ({ fragment: f3 } = await tv3.demarrerAppairage());
+  const { fragment: f3 } = await tv3.demarrerAppairage();
   await page.goto(banc.urlPWA + f3);
   await page.fill("#champ-nom", "Téléphone de Marie");
   await page.click("#form-nom button[type=submit]");
@@ -198,12 +259,18 @@ async function serie(modele) {
 
   await tel.fermer();
   for (const t of [chambre, tv3, ancienne]) await t.fermer();
+
+  // Téléphone en mode sombre, sans TV : thème par défaut sombre (Verre)
+  const sombre = await banc.telephone(modele, { sombre: true });
+  page = await sombre.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await theme("verre");
+  await capture("accueil-mode-sombre");
+  await sombre.fermer();
 }
-let f3;
 
 try {
-  await serie("iphone");
-  await serie("android");
+  for (const modele of (process.argv[3] || "iphone,android").split(",")) await serie(modele);
 } finally {
   await banc.fermer();
 }

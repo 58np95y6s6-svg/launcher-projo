@@ -89,7 +89,7 @@ export async function enregistrerNom(nom) {
 }
 
 // ---------- TV appairées ----------
-// { id, nom, cle (SPKI), empreinte, ajouteeLe, versionApp? }
+// { id, nom, cle (SPKI), empreinte, ajouteeLe, versionApp?, fonctions?, design? (thème de la télécommande) }
 
 export const listerTVs = () => operation("tvs", "readonly", (s) => s.getAll()).then((l) =>
   (l || []).sort((a, b) => (a.ajouteeLe || 0) - (b.ajouteeLe || 0)));

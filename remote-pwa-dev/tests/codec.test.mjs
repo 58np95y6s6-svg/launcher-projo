@@ -36,6 +36,10 @@ test("decoder() : messages TV valides", () => {
   assert.equal(decoder('{"v":1,"t":"revoked"}').t, "revoked");
   assert.equal(decoder('{"v":1,"t":"pair_refused","raison":"expire"}').raison, "expire");
   assert.equal(decoder('{"v":1,"t":"erreur","code":"version","vMax":0}').vMax, 0);
+  // Design de la TV (thème de la télécommande) : identifiant gardé tel quel, champs en trop retirés
+  assert.deepEqual(decoder('{"v":1,"t":"design","id":"pastel","x":1}'), { v: 1, t: "design", id: "pastel" });
+  assert.equal(decoder('{"v":1,"t":"design","id":"futur"}').id, "futur");
+  assert.equal(decoder('{"v":1,"t":"hello","nonce":"a","sig":"b","cle":"c","design":"console"}').design, "console");
 });
 
 test("decoder() : valeurs inconnues normalisées, messages invalides ignorés", () => {
@@ -45,6 +49,7 @@ test("decoder() : valeurs inconnues normalisées, messages invalides ignorés", 
     "pas du json", "[]", "null", '{"t":"pong","n":1}', '{"v":"1","t":"pong","n":1}', '{"v":1}',
     '{"v":1,"t":"inconnu"}', '{"v":1,"t":"hello","nonce":"a","sig":"b"}', '{"v":1,"t":"pong"}',
     '{"v":1,"t":"pair_refused"}', 42, "x".repeat(70000),
+    '{"v":1,"t":"design"}', '{"v":1,"t":"design","id":3}', `{"v":1,"t":"design","id":"${"d".repeat(65)}"}`,
   ]) assert.equal(decoder(brut), null, String(brut).slice(0, 40));
 });
 

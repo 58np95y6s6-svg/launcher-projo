@@ -3,7 +3,9 @@
 //
 // Événements émis (CustomEvent, détail entre accolades) :
 //   etat {etat}            "connexion" → "authentification" → ("appairage") → "prete" ; "fermee"
-//   tv {nomTV, versionApp, cle, fonctions}   hello de la TV vérifié (fonctions : ["apps", "reglages", "liens"]…)
+//   tv {nomTV, versionApp, cle, fonctions, design}   hello de la TV vérifié (fonctions : ["apps", "reglages", "liens"]… ;
+//                          design : identifiant du design de l'accueil, ou null)
+//   design {id}            le design de la TV a changé (thème de la télécommande)
 //   paired {nomTV, idTV, cle, empreinte}
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
@@ -187,6 +189,7 @@ export class Session extends EventTarget {
     switch (m.t) {
       case "focus_text": return this._emettre("focus_text", { type: m.type, s: m.s, action: m.action });
       case "focus_lost": return this._emettre("focus_lost");
+      case "design": return this._emettre("design", { id: m.id });
       case "apps": return this._emettre("apps", { liste: m.liste });
       case "app_image": return this._emettre("app_image", { id: m.id, maj: m.maj, forme: m.forme, img: m.img });
       case "app_ouverte": return this._emettre("app_ouverte", { id: m.id, ok: m.ok });
@@ -227,6 +230,7 @@ export class Session extends EventTarget {
     this._emettre("tv", {
       nomTV: typeof m.nomTV === "string" ? m.nomTV : "", versionApp: m.versionApp, cle: m.cle,
       fonctions: lireFonctions(m.fonctions),
+      design: typeof m.design === "string" ? m.design : null,
     });
     this._demarrerPing();
     if (this.appairage) {

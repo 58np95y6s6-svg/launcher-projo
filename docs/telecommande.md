@@ -128,6 +128,16 @@ La télécommande prend le style du design affiché sur la TV (couleurs, formes,
 - La PWA garde le dernier design de chaque TV et l'applique dès l'ouverture, avant la connexion. Sans
   TV connue : thème par défaut (clair, ou sombre si l'iPhone est en mode sombre).
 
+Côté téléphone (`remote-pwa/js/theme.js`) : le thème est `data-theme` sur `<html>` ; ses jetons
+(couleurs, rayons, ombres, police des titres) sont dans `styles.css`, un bloc par design (Pastel : pavé
+rond ; Chaînes : touches bordées ; titres en Instrument Serif pour Galerie, Manrope ailleurs ; contrastes
+WCAG AA vérifiés). Défaut : `galerie`, ou `verre` en mode sombre. Le design est gardé dans
+l'enregistrement de la TV (IndexedDB, champ `design`, `null` si absent ou inconnu) ; celui de la TV
+active est aussi retenu dans `localStorage` (`ibiprojo-theme`) pour que `js/theme-initial.js` l'applique
+avant le premier affichage. Choisir une autre TV applique son design gardé, même hors connexion.
+`meta theme-color` (barre d'état) suit le thème (`--couleur-etat`) ; l'en-tête affiche « Connectée ·
+design Galerie ».
+
 ## Pilotage depuis le téléphone : applis et réglages (version 1, ajout compatible)
 
 Le téléphone peut ouvrir n'importe quelle appli de la TV et régler iBiTV (son, design, mode Ambiance,
@@ -291,11 +301,11 @@ liste d'applis ni de valeurs.
 Précisions de comportement (le protocole ci-dessus ne change pas) :
 
 - **Onglets** « Télécommande », « Applis », « Réglages » (et « Envoyer », voir « Envoyer sur la TV »)
-  dans une barre fixe en bas de l'écran, seulement pour les fonctions annoncées (gardées avec la TV
-  pour l'ouverture suivante, mises à jour à chaque `hello`). Sans `fonctions`, la télécommande reste
-  seule et inchangée. Sur Applis, Envoyer et Réglages,
-  l'en-tête est une pastille « ● Salon · iBiTV » (point : état de la connexion ; la toucher ouvre
-  « Mes TV »). Un `focus_text` ramène sur la télécommande.
+  dans une barre fixe en bas de l'écran (grandes icônes, onglet actif en pastille), seulement pour les
+  fonctions annoncées (gardées avec la TV pour l'ouverture suivante, mises à jour à chaque `hello`).
+  Sans `fonctions`, la télécommande reste seule. Sur Applis, Envoyer et Réglages, l'en-tête est une
+  pastille « ● Salon » (point : état de la connexion ; la toucher ouvre « Mes TV »), puis un grand
+  titre. Un `focus_text` ramène sur la télécommande et ouvre la feuille du clavier.
 - Rien n'est demandé tant qu'aucun onglet n'est ouvert. `apps_liste` part à chaque ouverture de
   l'onglet Applis, `reglages_liste` à chaque ouverture de l'onglet Réglages, et l'un ou l'autre à
   chaque reconnexion si l'onglet est ouvert (l'abonnement aux réglages vaut pour une connexion).
@@ -305,10 +315,10 @@ Précisions de comportement (le protocole ci-dessus ne change pas) :
   image jamais reçue (8 s) est remplacée par l'initiale du nom. Après `app_ouvrir`, confirmation
   « Netflix s'ouvre sur la TV » à `app_ouverte` ; `ok: false` ou pas de réponse en 6 s : message d'erreur.
 - **Réglages**, rendu générique : sections par `groupe` dans l'ordre reçu ; `curseur` avec sa valeur
-  en % de `min..max` ; `choix` en pastilles (en cartes nom + détail si une option a un `detail`) ;
-  `boutons` côte à côte dans l'ordre reçu, le principal en dégradé ; `progression` en barre ;
+  en % de `min..max` ; `choix` en grosses pastilles (en cartes nom + détail si une option a un `detail`) ;
+  `boutons` côte à côte dans l'ordre reçu, le principal plein (couleur du thème) ; `progression` en barre ;
   `actif: false` grisé et désactivé ; `titre` vide : pas de ligne de titre. Un type inconnu n'est pas
-  affiché. Seule exception liée à une clé : `design`, en cartes avec un aperçu coloré par `id`
+  affiché. Seule exception liée à une clé : `design`, en pastilles avec un aperçu coloré par `id`
   (`verre`, `pastel`, `console`, `une`, `chaines`, `studio`, `galerie` ; aperçu neutre pour un autre `id`).
 - **Curseur** : au plus un `reglage` toutes les 150 ms pendant le glissé, puis la valeur finale au
   relâcher (renvoyée même identique si la TV a changé la valeur entre-temps). Les `reglages` reçus
@@ -530,10 +540,11 @@ résultats, récents) et `remote-pwa/js/envoyer.js` (onglet). Précisions de com
 
 - **Onglet « Envoyer »** (icône écran + flèche), entre « Applis » et « Réglages », si `liens` est
   annoncé. `liens_etat` part à chaque ouverture de l'onglet, et à chaque reconnexion s'il est ouvert.
-  Avec quatre onglets, les libellés passent à 11,5 px.
-- **Champ** + « Coller » (presse-papiers ; si l'accès est refusé, invitation à coller à la main).
-  « Envoyer sur la TV » n'est actif que pour une URL valable ; un domaine sans schéma est complété
-  (`arte.tv/x` → `https://arte.tv/x`). Un texte partagé qui contient une adresse `http(s)://`
+  Libellés des onglets de taille fixe (12 px au plus, comme la barre d'onglets d'iOS) : « Télécommande »
+  tient avec quatre onglets.
+- **Titre** « Envoyer sur la TV », puis une carte : **champ**, « Coller » (presse-papiers ; si l'accès
+  est refusé, invitation à coller à la main) et « Envoyer », actif seulement pour une URL valable ; un
+  domaine sans schéma est complété (`arte.tv/x` → `https://arte.tv/x`). Un texte partagé qui contient une adresse `http(s)://`
   (« Regarde : https://… ») envoie cette adresse (la première ; ponctuation finale retirée). Tout
   autre schéma, une adresse e-mail ou un mot seul ne sont pas des liens. L'URL envoyée est la forme
   normalisée (`new URL(…).href`) ; la PWA n'envoie pas de `titre` (elle n'en a pas).
@@ -553,7 +564,7 @@ résultats, récents) et `remote-pwa/js/envoyer.js` (onglet). Précisions de com
   tiré de l'adresse (nom d'un fichier vidéo, ou dernier segment fait de mots :
   `…/les-grands-documentaires` → « Les grands documentaires »), sinon l'adresse sans `https://` ni
   `www.` (plus parlant que l'hôte seul quand plusieurs liens viennent du même site) ; détail
-  « hôte · ouvert dans X · date » ; bouton « Renvoyer ». Un lien renvoyé remonte en tête, sans doublon.
+  « hôte · ouvert dans X · date » ; bouton icône « Renvoyer » (nom accessible « Renvoyer <libellé> »). Un lien renvoyé remonte en tête, sans doublon.
 - **Modifier les récents** : « Modifier » (à droite du titre « Récents ») remplace « Renvoyer » par
   « Retirer » sur chaque lien et affiche « Tout effacer » sous la liste (confirmation « Effacer les liens
   récents ? ») ; « OK » revient à l'affichage normal. Rien n'est envoyé à la TV : les récents ne sont
@@ -599,10 +610,10 @@ Jamais de texte saisi, de secret, de clé privée ni de SDP complet dans les jou
   cd remote-pwa-dev && npm install && npx playwright install chromium
   npm test            # unitaires (node:test)
   npm run test:e2e    # PWA ↔ fausse TV, via un faux serveur PeerJS local
-  npm run captures    # captures iPhone 390×844 et Android 412×915
+  npm run captures    # captures iPhone 390×844 et Android 412×915 (télécommande dans les 7 thèmes, clavier, onglets…)
   ```
 
-  `remote-pwa-dev/` (jamais publié) contient aussi la fausse TV en JavaScript (`e2e/fausse-tv.js`, utile comme implémentation de référence du côté TV), le faux serveur PeerJS (`e2e/faux-peerjs.mjs`) et la génération des icônes (`outils/icones.py`).
+  `remote-pwa-dev/` (jamais publié) contient aussi la fausse TV en JavaScript (`e2e/fausse-tv.js`, utile comme implémentation de référence du côté TV ; `?design=` choisit le design annoncé, `tv.changerDesign(id)` pousse `design`), le faux serveur PeerJS (`e2e/faux-peerjs.mjs`) et la génération des icônes (`outils/icones.py`).
 
 ## Précisions d'implémentation (v1) — à respecter à l'identique côté TV
 
@@ -673,11 +684,41 @@ Ces points complètent la spécification ; la PWA les applique et la fausse TV d
 | `url` | `type=url` |
 | `recherche` | `type=search` |
 
-`action` devient `enterkeyhint` (touche Entrée du clavier). Entrée → `submit`. `focus_lost` → le champ est vidé, le clavier fermé (`blur`).
+`action` devient `enterkeyhint` (touche Entrée du clavier). Entrée → `submit`. `focus_lost` → le champ est vidé, le clavier fermé (`blur`) et la feuille fermée.
+
+Pas de champ permanent : le champ est dans une **feuille du clavier** (en bas de l'écran), qui s'ouvre
+seule à `focus_text` (retour à l'onglet Télécommande), ou avec le bouton « Aa » de l'en-tête (texte
+libre, envoyé de la même façon). Elle montre ce que la TV attend, d'après `type` (« La TV attend une
+recherche », « … un mot de passe »… ; « Écrire sur la TV » sans `focus_text`), le champ (mot de passe :
+« Afficher » / « Masquer ») et un grand bouton qui envoie `submit`, nommé d'après `action` :
+« Rechercher sur la TV » (`search`), « Envoyer sur la TV » (`send`), « Suivant » (`next`), sinon
+« Valider sur la TV ». La fermer (×, toucher à côté, Échap) ne change rien sur la TV : « Aa » la rouvre
+telle quelle.
+
+### Écran Télécommande (PWA)
+
+- **En-tête** : grande pastille de la TV (voyant, nom, « Connectée · design Galerie » ; la toucher ouvre
+  « Mes TV ») et « Aa » (clavier).
+- **Un seul pavé** (plus de choix pavé directionnel / pavé tactile) : glisser n'importe où envoie un pas
+  toutes les 46 px dans la direction dominante (comme l'ancien pavé tactile) ; toucher une flèche (tout
+  son secteur triangulaire) envoie un pas, la garder appuyée répète (après 380 ms, toutes les 110 ms) ;
+  toucher OK (au centre) valide. Une touche du pavé part au relâcher, si le doigt n'a pas bougé de plus
+  de 12 px : un glissé qui commence sur OK ne valide pas. Indice sous le pavé : « Glisse pour te
+  déplacer · touche OK pour valider ».
+- **Touches** : Retour (`back`), Accueil (`home`), Options (`menu`) ; pastille du volume (− `vol-`,
+  « Volume » au centre = `mute`, + `vol+`, répétés si maintenus) ; Lecture / pause (`playpause`).
+  Envoyées dès l'appui.
+- **Accessibilité** : textes en `rem`, la racine suit la taille du texte d'iOS (`font: -apple-system-body`,
+  Dynamic Type) ; si le texte est très agrandi, le pavé rétrécit puis l'écran défile. Cibles ≥ 48 px
+  (touches principales ≥ 56 px), noms accessibles en français pour les boutons à icône, focus visible,
+  `prefers-reduced-motion` (animations coupées) et `prefers-contrast: more` (bordures nettes, texte
+  secondaire plein) respectés. Polices embarquées (Manrope, Instrument Serif ; licences OFL dans
+  `remote-pwa/polices/`), mises en cache par le service worker.
 
 ### Limites iOS (et choix retenus)
 
-- **Clavier automatique** : iOS n'ouvre pas le clavier sur un `focus()` déclenché hors d'un geste de l'utilisateur (un message réseau n'en est pas un). La PWA tente `focus()` (suffisant sur Android/Chrome, surtout juste après un appui), puis, si le champ n'a pas le focus ou si iOS n'a pas réduit la zone visible, met le champ en surbrillance pulsée avec « Touchez le champ pour ouvrir le clavier ». Le champ texte reste toujours visible en bas de l'écran ; une fois touché, il remonte sous l'en-tête pour rester au-dessus du clavier.
+- **Clavier automatique** : iOS n'ouvre pas le clavier sur un `focus()` déclenché hors d'un geste de l'utilisateur (un message réseau n'en est pas un). La PWA tente `focus()` (suffisant sur Android/Chrome, surtout juste après un appui), puis, si le champ n'a pas le focus ou si iOS n'a pas réduit la zone visible, met le champ de la feuille du clavier en surbrillance pulsée avec « Touche le champ pour ouvrir le clavier ». iOS superpose son clavier à la page : la feuille se place juste au-dessus (zone visible du `visualViewport`).
+- **Barre d'état** : `apple-mobile-web-app-status-bar-style` = `default` (texte lisible sur les thèmes clairs comme sombres) ; sa couleur suit le thème par `meta theme-color`.
 - **Installation** : pas de `beforeinstallprompt` sur iOS → instructions « Partager → Sur l'écran d'accueil ».
 - **Stockage séparé** : sur iPhone, l'app installée sur l'écran d'accueil ne partage pas l'IndexedDB de Safari. Un appairage fait dans Safari reste dans Safari. Après un scan du QR code dans Safari, la PWA le signale et propose « Copier le lien d'appairage » ; dans l'app installée, le champ « Code de secours ou lien d'appairage » accepte ce lien (sécurité du QR code) ou le code de secours.
 - **Vibreur** : `navigator.vibrate` n'existe pas sur iOS ; la PWA utilise l'interrupteur natif (`<input type=checkbox switch>`, iOS 18+) qui produit un léger retour haptique au toucher. Rien sur les versions plus anciennes.
