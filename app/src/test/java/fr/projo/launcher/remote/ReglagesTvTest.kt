@@ -44,25 +44,47 @@ class ReglagesTvTest {
         assertEquals(
             listOf(
                 "volume", "muet", "design", "nouveautes", "ambiance_auto", "ambiance_intensite", "ambiance_couleurs", "ambiance_decalage",
-                "liens_seulement_vpn", "liens_pages", "liens_raccourci", "liens_code", "maj", "systeme",
+                "liens_seulement_vpn", "liens_pages", "liens_raccourci", "liens_code", "nba_decalage", "maj", "systeme",
             ),
             r.map { it.cle },
         )
         assertEquals(
             listOf(
                 "curseur", "interrupteur", "choix", "interrupteur", "interrupteur", "choix", "choix", "choix",
-                "interrupteur", "choix", "interrupteur", "boutons", "boutons", "boutons",
+                "interrupteur", "choix", "interrupteur", "boutons", "choix", "boutons", "boutons",
             ),
             r.map { it.type },
         )
         // Les réglages d'un même groupe se suivent
         val groupes = r.map { it.groupe }
-        assertEquals(listOf("Son", "Affichage", "Mode Ambiance", "Envoyer sur la TV", "Mises à jour", "Ouvrir sur la TV"), groupes.distinct())
+        assertEquals(
+            listOf("Son", "Affichage", "Mode Ambiance", "Envoyer sur la TV", "Box score NBA", "Mises à jour", "Ouvrir sur la TV"),
+            groupes.distinct(),
+        )
         groupes.distinct().forEach { g ->
             val indices = groupes.indices.filter { groupes[it] == g }
             assertEquals("groupe $g contigu", indices.last() - indices.first() + 1, indices.size)
         }
         assertTrue(r.all { it.titre.isNotBlank() && it.actif })
+    }
+
+    /** Box score NBA : retard des scores, choix 0, 15, 30, 45, 60 s (aucun par défaut). */
+    @Test
+    fun retardDuBoxScoreNba() {
+        val r = items()
+        val d = r.de<ReglageTv.Choix>(ReglagesTv.NBA_DECALAGE)
+        assertEquals("Box score NBA", d.groupe)
+        assertEquals("0", d.valeur)
+        assertEquals(listOf("0", "15", "30", "45", "60"), d.options.map { it.id })
+        assertEquals(listOf("Aucun", "15 s", "30 s", "45 s", "60 s"), d.options.map { it.nom })
+        assertTrue(d.titre.isNotBlank())
+        assertEquals("30", items(etatTv().copy(nbaDecalage = 30)).de<ReglageTv.Choix>(ReglagesTv.NBA_DECALAGE).valeur)
+        // Valeur enregistrée hors de la liste : aucun retard
+        assertEquals("0", items(etatTv().copy(nbaDecalage = 20)).de<ReglageTv.Choix>(ReglagesTv.NBA_DECALAGE).valeur)
+        assertEquals(Changement(ReglagesTv.NBA_DECALAGE, "30"), ReglagesTv.valider(r, ReglagesTv.NBA_DECALAGE, "30", null))
+        assertEquals(Changement(ReglagesTv.NBA_DECALAGE, "45"), ReglagesTv.valider(r, ReglagesTv.NBA_DECALAGE, 45, null))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.NBA_DECALAGE, "20", null))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.NBA_DECALAGE, true, null))
     }
 
     @Test

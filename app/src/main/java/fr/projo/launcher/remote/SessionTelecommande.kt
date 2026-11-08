@@ -1,5 +1,7 @@
 package fr.projo.launcher.remote
 
+import fr.projo.launcher.boxscore.Affichage
+import fr.projo.launcher.boxscore.EtatNba
 import fr.projo.launcher.liens.Liens
 import fr.projo.launcher.liens.ResultatLien
 import org.json.JSONArray
@@ -42,6 +44,12 @@ interface HoteSession {
      * `liens_etat` / `lien_ouvrir` sont ignorés.
      */
     val liens: LiensTv? get() = null
+
+    /**
+     * Box score NBA par-dessus la vidéo. null : non proposé, `fonctions` n'annonce pas `nba` et
+     * `nba_etat` / `nba_afficher` / `nba_choisir` sont ignorés.
+     */
+    val nba: NbaTv? get() = null
 
     /**
      * Identifiant du design de l'accueil (« galerie », « verre »…), annoncé dans `hello` pour que
@@ -111,6 +119,10 @@ class SessionTelecommande(
     var abonneLiens = false
         private set
 
+    /** Le téléphone a envoyé `nba_etat` pendant cette connexion : il reçoit les changements de `nba`. */
+    var abonneNba = false
+        private set
+
     /** Message reçu du téléphone. */
     fun recevoir(texte: String) {
         if (etat == Etat.FERMEE || texte.length > Protocole.TAILLE_MAX) return
@@ -144,6 +156,11 @@ class SessionTelecommande(
     /** `liens` envoyé de lui-même par la TV (VPN, réglage, adresse) : seulement aux téléphones abonnés. */
     fun envoyerLiensSiAbonne(message: String) {
         if (abonneLiens) envoyerSiAuthentifiee(message)
+    }
+
+    /** `nba` envoyé de lui-même par la TV (scores, liste, choix, format, erreur, réglage) : seulement aux abonnés. */
+    fun envoyerNbaSiAbonne(message: String) {
+        if (abonneNba) envoyerSiAuthentifiee(message)
     }
 
     /** Ce téléphone vient d'être révoqué sur la TV. */
@@ -237,11 +254,15 @@ class SessionTelecommande(
         )
     }
 
-    /** Fonctions annoncées : `apps` et `reglages` avec le pilotage, `liens` avec l'envoi de liens ; null si aucune. */
+    /**
+     * Fonctions annoncées : `apps` et `reglages` avec le pilotage, `liens` avec l'envoi de liens,
+     * `nba` avec le box score ; null si aucune.
+     */
     private fun fonctions(): List<String>? {
         val f = buildList {
             if (hote.pilotage != null) addAll(Protocole.FONCTIONS)
             if (hote.liens != null) add(Protocole.FONCTION_LIENS)
+            if (hote.nba != null) add(Protocole.FONCTION_NBA)
         }
         return f.ifEmpty { null }
     }
@@ -324,8 +345,50 @@ class SessionTelecommande(
             "pair_request" -> envoyer(Protocole.paired(hote.nomTv, hote.registre.idTv(), Base64Url.encoder(hote.identite.spki)))
             "apps_liste", "apps_images", "app_ouvrir", "reglages_liste", "reglage" -> hote.pilotage?.let { pilotage(it, t, m) }
             "liens_etat", "lien_ouvrir" -> hote.liens?.let { liens(it, t, m) }
+            "nba_etat", "nba_afficher", "nba_choisir" -> hote.nba?.let { nba(it, t, m) }
         }
     }
+
+    // ------------------------------------------------------------------ box score NBA
+
+    /**
+     * `nba_etat` (état, et abonnement de cette connexion), `nba_afficher` et `nba_choisir`
+     * (docs/telecommande.md, « Box score NBA »). Format ou identifiant inconnu : ignoré ; le
+     * téléphone reçoit quand même l'état actuel pour se recaler. Journal : types d'événements
+     * seulement, jamais de score.
+     */
+    private fun nba(n: NbaTv, t: String, m: JSONObject) {
+        val repondre: (EtatNba) -> Unit = { envoyerSiAuthentifiee(Protocole.nba(it)) }
+        when (t) {
+            "nba_etat" -> {
+                abonneNba = true
+                hote.journal("nba : état demandé")
+                n.abonner(repondre)
+            }
+            "nba_afficher" -> {
+                val format = Affichage.de(m.opt("affichage"))
+                if (format == null) {
+                    hote.journal("nba : affichage inconnu ignoré")
+                    n.etat(repondre)
+                    return
+                }
+                hote.journal("nba : affichage demandé")
+                n.afficher(format, idMatch(m.opt("id")), repondre)
+            }
+            "nba_choisir" -> {
+                val id = idMatch(m.opt("id"))
+                if (id == null) {
+                    n.etat(repondre)
+                    return
+                }
+                hote.journal("nba : match demandé")
+                n.choisir(id, repondre)
+            }
+        }
+    }
+
+    /** `id` d'un match (« LAL-BOS ») : chaîne non vide de 20 caractères au plus, sinon null. */
+    private fun idMatch(v: Any?): String? = (v as? String)?.takeIf { it.isNotEmpty() && it.length <= Protocole.ID_MATCH_MAX }
 
     // ------------------------------------------------------------------ envoyer sur la TV (liens)
 

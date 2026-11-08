@@ -19,6 +19,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.MainActivity
+import fr.projo.launcher.boxscore.BoxScoreNba
 import fr.projo.launcher.data.LauncherPrefs
 import fr.projo.launcher.liens.EnvoiTv
 import fr.projo.launcher.ui.Design
@@ -116,6 +117,11 @@ object Telecommande : HoteSession {
     private var _liens: LiensLauncher? = null
     override val liens: LiensTv? get() = _liens
 
+    /** Box score NBA (créé par [demarrer]). */
+    @Volatile
+    private var _nba: NbaLauncher? = null
+    override val nba: NbaTv? get() = _nba
+
     /** Design de l'accueil, suivi dès le démarrage (thème de la télécommande). */
     @Volatile
     private var designCourant: String? = null
@@ -136,6 +142,14 @@ object Telecommande : HoteSession {
         horloge = { SystemClock.uptimeMillis() },
         planifier = { delai, tache -> fil.postDelayed({ tache() }, delai) },
         action = { envoyerLiens() },
+    )
+
+    /** Renvoi de `nba` aux téléphones abonnés, au plus toutes les 300 ms (fil de la télécommande). */
+    private val regroupementNba = Regroupement(
+        RemoteConfig.REGLAGES_INTERVALLE_MS,
+        horloge = { SystemClock.uptimeMillis() },
+        planifier = { delai, tache -> fil.postDelayed({ tache() }, delai) },
+        action = { envoyerNba() },
     )
 
     private var principal: ClientPeerJs? = null
@@ -162,6 +176,9 @@ object Telecommande : HoteSession {
         _injecteur = InjectionAndroid(app)
         _pilotage = PilotageLauncher(app, retour = { executer(it) }, surChangement = { reglagesChanges() })
         _liens = LiensLauncher(app, retour = { executer(it) })
+        // Box score NBA : `nba` renvoyé aux abonnés à chaque changement (scores, liste, format…)
+        _nba = NbaLauncher(app, retour = { executer(it) }, abonnes = { abonnesNba() })
+        BoxScoreNba.surChangement = { nbaChange() }
         // VPN allumé ou coupé, réglage du groupe « Envoyer sur la TV » changé : `liens` (et `reglages`) renvoyés
         EnvoiTv.ecouter { liensChanges(); reglagesChanges() }
         suivreDesign(app)
@@ -305,6 +322,8 @@ object Telecommande : HoteSession {
     private fun surFin(c: ConnexionWebRtc) {
         connexions.remove(c)
         majConnectes()
+        // Plus de téléphone abonné : le tableau du jour NBA n'est plus chargé (sauf box score affiché)
+        _nba?.majAbonnement()
         if (connexions.isEmpty()) {
             fil.removeCallbacks(liberationUsine)
             fil.postDelayed(liberationUsine, 30_000)
@@ -567,6 +586,24 @@ object Telecommande : HoteSession {
         l.etat { e ->
             val message = Protocole.liens(e)
             connexions.forEach { it.session?.envoyerLiensSiAbonne(message) }
+        }
+    }
+
+    // ------------------------------------------------------------------ box score NBA
+
+    /** État du box score changé (scores, liste, choix, format, erreur, réglage) : `nba` renvoyé aux abonnés. N'importe quel fil. */
+    fun nbaChange() = surFil { regroupementNba.signaler() }
+
+    /** Fil de la télécommande. */
+    private fun abonnesNba(): Boolean = connexions.any { c -> c.session?.let { it.authentifiee && it.abonneNba } == true }
+
+    private fun envoyerNba() {
+        val n = _nba ?: return
+        // Personne d'abonné : rien à lire
+        if (!abonnesNba()) return
+        n.etat { e ->
+            val message = Protocole.nba(e)
+            connexions.forEach { it.session?.envoyerNbaSiAbonne(message) }
         }
     }
 
