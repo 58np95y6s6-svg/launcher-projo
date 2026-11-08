@@ -40,10 +40,13 @@ import java.io.File
  * flux de app/src/test/resources/nba/ : résumé, détails (deux équipes, et source ESPN sans point
  * « sur le terrain »), attente « Synchronisation avec la vidéo… ». Résultats dans
  * app/build/captures/nba_*.png.
+ *
+ * SDK 35 : un bac à sable Robolectric à part, pour ne pas partager l'état de Compose (répartiteur
+ * de l'interface, notifications des instantanés) avec les tests de l'accueil en SDK 33.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [33], qualifiers = ECRAN_TV)
+@Config(sdk = [35], qualifiers = ECRAN_TV)
 class CapturesNbaTest {
 
     /** Robolectric : déclare l'activité vide utilisée par Compose. */

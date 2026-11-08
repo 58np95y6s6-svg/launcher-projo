@@ -261,10 +261,10 @@ object ReglagesTv {
             ),
             *reglagesEnvoi(e.envoi).toTypedArray(),
             ReglageTv.Choix(
-                NBA_DECALAGE, GROUPE_NBA, "Retard des scores",
+                NBA_DECALAGE, GROUPE_NBA, "Décalage des scores",
                 valeur = (e.nbaDecalage.takeIf { it in DecalageNba.possibles } ?: DecalageNba.DEFAUT).toString(),
                 options = DecalageNba.possibles.map { OptionReglage(it.toString(), DecalageNba.nom(it)) },
-                detail = "Scores et stats retardés pour suivre la vidéo, sans spoiler",
+                detail = "Retarde scores et stats pour suivre la vidéo, sans spoiler",
             ),
             reglageMaj(e.maj),
             ReglageTv.Boutons(

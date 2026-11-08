@@ -7,6 +7,7 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import androidx.compose.ui.platform.ComposeView
 import fr.projo.launcher.MainActivity
+import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.system.RedirectionAccueil
 import fr.projo.launcher.ui.ECRAN_TV
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +33,12 @@ import java.util.concurrent.TimeUnit
  * seule fenêtre ni focalisable ni touchable, retirée quand il est caché ; ◀ ▶ et Retour gardés
  * seulement en format détails ; caché au retour sur l'accueil d'iBiTV ; sans service, erreur
  * « accessibilite ». Réseau remplacé par un faux (exemples de flux).
+ *
+ * SDK 35 : un bac à sable Robolectric à part (fenêtre Compose hors activité), sans état partagé
+ * avec les tests de l'accueil et du néon en SDK 33.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = ECRAN_TV)
+@Config(sdk = [35], qualifiers = ECRAN_TV)
 class FenetreBoxScoreTest {
 
     private val box by lazy { LectureNba.boxScoreNba(exempleNba("boxscore_nba.json")) }
@@ -58,6 +62,7 @@ class FenetreBoxScoreTest {
 
     @Before
     fun avant() {
+        ModeAmbiance.oublier()
         BoxScoreNba.oublier()
         BoxScoreNba.chargeur = faux
         BoxScoreNba.filReseau = Dispatchers.Unconfined
@@ -67,6 +72,7 @@ class FenetreBoxScoreTest {
     fun apres() {
         BoxScoreNba.oublier()
         ShadowLooper.idleMainLooper()
+        ModeAmbiance.oublier()
     }
 
     private fun attendre() = ShadowLooper.idleMainLooper()
