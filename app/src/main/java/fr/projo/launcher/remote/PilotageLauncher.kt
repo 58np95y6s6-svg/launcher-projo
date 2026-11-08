@@ -23,7 +23,6 @@ import fr.projo.launcher.data.PrefsState
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.liens.EnvoiTv
-import fr.projo.launcher.liens.Liens
 import fr.projo.launcher.liens.OuvertureLiens
 import fr.projo.launcher.system.DeviceStatus
 import fr.projo.launcher.system.SystemActions
@@ -260,7 +259,7 @@ class PilotageLauncher(
             envoi = EtatEnvoi(
                 seulementVpn = EnvoiTv.seulementVpn,
                 pages = EnvoiTv.pages,
-                navigateurs = OuvertureLiens.ordrePages(app, Liens.PAGES_AUTO).map { (paquet, nom) -> OptionReglage(paquet, nom) },
+                navigateurs = OuvertureLiens.choixPages(app).map { (paquet, nom) -> OptionReglage(paquet, nom) },
                 raccourci = EnvoiTv.raccourci,
             ),
         )

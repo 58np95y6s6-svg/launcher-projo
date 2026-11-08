@@ -36,7 +36,6 @@ import androidx.tv.material3.darkColorScheme
 import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.liens.ChoixQuestion
 import fr.projo.launcher.liens.EnvoiTv
-import fr.projo.launcher.liens.Liens
 import fr.projo.launcher.liens.OuvertureLiens
 import fr.projo.launcher.puces.PucesNfc
 import fr.projo.launcher.ui.BandeauLienTv
@@ -553,7 +552,7 @@ class MainActivity : ComponentActivity() {
         // ---------------- Envoyer sur la TV
         if (montrerEnvoyer) {
             val ip = remember { FireTv.adresseIp() }
-            val navigateurs = remember { OuvertureLiens.ordrePages(this, Liens.PAGES_AUTO) }
+            val navigateurs = remember { OuvertureLiens.choixPages(this) }
             val appliVpn = remember { EnvoiTv.appliVpn(this)?.second }
             EnvoyerTvDialog(
                 navigateurs = navigateurs,

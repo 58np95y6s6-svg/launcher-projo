@@ -61,6 +61,16 @@ object Liens {
     /** Pages web, choix « auto » : VYPN, Silk, TV Bro, Firefox, Chrome, puis les autres. */
     val NAVIGATEURS = listOf(VYPN, "com.amazon.cloud9", "com.phlox.tvwebbrowser", "org.mozilla.tv.firefox", "org.mozilla.firefox", "com.android.chrome")
 
+    /**
+     * Composants du système qui reçoivent les liens web sans être des navigateurs (Fire TV, Android
+     * TV) : jamais proposés comme appli des pages web, essayés seulement en tout dernier recours.
+     */
+    val COMPOSANTS_SYSTEME = setOf(
+        "com.amazon.tv.intentsupport",
+        "com.google.android.tv.frameworkpackagestubs",
+        "com.android.tv.frameworkpackagestubs",
+    )
+
     /** Applis VPN que la TV sait ouvrir (« Allumer le VPN »), dans l'ordre de préférence : paquet → nom. */
     val APPLIS_VPN: List<Pair<String, String>> = listOf(
         VYPN to "VYPN",
@@ -183,16 +193,30 @@ object Liens {
     }
 
     /**
+     * Appli proposée parmi les choix des pages web : ni un composant du système ([COMPOSANTS_SYSTEME]),
+     * ni une appli sans nom (Android donne alors son paquet, « com.amazon.tv.intentsupport »).
+     */
+    fun navigateurVisible(paquet: String, nom: String): Boolean =
+        paquet !in COMPOSANTS_SYSTEME && nom.isNotBlank() && nom.trim() != paquet
+
+    /**
      * Applis des pages web, ordre « auto » : VYPN (son paquet, ou une appli nommée « VYPN »),
-     * Silk, TV Bro, Firefox, Chrome, puis les autres par ordre alphabétique ; jamais iBiTV ([soi]).
+     * Silk, TV Bro, Firefox, Chrome, puis les autres par ordre alphabétique, et en tout dernier
+     * recours les composants du système et les applis sans nom ; jamais iBiTV ([soi]).
      * [installees] : applis qui ouvrent une page https (paquet → nom).
      */
     fun ordreAuto(installees: Map<String, String>, soi: String): List<String> {
         val vypn = installees.filter { (p, nom) -> p == VYPN || nom.trim().equals("VYPN", ignoreCase = true) }.keys.sortedBy { if (it == VYPN) 0 else 1 }
         val connus = NAVIGATEURS.filter { it in installees }
-        val autres = installees.entries.sortedBy { it.value.lowercase() }.map { it.key }
-        return (vypn + connus + autres).distinct().filter { it != soi }
+        val (visibles, caches) = installees.entries.partition { navigateurVisible(it.key, it.value) }
+        val autres = visibles.sortedBy { it.value.lowercase() }.map { it.key }
+        val recours = caches.map { it.key }.sorted()
+        return (vypn + connus + autres + recours).distinct().filter { it != soi }
     }
+
+    /** Choix proposés pour les pages web (TV et télécommande) : l'ordre « auto » sans les applis cachées. */
+    fun choixPages(installees: Map<String, String>, soi: String): List<String> =
+        ordreAuto(installees, soi).filter { navigateurVisible(it, installees[it].orEmpty()) }
 
     /** Applis des pages web dans l'ordre d'essai : le choix [pages] (s'il est installé) puis l'ordre « auto ». */
     fun ordrePages(installees: Map<String, String>, pages: String, soi: String): List<String> {

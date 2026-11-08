@@ -417,7 +417,9 @@ Mêmes règles pour un lien du téléphone et un lien du raccourci iOS :
    réglage `liens_pages`. `auto` (par défaut) : VYPN (`net.vypn.app`, ou une appli nommée « VYPN »),
    Silk (`com.amazon.cloud9`), TV Bro (`com.phlox.tvwebbrowser`), Firefox (`org.mozilla.tv.firefox`,
    `org.mozilla.firefox`), Chrome (`com.android.chrome`), puis toute appli qui ouvre une page `https`,
-   iBiTV exclue.
+   iBiTV exclue ; en tout dernier recours, les composants du système qui reçoivent les liens
+   (`com.amazon.tv.intentsupport`, `com.google.android.tv.frameworkpackagestubs`,
+   `com.android.tv.frameworkpackagestubs`) et les applis sans nom (Android donne alors le paquet).
 
 Chaque appli reçoit `ACTION_VIEW` avec l'URL (et le type `video/*` au cas 3), limité à son paquet ;
 une appli qui ne déclare pas cette ouverture est sautée. Avant d'ouvrir, si iBiTV est à l'écran, un
@@ -494,8 +496,8 @@ Types d'événements seulement : « lien envoyé (téléphone | raccourci) », �
   `PauseMusique.pauser` (toujours, quel que soit le genre du lien). Rien n'est écrit dans le journal
   à propos de l'intention.
 - **`liens_pages`** : options = `auto` puis les applis qui ouvrent `https://example.com/`
-  (`MATCH_DEFAULT_ONLY | MATCH_ALL`), dans l'ordre « auto » ; une appli choisie qui n'est plus
-  installée revient à `auto`. Le choix est essayé en premier, puis l'ordre « auto ».
+  (`MATCH_DEFAULT_ONLY | MATCH_ALL`), dans l'ordre « auto », sans les composants du système ni les
+  applis sans nom (jamais proposés) ; une appli choisie qui n'est plus installée revient à `auto`. Le choix est essayé en premier, puis l'ordre « auto ».
 - **Adresse du raccourci** : IPv4 d'une interface Wi-Fi ou Ethernet, jamais celle d'un VPN (tun0,
   wg0… ou interface point à point), ni 127.x / 169.254.x ; adresse privée d'abord. Changement de
   réseau (`registerDefaultNetworkCallback`) : `liens` renvoyé.

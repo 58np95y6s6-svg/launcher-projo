@@ -137,6 +137,35 @@ class LiensTest {
     }
 
     @Test
+    fun pagesWebSansComposantsDuSysteme() {
+        val soi = "fr.projo.launcher"
+        // Fire TV : le composant d'Amazon qui reçoit les liens n'a pas de nom (Android donne son paquet)
+        val installees = mapOf(
+            "com.amazon.tv.intentsupport" to "com.amazon.tv.intentsupport",
+            "com.google.android.tv.frameworkpackagestubs" to "Stubs",
+            "com.amazon.cloud9" to "Navigateur Silk",
+            "org.sans.nom" to "org.sans.nom",
+            "org.vide" to " ",
+            "net.vypn.app" to "VYPN",
+            "org.alpha.web" to "Alpha",
+        )
+        // Proposés : les vrais navigateurs seulement, dans l'ordre « auto »
+        assertEquals(listOf("net.vypn.app", "com.amazon.cloud9", "org.alpha.web"), Liens.choixPages(installees, soi))
+        // Essayés : les mêmes, puis les autres en tout dernier recours
+        assertEquals(
+            listOf(
+                "net.vypn.app", "com.amazon.cloud9", "org.alpha.web",
+                "com.amazon.tv.intentsupport", "com.google.android.tv.frameworkpackagestubs", "org.sans.nom", "org.vide",
+            ),
+            Liens.ordreAuto(installees, soi),
+        )
+        assertTrue(Liens.navigateurVisible("com.amazon.cloud9", "Navigateur Silk"))
+        assertTrue(!Liens.navigateurVisible("com.amazon.tv.intentsupport", "Intent Support"))
+        assertTrue(!Liens.navigateurVisible("org.x", " org.x "))
+        assertTrue(Liens.choixPages(mapOf("com.amazon.tv.intentsupport" to "com.amazon.tv.intentsupport"), soi).isEmpty())
+    }
+
+    @Test
     fun appliVpnLaPremiereInstallee() {
         assertEquals("ch.protonvpn.android" to "Proton VPN", Liens.appliVpn { it in setOf("com.wireguard.android", "ch.protonvpn.android") })
         assertEquals("net.vypn.app" to "VYPN", Liens.appliVpn { it in setOf("net.mullvad.mullvadvpn", "net.vypn.app") })

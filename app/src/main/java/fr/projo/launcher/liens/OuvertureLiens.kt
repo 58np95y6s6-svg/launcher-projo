@@ -35,6 +35,12 @@ object OuvertureLiens {
         return Liens.ordrePages(n, pages, context.packageName).map { it to (n[it] ?: it) }
     }
 
+    /** Choix proposés pour les pages web (paquet → nom), sans les composants du système ni les applis sans nom. */
+    fun choixPages(context: Context): List<Pair<String, String>> {
+        val n = navigateurs(context)
+        return Liens.choixPages(n, context.packageName).map { it to (n[it] ?: it) }
+    }
+
     /** Applis qui savent ouvrir [lien], dans l'ordre d'essai ; vide : aucune. */
     fun candidats(context: Context, lien: LienTv, pages: String): List<Candidat> {
         val pm = context.packageManager
