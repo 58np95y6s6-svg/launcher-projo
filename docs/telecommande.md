@@ -102,7 +102,8 @@ TV → téléphone :
 
 | `t` | Champs | Rôle |
 |---|---|---|
-| `hello` | `nonce`, `sig`, `nomTV`, `versionApp`, `cle`, `fonctions`? | réponse authentifiée (`cle` : SPKI de la TV, voir « Précisions » ; `fonctions` : voir « Pilotage ») |
+| `hello` | `nonce`, `sig`, `nomTV`, `versionApp`, `cle`, `fonctions`?, `design`? | réponse authentifiée (`cle` : SPKI de la TV, voir « Précisions » ; `fonctions` : voir « Pilotage » ; `design` : voir « Design de la TV ») |
+| `design` | `id` | le design de l'accueil de la TV a changé (voir « Design de la TV ») |
 | `paired` | `nomTV`, `idTV` | appairage accepté (`idTV` : identifiant PeerJS stable) |
 | `pair_refused` | `raison` : `refuse` `expire` `invalide` `trop_d_essais` | appairage refusé |
 | `revoked` | — | ce téléphone a été révoqué (la PWA oublie la TV) |
@@ -114,6 +115,18 @@ TV → téléphone :
 Compatibilité : à `hello`, chacun annonce `v`. Si la TV reçoit une version qu'elle ne gère pas, elle répond `erreur` avec `code: "version"` et `vMax`. La PWA affiche alors :
 - « Mettez à jour iBiTV sur la TV » si sa propre version est la plus récente ;
 - sinon « Rechargez la télécommande ».
+
+## Design de la TV : thème de la télécommande (version 1, ajout compatible)
+
+La télécommande prend le style du design affiché sur la TV (couleurs, formes, typographie).
+
+- `hello` de la TV contient `design` : identifiant du design de l'accueil (`verre`, `pastel`,
+  `console`, `une`, `chaines`, `studio`, `galerie`). Absent (TV plus ancienne) ou inconnu : thème par
+  défaut de la PWA.
+- Quand le design change sur la TV (Réglages de la TV, ou réglage `design` depuis le téléphone), la TV
+  envoie `{t: "design", id}` à **chaque** téléphone authentifié (sans abonnement).
+- La PWA garde le dernier design de chaque TV et l'applique dès l'ouverture, avant la connexion. Sans
+  TV connue : thème par défaut (clair, ou sombre si l'iPhone est en mode sombre).
 
 ## Pilotage depuis le téléphone : applis et réglages (version 1, ajout compatible)
 
