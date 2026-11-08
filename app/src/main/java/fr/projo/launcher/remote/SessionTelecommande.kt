@@ -44,6 +44,12 @@ interface HoteSession {
     val liens: LiensTv? get() = null
 
     /**
+     * Identifiant du design de l'accueil (« galerie », « verre »…), annoncé dans `hello` pour que
+     * la télécommande prenne le même style ; null : pas annoncé.
+     */
+    val design: String? get() = null
+
+    /**
      * Affiche « Autoriser le téléphone de Marie ? ». [reponse] est appelée une fois (sur le
      * fil de la télécommande). Rend false si une autre demande attend déjà une réponse.
      */
@@ -226,6 +232,7 @@ class SessionTelecommande(
                 idTv = hote.registre.idTv(),
                 cle = Base64Url.encoder(hote.identite.spki),
                 fonctions = fonctions(),
+                design = hote.design,
             ),
         )
     }

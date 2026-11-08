@@ -132,6 +132,27 @@ class PilotageTest {
         assertEquals(1, envoyes.size)
     }
 
+    /** Thème de la télécommande : `design` dans `hello` si la TV le donne, absent sinon. */
+    @Test
+    fun designAnnonceDansHello() {
+        val (sans, _) = session()
+        sans.recevoir(hello())
+        assertFalse(envoyes.single().has("design"))
+        envoyes.clear()
+        val hote = object : HoteSession by HotePilote(base, pilotage) {
+            override val design: String = "galerie"
+        }
+        val s = SessionTelecommande(hote, Vecteurs.DTLS_TEL, Vecteurs.DTLS_TV, envoyer = { envoyes += JSONObject(it) }, fermer = {})
+        s.recevoir(hello())
+        assertTrue(s.authentifiee)
+        assertEquals("galerie", envoyes.single().getString("design"))
+        // Changement de design : message `design`
+        val d = JSONObject(Protocole.design("verre"))
+        assertEquals(1, d.getInt("v"))
+        assertEquals("design", d.getString("t"))
+        assertEquals("verre", d.getString("id"))
+    }
+
     @Test
     fun rienAvantLAuthentification() {
         val (s, _) = session()

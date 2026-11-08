@@ -19,8 +19,16 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import fr.projo.launcher.LauncherViewModel
 import fr.projo.launcher.MainActivity
+import fr.projo.launcher.data.LauncherPrefs
 import fr.projo.launcher.liens.EnvoiTv
+import fr.projo.launcher.ui.Design
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
@@ -108,6 +116,12 @@ object Telecommande : HoteSession {
     private var _liens: LiensLauncher? = null
     override val liens: LiensTv? get() = _liens
 
+    /** Design de l'accueil, suivi dès le démarrage (thème de la télécommande). */
+    @Volatile
+    private var designCourant: String? = null
+    override val design: String? get() = designCourant
+    private val portee = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     /** Renvoi de `reglages` aux téléphones abonnés, au plus toutes les 300 ms (fil de la télécommande). */
     private val regroupementReglages = Regroupement(
         RemoteConfig.REGLAGES_INTERVALLE_MS,
@@ -150,6 +164,7 @@ object Telecommande : HoteSession {
         _liens = LiensLauncher(app, retour = { executer(it) })
         // VPN allumé ou coupé, réglage du groupe « Envoyer sur la TV » changé : `liens` (et `reglages`) renvoyés
         EnvoiTv.ecouter { liensChanges(); reglagesChanges() }
+        suivreDesign(app)
         (app as? Application)?.registerActivityLifecycleCallbacks(suiviActivites)
         fil.post {
             try {
@@ -473,6 +488,20 @@ object Telecommande : HoteSession {
         Log.i(TAG, "Téléphone révoqué")
         majConnectes()
         evaluer()
+    }
+
+    /**
+     * Design de l'accueil : lu une fois au démarrage (pour `hello`), puis chaque changement est
+     * envoyé à tous les téléphones authentifiés (`design`). Un simple suivi de la préférence.
+     */
+    private fun suivreDesign(app: Context) {
+        portee.launch {
+            LauncherPrefs(app).state.map { Design.from(it.design).id }.distinctUntilChanged().collect { id ->
+                val avant = designCourant
+                designCourant = id
+                if (avant != null && avant != id) surFil { diffuser(Protocole.design(id)) }
+            }
+        }
     }
 
     private fun surFil(action: () -> Unit) {

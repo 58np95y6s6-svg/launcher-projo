@@ -78,6 +78,8 @@ object Protocole {
         idTv: String,
         cle: String,
         fonctions: List<String>? = null,
+        /** Design de l'accueil (thème de la télécommande) ; null : pas annoncé. */
+        design: String? = null,
     ): String {
         val m = message("hello").put("nonce", nonce).put("sig", sig).put("nomTV", nomTv).put("versionApp", versionApp)
             .put("idTV", idTv).put("cle", cle)
@@ -86,8 +88,12 @@ object Protocole {
             for (f in fonctions) tableau.put(f)
             m.put("fonctions", tableau)
         }
+        if (design != null) m.put("design", design)
         return m.toString()
     }
+
+    /** Le design de l'accueil a changé : la télécommande change de thème. */
+    fun design(id: String): String = message("design").put("id", id).toString()
 
     fun paired(nomTv: String, idTv: String, cle: String): String =
         message("paired").put("nomTV", nomTv).put("idTV", idTv).put("cle", cle).toString()
