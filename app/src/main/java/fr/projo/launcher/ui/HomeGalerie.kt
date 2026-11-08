@@ -58,17 +58,16 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1181,13 +1180,16 @@ private fun PanneauGalerie(
             .clip(RoundedCornerShape(G_PANNEAU_RAYON.mq))
             .drawWithCache {
                 // Liseré lumineux de la couleur du service, le long du bord arrondi du panneau : tout le bas
-                // et les deux coins, puis il s'estompe en remontant les côtés. Lueur : le même tracé, plus
-                // large et plus transparent (la moitié extérieure est coupée par le bord du panneau).
+                // et les deux coins, puis il s'estompe en remontant les côtés. Lueur : le même tracé répété,
+                // de plus en plus large et très transparent, pour un fondu continu vers l'intérieur (la moitié
+                // extérieure est coupée par le bord du panneau). Dessiné seulement dans le bas du panneau.
                 val r = G_PANNEAU_RAYON * k
                 val e = G_TRAIT_EPAISSEUR * k
                 val w = size.width
                 val h = size.height
-                val bord = Path().apply { addRoundRect(RoundRect(e / 2f, e / 2f, w - e / 2f, h - e / 2f, CornerRadius(r - e / 2f))) }
+                val coin = Offset(e / 2f, e / 2f)
+                val taille = Size(w - e, h - e)
+                val arrondi = CornerRadius(r - e / 2f)
                 val fondu = r + G_TRAIT_FONDU * k
                 val reflet = Brush.horizontalGradient(
                     0f to Color.White.copy(alpha = 0f), 0.5f to Color.White.copy(alpha = 0.5f), 1f to Color.White.copy(alpha = 0f),
@@ -1196,8 +1198,10 @@ private fun PanneauGalerie(
                 onDrawBehind {
                     val c = couleur
                     val degrade = Brush.verticalGradient(0f to c.copy(alpha = 0f), 0.6f to c, 1f to c, startY = h - fondu, endY = h)
-                    for ((largeur, a) in G_LUEUR) drawPath(bord, degrade, alpha = a, style = Stroke(largeur * k))
-                    drawPath(bord, degrade, style = Stroke(e))
+                    clipRect(top = h - fondu) {
+                        for (largeur in G_LUEUR) drawRoundRect(degrade, coin, taille, arrondi, alpha = G_LUEUR_ALPHA, style = Stroke(largeur * k))
+                        drawRoundRect(degrade, coin, taille, arrondi, style = Stroke(e))
+                    }
                     // Reflet clair au milieu du bas, symétrique
                     drawLine(reflet, Offset(r, h - e / 2f), Offset(w - r, h - e / 2f), strokeWidth = e * 0.6f, cap = StrokeCap.Round)
                 }
@@ -1236,8 +1240,12 @@ private const val G_PANNEAU_RAYON = 32f
 private const val G_TRAIT_EPAISSEUR = 4f
 /** Hauteur au-dessus des coins sur laquelle le liseré s'estompe le long des côtés. */
 private const val G_TRAIT_FONDU = 28f
-/** Lueur du liseré : largeurs du tracé (px de maquette) et opacités, de la plus large à la plus fine. */
-private val G_LUEUR = listOf(34f to 0.05f, 22f to 0.08f, 13f to 0.13f)
+/**
+ * Lueur du liseré : largeurs du tracé (px de maquette), de 3 en 3, chacune peu opaque. Les couches
+ * s'additionnent vers le bord : fondu régulier, sans contours visibles comme avec trois couches.
+ */
+private val G_LUEUR = List(12) { i -> 3f * (i + 1) }
+private const val G_LUEUR_ALPHA = 0.024f
 
 /** Couleur du service d'un titre (Netflix rouge, Prime Video bleu…), sinon celle de son app. */
 @Composable
