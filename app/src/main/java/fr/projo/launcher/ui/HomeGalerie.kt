@@ -58,18 +58,20 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -1176,13 +1178,29 @@ private fun PanneauGalerie(
                     0f to Color.White.copy(alpha = 0.78f), 0.6f to Color(0xFFF6F7F9).copy(alpha = 0.6f), 1f to Color.White.copy(alpha = 0.7f),
                 )
             })
-            .clip(RoundedCornerShape(32.mq))
-            .drawBehind {
-                // Lueur douce de la couleur du service : toute la longueur du trait, d'intensité égale,
-                // centrée sur lui (elle monte dans le panneau, le bas est coupé par le bord)
-                val marge = G_TRAIT_MARGE * k
-                val haut = size.height - (G_TRAIT_EPAISSEUR + 8f) * k
-                OmbreGalerie.dessiner(this, marge, haut, size.width - 2f * marge, (G_TRAIT_EPAISSEUR + 8f) * k, 24f * k, 0f, couleur.copy(alpha = 0.4f))
+            .clip(RoundedCornerShape(G_PANNEAU_RAYON.mq))
+            .drawWithCache {
+                // Liseré lumineux de la couleur du service, le long du bord arrondi du panneau : tout le bas
+                // et les deux coins, puis il s'estompe en remontant les côtés. Lueur : le même tracé, plus
+                // large et plus transparent (la moitié extérieure est coupée par le bord du panneau).
+                val r = G_PANNEAU_RAYON * k
+                val e = G_TRAIT_EPAISSEUR * k
+                val w = size.width
+                val h = size.height
+                val bord = Path().apply { addRoundRect(RoundRect(e / 2f, e / 2f, w - e / 2f, h - e / 2f, CornerRadius(r - e / 2f))) }
+                val fondu = r + G_TRAIT_FONDU * k
+                val reflet = Brush.horizontalGradient(
+                    0f to Color.White.copy(alpha = 0f), 0.5f to Color.White.copy(alpha = 0.5f), 1f to Color.White.copy(alpha = 0f),
+                    startX = r, endX = w - r,
+                )
+                onDrawBehind {
+                    val c = couleur
+                    val degrade = Brush.verticalGradient(0f to c.copy(alpha = 0f), 0.6f to c, 1f to c, startY = h - fondu, endY = h)
+                    for ((largeur, a) in G_LUEUR) drawPath(bord, degrade, alpha = a, style = Stroke(largeur * k))
+                    drawPath(bord, degrade, style = Stroke(e))
+                    // Reflet clair au milieu du bas, symétrique
+                    drawLine(reflet, Offset(r, h - e / 2f), Offset(w - r, h - e / 2f), strokeWidth = e * 0.6f, cap = StrokeCap.Round)
+                }
             },
     ) {
         for ((s, entrant) in affichesAuCentre(titres, courant, precedent)) {
@@ -1210,27 +1228,16 @@ private fun PanneauGalerie(
                 for (i in debut until minOf(n, debut + G_POINTS)) key(i) { Point(i == courant) }
             }
         }
-        // Trait de la couleur du service
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = G_TRAIT_MARGE.mq)
-                .fillMaxWidth()
-                .height(G_TRAIT_EPAISSEUR.mq)
-                .drawBehind {
-                    // Reflet clair au milieu, symétrique
-                    drawRoundRect(
-                        Brush.horizontalGradient(0f to couleur, 0.5f to lerp(couleur, Color.White, 0.45f), 1f to couleur),
-                        cornerRadius = CornerRadius(G_TRAIT_EPAISSEUR * k),
-                    )
-                },
-        )
     }
 }
 
-/** Trait de la couleur du service en bas du panneau : marge de chaque côté et épaisseur (px de maquette). */
-private const val G_TRAIT_MARGE = 30f
+/** Liseré de la couleur du service le long du bord du panneau (px de maquette). */
+private const val G_PANNEAU_RAYON = 32f
 private const val G_TRAIT_EPAISSEUR = 4f
+/** Hauteur au-dessus des coins sur laquelle le liseré s'estompe le long des côtés. */
+private const val G_TRAIT_FONDU = 28f
+/** Lueur du liseré : largeurs du tracé (px de maquette) et opacités, de la plus large à la plus fine. */
+private val G_LUEUR = listOf(34f to 0.05f, 22f to 0.08f, 13f to 0.13f)
 
 /** Couleur du service d'un titre (Netflix rouge, Prime Video bleu…), sinon celle de son app. */
 @Composable
