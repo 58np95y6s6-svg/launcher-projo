@@ -1181,8 +1181,8 @@ private fun PanneauGalerie(
                 // Lueur douce de la couleur du service : toute la longueur du trait, d'intensité égale,
                 // centrée sur lui (elle monte dans le panneau, le bas est coupé par le bord)
                 val marge = G_TRAIT_MARGE * k
-                val haut = size.height - (G_TRAIT_EPAISSEUR + 10f) * k
-                OmbreGalerie.dessiner(this, marge, haut, size.width - 2f * marge, (G_TRAIT_EPAISSEUR + 10f) * k, 26f * k, 0f, couleur.copy(alpha = 0.5f))
+                val haut = size.height - (G_TRAIT_EPAISSEUR + 8f) * k
+                OmbreGalerie.dessiner(this, marge, haut, size.width - 2f * marge, (G_TRAIT_EPAISSEUR + 8f) * k, 24f * k, 0f, couleur.copy(alpha = 0.4f))
             },
     ) {
         for ((s, entrant) in affichesAuCentre(titres, courant, precedent)) {
