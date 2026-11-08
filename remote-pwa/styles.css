@@ -258,8 +258,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .ecran::-webkit-scrollbar { display: none; }
 @keyframes entree { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.ecran-centre { justify-content: center; align-items: center; text-align: center; gap: .875rem; }
+.ecran-centre { align-items: center; text-align: center; gap: .875rem; }
 .ecran-centre > * { flex: none; }
+/* Centré verticalement, mais qui défile en entier si le texte est très agrandi */
+.ecran-centre::before, .ecran-centre::after { content: ""; flex: 1 0 0; }
 .ecran-centre .btn-principal, .ecran-centre .btn-secondaire { width: 100%; max-width: 22rem; }
 
 .entete { display: flex; align-items: center; gap: .5rem; min-height: 3rem; }
@@ -395,7 +397,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .avec-onglets .panneau-telecommande { padding-bottom: calc(var(--h-onglets) + var(--bas) + 1rem); }
 
 .zone-pave {
-  flex: 1 1 0; min-height: 13.5rem; max-height: 29rem;
+  /* Hauteur mini en px : avec un texte agrandi, le pavé rétrécit d'abord pour laisser grandir les touches */
+  flex: 1 1 0; min-height: 200px; max-height: 29rem;
   container-type: size; display: grid; place-items: start center;
   margin-top: auto; /* place en trop : partagée au-dessus du pavé et au-dessus des touches */
 }
@@ -412,14 +415,14 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
    Chaque secteur occupe une moitié du pavé : son centre (point d'activation de VoiceOver) est dans
    le triangle, loin de OK. */
 .pave-dir {
-  position: absolute; display: flex; padding: 1.5rem;
+  position: absolute; display: flex; padding: min(1.5rem, 7cqmin);
   color: var(--texte-2); transition: background .12s, color .12s;
 }
 .pave-haut { inset: 0 0 50% 0; clip-path: polygon(0 0, 100% 0, 50% 100%); justify-content: center; align-items: flex-start; --centre: 50% 100%; }
 .pave-bas { inset: 50% 0 0 0; clip-path: polygon(0 100%, 100% 100%, 50% 0); justify-content: center; align-items: flex-end; --centre: 50% 0; }
 .pave-gauche { inset: 0 50% 0 0; clip-path: polygon(0 0, 100% 50%, 0 100%); justify-content: flex-start; align-items: center; --centre: 100% 50%; }
 .pave-droite { inset: 0 0 0 50%; clip-path: polygon(100% 0, 0 50%, 100% 100%); justify-content: flex-end; align-items: center; --centre: 0 50%; }
-:root[data-theme="pastel"] .pave-dir { padding: 2rem; }
+:root[data-theme="pastel"] .pave-dir { padding: min(2rem, 9cqmin); }
 .pave-dir .ic { width: 34px; height: 34px; stroke-width: 2.4; }
 .pave-dir.appui, .pave-dir:focus-visible {
   color: var(--texte); outline: none;
@@ -430,7 +433,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   --ok: min(8.75rem, 40cqmin);
   position: absolute; left: 50%; top: 50%; width: var(--ok); height: var(--ok); transform: translate(-50%, -50%);
   border-radius: 50%; background: var(--ok-fond); color: var(--ok-texte);
-  font-weight: 800; font-size: 1.625rem; letter-spacing: .02em; box-shadow: var(--ombre-ok);
+  font-weight: 800; font-size: min(1.625rem, var(--ok) * .3); letter-spacing: .02em; box-shadow: var(--ombre-ok);
   transition: transform .1s, filter .1s;
 }
 .pave-ok.appui { transform: translate(-50%, -50%) scale(.94); filter: brightness(1.1); }
@@ -475,7 +478,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .vol-milieu .ic { width: 22px; height: 22px; }
 /* Texte agrandi : le mot « Volume » garde la place, le haut-parleur s'efface */
-@container (max-width: 14rem) { .vol-milieu .ic { display: none; } }
+@container (max-width: 13rem) { .vol-milieu .ic { display: none; } }
 .vol-milieu span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vol.appui, .vol-milieu.appui { background: color-mix(in srgb, var(--accent) 16%, transparent); transform: none; }
 .vol:focus-visible, .vol-milieu:focus-visible { outline-offset: -4px; }
