@@ -285,13 +285,19 @@ class ServeurPuces(
         return false
     }
 
-    /** Corps du POST : JSON {url, titre?}, formulaire url=…&titre=…, ou l'URL seule. */
+    /**
+     * Corps du POST : JSON {url, titre?}, formulaire url=…&titre=…, ou l'URL seule. Clés JSON sans
+     * tenir compte des majuscules ni des espaces autour : Raccourcis met souvent une majuscule (« URL »).
+     */
     private fun lienDuCorps(corps: String?): Pair<String?, String?> {
         val t = corps?.trim() ?: return null to null
         if (t.startsWith("{")) {
             return try {
                 val o = JSONObject(t)
-                (o.opt("url") as? String) to (o.opt("titre") as? String)
+                val cles = o.keys().asSequence().toList()
+                fun champ(nom: String): String? =
+                    (o.opt(nom) ?: cles.firstOrNull { it.trim().equals(nom, ignoreCase = true) }?.let { o.opt(it) }) as? String
+                champ("url") to champ("titre")
             } catch (e: Exception) {
                 null to null
             }

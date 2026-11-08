@@ -82,6 +82,12 @@ class RaccourciTest {
         assertEquals(200, json.statut)
         assertEquals("https://youtu.be/abc", envoyes.last().url)
         assertEquals("Une vidéo", envoyes.last().titre)
+        // Clés avec majuscules ou espaces (Raccourcis met souvent « URL ») : acceptées
+        assertEquals(200, s.repondre("POST", "/envoyer?c=$code", """{"URL":"https://exemple.fr/maj","Titre ":"Majuscules"}""").statut)
+        assertEquals("https://exemple.fr/maj", envoyes.last().url)
+        assertEquals("Majuscules", envoyes.last().titre)
+        // Sans champ url : lien invalide
+        assertEquals(400, s.repondre("POST", "/envoyer?c=$code", """{"lien":"https://exemple.fr/x"}""").statut)
         // POST, corps texte avec l'URL seule (et espaces autour)
         assertEquals(200, s.repondre("POST", "/envoyer?c=$code", "  https://exemple.fr/page \n").statut)
         assertEquals("https://exemple.fr/page", envoyes.last().url)

@@ -432,7 +432,8 @@ l'ouverture d'une appli vidéo.
 Si `liens_raccourci` est activé, le petit serveur HTTP de la TV (port 8642, celui des puces NFC,
 démarré dès qu'une des deux fonctions est activée) accepte :
 
-- `POST /envoyer?c=<code>`, corps JSON `{"url": "…", "titre"?: "…"}` ou corps texte contenant
+- `POST /envoyer?c=<code>`, corps JSON `{"url": "…", "titre"?: "…"}` (clés sans tenir compte des
+  majuscules ni des espaces autour : Raccourcis écrit souvent « URL ») ou corps texte contenant
   seulement l'URL ;
 - `GET /envoyer?c=<code>&url=<URL encodée>`.
 
