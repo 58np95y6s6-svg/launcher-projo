@@ -1,5 +1,6 @@
 // Captures de chaque écran, en profil iPhone (390×844) et Android (412×915) :
-// télécommande dans les 7 thèmes (un par design de la TV), feuille du clavier, onglets, alertes…
+// télécommande dans les 7 thèmes (un par design de la TV), feuille du clavier, onglets, alertes,
+// box score NBA (bandeau, formats, choix du match, erreurs, petit écran)…
 // Usage : node remote-pwa-dev/outils/captures.mjs [dossier de sortie] [iphone,android]
 
 import { mkdir } from "node:fs/promises";
@@ -13,7 +14,7 @@ const DESIGNS = ["galerie", "verre", "pastel", "console", "une", "chaines", "stu
 const banc = await demarrerBanc();
 
 async function serie(modele) {
-  const salon = await banc.tv({ nom: "Salon", design: "galerie" });
+  const salon = await banc.tv({ nom: "Salon", design: "galerie", fonctions: ["apps", "reglages", "liens", "nba"] });
   const chambre = await banc.tv({ nom: "Chambre", design: "une" });
   const tel = await banc.telephone(modele);
   let page = await tel.ouvrir();
@@ -144,6 +145,8 @@ async function serie(modele) {
   await capture("reglages");
   await page.locator('.reglage[data-cle="design"]').evaluate((e) => e.scrollIntoView({ block: "start" }));
   await capture("reglages-design");
+  await page.locator('.reglage[data-cle="nba_decalage"]').evaluate((e) => e.scrollIntoView({ block: "center" }));
+  await capture("reglages-box-score-nba");
   // Mise à jour en cours : progression et rappel « touche OK » (téléchargement arrêté à 42 %)
   await salon.eval(() => { window.tv.majArret = 0.42; });
   await page.click('.reglage[data-cle="maj"] .btn-reglage');
@@ -187,6 +190,65 @@ async function serie(modele) {
   await salon.envoyer({ t: "focus_lost" });
   await salon.design("galerie");
   await theme("galerie");
+
+  // Box score NBA : bandeau en haut de la télécommande (deux matchs en cours)
+  const nbaAffichage = async (nom, valeur) => {
+    await page.click(`.segment:has-text("${nom}")`);
+    await salon.page.waitForFunction((v) => window.tv.nba.affichage === v, valeur);
+  };
+  await page.locator("#feuille-clavier").waitFor({ state: "hidden" });
+  await salon.nba({ scenario: "deux" });
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+  await capture("nba-cache");
+  await nbaAffichage("Résumé", "resume");
+  await capture("nba-resume");
+  await nbaAffichage("Détails", "details");
+  await capture("nba-details");
+  await page.click("#btn-nba-matchs");
+  await page.locator("#feuille-nba:not([hidden])").waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-changer-de-match");
+  await page.click('.match-choix[data-id="GSW-DEN"]');
+  await page.locator("#nba-badge-ext", { hasText: "GSW" }).waitFor();
+  await capture("nba-autre-match");
+  await salon.nba({ erreur: "accessibilite" });
+  await page.locator("#nba-erreur:not([hidden])").waitFor();
+  await capture("nba-erreur-accessibilite");
+  await salon.nba({ erreur: "source" });
+  await page.locator("#nba-erreur-texte", { hasText: "indisponibles" }).waitFor();
+  await capture("nba-erreur-source");
+  await salon.nba({ erreur: null, scenario: "termine", affichage: "resume" });
+  await page.locator("#nba-direct.termine").waitFor();
+  await capture("nba-termine");
+  await salon.nba({ scenario: "un", affichage: "cache" });
+  await page.locator("#btn-nba-matchs").waitFor({ state: "hidden" });
+  await capture("nba-un-match");
+  // Dans chaque thème (deux matchs, résumé affiché), puis la feuille en Verre
+  await salon.nba({ scenario: "deux", affichage: "resume" });
+  await page.locator("#btn-nba-matchs:not([hidden])").waitFor();
+  for (const d of DESIGNS) {
+    await salon.design(d);
+    await theme(d);
+    await capture(`nba-${d}`);
+  }
+  await salon.design("verre");
+  await theme("verre");
+  await page.click("#btn-nba-matchs");
+  await page.locator("#feuille-nba:not([hidden])").waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-changer-de-match-verre");
+  await page.click("#btn-nba-fermer");
+  await salon.nba({ erreur: "accessibilite" });
+  await page.locator("#nba-erreur:not([hidden])").waitFor();
+  await capture("nba-erreur-verre");
+  await salon.nba({ erreur: null });
+  await salon.design("galerie");
+  await theme("galerie");
+  // Petit écran (iPhone SE, 375 × 667) : le pavé rétrécit, les touches restent à l'écran
+  const taille = page.viewportSize();
+  await page.setViewportSize({ width: 375, height: 667 });
+  await capture("nba-petit-ecran");
+  await page.setViewportSize(taille);
 
   // Texte agrandi (Dynamic Type, ici simulé) : la télécommande et Réglages restent utilisables
   await page.evaluate(() => { document.documentElement.style.fontSize = "23px"; });

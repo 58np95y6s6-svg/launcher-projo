@@ -1,8 +1,8 @@
 // Pilotage depuis le téléphone (applis et réglages) : logique pure, sans DOM, testée sous Node.
 // Messages : docs/telecommande.md, « Pilotage depuis le téléphone : applis et réglages ».
 
-// « liens » : Envoyer sur la TV (voir liens.js)
-export const FONCTIONS = Object.freeze(["apps", "reglages", "liens"]);
+// « liens » : Envoyer sur la TV (voir liens.js) ; « nba » : box score NBA (voir nba.js)
+export const FONCTIONS = Object.freeze(["apps", "reglages", "liens", "nba"]);
 export const TYPES_REGLAGE = Object.freeze(["curseur", "interrupteur", "choix", "boutons"]);
 export const MAX_IDS_IMAGES = 100;
 export const INTERVALLE_CURSEUR_MS = 150;

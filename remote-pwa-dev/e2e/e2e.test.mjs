@@ -5,8 +5,8 @@
 // (feuille du clavier, « Aa ») → reconnexion → coupure → revoked ; code de secours ; plusieurs TV ;
 // thème qui suit le design de la TV ; versions incompatibles ; TV injoignable ;
 // mise à jour (bannière) ; pilotage (onglets Applis et Réglages, TV ancienne sans onglets) ;
-// Envoyer sur la TV (liens, VPN coupé, raccourci iOS) ;
-// aucun texte saisi, secret, nom d'appli, valeur de réglage ni lien dans les journaux.
+// Envoyer sur la TV (liens, VPN coupé, raccourci iOS) ; box score NBA (bandeau, format, choix du match) ;
+// aucun texte saisi, secret, nom d'appli, valeur de réglage, lien ni score dans les journaux.
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -24,7 +24,8 @@ after(async () => {
   try {
     for (const interdit of [MOT_DE_PASSE, TEXTE, "a=fingerprint", "v=0", "candidate:", "BEGIN", "Téléphone de Marie",
       "Netflix", "com.netflix", "pastel", "data:image",
-      "arte.tv", "youtu", "exemple.fr", "192.168.1", "K7Q2M9XD", "envoyer?c="]) {
+      "arte.tv", "youtu", "exemple.fr", "192.168.1", "K7Q2M9XD", "envoyer?c=",
+      "Lakers", "Celtics", "Warriors", "Nuggets", "LAL-BOS", "GSW-DEN", "4e QT"]) {
       assert.ok(!tout.includes(interdit), `journal : « ${interdit} » trouvé`);
     }
     assert.ok(!/ERREUR PAGE/.test(tout), tout);
@@ -999,3 +1000,225 @@ test("envoyer : coller (presse-papiers), bouton Partager (activer, copier, adres
   await tv.fermer();
 });
 
+
+// ---------- Box score NBA ----------
+
+const AVEC_NBA = ["apps", "reglages", "liens", "nba"];
+const annonceNba = (page) => page.textContent("#nba-annonce");
+const coche = (page) => page.$eval('input[name="nba-affichage"]:checked', (e) => e.value).catch(() => null);
+
+test("box score NBA : bandeau seulement avec « nba » annoncé et un match (ou un box score affiché), décalage, autre TV", async () => {
+  const salon = await banc.tv({ nom: "Salon", fonctions: AVEC_NBA });
+  const chambre = await banc.tv({ nom: "Chambre" }); // n'annonce pas « nba »
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, salon);
+  // nba_etat après l'authentification, sans onglet à ouvrir ; aucun match : pas de bandeau
+  await salon.attendreRecu((r) => r.t === "nba_etat");
+  assert.deepEqual((await salon.recus()).map((r) => r.t), ["nba_etat"]);
+  await pause(400);
+  assert.ok(await page.isHidden("#bandeau-nba"));
+
+  // Un match commence : la TV pousse `nba`, le bandeau apparaît (un seul match : pas de choix)
+  await salon.nba({ scenario: "un" });
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+  assert.ok(await page.isHidden("#btn-nba-matchs"));
+  assert.equal(await coche(page), "cache");
+  // Plus aucun match, box score encore affiché : le bandeau reste pour pouvoir le cacher
+  await salon.nba({ scenario: "aucun", affichage: "resume" });
+  await page.locator("#nba-aucun:not([hidden])").waitFor();
+  assert.equal(await page.textContent("#nba-aucun"), "Aucun match NBA en cours");
+  assert.ok(await page.isHidden(".nba-score"));
+  assert.equal(await coche(page), "resume");
+  await page.click('.segment:has-text("Caché")');
+  await salon.attendreRecu((r) => r.t === "nba_afficher" && r.affichage === "cache");
+  assert.equal((await recusDe(salon, "nba_afficher")).at(-1).id, undefined, "cacher : sans match");
+  await page.locator("#bandeau-nba").waitFor({ state: "hidden" });
+  // Afficher sans match (envoi direct) : la TV garde « cache »
+  await salon.eval(() => window.tv.envoyer({ t: "nba", matchs: [], choisi: null, affichage: "details", decalage: 0 }));
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+  await page.click('.segment:has-text("Résumé")');
+  await salon.attendreRecu((r) => r.t === "nba_afficher" && r.affichage === "resume");
+  await page.locator("#bandeau-nba").waitFor({ state: "hidden" });
+  assert.equal(await salon.eval(() => window.tv.nba.affichage), "cache");
+
+  // Réglage du décalage : onglet Réglages, groupe « Box score NBA » (rendu générique)
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="nba_decalage"]').waitFor();
+  assert.ok((await page.locator("#reglages-liste .groupe-titre").allTextContents()).includes("Box score NBA"));
+  assert.deepEqual(await page.locator('.reglage[data-cle="nba_decalage"] .option-nom').allTextContents(), ["Aucun", "15 s", "30 s", "45 s", "60 s"]);
+  await page.click('.reglage[data-cle="nba_decalage"] .option:has-text("30 s")');
+  await salon.attendreRecu((r) => r.t === "reglage" && r.cle === "nba_decalage" && r.valeur === "30");
+  await salon.page.waitForFunction(() => window.tv.nba.decalage === 30);
+  assert.ok(tel.journal.includes("[iBiTV] reglage nba_decalage"));
+  await page.click("#onglet-telecommande");
+
+  // Seconde TV, sans « nba » : l'état de la précédente est oublié, rien n'est demandé
+  await salon.nba({ scenario: "deux" });
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+  await page.click("#btn-tvs");
+  await page.click("#btn-ajouter-tv");
+  await appairerParQR(page, chambre);
+  assert.ok(await page.isHidden("#bandeau-nba"));
+  await chambre.nba({ scenario: "deux" });
+  await pause(600);
+  assert.ok(await page.isHidden("#bandeau-nba"));
+  assert.deepEqual(await chambre.recus(), []);
+  assert.deepEqual(await chambre.eval(() => window.tv.ignores), []);
+  // Retour sur Salon : état redemandé, bandeau aussitôt
+  const avant = (await recusDe(salon, "nba_etat")).length;
+  await page.click("#btn-tvs");
+  await page.click('.tv-choix:has-text("Salon")');
+  await page.locator("#bandeau-nba:not([hidden])").waitFor({ timeout: 15000 });
+  assert.equal((await recusDe(salon, "nba_etat")).length, avant + 1);
+  await tel.fermer();
+  await salon.fermer();
+  await chambre.fermer();
+});
+
+test("box score NBA : score, Caché · Résumé · Détails, choix du match, erreurs, reconnexion", async () => {
+  const tv = await banc.tv({ nom: "Salon", fonctions: AVEC_NBA, design: "galerie" });
+  await tv.nba({ scenario: "deux" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+
+  // Score du premier match en cours : extérieur à gauche, l'équipe menée en retrait, couleurs de la TV
+  assert.deepEqual(await page.locator(".nba-score > span").allTextContents(), ["LAL", "98", "–", "102", "BOS"]);
+  assert.ok(await page.locator("#nba-points-ext.menee").count() === 1 && await page.locator("#nba-points-dom.menee").count() === 0);
+  const couleurs = await page.$eval("#nba-badge-ext", (e) => [e.style.getPropertyValue("--equipe"), e.style.getPropertyValue("--equipe-texte"), getComputedStyle(e).backgroundColor]);
+  assert.deepEqual(couleurs, ["#552583", "#fdb927", "rgb(85, 37, 131)"]);
+  assert.equal(await page.textContent("#nba-direct"), "DIRECT");
+  assert.equal(await page.textContent("#nba-statut-texte"), "4e QT · 2:31");
+  assert.equal(await page.textContent("#nba-lecteur"), "Lakers – Celtics, 98 à 102, en direct, 4e QT · 2:31");
+  assert.equal(await page.getAttribute(".nba-score", "aria-hidden"), "true");
+  assert.equal(await page.getAttribute("#nba-segments", "role"), "radiogroup");
+  assert.equal(await page.getAttribute("#nba-segments", "aria-label"), "Box score sur la TV");
+  assert.deepEqual(await page.locator(".segment").allTextContents(), ["Caché", "Résumé", "Détails"]);
+  assert.equal(await coche(page), "cache");
+  assert.equal(await annonceNba(page), "", "pas d'annonce au premier état");
+
+  // Cibles ≥ 48 px ; le pavé et les touches restent à l'écran (390 × 844), même avec une erreur
+  const mesures = () => page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    const p = document.querySelector("#panneau-telecommande");
+    return {
+      cibles: [...document.querySelectorAll("#btn-nba-matchs, .segment")].map((e) => Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height)),
+      pave: r("#pave").height, bas: r(".rangee-son").bottom, onglets: r("#onglets").top, defile: p.scrollHeight - p.clientHeight,
+      indice: getComputedStyle(document.querySelector(".pave-indice")).display,
+    };
+  });
+  // iPhone SE (375 × 667) : l'indice du pavé s'efface, le pavé rétrécit, rien ne défile
+  await page.setViewportSize({ width: 375, height: 667 });
+  const se = await mesures();
+  assert.equal(se.indice, "none");
+  assert.ok(se.pave >= 150 && se.bas <= se.onglets && se.defile === 0, JSON.stringify(se));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await tv.nba({ erreur: "accessibilite" });
+  await page.locator("#nba-erreur:not([hidden])").waitFor();
+  const t = await mesures();
+  assert.ok(t.cibles.length === 4 && t.cibles.every((x) => x >= 47.5), `cibles : ${t.cibles}`);
+  assert.ok(t.pave >= 250, `pavé : ${t.pave}px`);
+  assert.ok(t.bas <= t.onglets, `touches sous les onglets : ${t.bas} > ${t.onglets}`);
+  assert.equal(t.defile, 0, "la télécommande ne défile pas");
+  assert.equal(t.indice, "block", "écran assez haut : indice du pavé gardé");
+  assert.equal(await page.textContent("#nba-erreur-texte"), "Active l'accessibilité d'iBiTV sur la TV");
+  await page.locator("#nba-annonce", { hasText: "Active l'accessibilité d'iBiTV sur la TV" }).waitFor();
+  await tv.nba({ erreur: "source" });
+  await page.locator("#nba-erreur-texte", { hasText: "Scores NBA indisponibles pour l'instant" }).waitFor();
+  await tv.nba({ erreur: null });
+  await page.locator("#nba-erreur").waitFor({ state: "hidden" });
+
+  // Segments : nba_afficher avec le format (et le match affiché), coché tout de suite, confirmé par la TV
+  await page.click('.segment:has-text("Résumé")');
+  assert.equal(await coche(page), "resume");
+  await tv.attendreRecu((r) => r.t === "nba_afficher");
+  assert.deepEqual((await recusDe(tv, "nba_afficher")).map(({ affichage, id }) => ({ affichage, id })), [{ affichage: "resume", id: "LAL-BOS" }]);
+  await tv.page.waitForFunction(() => window.tv.nba.affichage === "resume");
+  await page.locator("#nba-annonce", { hasText: "Box score en résumé sur la TV" }).waitFor();
+  await page.click('.segment:has-text("Détails")');
+  await tv.attendreRecu((r) => r.t === "nba_afficher" && r.affichage === "details" && r.id === "LAL-BOS");
+  await page.locator("#nba-annonce", { hasText: "Box score en détails sur la TV" }).waitFor();
+  await page.click('.segment:has-text("Caché")');
+  await tv.attendreRecu((r) => r.t === "nba_afficher" && r.affichage === "cache" && r.id === undefined);
+  await tv.page.waitForFunction(() => window.tv.nba.affichage === "cache");
+  // Clavier : flèches dans le groupe (boutons radio)
+  const envois = (await recusDe(tv, "nba_afficher")).length;
+  await page.focus('input[name="nba-affichage"][value="cache"]');
+  await page.keyboard.press("ArrowRight");
+  await tv.page.waitForFunction((x) => window.tv.recus.filter((r) => r.t === "nba_afficher").length > x, envois);
+  assert.equal((await recusDe(tv, "nba_afficher")).at(-1).affichage, "resume");
+  assert.ok(["[iBiTV] nba_afficher resume", "[iBiTV] nba_afficher details", "[iBiTV] nba_afficher cache"].every((l) => tel.journal.includes(l)));
+  // La TV change de format d'elle-même (retour à l'accueil, autre téléphone…) : reflété et annoncé
+  await tv.nba({ affichage: "details" });
+  await page.waitForFunction(() => document.querySelector('input[name="nba-affichage"][value="details"]').checked);
+  await page.locator("#nba-annonce", { hasText: "Box score en détails sur la TV" }).waitFor();
+  await tv.nba({ affichage: "cache" });
+  await page.locator("#nba-annonce", { hasText: "Box score caché sur la TV" }).waitFor();
+  // Panier : score à jour, sans annonce
+  await tv.scoreNba("LAL-BOS", 101, 102, "4e QT · 1:58");
+  await page.locator("#nba-points-ext", { hasText: "101" }).waitFor();
+  assert.equal(await page.textContent("#nba-statut-texte"), "4e QT · 1:58");
+  await pause(300);
+  assert.equal(await annonceNba(page), "Box score caché sur la TV", "les scores ne sont pas annoncés");
+
+  // Changer de match : feuille, nba_choisir, bandeau sur le nouveau match
+  assert.equal(await page.textContent("#btn-nba-matchs"), "Changer de match");
+  await page.click("#btn-nba-matchs");
+  await page.locator("#feuille-nba:not([hidden])").waitFor();
+  assert.deepEqual(await page.locator(".match-choix .match-noms").allTextContents(), ["Lakers – Celtics", "Warriors – Nuggets"]);
+  assert.deepEqual(await page.locator(".match-choix .match-score").allTextContents(), ["101 – 102", "54 – 51"]);
+  assert.deepEqual(await page.$$eval(".match-choix", (l) => l.map((b) => b.getAttribute("aria-current"))), ["true", "false"]);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.id), "LAL-BOS", "focus sur le match affiché");
+  // La liste suit la TV pendant qu'elle est ouverte
+  await tv.scoreNba("GSW-DEN", 56, 51);
+  await page.locator('.match-choix[data-id="GSW-DEN"] .match-score', { hasText: "56 – 51" }).waitFor();
+  await page.click('.match-choix[data-id="GSW-DEN"]');
+  await tv.attendreRecu((r) => r.t === "nba_choisir" && r.id === "GSW-DEN");
+  assert.ok(await page.isHidden("#feuille-nba"));
+  assert.equal(await page.evaluate(() => document.activeElement.id), "btn-nba-matchs", "focus rendu au bouton");
+  assert.deepEqual(await page.locator(".nba-score > span").allTextContents(), ["GSW", "56", "–", "51", "DEN"]);
+  assert.ok(await page.locator("#nba-points-dom.menee").count() === 1);
+  await page.locator("#nba-annonce", { hasText: "Match affiché : Warriors – Nuggets" }).waitFor();
+  await page.click('.segment:has-text("Résumé")');
+  await tv.attendreRecu((r) => r.t === "nba_afficher" && r.affichage === "resume" && r.id === "GSW-DEN");
+  // Échap ferme la feuille sans rien envoyer
+  const n = (await tv.recus()).length;
+  await page.click("#btn-nba-matchs");
+  await page.locator("#feuille-nba:not([hidden])").waitFor();
+  await page.keyboard.press("Escape");
+  assert.ok(await page.isHidden("#feuille-nba"));
+  await page.click("#btn-nba-matchs");
+  await page.click("#btn-nba-fermer");
+  assert.ok(await page.isHidden("#feuille-nba"));
+  assert.equal((await tv.recus()).length, n);
+
+  // Reconnexion : dernier état gardé (atténué), nba_etat renvoyé, changements de nouveau reçus
+  const avant = (await recusDe(tv, "nba_etat")).length;
+  await tv.eval(() => window.tv.couper());
+  await page.waitForFunction(() => document.querySelector("#voyant").dataset.etat !== "connecte");
+  assert.ok(await page.isVisible("#bandeau-nba"));
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 20000 });
+  await tv.page.waitForFunction((x) => window.tv.recus.filter((r) => r.t === "nba_etat").length > x, avant);
+  assert.equal(await page.textContent("#nba-points-ext"), "56");
+  await tv.scoreNba("GSW-DEN", 58, 51);
+  await page.locator("#nba-points-ext", { hasText: "58" }).waitFor();
+
+  // Un seul match : plus de choix ; match terminé : « TERMINÉ »
+  await tv.nba({ scenario: "un" });
+  await page.locator("#btn-nba-matchs").waitFor({ state: "hidden" });
+  assert.deepEqual(await page.locator(".nba-score > span").allTextContents(), ["LAL", "98", "–", "102", "BOS"]);
+  await tv.nba({ scenario: "termine" });
+  await page.locator("#nba-direct.termine", { hasText: "TERMINÉ" }).waitFor();
+  assert.ok(await page.isHidden("#nba-statut-texte"));
+  assert.equal(await page.textContent("#nba-lecteur"), "Lakers – Celtics, 112 à 109, terminé");
+  // Aucun score, équipe ni match dans les journaux
+  assert.ok(!tel.journal.some((l) => /nba/.test(l) && !/^\[iBiTV\] (nba_afficher (cache|resume|details)|reglage nba_decalage)$/.test(l)), tel.journal.join("\n"));
+  await tel.fermer();
+  await tv.fermer();
+});

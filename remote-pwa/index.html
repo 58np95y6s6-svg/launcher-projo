@@ -56,6 +56,10 @@
     <symbol id="i-coller" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4.5V3.5h6v1"/></symbol>
     <symbol id="i-copier" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="12" rx="2"/><path d="M15.5 5.5v-.5a2 2 0 00-2-2h-7a2 2 0 00-2 2v9a2 2 0 002 2h.5"/></symbol>
     <symbol id="i-renvoyer" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
+    <symbol id="i-echanger" viewBox="0 0 24 24"><path d="M4 8h15M15.5 4.5L19 8l-3.5 3.5"/><path d="M20 16H5M8.5 12.5L5 16l3.5 3.5"/></symbol>
+    <symbol id="i-nba-cache" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/></symbol>
+    <symbol id="i-nba-resume" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><rect x="12.5" y="8" width="6" height="4" rx="1" fill="currentColor"/></symbol>
+    <symbol id="i-nba-details" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><rect x="13" y="7.5" width="6" height="8" rx="1" fill="currentColor"/></symbol>
   </svg>
 
   <div id="banniere-maj" class="banniere" role="status" hidden>
@@ -158,6 +162,29 @@
 
     <!-- Télécommande : un seul pavé (glisser ou toucher les flèches, OK au centre), puis les touches -->
     <div id="panneau-telecommande" class="panneau panneau-telecommande" role="tabpanel" aria-labelledby="onglet-telecommande">
+      <!-- Box score NBA (si la TV annonce « nba ») : score du match, puis le format affiché sur la TV -->
+      <section id="bandeau-nba" class="bandeau-nba plaque" aria-label="Box score NBA" hidden>
+        <div class="nba-tete">
+          <div class="nba-match">
+            <p class="nba-score" aria-hidden="true">
+              <span id="nba-badge-ext" class="nba-badge"></span><span id="nba-points-ext" class="nba-points"></span><span class="nba-tiret">–</span><span id="nba-points-dom" class="nba-points"></span><span id="nba-badge-dom" class="nba-badge"></span>
+            </p>
+            <p class="nba-statut" aria-hidden="true"><span id="nba-direct" class="nba-direct"></span><span id="nba-statut-texte" class="nba-statut-texte"></span></p>
+            <p id="nba-lecteur" class="invisible-lecteur"></p>
+            <p id="nba-aucun" class="nba-aucun" hidden>Aucun match NBA en cours</p>
+          </div>
+          <button type="button" id="btn-nba-matchs" class="btn-nba-matchs" aria-haspopup="dialog" hidden><svg class="ic" aria-hidden="true"><use href="#i-echanger"/></svg><span>Changer de match</span></button>
+        </div>
+        <p id="nba-erreur" class="nba-erreur" hidden><svg class="ic" aria-hidden="true"><use href="#i-alerte"/></svg><span id="nba-erreur-texte"></span></p>
+        <div id="nba-segments" class="segments" role="radiogroup" aria-label="Box score sur la TV">
+          <span class="segments-curseur" aria-hidden="true"></span>
+          <label class="segment"><input type="radio" name="nba-affichage" value="cache"><svg class="ic" aria-hidden="true"><use href="#i-nba-cache"/></svg><span>Caché</span></label>
+          <label class="segment"><input type="radio" name="nba-affichage" value="resume"><svg class="ic" aria-hidden="true"><use href="#i-nba-resume"/></svg><span>Résumé</span></label>
+          <label class="segment"><input type="radio" name="nba-affichage" value="details"><svg class="ic" aria-hidden="true"><use href="#i-nba-details"/></svg><span>Détails</span></label>
+        </div>
+        <p id="nba-annonce" class="invisible-lecteur" aria-live="polite" aria-atomic="true"></p>
+      </section>
+
       <div class="zone-pave">
         <div id="pave" class="pave plaque" role="group" aria-label="Navigation" aria-describedby="pave-indice">
           <span class="pave-point" aria-hidden="true"></span>
@@ -325,6 +352,16 @@
       <button type="button" id="btn-ajouter-tv" class="btn-secondaire btn-large"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Ajouter une TV</button>
       <section class="carte-install plaque" data-install hidden></section>
       <p id="version-app" class="pied"></p>
+    </section>
+  </div>
+
+  <!-- ============ Box score NBA : choix du match ============ -->
+  <div id="feuille-nba" class="voile" hidden>
+    <section class="feuille feuille-nba" role="dialog" aria-modal="true" aria-labelledby="titre-nba">
+      <div class="poignee" aria-hidden="true"></div>
+      <h2 id="titre-nba" class="titre-feuille">Matchs en direct</h2>
+      <ul id="liste-nba" class="liste-matchs"></ul>
+      <button type="button" id="btn-nba-fermer" class="btn-texte">Fermer</button>
     </section>
   </div>
 

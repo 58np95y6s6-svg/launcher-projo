@@ -8,6 +8,7 @@ import { journal } from "./journal.js";
 import { OngletApplis } from "./applis.js";
 import { OngletReglages } from "./reglages.js";
 import { OngletEnvoyer } from "./envoyer.js";
+import { BandeauNba } from "./bandeau-nba.js";
 import { lireDesign, themePour, texteConnectee, appliquerTheme, NOMS_DESIGN } from "./theme.js";
 
 // Comportement d'appli : pas de zoom au pincement (iOS ignore user-scalable=no).
@@ -232,8 +233,11 @@ function majEtat(detail) {
   dernierEtat = detail;
   const { etat, raison, prochainEssaiMs } = detail;
   const tv = ctrl.tvActive;
-  // Nouvelle connexion : les onglets ouverts redemandent leurs données (abonnement aux réglages)
-  if (etat === "connecte" && etatAffiche !== "connecte") { applis.surConnexion(); envoyer.surConnexion(); reglages.surConnexion(); }
+  // Nouvelle connexion : les onglets ouverts redemandent leurs données (abonnement aux réglages) ;
+  // le box score NBA s'abonne à chaque connexion (bandeau de la télécommande)
+  if (etat === "connecte" && etatAffiche !== "connecte") {
+    applis.surConnexion(); envoyer.surConnexion(); reglages.surConnexion(); nba.surConnexion();
+  }
   etatAffiche = etat;
   $("nom-tv").textContent = tv ? tv.nom : "TV";
   $("voyant").dataset.etat = etat;
@@ -547,6 +551,7 @@ $("btn-entree").addEventListener("pointerdown", (e) => { if (document.activeElem
 ctrl.addEventListener("focus_text", ({ detail }) => {
   // La TV attend du texte : retour à la télécommande, feuille du clavier ouverte
   if (onglet !== "telecommande") choisirOnglet("telecommande");
+  nba.fermerFeuille();
   typeChamp = detail.type;
   actionChamp = detail.action;
   afficherMdp = false; // mot de passe toujours masqué par défaut
@@ -617,6 +622,7 @@ function majPastille(texteEtat = $("etat-tv").textContent) {
 const applis = new OngletApplis({ ctrl, annoncer, vibrer });
 const reglages = new OngletReglages({ ctrl, annoncer, vibrer });
 const envoyer = new OngletEnvoyer({ ctrl, annoncer, vibrer, confirmer: alerte });
+const nba = new BandeauNba({ ctrl, annoncer, vibrer });
 
 function ongletsDisponibles() {
   const f = ctrl.fonctions;
@@ -629,7 +635,9 @@ function majOnglets() {
     applis.changerTV(ctrl.active);
     envoyer.changerTV(ctrl.active);
     reglages.changerTV();
+    nba.changerTV();
   }
+  nba.majFonctions();
   const dispo = ongletsDisponibles();
   const avec = dispo.length > 1;
   $("onglets").hidden = !avec;
@@ -660,7 +668,7 @@ function choisirOnglet(nom, { focus = false } = {}) {
   $("btn-clavier").hidden = nom !== "telecommande";
   $("pastille-tv").hidden = nom === "telecommande";
   majPastille();
-  if (nom !== "telecommande") fermerClavier();
+  if (nom !== "telecommande") { fermerClavier(); nba.fermerFeuille(); }
   if (nom === "applis") applis.afficher(); else applis.masquer();
   if (nom === "envoyer") envoyer.afficher(); else envoyer.masquer();
   if (nom === "reglages") reglages.afficher(); else reglages.masquer();

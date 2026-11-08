@@ -9,6 +9,7 @@
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
 //   liens {vpn, seulementVpn, appliPages, appliVpn?, raccourci?} | lien_ouvert {url, ok, ouvertDans?, raison?}
+//   nba {matchs, choisi, affichage, decalage, erreur?}
 //   version {verdict}
 //   revoquee {tv}
 
@@ -116,7 +117,7 @@ export class Controleur extends EventTarget {
     session.addEventListener("focus_text", (e) => this._emettre("focus_text", e.detail));
     session.addEventListener("focus_lost", () => this._emettre("focus_lost"));
     session.addEventListener("version", (e) => this._emettre("version", e.detail));
-    for (const t of ["apps", "app_image", "app_ouverte", "reglages", "liens", "lien_ouvert"]) {
+    for (const t of ["apps", "app_image", "app_ouverte", "reglages", "liens", "lien_ouvert", "nba"]) {
       session.addEventListener(t, (e) => { if (this.session === session) this._emettre(t, e.detail); });
     }
   }
@@ -191,7 +192,7 @@ export class Controleur extends EventTarget {
     if (!tv) return;
     if (typeof versionApp === "string") tv.versionApp = versionApp;
     if (nomTV) tv.nom = nomTV;
-    // Fonctions annoncées (onglets « Applis », « Envoyer », « Réglages ») : gardées pour la prochaine ouverture
+    // Fonctions annoncées (onglets « Applis », « Envoyer », « Réglages », box score NBA) : gardées pour la prochaine ouverture
     if (Array.isArray(fonctions)) tv.fonctions = fonctions;
     // Design de l'accueil (thème de la télécommande) : absent ou inconnu → thème par défaut
     tv.design = lireDesign(design);
@@ -306,4 +307,12 @@ export class Controleur extends EventTarget {
   liensEtat() { return this.session?.envoyer("liens_etat") ?? false; }
   /** @param {{url:string, titre?:string, sansVpn?:true, vpnDabord?:true}} champs */
   lienOuvrir(champs) { return this.session?.envoyer("lien_ouvrir", champs) ?? false; }
+
+  // ---------- Box score NBA ----------
+
+  /** `nba_etat` : état (matchs, format) et abonnement à ses changements pour cette connexion. */
+  nbaEtat() { return this.session?.envoyer("nba_etat") ?? false; }
+  /** @param {{affichage:"cache"|"resume"|"details", id?:string}} champs */
+  nbaAfficher(champs) { return this.session?.envoyer("nba_afficher", champs) ?? false; }
+  nbaChoisir(id) { return this.session?.envoyer("nba_choisir", { id }) ?? false; }
 }
