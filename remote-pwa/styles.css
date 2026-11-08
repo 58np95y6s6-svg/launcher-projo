@@ -28,6 +28,8 @@
   --succes: #22c55e;
   --attention: #d97706;
   --voile: rgba(20, 22, 28, 0.32);
+  /* Box score NBA : « DIRECT » (rouge lisible, plus clair sur les thèmes sombres) */
+  --direct: #C8221A;
 }
 
 /* Galerie (défaut, clair) */
@@ -62,6 +64,7 @@
   --titre: "Manrope", system-ui, sans-serif; --titre-poids: 800; --titre-taille: 2rem; --titre-espace: -0.02em;
   --flou: blur(22px) saturate(1.4); --barre: rgba(21, 17, 46, 0.72);
   --voile: rgba(5, 3, 15, 0.55);
+  --direct: #FF968C;
 }
 :root[data-theme="pastel"] {
   color-scheme: light;
@@ -93,6 +96,7 @@
   --titre: "Manrope", system-ui, sans-serif; --titre-poids: 500; --titre-taille: 2.375rem; --titre-espace: -0.02em;
   --flou: blur(16px); --barre: rgba(7, 10, 25, 0.8);
   --voile: rgba(0, 0, 0, 0.55);
+  --direct: #FF968C;
 }
 :root[data-theme="une"] {
   color-scheme: dark;
@@ -109,6 +113,7 @@
   --titre: "Manrope", system-ui, sans-serif; --titre-poids: 800; --titre-taille: 2.75rem; --titre-espace: -0.03em;
   --flou: none; --barre: rgba(14, 14, 18, 0.92);
   --voile: rgba(0, 0, 0, 0.55);
+  --direct: #FF968C;
 }
 :root[data-theme="chaines"] {
   color-scheme: light;
@@ -384,6 +389,110 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .bandeau-etat .ic { width: 22px; height: 22px; color: var(--erreur); }
 .bandeau-etat span { flex: 1; min-width: 0; }
+
+/* ---------- Télécommande : box score NBA ----------
+   Compact (le pavé garde la place) : le score et l'état du match, puis le sélecteur de format. */
+
+.bandeau-nba {
+  position: relative; flex: none; padding: .625rem .75rem .75rem 1rem; border-radius: var(--rayon-carte);
+  animation: entree .24s ease-out;
+}
+/* Texte très agrandi : « Changer de match » passe sous le score */
+.nba-tete { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .625rem; min-height: 3rem; }
+.nba-match { flex: 1 0 auto; max-width: 100%; }
+.nba-match p { margin: 0; }
+.nba-score { display: flex; align-items: center; gap: .375rem; line-height: 1.1; }
+.nba-badge {
+  flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--equipe, color-mix(in srgb, var(--texte) 12%, transparent)); color: var(--equipe-texte, var(--texte));
+  /* Liseré : une couleur d'équipe proche du fond (marine sur thème sombre…) reste lisible */
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--texte) 16%, transparent);
+  font-size: .5625rem; font-weight: 800; letter-spacing: .02em; line-height: 1;
+}
+.nba-points {
+  font-size: 1.3125rem; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+  transition: color .3s;
+}
+/* Équipe menée : en retrait */
+.nba-points.menee { color: color-mix(in srgb, var(--texte-2) 78%, transparent); }
+.nba-points.eclat { animation: eclat .9s ease-out; }
+@keyframes eclat { 0%, 30% { color: var(--accent); transform: scale(1.12); } }
+.nba-tiret { color: var(--texte-2); font-weight: 500; font-size: 1.125rem; }
+.nba-match .nba-statut { display: flex; align-items: center; gap: .5rem; margin-top: .25rem; min-width: 0; font-size: .8125rem; font-weight: 800; line-height: 1.25; }
+.nba-direct {
+  flex: none; display: inline-flex; align-items: center; gap: .375rem;
+  color: var(--direct); font-size: .75rem; letter-spacing: .06em;
+}
+.nba-direct::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none;
+  animation: direct 1.8s ease-in-out infinite;
+}
+@keyframes direct { 50% { opacity: .45; } }
+.nba-direct.termine { color: var(--texte-2); }
+.nba-direct.termine::before { animation: none; }
+.nba-statut-texte { min-width: 0; color: var(--texte); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nba-aucun { font-size: .9375rem; font-weight: 800; color: var(--texte-2); }
+
+/* « Changer de match » : à droite du score, libellé sur deux lignes (« Changer / de match ») */
+.btn-nba-matchs {
+  flex: 0 1 auto; min-width: 0; margin-left: auto; min-height: 3rem; padding: .375rem .875rem .375rem .75rem;
+  border-radius: var(--rayon-btn); display: inline-flex; align-items: center; gap: .4375rem; text-align: left;
+  background: var(--surface-forte); border: 1.5px solid var(--trait);
+  font-size: .8125rem; font-weight: 800; line-height: 1.15; color: var(--texte);
+  transition: transform .1s, background .15s;
+}
+.btn-nba-matchs span { max-width: 5.5em; }
+.btn-nba-matchs .ic { width: 18px; height: 18px; }
+.btn-nba-matchs:active { transform: scale(.97); background: color-mix(in srgb, var(--texte) 8%, var(--surface-forte)); }
+
+.nba-erreur {
+  display: flex; align-items: center; gap: .5rem; margin: .5rem 0 0; padding: .4375rem .625rem;
+  border-radius: 12px; font-size: .8125rem; font-weight: 800; line-height: 1.3; color: var(--texte);
+  background: color-mix(in srgb, var(--attention) 14%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--attention) 38%, transparent);
+}
+.nba-erreur .ic { width: 18px; height: 18px; color: var(--attention); }
+
+/* Sélecteur Caché · Résumé · Détails : vrais boutons radio (masqués), pastille qui glisse */
+.segments {
+  --pad: 3px;
+  position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: .625rem;
+  padding: var(--pad); border-radius: var(--rayon-champ);
+  background: color-mix(in srgb, var(--texte) 7%, transparent);
+  box-shadow: inset 0 0 0 1px var(--trait);
+}
+.segments-curseur {
+  position: absolute; top: var(--pad); bottom: var(--pad); left: var(--pad); width: calc((100% - 2 * var(--pad)) / 3);
+  border-radius: calc(var(--rayon-champ) - var(--pad)); background: var(--principal); box-shadow: var(--ombre-legere);
+  transform: translateX(calc(var(--i, 0) * 100%)); transition: transform .26s cubic-bezier(.3, .7, .2, 1), opacity .2s;
+}
+.segments:not([data-choix]) .segments-curseur { opacity: 0; }
+.segment {
+  position: relative; z-index: 1; min-width: 0; min-height: 3rem; padding: 0 .375rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: .375rem;
+  border-radius: calc(var(--rayon-champ) - var(--pad));
+  font-size: .875rem; font-weight: 800; color: var(--texte-2); transition: color .2s;
+}
+.segment span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.segment .ic { width: 20px; height: 20px; stroke-width: 1.8; }
+.segment input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.segment:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 1px; }
+.segment.choisi { color: var(--principal-texte); }
+.segment:not(.choisi):active { background: color-mix(in srgb, var(--texte) 7%, transparent); }
+/* Texte agrandi : les libellés gardent la place, les pictogrammes s'effacent */
+.segments { container-type: inline-size; }
+@container (max-width: 18rem) { .segment .ic { display: none; } }
+
+/* Écran court (iPhone SE…) avec le bandeau : l'indice du pavé s'efface et le pavé rétrécit un peu plus,
+   pour que les touches restent à l'écran sans défiler */
+@media (max-height: 740px) {
+  .panneau-telecommande:has(> .bandeau-nba:not([hidden])) .pave-indice { display: none; }
+  .panneau-telecommande:has(> .bandeau-nba:not([hidden])) .zone-pave { min-height: 160px; }
+}
+
+/* Hors connexion : atténué comme le reste de la télécommande */
+.ecran-telecommande[data-etat="injoignable"] .bandeau-nba,
+.ecran-telecommande[data-etat="erreur"] .bandeau-nba { opacity: .45; }
 
 /* ---------- Télécommande : pavé unique ---------- */
 
@@ -890,6 +999,24 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .btn-afficher .ic { width: 22px; height: 22px; }
 .btn-entree { width: 100%; }
+
+/* Feuille « Matchs en direct » (box score NBA) */
+.liste-matchs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .625rem; }
+.match-choix {
+  width: 100%; min-height: 4.5rem; display: flex; align-items: center; gap: .875rem; padding: .625rem 1rem;
+  border-radius: 20px; text-align: left;
+  background: color-mix(in srgb, var(--texte) 5%, var(--feuille)); border: 1.5px solid var(--trait);
+}
+.match-choix:active { transform: scale(.99); }
+.match-choix[aria-current="true"] { border: 2px solid var(--principal); }
+.match-badges { flex: none; display: flex; gap: .25rem; }
+.match-badges .nba-badge { width: 2rem; height: 2rem; font-size: .59375rem; }
+.match-textes { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .125rem; }
+.match-noms { font-weight: 800; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-detail { display: flex; align-items: center; gap: .5rem; font-size: .8125rem; font-weight: 800; }
+.match-statut { color: var(--texte-2); font-variant-numeric: tabular-nums; }
+.match-score { flex: none; font-size: 1.125rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.feuille-nba .btn-texte { margin-top: -.25rem; }
 
 /* Feuille « Le VPN de la TV est coupé » */
 .feuille-vpn { gap: .625rem; }

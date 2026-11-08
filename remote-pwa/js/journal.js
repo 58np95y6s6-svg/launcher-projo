@@ -8,6 +8,7 @@ const EVENEMENTS = new Set([
   "version_incompatible", "tv_oubliee", "mise_a_jour_disponible", "sw_erreur",
   "appli_ouverte", "appli_refusee", "reglage",
   "lien_envoye", "lien_refuse", // jamais l'URL : seulement la raison d'un refus
+  "nba_afficher", // seulement le format (cache, resume, details) : jamais de score, d'équipe ni de match
 ]);
 // Codes courts acceptés en complément (raisons, états) : lettres, chiffres et « _ » seulement.
 const RE_CODE = /^[a-z0-9_]{1,24}$/;

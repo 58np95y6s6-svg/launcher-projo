@@ -2,10 +2,11 @@
 // (docs/telecommande.md) en JavaScript, INDÉPENDAMMENT du code de la PWA (aucun import),
 // comme le fera l'app Android : signalisation PeerJS brute, réponse WebRTC, hello signés,
 // appairage (QR et code de secours), commandes, révocation, pilotage (applis et réglages),
-// Envoyer sur la TV (liens : VPN, raccourci iOS).
+// Envoyer sur la TV (liens : VPN, raccourci iOS), box score NBA (matchs factices, sans réseau).
 //
 // Paramètres d'URL : ?ws=<port du faux serveur PeerJS>&nom=<nom de la TV>&vmax=<version max>
-//   &fonctions=apps,reglages,liens (défaut) | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
+//   &fonctions=apps,reglages,liens (défaut) | …,nba (box score NBA)
+//   | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
 //   &design=verre (défaut) | galerie | pastel… | aucun (TV ancienne : ni `design` dans hello, ni message `design`)
 
 const params = new URLSearchParams(location.search);
@@ -16,6 +17,7 @@ const V_HELLO = Number(params.get("vhello") || 1); // version annoncée dans le 
 const VERSION_APP = "test-1.0";
 const FONCTIONS = (params.get("fonctions") ?? "apps,reglages,liens").split(",").filter((f) => f && f !== "aucune");
 const AVEC_LIENS = FONCTIONS.includes("liens");
+const AVEC_NBA = FONCTIONS.includes("nba");
 const DESIGN = params.get("design") ?? "verre";
 const AVEC_DESIGN = DESIGN !== "aucun";
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -163,9 +165,9 @@ function session(pc, canal, viaId) {
       if (m.s !== undefined) r.s = m.s;
       if (m.curseur !== undefined) r.curseur = m.curseur;
       tv.recus.push(r);
-    } else if (PILOTAGE[m.t] && FONCTIONS.length && (AVEC_LIENS || !m.t.startsWith("lien"))) {
+    } else if (PILOTAGE[m.t] && FONCTIONS.length && (AVEC_LIENS || !m.t.startsWith("lien")) && (AVEC_NBA || !m.t.startsWith("nba"))) {
       const r = { appareil: ses.appareil, t: m.t };
-      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord"]) if (m[c] !== undefined) r[c] = m[c];
+      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord", "affichage"]) if (m[c] !== undefined) r[c] = m[c];
       tv.recus.push(r);
       PILOTAGE[m.t](ses, m);
     } else tv.ignores.push(m.t);
@@ -359,6 +361,7 @@ function itemsReglages() {
     { cle: "ambiance_decalage", type: "choix", groupe: "Mode Ambiance", titre: "Synchro avec le son", valeur: R.ambiance_decalage,
       options: opt(["0", "Aucun retard"], ["100", "0,1 s (conseillé)"], ["200", "0,2 s"], ["300", "0,3 s"], ["400", "0,4 s"]), actif: R.ambiance_auto },
     ...(AVEC_LIENS ? itemsLiens() : []),
+    ...(AVEC_NBA ? itemsNba() : []),
     maj,
     { cle: "systeme", type: "boutons", groupe: "Ouvrir sur la TV",
       boutons: [{ id: "wifi", nom: "Wi-Fi" }, { id: "bluetooth", nom: "Bluetooth" }, { id: "reglages", nom: "Réglages" }] },
@@ -435,6 +438,7 @@ const PILOTAGE = {
   reglage(ses, m) {
     const it = itemsReglages().find((i) => i.cle === m.cle);
     if (it?.cle.startsWith("liens_")) reglageLiens(it, m);
+    else if (it?.cle === "nba_decalage") reglageNba(it, m);
     else if (it?.type === "curseur" && Number.isFinite(m.valeur)) R[m.cle] = Math.min(it.max, Math.max(it.min, Math.round(m.valeur)));
     else if (it?.type === "interrupteur" && typeof m.valeur === "boolean") R[m.cle] = m.valeur;
     else if (it?.cle === "design" && it.options.some((o) => o.id === m.valeur)) changerDesign(m.valeur);
@@ -482,6 +486,27 @@ const PILOTAGE = {
     tv.liensOuverts.push({ url: m.url, appli, sansVpn: m.sansVpn === true });
     log("lien-ouvert");
     repondre({ ok: true, ouvertDans: appli });
+  },
+
+  // ---------- Box score NBA ----------
+  nba_etat(ses) {
+    ses.abonneNba = true;
+    ses.envoyer(etatNba());
+  },
+  nba_afficher(ses, m) {
+    if (!AFFICHAGES_NBA.includes(m.affichage)) return; // affichage inconnu : ignoré
+    // id inconnu : le choix ne change pas (le format, lui, s'applique)
+    if (typeof m.id === "string" && N.matchs.some((x) => x.id === m.id)) N.demande = m.id;
+    // Afficher sans match en cours : la TV garde « cache » et renvoie `nba`
+    if (m.affichage !== "cache" && !N.matchs.length) return ses.envoyer(etatNba());
+    N.affichage = m.affichage;
+    log(`nba-${m.affichage}`);
+    pousserNba();
+  },
+  nba_choisir(ses, m) {
+    if (typeof m.id !== "string" || !N.matchs.some((x) => x.id === m.id)) return; // id inconnu : ignoré
+    N.demande = m.id;
+    pousserNba();
   },
 };
 
@@ -576,6 +601,89 @@ function reglageLiens(it, m) {
     L.code = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
   } else return;
   pousserLiens();
+}
+
+// ---------- Box score NBA (docs/telecommande.md, « Box score NBA ») ----------
+// Matchs factices (aucune source réseau) ; les tests les changent avec tv.changerNba / tv.scoreNba.
+
+const AFFICHAGES_NBA = ["cache", "resume", "details"];
+const EQUIPES_NBA = {
+  LAL: { nom: "Lakers", couleur: "#552583", texte: "#FDB927" },
+  BOS: { nom: "Celtics", couleur: "#007A33", texte: "#FFFFFF" },
+  GSW: { nom: "Warriors", couleur: "#1D428A", texte: "#FFC72C" },
+  DEN: { nom: "Nuggets", couleur: "#0E2240", texte: "#FEC524" },
+};
+const equipeNba = (code, score) => ({ code, ...EQUIPES_NBA[code], score });
+/** Jeux de matchs : aucun, un (LAL-BOS), deux (LAL-BOS et GSW-DEN), termine (LAL-BOS fini). */
+const SCENARIOS_NBA = {
+  aucun: () => [],
+  un: () => [{ id: "LAL-BOS", ext: equipeNba("LAL", 98), dom: equipeNba("BOS", 102), statut: "4e QT · 2:31", direct: true }],
+  deux: () => [...SCENARIOS_NBA.un(), { id: "GSW-DEN", ext: equipeNba("GSW", 54), dom: equipeNba("DEN", 51), statut: "2e QT · 0:45.3", direct: true }],
+  termine: () => [{ id: "LAL-BOS", ext: equipeNba("LAL", 112), dom: equipeNba("BOS", 109), statut: "Terminé", direct: false }],
+};
+
+const N = {
+  matchs: [],         // matchs en cours, par heure de début (format du message `nba`)
+  demande: null,      // match demandé par un téléphone (mémoire seulement)
+  affichage: "cache", // "cache" | "resume" | "details"
+  decalage: 0,        // réglage nba_decalage (secondes)
+  erreur: null,       // "accessibilite" | "source" | null
+};
+tv.nba = N;
+
+/** Match affiché : celui demandé tant qu'il est dans la liste, sinon le premier en cours. */
+const choisiNba = () => (N.matchs.some((m) => m.id === N.demande) ? N.demande : (N.matchs.find((m) => m.direct) ?? N.matchs[0])?.id ?? null);
+
+function etatNba() {
+  const e = { t: "nba", matchs: N.matchs, choisi: choisiNba(), affichage: N.affichage, decalage: N.decalage };
+  if (N.erreur) e.erreur = N.erreur;
+  return e;
+}
+
+let pousseeNba = null;
+/** Changement côté TV : `nba` aux téléphones abonnés, au plus toutes les 300 ms. */
+function pousserNba() {
+  if (pousseeNba) return;
+  pousseeNba = setTimeout(() => {
+    pousseeNba = null;
+    for (const s of tv.sessions) if (s.auth && s.mode === "pilotage" && s.abonneNba) s.envoyer(etatNba());
+  }, 300);
+}
+
+/**
+ * Change l'état : {scenario: "aucun" | "un" | "deux" | "termine"}, {matchs}, {affichage}, {erreur},
+ * {decalage}… ; `nba` est poussé aux téléphones abonnés.
+ */
+tv.changerNba = (champs) => {
+  const { scenario, ...reste } = champs;
+  if (scenario) N.matchs = SCENARIOS_NBA[scenario]();
+  Object.assign(N, reste);
+  pousserNba();
+};
+
+/** Panier marqué (ou statut qui change) dans un match. */
+tv.scoreNba = (id, ext, dom, statut) => {
+  const m = N.matchs.find((x) => x.id === id);
+  if (!m) return;
+  m.ext.score = ext;
+  m.dom.score = dom;
+  if (statut) m.statut = statut;
+  pousserNba();
+};
+
+function itemsNba() {
+  return [{
+    cle: "nba_decalage", type: "choix", groupe: "Box score NBA", titre: "Décalage des scores",
+    detail: "Retarde scores et stats pour suivre la vidéo, sans spoiler", valeur: String(N.decalage),
+    options: [{ id: "0", nom: "Aucun" }, { id: "15", nom: "15 s" }, { id: "30", nom: "30 s" }, { id: "45", nom: "45 s" }, { id: "60", nom: "60 s" }],
+  }];
+}
+
+function reglageNba(it, m) {
+  const v = typeof m.valeur === "number" ? String(m.valeur) : m.valeur; // id numérique accepté en entier
+  if (!it.options.some((o) => o.id === v)) return;
+  N.decalage = Number(v);
+  pousserNba();
 }
 
 (async () => {

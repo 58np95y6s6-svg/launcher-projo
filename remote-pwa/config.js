@@ -7,7 +7,7 @@ globalThis.IBITV_CONFIG = Object.freeze({
 
   // Version de l'interface : la changer déclenche la mise à jour du service worker
   // (bannière « Nouvelle version — Recharger »).
-  versionApp: "1.3.1",
+  versionApp: "1.4.0",
 
   // Version du protocole télécommande (docs/telecommande.md) et plage acceptée.
   versionProtocole: 1,

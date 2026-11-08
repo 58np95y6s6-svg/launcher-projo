@@ -55,6 +55,10 @@ export async function demarrerBanc() {
         design: (id) => page.evaluate((d) => window.tv.changerDesign(d), id),
         /** Envoyer sur la TV : change l'état des liens (vpn, seulementVpn, appliVpn, raccourci, ip, code…). */
         liens: (champs) => page.evaluate((c) => window.tv.changerLiens(c), champs),
+        /** Box score NBA : {scenario: "aucun" | "un" | "deux" | "termine"}, {affichage}, {erreur}… (poussé aux abonnés). */
+        nba: (champs) => page.evaluate((c) => window.tv.changerNba(c), champs),
+        /** Box score NBA : nouveau score (et statut) d'un match. */
+        scoreNba: (id, ext, dom, statut) => page.evaluate((a) => window.tv.scoreNba(...a), [id, ext, dom, statut]),
         recus: () => page.evaluate(() => window.tv.recus),
         viderRecus: () => page.evaluate(() => { window.tv.recus.length = 0; }),
         attendreRecu: (pred, timeout = 8000) => page.waitForFunction(

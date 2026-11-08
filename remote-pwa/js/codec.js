@@ -3,6 +3,7 @@
 
 import { normaliserApps, normaliserImage, normaliserReglages } from "./pilotage.js";
 import { normaliserLiens, normaliserLienOuvert } from "./liens.js";
+import { normaliserNba } from "./nba.js";
 
 const cfg = () => globalThis.IBITV_CONFIG || {};
 export const versionProtocole = () => cfg().versionProtocole ?? 1;
@@ -114,6 +115,11 @@ export function decoder(brut) {
     case "lien_ouvert": {
       const r = normaliserLienOuvert(m);
       return r ? { v: m.v, t: m.t, ...r } : null;
+    }
+    // Box score NBA : matchs en cours, match choisi, format, décalage, erreur
+    case "nba": {
+      const etat = normaliserNba(m);
+      return etat ? { v: m.v, t: m.t, ...etat } : null;
     }
     default:
       return null; // type inconnu : ignoré
