@@ -1178,8 +1178,11 @@ private fun PanneauGalerie(
             })
             .clip(RoundedCornerShape(32.mq))
             .drawBehind {
-                // Lueur douce de la couleur du service, sous le trait
-                OmbreGalerie.dessiner(this, 80f * k, size.height - 6f * k, size.width - 160f * k, 20f * k, 22f * k, 0f, couleur.copy(alpha = 0.55f))
+                // Lueur douce de la couleur du service : toute la longueur du trait, d'intensité égale,
+                // centrée sur lui (elle monte dans le panneau, le bas est coupé par le bord)
+                val marge = G_TRAIT_MARGE * k
+                val haut = size.height - (G_TRAIT_EPAISSEUR + 10f) * k
+                OmbreGalerie.dessiner(this, marge, haut, size.width - 2f * marge, (G_TRAIT_EPAISSEUR + 10f) * k, 26f * k, 0f, couleur.copy(alpha = 0.5f))
             },
     ) {
         for ((s, entrant) in affichesAuCentre(titres, courant, precedent)) {
@@ -1211,18 +1214,23 @@ private fun PanneauGalerie(
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 30.mq)
+                .padding(horizontal = G_TRAIT_MARGE.mq)
                 .fillMaxWidth()
-                .height(4.mq)
+                .height(G_TRAIT_EPAISSEUR.mq)
                 .drawBehind {
+                    // Reflet clair au milieu, symétrique
                     drawRoundRect(
-                        Brush.horizontalGradient(0f to couleur, 0.55f to lerp(couleur, Color.White, 0.45f), 1f to couleur),
-                        cornerRadius = CornerRadius(4f * k),
+                        Brush.horizontalGradient(0f to couleur, 0.5f to lerp(couleur, Color.White, 0.45f), 1f to couleur),
+                        cornerRadius = CornerRadius(G_TRAIT_EPAISSEUR * k),
                     )
                 },
         )
     }
 }
+
+/** Trait de la couleur du service en bas du panneau : marge de chaque côté et épaisseur (px de maquette). */
+private const val G_TRAIT_MARGE = 30f
+private const val G_TRAIT_EPAISSEUR = 4f
 
 /** Couleur du service d'un titre (Netflix rouge, Prime Video bleu…), sinon celle de son app. */
 @Composable
