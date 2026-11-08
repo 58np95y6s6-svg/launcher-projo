@@ -1,8 +1,9 @@
 // Test d'interopérabilité de bout en bout : PWA (Chromium, profil téléphone) ↔ fausse TV
 // (second contexte Chromium) via le faux serveur PeerJS local, en WebRTC réel.
 //
-// appairage QR → confirmation → paired → key / text / focus_text → reconnexion → coupure
-// → revoked ; code de secours ; plusieurs TV ; versions incompatibles ; TV injoignable ;
+// appairage QR → confirmation → paired → key (pavé : glisser, flèches, OK) / text / focus_text
+// (feuille du clavier, « Aa ») → reconnexion → coupure → revoked ; code de secours ; plusieurs TV ;
+// thème qui suit le design de la TV ; versions incompatibles ; TV injoignable ;
 // mise à jour (bannière) ; pilotage (onglets Applis et Réglages, TV ancienne sans onglets) ;
 // Envoyer sur la TV (liens, VPN coupé, raccourci iOS) ;
 // aucun texte saisi, secret, nom d'appli, valeur de réglage ni lien dans les journaux.
@@ -60,20 +61,19 @@ test("appairage par QR code, commandes, champ texte, reconnexion, coupure, révo
   await page.click("#btn-resultat");
   await page.locator('#voyant[data-etat="connecte"]').waitFor();
   assert.equal(await page.textContent("#nom-tv"), "Salon");
-  assert.equal(await page.textContent("#etat-tv"), "Connectée");
+  assert.equal(await page.textContent("#etat-tv"), "Connectée · design Verre");
 
-  // --- Touches
+  // --- Touches : flèches (tout leur secteur du pavé), OK, puis les touches du bas
   for (const k of ["up", "right", "down", "left"]) await appuyerDirection(page, k);
-  await page.click(".dpad-ok");
-  for (const k of ["back", "home", "menu", "vol-", "mute", "vol+", "playpause"]) await page.click(`.touche[data-k="${k}"]`);
+  await page.click(".pave-ok");
+  for (const k of ["back", "home", "menu", "vol-", "mute", "vol+", "playpause"]) await page.click(`#panneau-telecommande .rangee [data-k="${k}"]`);
   await tv.attendreRecu((r) => r.k === "playpause");
   assert.deepEqual((await tv.recus()).map((r) => r.k),
     ["up", "right", "down", "left", "ok", "back", "home", "menu", "vol-", "mute", "vol+", "playpause"]);
   assert.ok((await tv.recus()).every((r) => r.appareil === demande.appareil));
 
-  // --- Pavé tactile : glisser à droite (2 pas) puis toucher (OK)
+  // --- Glisser sur le pavé : à droite (2 pas), puis toucher OK
   await tv.viderRecus();
-  await page.click("#btn-mode-nav");
   const p = await page.locator("#pave").boundingBox();
   await page.mouse.move(p.x + 60, p.y + p.height / 2);
   await page.mouse.down();
@@ -82,12 +82,33 @@ test("appairage par QR code, commandes, champ texte, reconnexion, coupure, révo
   await page.mouse.click(p.x + p.width / 2, p.y + p.height / 2);
   await tv.attendreRecu((r) => r.k === "ok");
   assert.deepEqual((await tv.recus()).map((r) => r.k), ["right", "right", "ok"]);
-  await page.click("#btn-mode-nav");
-
-  // --- Champ mot de passe : focus_text → masqué, saisie envoyée en direct, Entrée → submit
+  // Un glissé qui part de OK (vers le haut, 3 pas) ne valide pas
   await tv.viderRecus();
+  await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2 + 30);
+  await page.mouse.down();
+  await page.mouse.move(p.x + p.width / 2 + 8, p.y + p.height / 2 - 120, { steps: 12 });
+  await page.mouse.up();
+  await tv.attendreRecu((r) => r.k === "up");
+  await pause(300);
+  assert.deepEqual((await tv.recus()).map((r) => r.k), ["up", "up", "up"]);
+  // Flèche maintenue : répétition (comme le volume), rien de plus au relâcher
+  await tv.viderRecus();
+  await page.mouse.move(p.x + p.width / 2, p.y + p.height - 22);
+  await page.mouse.down();
+  await pause(800);
+  await page.mouse.up();
+  await pause(250);
+  const repetes = (await tv.recus()).map((r) => r.k);
+  assert.ok(repetes.length >= 3 && repetes.every((k) => k === "down"), `répétition : ${repetes}`);
+
+  // --- La TV attend un mot de passe : la feuille du clavier s'ouvre seule (masqué, saisie en direct, Entrée → submit)
+  await tv.viderRecus();
+  assert.ok(await page.isHidden("#feuille-clavier"), "pas de champ permanent sur la télécommande");
   await tv.envoyer({ t: "focus_text", type: "motdepasse", s: "", action: "go" });
   await page.locator("#saisie.actif").waitFor();
+  await page.locator("#feuille-clavier:not([hidden])").waitFor();
+  assert.equal(await page.textContent("#saisie-aide"), "La TV attend un mot de passe");
+  assert.equal(await page.textContent("#btn-entree"), "Valider sur la TV");
   assert.equal(await page.getAttribute("#champ-texte", "type"), "password");
   assert.equal(await page.getAttribute("#champ-texte", "enterkeyhint"), "go");
   assert.ok(await page.isVisible("#btn-afficher"));
@@ -104,18 +125,45 @@ test("appairage par QR code, commandes, champ texte, reconnexion, coupure, révo
   assert.equal(textes.at(-1).curseur, MOT_DE_PASSE.length);
   await tv.envoyer({ t: "focus_lost" });
   await page.waitForFunction(() => !document.querySelector("#saisie").classList.contains("actif"));
+  await page.locator("#feuille-clavier").waitFor({ state: "hidden" });
   assert.equal(await page.inputValue("#champ-texte"), "");
   assert.equal(await page.getAttribute("#champ-texte", "type"), "text");
   assert.ok(await page.isHidden("#btn-afficher"));
 
-  // --- Champ de recherche pré-rempli
+  // --- Champ de recherche pré-rempli : « Rechercher sur la TV » envoie submit
+  await tv.viderRecus();
   await tv.envoyer({ t: "focus_text", type: "recherche", s: "abc", action: "search" });
   await page.locator("#saisie.actif").waitFor();
+  assert.equal(await page.textContent("#saisie-aide"), "La TV attend une recherche");
+  assert.equal(await page.textContent("#btn-entree"), "Rechercher sur la TV");
   assert.equal(await page.inputValue("#champ-texte"), "abc");
   assert.equal(await page.getAttribute("#champ-texte", "type"), "search");
+  assert.equal(await page.getAttribute("#champ-texte", "enterkeyhint"), "search");
   await page.fill("#champ-texte", TEXTE);
   await tv.attendreRecu((r) => r.t === "text" && r.s === "bonjour tout le monde");
+  await page.click("#btn-entree");
+  await tv.attendreRecu((r) => r.t === "submit");
+  // Fermée à la main : la TV attend toujours, « Aa » la rouvre telle quelle
+  await page.click("#btn-fermer-clavier");
+  assert.ok(await page.isHidden("#feuille-clavier"));
+  await page.click("#btn-clavier");
+  assert.equal(await page.inputValue("#champ-texte"), "bonjour tout le monde");
+  assert.equal(await page.textContent("#saisie-aide"), "La TV attend une recherche");
   await tv.envoyer({ t: "focus_lost" });
+  await page.locator("#feuille-clavier").waitFor({ state: "hidden" });
+
+  // --- « Aa » : texte libre, envoyé de la même façon ; Échap ferme la feuille
+  await tv.viderRecus();
+  await page.click("#btn-clavier");
+  await page.locator("#feuille-clavier:not([hidden])").waitFor();
+  assert.equal(await page.textContent("#saisie-aide"), "Écrire sur la TV");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "champ-texte");
+  await page.keyboard.type("ok");
+  await page.click("#btn-entree");
+  await tv.attendreRecu((r) => r.t === "submit");
+  assert.deepEqual((await tv.recus()).map((r) => [r.t, r.s]), [["text", "o"], ["text", "ok"], ["submit", undefined]]);
+  await page.keyboard.press("Escape");
+  assert.ok(await page.isHidden("#feuille-clavier"));
 
   // --- Reconnexion à la réouverture (identité et TV en IndexedDB)
   await page.close();
@@ -123,7 +171,7 @@ test("appairage par QR code, commandes, champ texte, reconnexion, coupure, révo
   page = await tel.ouvrir();
   await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
   assert.ok(await page.isVisible("#ecran-telecommande"));
-  await page.click('.touche[data-k="home"]');
+  await page.click('[data-k="home"]');
   await tv.attendreRecu((r) => r.k === "home");
 
   // --- Coupure du réseau local : reconnexion automatique
@@ -131,7 +179,7 @@ test("appairage par QR code, commandes, champ texte, reconnexion, coupure, révo
   await page.waitForFunction(() => document.querySelector("#voyant").dataset.etat !== "connecte");
   await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 20000 });
   await tv.viderRecus();
-  await page.click('.touche[data-k="back"]');
+  await page.click('[data-k="back"]');
   await tv.attendreRecu((r) => r.k === "back");
 
   // --- Révocation pendant la session
@@ -183,7 +231,7 @@ test("code de secours, plusieurs TV, choix de la TV, révocation hors connexion,
   assert.ok(await page.isVisible("#btn-accueil-retour"));
   await appairerParQR(page, chambre, "iPhone de Paul");
   assert.equal(await page.textContent("#nom-tv"), "Chambre");
-  await page.click('.touche[data-k="mute"]');
+  await page.click('[data-k="mute"]');
   await chambre.attendreRecu((r) => r.k === "mute");
 
   // Choix de la TV pilotée
@@ -193,7 +241,7 @@ test("code de secours, plusieurs TV, choix de la TV, révocation hors connexion,
   await page.locator("#nom-tv", { hasText: "Salon" }).waitFor();
   await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
   await salon.viderRecus();
-  await page.click('.touche[data-k="vol+"]');
+  await page.click('[data-k="vol+"]');
   await salon.attendreRecu((r) => r.k === "vol+");
   // Après l'appairage par code, la reconnexion se fait sur l'identifiant stable
   const offres = banc.peerjs.stats.messages.filter((m) => m.type === "OFFER" && m.dst === salon.id);
@@ -218,6 +266,141 @@ test("code de secours, plusieurs TV, choix de la TV, révocation hors connexion,
   await tel.fermer();
   await salon.fermer();
   await chambre.fermer();
+});
+
+// ---------- Thème : la télécommande suit le design de la TV ----------
+
+const themeDe = (page) => page.evaluate(() => document.documentElement.dataset.theme);
+const couleurBarre = (page) => page.getAttribute('meta[name="theme-color"]', "content");
+
+test("thème : défaut sans TV, design du hello, changement en direct, gardé par TV, appliqué avant la connexion", async () => {
+  // Sans TV : Galerie (clair) ; téléphone en mode sombre : Verre
+  const sombre = await banc.telephone("iphone", { sombre: true });
+  journaux.push(sombre.journal);
+  const pageSombre = await sombre.ouvrir();
+  await pageSombre.locator("#ecran-accueil").waitFor();
+  assert.equal(await themeDe(pageSombre), "verre");
+  assert.equal(await couleurBarre(pageSombre), "#241a4c");
+  // TV sans design (ancienne) : thème par défaut, ici sombre
+  const ancienne = await banc.tv({ nom: "Ancienne", design: null });
+  await appairerParQR(pageSombre, ancienne);
+  assert.equal(await themeDe(pageSombre), "verre");
+  assert.equal(await pageSombre.textContent("#etat-tv"), "Connectée");
+  await sombre.fermer();
+
+  const salon = await banc.tv({ nom: "Salon", design: "console" });
+  const bureau = await banc.tv({ nom: "Bureau", design: null });
+  const tel = await banc.telephone("android");
+  journaux.push(tel.journal);
+  let page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  assert.equal(await themeDe(page), "galerie");
+  assert.equal(await couleurBarre(page), "#F4F5F7");
+
+  // Design annoncé dans le hello
+  await appairerParQR(page, salon);
+  assert.equal(await themeDe(page), "console");
+  assert.equal(await couleurBarre(page), "#250c15");
+  assert.equal(await page.textContent("#etat-tv"), "Connectée · design Console");
+  // Le design change sur la TV : poussé à la télécommande, sans abonnement (aucun onglet ouvert)
+  assert.equal((await salon.recus()).length, 0);
+  await salon.design("pastel");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "pastel");
+  assert.equal(await page.textContent("#etat-tv"), "Connectée · design Pastel");
+  assert.equal(await couleurBarre(page), "#f8e6f2");
+  // Sur les autres onglets aussi
+  await page.click("#onglet-reglages");
+  await salon.design("une");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "une");
+  await page.click("#onglet-telecommande");
+
+  // Seconde TV sans design : thème par défaut ; retour à la première : son design, gardé
+  await page.click("#btn-tvs");
+  await page.click("#btn-ajouter-tv");
+  await appairerParQR(page, bureau);
+  assert.equal(await themeDe(page), "galerie");
+  assert.equal(await page.textContent("#etat-tv"), "Connectée");
+  await page.click("#btn-tvs");
+  assert.match(await page.textContent('.tv-choix:has-text("Salon") .tv-detail'), /design À la une/);
+  await page.click('.tv-choix:has-text("Salon")');
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "une");
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+
+  // Réouverture, TV éteinte : le design gardé est appliqué dès l'ouverture, avant toute connexion
+  await page.close();
+  await salon.fermer();
+  page = await tel.ouvrir();
+  assert.equal(await themeDe(page), "une", "appliqué avant le premier affichage (theme-initial.js)");
+  await page.locator("#ecran-telecommande").waitFor();
+  assert.equal(await themeDe(page), "une");
+  assert.notEqual(await page.getAttribute("#voyant", "data-etat"), "connecte");
+  // L'autre TV choisie : son thème (par défaut), même hors connexion
+  await page.click("#btn-tvs");
+  await page.click('.tv-choix:has-text("Bureau")');
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "galerie");
+  await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
+  await page.close();
+  page = await tel.ouvrir();
+  assert.equal(await themeDe(page), "galerie", "thème par défaut : rien de retenu");
+  await tel.fermer();
+  await bureau.fermer();
+  await ancienne.fermer();
+});
+
+test("accessibilité : noms des boutons, cibles ≥ 48 px (touches ≥ 56 px), texte en rem, animations et contraste", async () => {
+  const tv = await banc.tv({ nom: "Salon", design: "galerie" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  /** Boutons visibles de l'écran : sans nom accessible, ou plus petits que `min` px. */
+  const verifier = (selecteur, min = 48) => page.$$eval(selecteur, (l, min) => l
+    .filter((b) => b.getClientRects().length && getComputedStyle(b).visibility !== "hidden")
+    .flatMap((b) => {
+      const r = b.getBoundingClientRect();
+      const par = b.getAttribute("aria-labelledby")?.split(" ").map((i) => document.getElementById(i)?.textContent).join(" ");
+      const nom = (b.getAttribute("aria-label") || par || b.textContent || b.closest("label")?.textContent || "").trim();
+      const id = b.id || b.dataset.k || b.dataset.cle || b.className;
+      return [...(!nom ? [`${id} : sans nom`] : []), ...(r.width < min - 0.5 || r.height < min - 0.5 ? [`${id} : ${Math.round(r.width)}×${Math.round(r.height)}`] : [])];
+    }), min);
+  assert.deepEqual(await verifier("#ecran-telecommande button:not(.pave-dir)"), []);
+  assert.deepEqual(await verifier(".rangee-touches button, .touche-lecture, .pave-ok, #btn-tvs, #btn-clavier", 56), []);
+  // Flèches : tout un secteur du pavé
+  assert.deepEqual(await verifier(".pave-dir", 100), []);
+  await page.click("#btn-clavier");
+  assert.deepEqual(await verifier("#feuille-clavier button, #champ-texte"), []);
+  await page.keyboard.press("Escape");
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="volume"]').waitFor();
+  assert.deepEqual(await verifier("#panneau-reglages .btn-reglage, #panneau-reglages .option, #panneau-reglages .reglage-ligne, #panneau-reglages input[type=range], #pastille-tv"), []);
+  await page.click("#onglet-envoyer");
+  await page.locator("#etat-vpn:not([hidden])").waitFor();
+  assert.deepEqual(await verifier("#panneau-envoyer button:not([hidden]), #champ-lien"), []);
+  await page.click("#onglet-telecommande");
+
+  // Texte en rem : il suit la taille du texte du téléphone (iOS : Dynamic Type sur <html>)
+  const tailles = () => page.evaluate(() => ["#nom-tv", ".touche span", ".pave-indice"].map((s) => parseFloat(getComputedStyle(document.querySelector(s)).fontSize)));
+  const avant = await tailles();
+  await page.evaluate(() => { document.documentElement.style.fontSize = "24px"; });
+  const apres = await tailles();
+  apres.forEach((t, i) => assert.ok(Math.abs(t / avant[i] - 1.5) < 0.02, `${t} / ${avant[i]}`));
+  // … et rien ne déborde horizontalement
+  assert.ok(await page.evaluate(() => document.querySelector("#panneau-telecommande").scrollWidth <= innerWidth));
+  await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
+
+  // Animations réduites, contraste renforcé
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  assert.ok(parseFloat(await page.evaluate(() => getComputedStyle(document.querySelector("#ecran-telecommande")).animationDuration)) < 0.001);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector(".pave-ok")).transitionDuration), "0s");
+  await page.emulateMedia({ contrast: "more" });
+  const [texte, texte2] = await page.evaluate(() => {
+    const st = getComputedStyle(document.querySelector(".pave-indice"));
+    return [getComputedStyle(document.querySelector("#nom-tv")).color, st.color];
+  });
+  assert.equal(texte2, texte, "texte secondaire plein en contraste renforcé");
+  await tel.fermer();
+  await tv.fermer();
 });
 
 test("appairage refusé sur la TV, puis TV injoignable", async () => {
@@ -296,17 +479,19 @@ test("service worker : hors ligne, puis nouvelle version → bannière « Rechar
 
 const recusDe = async (tv, t) => (await tv.recus()).filter((r) => r.t === t);
 
-test("TV ancienne (sans « fonctions ») : télécommande seule, sans onglets ni erreur", async () => {
-  const tv = await banc.tv({ nom: "Ancienne", fonctions: null });
+test("TV ancienne (sans « fonctions » ni « design ») : télécommande seule, thème par défaut, sans erreur", async () => {
+  const tv = await banc.tv({ nom: "Ancienne", fonctions: null, design: null });
   const tel = await banc.telephone("android");
   journaux.push(tel.journal);
   const page = await tel.ouvrir();
   await page.locator("#ecran-accueil").waitFor();
   await appairerParQR(page, tv);
-  await page.click('.touche[data-k="home"]');
+  await page.click('[data-k="home"]');
   await tv.attendreRecu((r) => r.k === "home");
   assert.ok(await page.isHidden("#onglets"));
-  assert.ok(await page.isVisible("#btn-mode-nav"));
+  assert.ok(await page.isVisible("#btn-clavier"));
+  assert.equal(await page.getAttribute("html", "data-theme"), "galerie");
+  assert.equal(await page.textContent("#etat-tv"), "Connectée");
   assert.equal(await page.evaluate(() => document.querySelector("#ecran-telecommande").classList.contains("avec-onglets")), false);
   // Rien du pilotage n'a été envoyé à cette TV
   assert.deepEqual(await tv.eval(() => window.tv.ignores), []);
@@ -332,9 +517,9 @@ test("applis : onglet annoncé, grille, images demandées une seule fois (cache)
 
   await page.click("#onglet-applis");
   assert.equal(await page.getAttribute("#onglet-applis", "aria-selected"), "true");
-  assert.ok(await page.isHidden("#btn-mode-nav"));
+  assert.ok(await page.isHidden("#btn-clavier"));
   assert.ok(await page.isHidden("#btn-tvs"));
-  assert.equal(await page.textContent("#pastille-nom"), "Salon · iBiTV");
+  assert.equal(await page.textContent("#pastille-nom"), "Salon");
   assert.equal(await page.getAttribute("#pastille-voyant", "data-etat"), "connecte");
   await page.locator(".tuile[data-id]").nth(11).waitFor();
   await page.waitForFunction(() => document.querySelectorAll(".tuile img").length === 12);
@@ -382,6 +567,7 @@ test("applis : onglet annoncé, grille, images demandées une seule fois (cache)
   await tv.envoyer({ t: "focus_text", type: "recherche", s: "", action: "search" });
   await page.locator("#saisie.actif").waitFor();
   assert.equal(await page.getAttribute("#onglet-telecommande", "aria-selected"), "true");
+  assert.ok(await page.isVisible("#feuille-clavier"));
   assert.ok(await page.isHidden("#panneau-applis"));
   assert.equal(await page.evaluate(() => document.querySelector("#panneau-telecommande").hidden), false);
   await tel.fermer();
@@ -408,7 +594,8 @@ test("réglages : rendu générique par groupe, design, interrupteurs, curseur l
   ]);
   assert.equal(await page.inputValue('.reglage[data-cle="volume"] input[type=range]'), "9");
   assert.equal(await page.textContent('.reglage[data-cle="volume"] .reglage-valeur'), "60 %");
-  assert.equal(await page.locator('.reglage[data-cle="design"] .options-designs .option').count(), 6);
+  assert.equal(await page.locator('.reglage[data-cle="design"] .options-designs .option').count(), 7);
+  assert.equal(await page.locator('.reglage[data-cle="design"] .apercu-design[data-id="galerie"]').count(), 1);
   assert.equal(await page.locator('.reglage[data-cle="ambiance_decalage"] .options-pastilles .option').count(), 5);
   assert.equal(await page.textContent('.reglage[data-cle="design"] .option.choisie .option-nom'), "Verre");
 
@@ -417,6 +604,8 @@ test("réglages : rendu générique par groupe, design, interrupteurs, curseur l
   await tv.attendreRecu((r) => r.t === "reglage" && r.cle === "design" && r.valeur === "pastel");
   assert.equal(await tv.eval(() => window.tv.reglages.design), "pastel");
   assert.equal(await page.textContent('.reglage[data-cle="design"] .option.choisie .option-nom'), "Pastel");
+  // La TV pousse son nouveau design : la télécommande prend son style
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "pastel");
 
   // Interrupteur (toute la ligne est touchable)
   await page.click('.reglage[data-cle="muet"] .reglage-titre');
@@ -527,7 +716,7 @@ test("envoyer : envoi, récents, VPN coupé (feuille : annuler, sans VPN, allume
   await tv.attendreRecu((r) => r.t === "liens_etat");
   await page.locator("#etat-vpn-texte", { hasText: "VPN de la TV actif · les pages s'ouvrent dans VYPN" }).waitFor();
   assert.equal(await page.getAttribute("#etat-vpn", "data-etat"), "actif");
-  assert.equal(await page.textContent("#pastille-nom"), "Salon · iBiTV");
+  assert.equal(await page.textContent("#pastille-nom"), "Salon");
   assert.ok(await page.isDisabled("#btn-envoyer"));
   assert.ok(await page.isVisible(".recents-vide"));
 

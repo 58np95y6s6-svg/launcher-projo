@@ -360,7 +360,7 @@ export class OngletEnvoyer {
       pastille.style.setProperty("--teinte", String(teinteDe(hote)));
       const renvoyer = this.edition
         ? h("button", { type: "button", class: "btn-ligne btn-retirer", "aria-label": `Retirer ${libelle}` }, icone("i-croix"), "Retirer")
-        : h("button", { type: "button", class: "btn-ligne", "aria-label": `Renvoyer ${libelle}` }, icone("i-renvoyer"), "Renvoyer");
+        : h("button", { type: "button", class: "btn-ligne btn-icone-seule", "aria-label": `Renvoyer ${libelle}` }, icone("i-renvoyer"));
       renvoyer.addEventListener("click", () => (this.edition ? this.retirer(e.url) : this.envoyer(e.url, { titre: e.titre })));
       const ligne = h("div", { class: e.url === nouveau ? "recent nouveau" : "recent" },
         pastille,

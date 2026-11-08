@@ -53,7 +53,7 @@ async function preparer({ appairage = null, cible = null } = {}) {
   cible ??= { id: ID_TV, cle: cleTV };
   const s = new Session({ signal, identite, config, RTC: FauxPC, appairage, cible });
   const evts = [];
-  for (const t of ["etat", "tv", "paired", "focus_text", "focus_lost", "version", "fin", "apps", "app_image", "app_ouverte", "reglages", "liens", "lien_ouvert"]) {
+  for (const t of ["etat", "tv", "paired", "focus_text", "focus_lost", "version", "fin", "apps", "app_image", "app_ouverte", "reglages", "liens", "lien_ouvert", "design"]) {
     s.addEventListener(t, (e) => evts.push({ t, ...e.detail }));
   }
   await s.demarrer();
@@ -64,11 +64,12 @@ async function preparer({ appairage = null, cible = null } = {}) {
   pc.canal.ouvrir();
   await attendre(() => pc.canal.envoyes.length > 0);
   const hello = pc.canal.envoyes[0];
-  const helloTV = async ({ v = 1, cle = cleTV, cleSignature = tv.privateKey, nonceTel = hello.nonce, fpTV = V.empreinteDtlsTV, fonctions } = {}) => {
+  const helloTV = async ({ v = 1, cle = cleTV, cleSignature = tv.privateKey, nonceTel = hello.nonce, fpTV = V.empreinteDtlsTV, fonctions, design } = {}) => {
     const nonce = nouveauNonce();
     const sig = await signer(cleSignature, texteHelloTV(fpTV, V.empreinteDtlsTel, nonceTel, nonce));
     const h = { v, t: "hello", nonce, sig, nomTV: "Salon", versionApp: "2.0", cle };
     if (fonctions !== undefined) h.fonctions = fonctions;
+    if (design !== undefined) h.design = design;
     return h;
   };
   return { s, signal, pc, canal: pc.canal, hello, helloTV, identite, tv, cleTV, evts, offre };
@@ -323,4 +324,37 @@ test("envoyer sur la TV : liens et lien_ouvert transmis une fois prête ; liens_
     { v: 1, t: "liens_etat" }, { v: 1, t: "lien_ouvrir", url: "https://a.fr/", vpnDabord: true },
   ]);
   s.fermer();
+});
+
+test("design de la TV : annoncé dans hello, puis poussé (seulement une fois prête)", async () => {
+  // TV ancienne : pas de champ design → null (thème par défaut)
+  const a = await preparer();
+  a.canal.recevoir(await a.helloTV());
+  await attendre(() => a.s.prete);
+  assert.equal(a.evts.find((e) => e.t === "tv").design, null);
+  a.s.fermer();
+
+  const b = await preparer();
+  b.canal.recevoir({ v: 1, t: "design", id: "une" }); // avant le hello vérifié : ignoré
+  b.canal.recevoir(await b.helloTV({ design: "galerie" }));
+  await attendre(() => b.s.prete);
+  assert.equal(b.evts.find((e) => e.t === "tv").design, "galerie");
+  b.canal.recevoir({ v: 1, t: "design", id: "pastel" });
+  b.canal.recevoir({ v: 1, t: "design" }); // sans id : ignoré
+  await attendre(() => b.evts.some((e) => e.t === "design"));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(b.evts.filter((e) => e.t === "design"), [{ t: "design", id: "pastel" }]);
+  b.s.fermer();
+});
+
+test("design : ignoré pendant l'appairage (avant paired)", async () => {
+  const a = await preparer({ appairage: { secret: "PQ9X", nom: "Tel" }, cible: { id: "ibiprojo-c-K7M2" } });
+  a.canal.recevoir(await a.helloTV({ design: "studio" }));
+  await attendre(() => a.s.etat === "appairage");
+  assert.equal(a.evts.find((e) => e.t === "tv").design, "studio");
+  a.canal.recevoir({ v: 1, t: "design", id: "verre" });
+  a.canal.recevoir({ v: 1, t: "paired", nomTV: "Salon", idTV: ID_TV });
+  await attendre(() => a.s.prete);
+  assert.ok(!a.evts.some((e) => e.t === "design"));
+  a.s.fermer();
 });

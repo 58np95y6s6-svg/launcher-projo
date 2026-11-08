@@ -30,12 +30,15 @@ export async function demarrerBanc() {
     peerjs, web, navigateur, base,
     urlPWA: `${base}/launcher-projo/`,
 
-    /** @param fonctions fonctions annoncées dans le hello ; null = TV ancienne (sans champ) */
-    async tv({ nom = "Salon", vmax = 1, vhello = 1, fonctions = ["apps", "reglages", "liens"] } = {}) {
+    /**
+     * @param fonctions fonctions annoncées dans le hello ; null = TV ancienne (sans champ)
+     * @param design design de l'accueil annoncé dans le hello ; null = TV ancienne (sans champ ni message `design`)
+     */
+    async tv({ nom = "Salon", vmax = 1, vhello = 1, fonctions = ["apps", "reglages", "liens"], design = "verre" } = {}) {
       const ctx = await navigateur.newContext();
       const page = await ctx.newPage();
       const f = fonctions?.length ? fonctions.join(",") : "aucune";
-      await page.goto(`${base}/tv/fausse-tv.html?ws=${peerjs.port}&nom=${encodeURIComponent(nom)}&vmax=${vmax}&vhello=${vhello}&fonctions=${f}`);
+      await page.goto(`${base}/tv/fausse-tv.html?ws=${peerjs.port}&nom=${encodeURIComponent(nom)}&vmax=${vmax}&vhello=${vhello}&fonctions=${f}&design=${design ?? "aucun"}`);
       await page.waitForFunction(() => window.tv && window.tv.pret);
       const tv = {
         page, ctx,
@@ -48,6 +51,8 @@ export async function demarrerBanc() {
         },
         confirmer: (ok = true) => page.evaluate((o) => window.tv.confirmer(o), ok),
         envoyer: (msg) => page.evaluate((m) => window.tv.envoyer(m), msg),
+        /** Change le design de l'accueil : la TV pousse `design` à chaque téléphone connecté. */
+        design: (id) => page.evaluate((d) => window.tv.changerDesign(d), id),
         /** Envoyer sur la TV : change l'état des liens (vpn, seulementVpn, appliVpn, raccourci, ip, code…). */
         liens: (champs) => page.evaluate((c) => window.tv.changerLiens(c), champs),
         recus: () => page.evaluate(() => window.tv.recus),
@@ -60,8 +65,8 @@ export async function demarrerBanc() {
     },
 
     /** Contexte « téléphone » : le stockage (IndexedDB) survit tant que le contexte vit. */
-    async telephone(modele = "iphone") {
-      const ctx = await navigateur.newContext({ ...TELEPHONES[modele], locale: "fr-FR" });
+    async telephone(modele = "iphone", { sombre = false } = {}) {
+      const ctx = await navigateur.newContext({ ...TELEPHONES[modele], locale: "fr-FR", colorScheme: sombre ? "dark" : "light" });
       const journal = [];
       const ouvrir = async (suffixe = "") => {
         const page = await ctx.newPage();
@@ -96,9 +101,9 @@ export async function appairerParQR(page, tv, nom = "Téléphone de Marie") {
   await page.locator('#voyant[data-etat="connecte"]').waitFor({ timeout: 15000 });
 }
 
-/** Clic sur un secteur du pavé directionnel (le centre de chaque secteur est le bouton OK). */
+/** Toucher le secteur d'une flèche du pavé (près du bord ; le centre du pavé est le bouton OK). */
 export async function appuyerDirection(page, k) {
-  const boite = await page.locator("#dpad").boundingBox();
+  const boite = await page.locator("#pave").boundingBox();
   const m = 22;
   const pos = {
     up: { x: boite.width / 2, y: m }, down: { x: boite.width / 2, y: boite.height - m },

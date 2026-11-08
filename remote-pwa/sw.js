@@ -26,12 +26,19 @@ const FICHIERS = [
   "js/session.js",
   "js/signalisation.js",
   "js/stockage.js",
+  "js/theme.js",
+  "js/theme-initial.js",
   "icones/icone.svg",
   "icones/icone-192.png",
   "icones/icone-512.png",
   "icones/icone-maskable-192.png",
   "icones/icone-maskable-512.png",
   "icones/apple-touch-icon.png",
+  "polices/manrope-moyen.ttf",
+  "polices/manrope-gras.ttf",
+  "polices/instrument-serif.ttf",
+  "polices/manrope-OFL.txt",
+  "polices/instrument-serif-OFL.txt",
 ];
 
 self.addEventListener("install", (e) => {

@@ -4,7 +4,7 @@
 // Événements :
 //   etat {etat, essais}      "aucune" | "connexion" | "connecte" | "injoignable" | "erreur"
 //                            (+ detail.raison pour "erreur" : "auth" | "version" | "id_pris")
-//   tvs {tvs, active}        liste des TV modifiée
+//   tvs {tvs, active}        liste des TV modifiée (y compris le design d'une TV : tv.design)
 //   appairage {etape, …}     "connexion" | "confirmation" | "reussi" (tv) | "echec" (raison, refus)
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
@@ -16,6 +16,7 @@ import { Signalisation, ErreurSignalisation } from "./signalisation.js";
 import { Session } from "./session.js";
 import * as stockage from "./stockage.js";
 import { journal } from "./journal.js";
+import { lireDesign } from "./theme.js";
 
 export class Controleur extends EventTarget {
   constructor(config, { RTC, WebSocketImpl } = {}) {
@@ -102,6 +103,7 @@ export class Controleur extends EventTarget {
     }));
     this._brancher(session);
     session.addEventListener("tv", (e) => this._majTV(tv.id, e.detail));
+    this._suivreDesign(session, tv.id);
     session.addEventListener("etat", (e) => {
       if (this.session !== session) return;
       if (e.detail.etat === "prete") { this.essais = 0; this._etat("connecte"); }
@@ -184,15 +186,29 @@ export class Controleur extends EventTarget {
     this._emettreTVs();
   }
 
-  async _majTV(id, { versionApp, nomTV, fonctions }) {
+  async _majTV(id, { versionApp, nomTV, fonctions, design }) {
     const tv = this.tvs.find((t) => t.id === id);
     if (!tv) return;
     if (typeof versionApp === "string") tv.versionApp = versionApp;
     if (nomTV) tv.nom = nomTV;
     // Fonctions annoncées (onglets « Applis », « Envoyer », « Réglages ») : gardées pour la prochaine ouverture
     if (Array.isArray(fonctions)) tv.fonctions = fonctions;
+    // Design de l'accueil (thème de la télécommande) : absent ou inconnu → thème par défaut
+    tv.design = lireDesign(design);
     await stockage.enregistrerTV(tv);
     this._emettreTVs();
+  }
+
+  /** `design` poussé par la TV : thème appliqué tout de suite, puis gardé avec la TV. */
+  _suivreDesign(session, id) {
+    session.addEventListener("design", (e) => {
+      if (this.session !== session) return;
+      const tv = this.tvs.find((t) => t.id === id);
+      if (!tv) return;
+      tv.design = lireDesign(e.detail.id);
+      this._emettreTVs();
+      stockage.enregistrerTV(tv).catch(() => {});
+    });
   }
 
   // ---------- Appairage ----------
@@ -227,7 +243,7 @@ export class Controleur extends EventTarget {
       const { idTV, nomTV, cle, empreinte } = e.detail;
       const tv = {
         id: idTV, nom: nomTV, cle, empreinte, ajouteeLe: Date.now(),
-        versionApp: session.versionAppTV, fonctions: session.fonctionsTV || [],
+        versionApp: session.versionAppTV, fonctions: session.fonctionsTV || [], design: lireDesign(session.designTV),
       };
       await stockage.enregistrerTV(tv);
       this.tvs = [...this.tvs.filter((t) => t.id !== idTV), tv];
@@ -239,6 +255,7 @@ export class Controleur extends EventTarget {
       this.essais = 0;
       this.arrete = false;
       session.addEventListener("fin", (f) => this._finSession(session, tv, f.detail));
+      this._suivreDesign(session, idTV);
       this._emettreTVs();
       this._etat("connecte");
       this._emettre("appairage", { etape: "reussi", tv });
@@ -246,6 +263,7 @@ export class Controleur extends EventTarget {
     session.addEventListener("tv", (e) => {
       session.versionAppTV = e.detail.versionApp;
       session.fonctionsTV = e.detail.fonctions;
+      session.designTV = e.detail.design;
     });
     session.addEventListener("fin", (e) => {
       if (this.sessionAppairage !== session) return;

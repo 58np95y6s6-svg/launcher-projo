@@ -8,6 +8,7 @@ import { journal } from "./journal.js";
 import { OngletApplis } from "./applis.js";
 import { OngletReglages } from "./reglages.js";
 import { OngletEnvoyer } from "./envoyer.js";
+import { lireDesign, themePour, texteConnectee, appliquerTheme, NOMS_DESIGN } from "./theme.js";
 
 // Comportement d'appli : pas de zoom au pincement (iOS ignore user-scalable=no).
 // Le zoom au double appui est déjà coupé par touch-action: manipulation (CSS).
@@ -27,16 +28,11 @@ let nomAppairage = "";
 function montrer(id) {
   for (const e of document.querySelectorAll(".ecran")) e.hidden = e.id !== id;
   document.body.dataset.ecran = id;
-  if (id !== "ecran-telecommande") document.body.classList.remove("clavier");
+  if (id !== "ecran-telecommande") fermerClavier();
   window.scrollTo(0, 0);
 }
 
 const echapper = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
-const reglageLocal = {
-  lire(cle) { try { return localStorage.getItem(cle); } catch { return null; } },
-  ecrire(cle, v) { try { localStorage.setItem(cle, v); } catch {} },
-};
 
 // Retour haptique : navigator.vibrate (Android) ; iOS 18+ : interrupteur natif (geste requis).
 function vibrer(ms = 12) {
@@ -230,8 +226,11 @@ function montrerTelecommande() {
 }
 
 let etatAffiche = null;
+let dernierEtat = { etat: "aucune" };
 
-function majEtat({ etat, raison, prochainEssaiMs }) {
+function majEtat(detail) {
+  dernierEtat = detail;
+  const { etat, raison, prochainEssaiMs } = detail;
   const tv = ctrl.tvActive;
   // Nouvelle connexion : les onglets ouverts redemandent leurs données (abonnement aux réglages)
   if (etat === "connecte" && etatAffiche !== "connecte") { applis.surConnexion(); envoyer.surConnexion(); reglages.surConnexion(); }
@@ -239,7 +238,8 @@ function majEtat({ etat, raison, prochainEssaiMs }) {
   $("nom-tv").textContent = tv ? tv.nom : "TV";
   $("voyant").dataset.etat = etat;
   $("ecran-telecommande").dataset.etat = etat;
-  let texte = TEXTES_ETAT[etat] || "";
+  // « Connectée · design Galerie » : la télécommande a pris le style de la TV
+  let texte = etat === "connecte" ? texteConnectee(tv?.design) : TEXTES_ETAT[etat] || "";
   let bandeau = null;
   if (etat === "injoignable") {
     bandeau = raison === "id_pris"
@@ -262,6 +262,17 @@ function majEtat({ etat, raison, prochainEssaiMs }) {
 }
 
 ctrl.addEventListener("etat", (e) => majEtat(e.detail));
+
+// ---------- Thème : suit le design de la TV active ----------
+// Gardé avec chaque TV (IndexedDB) et appliqué dès l'ouverture, avant la connexion ;
+// sans TV ou sans design connu : Galerie (clair) ou Verre (téléphone en mode sombre).
+
+const sombre = matchMedia("(prefers-color-scheme: dark)");
+function majTheme() {
+  const design = lireDesign(ctrl.tvActive?.design);
+  appliquerTheme(themePour(design, sombre.matches), { retenir: !!design });
+}
+sombre.addEventListener?.("change", majTheme);
 $("btn-reessayer").addEventListener("click", () => { vibrer(); ctrl.connecter({ reinitialiser: true }); });
 
 ctrl.addEventListener("revoquee", async (e) => {
@@ -292,9 +303,10 @@ ctrl.addEventListener("version", async (e) => {
 const REPETITION_DELAI = 380;
 const REPETITION_INTERVALLE = 110;
 
+/** Touche (Retour, Accueil, Options, volume, lecture) : envoyée dès l'appui ; volume : répétée si maintenue. */
 function brancherTouche(el) {
   const k = el.dataset.k;
-  const repete = el.hasAttribute("data-repete") || el.classList.contains("dpad-dir");
+  const repete = el.hasAttribute("data-repete");
   let t1 = null, t2 = null;
   const stop = () => {
     clearTimeout(t1); clearInterval(t2); t1 = t2 = null;
@@ -316,78 +328,140 @@ function brancherTouche(el) {
   el.addEventListener("click", (e) => { if (e.detail === 0) ctrl.touche(k); });
   el.addEventListener("contextmenu", (e) => e.preventDefault());
 }
-for (const el of document.querySelectorAll("#ecran-telecommande [data-k]")) brancherTouche(el);
+for (const el of document.querySelectorAll("#panneau-telecommande .rangee [data-k]")) brancherTouche(el);
 
-// Pavé directionnel ou pavé tactile (choix mémorisé sur ce téléphone)
-function modeNav(pave) {
-  $("dpad").hidden = pave;
-  $("pave").hidden = !pave;
-  $("btn-mode-nav").setAttribute("aria-pressed", String(pave));
-  $("btn-mode-nav").setAttribute("aria-label", pave ? "Pavé directionnel" : "Pavé tactile");
-  $("btn-mode-nav").querySelector("use").setAttribute("href", pave ? "#i-croix-dir" : "#i-pave");
-  reglageLocal.ecrire("ibiprojo-mode-nav", pave ? "pave" : "dpad");
-}
-modeNav(reglageLocal.lire("ibiprojo-mode-nav") === "pave");
-$("btn-mode-nav").addEventListener("click", () => { vibrer(); modeNav($("dpad").hidden === false); });
+// ---------- Télécommande : pavé unique ----------
+// Glisser n'importe où sur le pavé : un pas toutes les SEUIL px dans la direction dominante.
+// Toucher une flèche (tout son secteur) : un pas ; la garder appuyée : répétition. Toucher OK : valider.
+// La touche part au relâcher : un glissé qui commence sur OK ou sur une flèche n'envoie qu'un déplacement.
 
-// Pavé tactile : un pas toutes les SEUIL px dans la direction dominante, une touche courte = OK
 (() => {
   const pave = $("pave");
   const point = pave.querySelector(".pave-point");
-  const SEUIL = 46;
+  const SEUIL = 46;     // px par pas pendant un glissé
+  const IMMOBILE = 12;  // en deçà : un appui, pas un glissé
+  const eclairs = new Map();
   let suivi = null;
   const position = (e) => {
     const r = pave.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
+  // Retour visuel bref du secteur (ou de OK) qui vient de partir
+  const eclair = (k) => {
+    const el = pave.querySelector(`[data-k="${k}"]`);
+    if (!el) return;
+    el.classList.add("appui");
+    clearTimeout(eclairs.get(el));
+    eclairs.set(el, setTimeout(() => { if (suivi?.cible !== el) el.classList.remove("appui"); }, 160));
+  };
+
+  const oublier = () => {
+    if (!suivi) return;
+    clearTimeout(suivi.t1);
+    clearInterval(suivi.t2);
+    suivi.cible?.classList.remove("appui");
+    pave.classList.remove("glisse");
+    suivi = null;
+  };
+
   pave.addEventListener("pointerdown", (e) => {
+    if (e.button > 0) return;
     e.preventDefault();
+    oublier(); // un seul doigt suivi : le dernier posé (un suivi perdu ne bloque jamais le pavé)
     try { pave.setPointerCapture(e.pointerId); } catch {}
     const p = position(e);
-    suivi = { id: e.pointerId, ref: p, depart: p, t: performance.now(), pas: 0, max: 0 };
+    const cible = e.target.closest?.("[data-k]");
+    const s = (suivi = {
+      id: e.pointerId, ref: p, depart: p, pas: 0, max: 0,
+      cible: cible && pave.contains(cible) ? cible : null, glisse: false, repete: false, t1: null, t2: null,
+    });
+    s.cible?.classList.add("appui");
     point.style.transform = `translate(${p.x}px, ${p.y}px)`;
-    pave.classList.add("actif");
-  });
-  pave.addEventListener("pointermove", (e) => {
-    if (!suivi || e.pointerId !== suivi.id) return;
-    const p = position(e);
-    point.style.transform = `translate(${p.x}px, ${p.y}px)`;
-    suivi.max = Math.max(suivi.max, Math.hypot(p.x - suivi.depart.x, p.y - suivi.depart.y));
-    const dx = p.x - suivi.ref.x, dy = p.y - suivi.ref.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < SEUIL) return;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      ctrl.touche(dx > 0 ? "right" : "left");
-      suivi.ref = { x: suivi.ref.x + Math.sign(dx) * SEUIL, y: p.y };
-    } else {
-      ctrl.touche(dy > 0 ? "down" : "up");
-      suivi.ref = { x: p.x, y: suivi.ref.y + Math.sign(dy) * SEUIL };
+    const k = s.cible?.dataset.k;
+    if (k && k !== "ok") {
+      // Flèche maintenue : répétition, comme une vraie télécommande
+      s.t1 = setTimeout(() => {
+        s.repete = true;
+        ctrl.touche(k);
+        vibrer();
+        s.t2 = setInterval(() => { ctrl.touche(k); vibrer(6); }, REPETITION_INTERVALLE);
+      }, REPETITION_DELAI);
     }
-    suivi.pas++;
+  });
+
+  pave.addEventListener("pointermove", (e) => {
+    const s = suivi;
+    if (!s || e.pointerId !== s.id) return;
+    const p = position(e);
+    s.max = Math.max(s.max, Math.hypot(p.x - s.depart.x, p.y - s.depart.y));
+    if (s.repete) return; // flèche maintenue : le doigt peut bouger un peu
+    if (!s.glisse) {
+      if (s.max < IMMOBILE) return;
+      s.glisse = true;
+      clearTimeout(s.t1);
+      s.cible?.classList.remove("appui");
+      pave.classList.add("glisse");
+    }
+    point.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    const dx = p.x - s.ref.x, dy = p.y - s.ref.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SEUIL) return;
+    let k;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      k = dx > 0 ? "right" : "left";
+      s.ref = { x: s.ref.x + Math.sign(dx) * SEUIL, y: p.y };
+    } else {
+      k = dy > 0 ? "down" : "up";
+      s.ref = { x: p.x, y: s.ref.y + Math.sign(dy) * SEUIL };
+    }
+    ctrl.touche(k);
+    s.pas++;
+    eclair(k);
     vibrer(8);
   });
+
   const fin = (e) => {
-    if (!suivi || e.pointerId !== suivi.id) return;
-    if (e.type === "pointerup" && suivi.pas === 0 && suivi.max < 12 && performance.now() - suivi.t < 400) {
-      ctrl.touche("ok");
-      vibrer(14);
+    const s = suivi;
+    if (!s || e.pointerId !== s.id) return;
+    oublier();
+    // Appui (sans glisser ni répéter) : la flèche touchée, ou OK
+    if (e.type === "pointerup" && !s.glisse && !s.repete && s.max < IMMOBILE && s.cible) {
+      const k = s.cible.dataset.k;
+      ctrl.touche(k);
+      eclair(k);
+      vibrer(k === "ok" ? 14 : 12);
       vibrerIOS();
     }
-    suivi = null;
-    pave.classList.remove("actif");
   };
   pave.addEventListener("pointerup", fin);
   pave.addEventListener("pointercancel", fin);
+  pave.addEventListener("lostpointercapture", fin);
+  pave.addEventListener("contextmenu", (e) => e.preventDefault());
+  // Clavier physique / lecteur d'écran (clic sans pointeur)
+  for (const b of pave.querySelectorAll("[data-k]")) {
+    b.addEventListener("click", (e) => { if (e.detail === 0) { ctrl.touche(b.dataset.k); vibrer(); } });
+  }
 })();
 
-// ---------- Télécommande : champ texte ----------
+// ---------- Clavier : feuille du bas ----------
+// S'ouvre seule quand la TV attend du texte (focus_text), ou avec « Aa » (texte libre, envoyé
+// pareil) ; focus_lost la ferme. Chaque frappe envoie `text` (texte complet + curseur), Entrée `submit`.
 
 const champ = $("champ-texte");
 const saisie = $("saisie");
+const feuilleClavier = $("feuille-clavier");
 const TYPES_INPUT = {
   texte: ["text", "text"], email: ["email", "email"], motdepasse: ["password", "text"],
   nombre: ["text", "decimal"], url: ["url", "url"], recherche: ["search", "search"],
 };
+const LIBELLES_TYPE = {
+  texte: "La TV attend du texte", email: "La TV attend une adresse e-mail", motdepasse: "La TV attend un mot de passe",
+  nombre: "La TV attend un nombre", url: "La TV attend une adresse web", recherche: "La TV attend une recherche",
+};
+const LIBELLES_ACTION = {
+  search: "Rechercher sur la TV", go: "Valider sur la TV", send: "Envoyer sur la TV", next: "Suivant", done: "Valider sur la TV",
+};
 let typeChamp = "texte";
+let actionChamp = "done";
 let afficherMdp = false;
 
 function appliquerType() {
@@ -400,22 +474,57 @@ function appliquerType() {
   $("btn-afficher").setAttribute("aria-label", afficherMdp ? "Masquer" : "Afficher");
   $("btn-afficher").querySelector("span").textContent = afficherMdp ? "Masquer" : "Afficher";
   $("btn-afficher").querySelector("use").setAttribute("href", afficherMdp ? "#i-oeil-barre" : "#i-oeil");
+  // Ce que la TV attend, et le bouton qui valide
+  const tv = saisie.classList.contains("actif");
+  $("saisie-aide").textContent = tv ? LIBELLES_TYPE[typeChamp] || LIBELLES_TYPE.texte : "Écrire sur la TV";
+  $("btn-entree").textContent = LIBELLES_ACTION[actionChamp] || LIBELLES_ACTION.done;
 }
 
 function curseur() {
   try { return Number.isInteger(champ.selectionEnd) ? champ.selectionEnd : undefined; } catch { return undefined; }
 }
 
+/** iOS superpose son clavier : la feuille remonte juste au-dessus (zone visible du visualViewport). */
+function placerClavier() {
+  const vv = window.visualViewport;
+  const bas = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+  feuilleClavier.style.setProperty("--clavier-bas", `${bas}px`);
+  feuilleClavier.firstElementChild.classList.toggle("clavier-ouvert", bas > 40);
+}
+for (const ev of ["resize", "scroll"]) {
+  window.visualViewport?.addEventListener(ev, () => { if (!feuilleClavier.hidden) placerClavier(); });
+}
+
+function ouvrirClavier() {
+  appliquerType();
+  feuilleClavier.hidden = false;
+  placerClavier();
+  // Android/Chrome : le clavier s'ouvre ; iOS : seulement pendant un geste (« Aa », ou toucher le champ)
+  try { champ.focus({ preventScroll: true }); } catch {}
+}
+
+function fermerClavier({ rendreFocus = false } = {}) {
+  if (feuilleClavier.hidden) return;
+  if (document.activeElement === champ) champ.blur();
+  feuilleClavier.hidden = true;
+  saisie.classList.remove("invite");
+  $("saisie-invite").hidden = true;
+  feuilleClavier.style.setProperty("--clavier-bas", "0px");
+  if (rendreFocus && !$("btn-clavier").hidden) $("btn-clavier").focus({ preventScroll: true });
+}
+
+$("btn-clavier").addEventListener("click", () => { vibrer(); ouvrirClavier(); });
+$("btn-fermer-clavier").addEventListener("click", () => { vibrer(); fermerClavier({ rendreFocus: true }); });
+feuilleClavier.addEventListener("click", (e) => { if (e.target === feuilleClavier) fermerClavier(); });
+
 champ.addEventListener("input", () => ctrl.texte(champ.value, curseur()));
 // Toucher le champ (même déjà « focus » sans clavier, cas d'iOS) ouvre le clavier : fin de l'invitation
 const champTouche = () => {
-  document.body.classList.add("clavier");
   saisie.classList.remove("invite");
-  if (saisie.classList.contains("actif")) $("saisie-aide").hidden = true;
+  $("saisie-invite").hidden = true;
 };
 champ.addEventListener("focus", champTouche);
 champ.addEventListener("click", champTouche);
-champ.addEventListener("blur", () => document.body.classList.remove("clavier"));
 saisie.addEventListener("submit", (e) => {
   e.preventDefault();
   vibrer();
@@ -432,46 +541,43 @@ $("btn-afficher").addEventListener("click", () => {
   appliquerType();
   vibrer();
 });
+// Valider : le clavier du téléphone reste ouvert (la TV peut demander une suite)
+$("btn-entree").addEventListener("pointerdown", (e) => { if (document.activeElement === champ) e.preventDefault(); });
 
 ctrl.addEventListener("focus_text", ({ detail }) => {
-  // La TV attend du texte : retour à la télécommande, où se trouve le champ
+  // La TV attend du texte : retour à la télécommande, feuille du clavier ouverte
   if (onglet !== "telecommande") choisirOnglet("telecommande");
   typeChamp = detail.type;
+  actionChamp = detail.action;
   afficherMdp = false; // mot de passe toujours masqué par défaut
-  appliquerType();
+  saisie.classList.add("actif");
   champ.enterKeyHint = detail.action;
   champ.value = detail.s;
-  saisie.classList.add("actif");
-  const aide = $("saisie-aide");
-  aide.textContent = detail.type === "motdepasse" ? "Mot de passe demandé sur la TV" : "Champ texte actif sur la TV";
-  aide.hidden = false;
   vibrer(15);
-  // Ouverture automatique du clavier. Android/Chrome : focus() suffit en général.
-  // iOS : focus() sans geste de l'utilisateur n'ouvre pas le clavier → invitation à toucher le champ.
-  try { champ.focus({ preventScroll: true }); } catch {}
+  ouvrirClavier();
+  // iOS : focus() sans geste de l'utilisateur n'ouvre pas le clavier → invitation à toucher le champ
   setTimeout(() => {
-    if (!saisie.classList.contains("actif")) return;
+    if (!saisie.classList.contains("actif") || feuilleClavier.hidden) return;
     const vv = window.visualViewport;
     const clavierVisible = document.activeElement === champ &&
       (!estIOS() || (vv && vv.height < window.innerHeight * 0.85));
     if (!clavierVisible) {
-      document.body.classList.remove("clavier"); // pas de clavier : on garde toute la télécommande
       saisie.classList.add("invite");
-      aide.textContent = "Touchez le champ pour ouvrir le clavier";
-      aide.hidden = false;
+      $("saisie-invite").hidden = false;
     }
   }, 450);
 });
 
 function finSaisie() {
   saisie.classList.remove("actif", "invite");
-  $("saisie-aide").hidden = true;
   if (document.activeElement === champ) champ.blur();
   champ.value = "";
   typeChamp = "texte";
+  actionChamp = "done";
   afficherMdp = false;
   appliquerType();
   champ.enterKeyHint = "done";
+  fermerClavier();
 }
 ctrl.addEventListener("focus_lost", finSaisie);
 appliquerType();
@@ -500,10 +606,10 @@ function annoncer(texte, { erreur = false, duree = erreur ? 3500 : 2600 } = {}) 
   }, duree);
 }
 
-/** Pastille « ● Salon · iBiTV » des onglets Applis, Envoyer et Réglages (point : état de la connexion). */
-function majPastille(texteEtat = TEXTES_ETAT[ctrl.etat] || "") {
+/** Pastille « ● Salon » des onglets Applis, Envoyer et Réglages (point : état de la connexion). */
+function majPastille(texteEtat = $("etat-tv").textContent) {
   const nom = ctrl.tvActive?.nom || "TV";
-  $("pastille-nom").textContent = `${nom} · iBiTV`;
+  $("pastille-nom").textContent = nom;
   $("pastille-voyant").dataset.etat = ctrl.etat;
   $("pastille-tv").setAttribute("aria-label", `${nom} : ${texteEtat}. Changer de TV`);
 }
@@ -549,12 +655,12 @@ function choisirOnglet(nom, { focus = false } = {}) {
   $("panneau-applis").hidden = nom !== "applis";
   $("panneau-envoyer").hidden = nom !== "envoyer";
   $("panneau-reglages").hidden = nom !== "reglages";
-  // En-tête : télécommande inchangée ; ailleurs, pastille compacte de la TV
+  // En-tête : la TV et « Aa » sur la télécommande ; ailleurs, pastille compacte de la TV
   $("btn-tvs").hidden = nom !== "telecommande";
-  $("btn-mode-nav").hidden = nom !== "telecommande";
+  $("btn-clavier").hidden = nom !== "telecommande";
   $("pastille-tv").hidden = nom === "telecommande";
   majPastille();
-  if (nom !== "telecommande" && document.activeElement === champ) champ.blur();
+  if (nom !== "telecommande") fermerClavier();
   if (nom === "applis") applis.afficher(); else applis.masquer();
   if (nom === "envoyer") envoyer.afficher(); else envoyer.masquer();
   if (nom === "reglages") reglages.afficher(); else reglages.masquer();
@@ -595,7 +701,7 @@ function majListeTVs() {
     choix.setAttribute("aria-current", String(tv.id === ctrl.active));
     choix.innerHTML = `<svg class="ic"><use href="#i-tv"/></svg><span class="tv-textes">
       <span class="tv-nom">${echapper(tv.nom)}</span>
-      <span class="tv-detail">${tv.id === ctrl.active ? "Pilotée" : "Toucher pour piloter"}${tv.versionApp ? ` · iBiTV ${echapper(tv.versionApp)}` : ""}</span></span>`;
+      <span class="tv-detail">${tv.id === ctrl.active ? "Pilotée" : "Toucher pour piloter"}${lireDesign(tv.design) ? ` · design ${NOMS_DESIGN[tv.design]}` : ""}${tv.versionApp ? ` · iBiTV ${echapper(tv.versionApp)}` : ""}</span></span>`;
     choix.addEventListener("click", () => {
       vibrer();
       fermerFeuille();
@@ -635,13 +741,12 @@ $("feuille-tvs").addEventListener("click", (e) => { if (e.target === $("feuille-
 $("btn-ajouter-tv").addEventListener("click", () => { fermerFeuille(); montrerAccueil(); });
 ctrl.addEventListener("tvs", () => {
   if (!$("feuille-tvs").hidden) majListeTVs();
-  const tv = ctrl.tvActive;
-  if (tv) $("nom-tv").textContent = tv.nom;
-  majPastille();
+  majTheme(); // design de la TV active (annoncé, poussé, ou gardé), ou thème par défaut
+  majEtat(dernierEtat); // nom de la TV, « Connectée · design … »
   majOnglets(); // fonctions annoncées par la TV, ou autre TV choisie
 });
 addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { fermerFeuille(); }
+  if (e.key === "Escape") { fermerFeuille(); fermerClavier({ rendreFocus: true }); }
 });
 $("version-app").textContent = `Télécommande ${config.versionApp} · protocole v${config.versionProtocole}`;
 
