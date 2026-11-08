@@ -38,6 +38,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Téléchargement de Gradle : les releases GitHub répondent parfois 502 ou trop lentement
+      - name: Gradle (3 essais)
+        run: for essai in 1 2 3; do ./gradlew --no-daemon --version > /dev/null && exit 0; echo "Essai $essai raté"; sleep 30; done; exit 1
+
       # APK publié dès qu'il est prêt : version release (R8), signée avec la clé de test (pas de
       # KEYSTORE_PATH ici) comme les anciennes versions de débogage, donc installable par-dessus
       - name: Compilation de l'APK de test (version optimisée)
@@ -121,6 +125,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Téléchargement de Gradle : les releases GitHub répondent parfois 502 ou trop lentement
+      - name: Gradle (3 essais)
+        run: for essai in 1 2 3; do ./gradlew --no-daemon --version > /dev/null && exit 0; echo "Essai $essai raté"; sleep 30; done; exit 1
+
       - name: Compilation pour l'émulateur (x86 en plus)
         env:
           VERSION_NAME: test-${{ github.run_number }}
@@ -175,6 +183,10 @@ jobs:
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
+
+      # Téléchargement de Gradle : les releases GitHub répondent parfois 502 ou trop lentement
+      - name: Gradle (3 essais)
+        run: for essai in 1 2 3; do ./gradlew --no-daemon --version > /dev/null && exit 0; echo "Essai $essai raté"; sleep 30; done; exit 1
 
       # Robolectric télécharge une image d'Android (plusieurs centaines de Mo) au premier test
       - name: Cache d'Android pour Robolectric
