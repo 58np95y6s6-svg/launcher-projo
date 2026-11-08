@@ -491,7 +491,7 @@ const L = {
   vpn: true,              // un VPN est actif sur la TV
   seulementVpn: true,     // réglage « Seulement avec le VPN » (activé par défaut)
   pages: "auto",          // réglage liens_pages
-  applisPages: [{ id: "net.vypn.app", nom: "VYPN" }, { id: "com.amazon.cloud9", nom: "Silk" }],
+  applisPages: [{ id: "net.vypn.app", nom: "VYPN" }, { id: "com.amazon.cloud9", nom: "Navigateur Silk" }, { id: "org.mozilla.tv.firefox", nom: "Firefox pour Fire TV" }],
   appliVpn: "VYPN",       // appli VPN que la TV sait ouvrir ; null : aucune
   raccourci: false,       // réglage liens_raccourci (désactivé par défaut)
   ip: "192.168.1.42",     // adresse IPv4 sur le réseau local ; null : aucune
@@ -557,7 +557,11 @@ function itemsLiens() {
   const groupe = "Envoyer sur la TV";
   return [
     { cle: "liens_seulement_vpn", type: "interrupteur", groupe, titre: "Seulement avec le VPN", detail: "N'ouvrir les liens que si un VPN est actif", valeur: L.seulementVpn },
-    { cle: "liens_pages", type: "choix", groupe, titre: "Pages web", valeur: L.pages, options: [{ id: "auto", nom: "Automatique" }, ...L.applisPages] },
+    // Comme la vraie TV : « Automatique » avec l'appli du moment (les options deviennent des cartes)
+    {
+      cle: "liens_pages", type: "choix", groupe, titre: "Appli des pages web", detail: "YouTube, Netflix, vidéos : leur appli si elle est installée",
+      valeur: L.pages, options: [{ id: "auto", nom: "Automatique", detail: `Aujourd'hui : ${L.applisPages[0]?.nom ?? "aucune"}` }, ...L.applisPages],
+    },
     { cle: "liens_raccourci", type: "interrupteur", groupe, titre: "Bouton Partager de l'iPhone", detail: "Accepter les liens du raccourci iOS", valeur: L.raccourci },
     { cle: "liens_code", type: "boutons", groupe, titre: "Code du raccourci", detail: "L'ancien code ne marchera plus", boutons: [{ id: "nouveau", nom: "Nouveau code" }] },
   ];
