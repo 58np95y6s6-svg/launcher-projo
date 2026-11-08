@@ -586,6 +586,151 @@ résultats, récents) et `remote-pwa/js/envoyer.js` (onglet). Précisions de com
 - Journaux de la PWA : `lien_envoye` (à `lien_ouvert {ok: true}`), `lien_refuse <raison>` (la
   `raison` reçue, ou `sans_reponse` après 6 s), `reglage liens_raccourci` ; jamais l'URL ni l'adresse.
 
+## Box score NBA (version 1, ajout compatible)
+
+Pendant un match NBA (regardé dans Prime Video ou ailleurs), la TV affiche par-dessus l'appli au
+premier plan le box score du match, en trois formats : **caché**, **résumé** (carte en haut à droite)
+et **détails** (panneau à droite, box score complet d'une équipe). Le téléphone choisit le format et
+le match. Mêmes règles que le pilotage : messages de la version 1 acceptés seulement d'un téléphone
+**authentifié** ; une TV qui ne les connaît pas les ignore ; une PWA qui ne voit pas `nba` annoncé
+n'affiche rien.
+
+### Annonce
+
+`hello` de la TV : `fonctions` contient `"nba"`.
+
+### Messages
+
+Téléphone → TV :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `nba_etat` | — | demande l'état et abonne ce téléphone à ses changements (pour cette connexion) |
+| `nba_afficher` | `affichage`, `id`? | change le format (`"cache"`, `"resume"`, `"details"`) ; avec `id`, choisit aussi le match |
+| `nba_choisir` | `id` | choisit le match, sans changer le format |
+
+TV → téléphone :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `nba` | `matchs`, `choisi`, `affichage`, `decalage`, `erreur`? | état |
+
+`nba` :
+
+- `matchs` (tableau, 15 au plus) : les matchs **en cours**, par heure de début ; plus le match
+  choisi s'il vient de se terminer, tant que le box score est affiché. Chaque match :
+  `{id, ext, dom, statut, direct}`.
+  - `id` (chaîne) : `"<EXT>-<DOM>"`, codes NBA à 3 lettres de l'équipe à l'extérieur puis à domicile
+    (`"LAL-BOS"`) ; stable d'une source à l'autre. Le téléphone le renvoie tel quel.
+  - `ext`, `dom` : `{code, nom, score, couleur, texte}` — `code` « LAL », `nom` « Lakers »,
+    `score` (entier), `couleur` (fond du badge, `#rrggbb`), `texte` (lettres du badge, `#rrggbb`).
+    L'équipe à l'extérieur s'affiche à gauche, celle à domicile à droite.
+  - `statut` (chaîne, en français) : « 4e QT · 2:31 », « 1er QT · 0:45.3 » (moins d'une minute :
+    dixièmes), « Fin du 3e QT », « Mi-temps », « Prol. · 1:12 », « 2e prol. · 3:05 »,
+    « Terminé ».
+  - `direct` (booléen) : match en cours.
+- `choisi` : `id` du match affiché (ou qui le serait), `null` s'il n'y a aucun match.
+- `affichage` : `"cache"`, `"resume"` ou `"details"`.
+- `decalage` (entier, secondes) : réglage `nba_decalage`.
+- `erreur` (facultatif) :
+  - `"accessibilite"` : la TV ne peut pas s'afficher par-dessus les applis (service d'accessibilité
+    d'iBiTV désactivé) ;
+  - `"source"` : les scores NBA sont injoignables depuis la TV (après le repli, voir « Sources »).
+
+Les scores et statuts de `nba` suivent le **décalage** (comme l'écran de la TV). La TV envoie `nba`
+après chaque `nba_etat`, puis d'elle-même à chaque changement (scores, statut, liste, choix,
+format, erreur, réglage) : au plus un envoi toutes les 300 ms, aux seuls téléphones abonnés.
+
+`nba_afficher` / `nba_choisir` : `id` inconnu → ignoré (le choix ne change pas) ; `affichage`
+inconnu → ignoré. Afficher sans match en cours : la TV garde `"cache"` et renvoie `nba`.
+
+### Réglage (groupe « Box score NBA »)
+
+| Clé | Type | Rôle |
+|---|---|---|
+| `nba_decalage` | choix `0`, `15`, `30`, `45`, `60` (« Aucun », « 15 s »… ; défaut `0`) | retarde scores et stats pour suivre la vidéo (pas de spoiler) |
+
+### Sources (TV)
+
+Flux publics en direct, sans compte ni clé, en JSON ; délai 8 s ; en-tête `Accept:
+application/json` ; aucun autre en-tête particulier.
+
+1. **NBA** (source principale) :
+   - tableau du jour : `https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`
+     → `scoreboard.games[]` : `gameId`, `gameStatus` (1 à venir, 2 en cours, 3 terminé),
+     `gameStatusText`, `period`, `gameClock` (« PT02M31.00S », vide entre les quarts-temps),
+     `gameTimeUTC`, `awayTeam` / `homeTeam` : `teamTricode`, `teamName`, `teamCity`, `score`,
+     `periods[] {period, score}` ;
+   - box score : `https://cdn.nba.com/static/json/liveData/boxscore/boxscore_<gameId>.json` →
+     `game` (mêmes champs de statut) ; `awayTeam` / `homeTeam` : `players[]` (`nameI`
+     « L. Dončić », `starter` « 1 »/« 0 », `oncourt` « 1 »/« 0 », `played` « 1 »/« 0 »,
+     `statistics {minutes « PT38M12.00S », points, reboundsTotal, assists, fieldGoalsMade,
+     fieldGoalsAttempted, threePointersMade, threePointersAttempted, plusMinusPoints}`) et
+     `statistics` de l'équipe (`fieldGoalsPercentage`, `threePointersPercentage` entre 0 et 1,
+     `reboundsTotal`, `assists`, `turnovers` ou `turnoversTotal`, `fieldGoalsMade`…). Avant
+     l'entre-deux, le box score répond 403 ou 404 : « pas encore commencé ».
+2. **ESPN** (repli, après 2 échecs de suite de la source NBA : erreur HTTP, délai, JSON illisible ;
+   la TV réessaie la source NBA toutes les 10 minutes) :
+   - tableau : `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard` →
+     `events[]` : `id`, `status.type.state` (`pre`, `in`, `post`), `status.period`,
+     `status.displayClock`, `competitions[0].competitors[]` (`homeAway`, `score` en texte,
+     `team.abbreviation`, `team.name`, `linescores[].value`) ;
+   - box score : `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=<id>`
+     → `boxscore.players[]` (une entrée par équipe : `team.abbreviation`,
+     `statistics[0].labels` [« MIN », « FG », « 3PT », …, « REB », « AST », …, « +/- », « PTS »],
+     `statistics[0].athletes[] {athlete.shortName, starter, didNotPlay, stats[]}`) et
+     `boxscore.teams[] {team.abbreviation, statistics[] {name, displayValue}}`
+     (`fieldGoalPct`, `threePointFieldGoalPct`, `totalRebounds`, `turnovers`). Pas d'info « sur le
+     terrain » avec ESPN : le point de couleur n'est pas affiché.
+   - Codes ESPN → codes NBA : GS → GSW, NY → NYK, SA → SAS, NO → NOP, UTAH → UTA, WSH → WAS.
+
+Rythme : le tableau du jour toutes les 30 s **seulement** si un téléphone est abonné ou si le box
+score est affiché ; le box score du match choisi toutes les 15 s **seulement** s'il est affiché
+(résumé ou détails). Rien d'autre, jamais en arrière-plan sinon. Les deux sources renvoient le même
+modèle (match, équipes, joueurs, stats d'équipe).
+
+**Décalage** : chaque réponse est gardée avec son heure d'arrivée ; la TV montre (et envoie) la plus
+récente arrivée il y a au moins `nba_decalage` secondes. S'il n'y en a pas encore (début de suivi),
+le box score affiche « Synchronisation avec la vidéo… » et `nba` garde les dernières valeurs
+envoyées (ou rien).
+
+**Choix du match** : celui demandé par le téléphone tant qu'il est dans `matchs` ; sinon le premier
+match en cours. La TV ne l'enregistre pas (mémoire seulement).
+
+### Écran de la TV
+
+Fenêtre par-dessus l'appli au premier plan (`TYPE_ACCESSIBILITY_OVERLAY` du service d'accessibilité
+d'iBiTV, ni focusable ni touchable), comme le Mode Ambiance. Verre sombre (fond `#0c0e14` à 86 %,
+pas de flou), coins arrondis, textes Manrope (police « Galerie » de l'appli), chiffres tabulaires.
+Maquettes de référence : `tv-resume.png` (résumé) et `tv-boxscore.png` (détails).
+
+- **Résumé** : carte de 600 px de large (référence 1920 × 1080) en haut à droite (marges 56 px) :
+  badges, noms, scores (l'équipe menée en retrait), « EN DIRECT » + statut au centre ;
+  « MEILLEURS JOUEURS » (PTS, REB, PD : meilleur de chaque équipe, chiffre coloré) ; « ÉQUIPES »
+  (TIRS %, 3 PTS %, REBONDS, PERTES : valeur + barre de chaque côté). Aucune touche n'est
+  interceptée : la télécommande de la TV pilote toujours l'appli.
+- **Détails** : panneau de 680 px de large à droite, hauteur selon le contenu : en-tête comme le
+  résumé, points par quart-temps (et prolongations), onglets des deux équipes, tableau JOUEUR, MIN,
+  PTS, REB, PD, TIRS, 3 PTS, +/- (titulaires, puis « BANC » ; joueurs n'ayant pas joué exclus ;
+  point de couleur pour ceux sur le terrain ; meilleur marqueur coloré), ligne « Équipe ».
+  Touches de la télécommande de la TV, **seulement dans ce format** : ◀ ▶ changent d'équipe,
+  Retour cache le box score ; les autres passent à l'appli.
+- Le box score se cache de lui-même quand on revient sur l'accueil d'iBiTV.
+- Badges : cercle de la couleur de l'équipe avec son code (aucun logo). Table des 30 couleurs dans
+  le code de la TV.
+
+### Côté téléphone (PWA)
+
+- Si `fonctions` contient `nba` : `nba_etat` après l'authentification (et à chaque reconnexion).
+- Bandeau en haut de l'onglet Télécommande (sous la puce de la TV), visible si `matchs` n'est pas
+  vide ou si `affichage` n'est pas `"cache"` : badges et scores (`ext` à gauche, `dom` à droite,
+  l'équipe menée en retrait), « DIRECT » + `statut` (ou « TERMINÉ ») ; s'il y a plusieurs matchs,
+  un bouton « Changer de match » ouvre la liste (feuille) ; puis un sélecteur à trois segments
+  **Caché · Résumé · Détails** (`nba_afficher`). `erreur` : « Active l'accessibilité d'iBiTV sur la
+  TV » ou « Scores NBA indisponibles pour l'instant » sous le score.
+- Le réglage `nba_decalage` apparaît dans l'onglet Réglages (rendu générique).
+- Journaux de la PWA : `nba_afficher <format>` ; jamais de score.
+
 ## Côté TV : injection
 
 - **Texte** : clavier iBiTV (IME, `remote/ClavierTelecommande`). Il remplace le contenu du champ actif via `InputConnection` (`setComposingText` / `commitText`, `deleteSurroundingText`) et envoie l'action de l'éditeur pour `submit`. Il détecte le focus : `onStartInput` donne le type du champ via `EditorInfo.inputType` / `imeOptions`, et `onFinishInput` envoie `focus_lost`.
