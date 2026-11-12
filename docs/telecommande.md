@@ -121,8 +121,8 @@ Compatibilité : à `hello`, chacun annonce `v`. Si la TV reçoit une version qu
 La télécommande prend le style du design affiché sur la TV (couleurs, formes, typographie).
 
 - `hello` de la TV contient `design` : identifiant du design de l'accueil (`verre`, `pastel`,
-  `console`, `une`, `chaines`, `studio`, `galerie`). Absent (TV plus ancienne) ou inconnu : thème par
-  défaut de la PWA.
+  `console`, `une`, `chaines`, `studio`, `galerie`, `nba`). Absent (TV plus ancienne) ou inconnu : thème
+  par défaut de la PWA.
 - Quand le design change sur la TV (Réglages de la TV, ou réglage `design` depuis le téléphone), la TV
   envoie `{t: "design", id}` à **chaque** téléphone authentifié (sans abonnement).
 - La PWA garde le dernier design de chaque TV et l'applique dès l'ouverture, avant la connexion. Sans
@@ -130,8 +130,8 @@ La télécommande prend le style du design affiché sur la TV (couleurs, formes,
 
 Côté téléphone (`remote-pwa/js/theme.js`) : le thème est `data-theme` sur `<html>` ; ses jetons
 (couleurs, rayons, ombres, police des titres) sont dans `styles.css`, un bloc par design (Pastel : pavé
-rond ; Chaînes : touches bordées ; titres en Instrument Serif pour Galerie, Manrope ailleurs ; contrastes
-WCAG AA vérifiés). Défaut : `galerie`, ou `verre` en mode sombre. Le design est gardé dans
+rond ; Chaînes : touches bordées ; titres en Instrument Serif pour Galerie, en Oswald (capitales
+condensées) avec libellés en Barlow Condensed pour NBA, Manrope ailleurs ; contrastes WCAG AA vérifiés). Défaut : `galerie`, ou `verre` en mode sombre. Le design est gardé dans
 l'enregistrement de la TV (IndexedDB, champ `design`, `null` si absent ou inconnu) ; celui de la TV
 active est aussi retenu dans `localStorage` (`ibiprojo-theme`) pour que `js/theme-initial.js` l'applique
 avant le premier affichage. Choisir une autre TV applique son design gardé, même hors connexion.
@@ -320,7 +320,8 @@ Précisions de comportement (le protocole ci-dessus ne change pas) :
   `boutons` côte à côte dans l'ordre reçu, le principal plein (couleur du thème) ; `progression` en barre ;
   `actif: false` grisé et désactivé ; `titre` vide : pas de ligne de titre. Un type inconnu n'est pas
   affiché. Seule exception liée à une clé : `design`, en pastilles avec un aperçu coloré par `id`
-  (`verre`, `pastel`, `console`, `une`, `chaines`, `studio`, `galerie` ; aperçu neutre pour un autre `id`).
+  (`verre`, `pastel`, `console`, `une`, `chaines`, `studio`, `galerie`, `nba` ; aperçu neutre pour un
+  autre `id`).
 - **Curseur** : au plus un `reglage` toutes les 150 ms pendant le glissé, puis la valeur finale au
   relâcher (renvoyée même identique si la TV a changé la valeur entre-temps). Les `reglages` reçus
   pendant le glissé ne bougent pas le curseur.
