@@ -2,7 +2,7 @@
 // le dernier design de TV retenu, sinon le thème par défaut. app.js applique ensuite celui de la
 // TV active (gardé avec elle dans IndexedDB) ; voir js/theme.js.
 (() => {
-  const designs = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio"];
+  const designs = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio", "nba"];
   let theme = null;
   try { theme = localStorage.getItem("ibiprojo-theme"); } catch {}
   if (!designs.includes(theme)) {

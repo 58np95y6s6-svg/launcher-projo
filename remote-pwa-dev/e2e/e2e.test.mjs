@@ -348,6 +348,58 @@ test("thème : défaut sans TV, design du hello, changement en direct, gardé pa
   await ancienne.fermer();
 });
 
+test("thème NBA : design « nba » du hello ou poussé en direct, polices Oswald et Barlow Condensed chargées pour lui seul", async () => {
+  /** Polices chargées : `check` est faux tant qu'une police déclarée n'a pas été téléchargée. */
+  const polices = (page) => page.evaluate(async () => {
+    await document.fonts.ready;
+    return ["600 16px Oswald", "700 16px Oswald", "700 16px 'Barlow Condensed'"].map((f) => document.fonts.check(f));
+  });
+  const policeDe = (page, sel) => page.evaluate((s) => getComputedStyle(document.querySelector(s)).fontFamily, sel);
+
+  // TV au design « nba » dès le hello (téléphone en mode clair : le thème reste sombre)
+  const salon = await banc.tv({ nom: "Salon", design: "nba", fonctions: ["apps", "reglages", "liens", "nba"] });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  let page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  assert.deepEqual(await polices(page), [false, false, false], "thème Galerie : polices NBA non téléchargées");
+  await appairerParQR(page, salon);
+  assert.equal(await themeDe(page), "nba");
+  assert.equal(await couleurBarre(page), "#10204a");
+  assert.equal(await page.textContent("#etat-tv"), "Connectée · design NBA");
+  assert.match(await policeDe(page, ".pave-ok"), /^Oswald/);
+  assert.match(await policeDe(page, ".touche span"), /^"Barlow Condensed"/);
+  assert.match(await policeDe(page, ".pave-indice"), /^"Barlow Condensed"/);
+  assert.deepEqual(await polices(page), [true, true, true]);
+  // Box score : chiffres en Oswald
+  await salon.nba({ scenario: "deux", affichage: "resume" });
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+  assert.match(await policeDe(page, "#nba-points-ext"), /^Oswald/);
+  // Réglages : titre en capitales Oswald, design « NBA » choisi avec son aperçu
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="design"]').waitFor();
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("#panneau-reglages .panneau-titre")).textTransform), "uppercase");
+  assert.equal(await page.textContent('.reglage[data-cle="design"] .option.choisie .option-nom'), "NBA");
+  assert.equal(await page.locator('.reglage[data-cle="design"] .option.choisie .apercu-design[data-id="nba"]').count(), 1);
+  // Autre design depuis le téléphone, puis retour à « NBA » : poussé par la TV à chaque fois
+  await page.click('.reglage[data-cle="design"] .option:has-text("Console")');
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "console");
+  await page.click('.reglage[data-cle="design"] .option:has-text("NBA")');
+  await salon.attendreRecu((r) => r.t === "reglage" && r.cle === "design" && r.valeur === "nba");
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "nba");
+  assert.equal(await couleurBarre(page), "#10204a");
+
+  // Réouverture, TV éteinte : le thème NBA est appliqué avant toute connexion (theme-initial.js)
+  await page.close();
+  await salon.fermer();
+  page = await tel.ouvrir();
+  assert.equal(await themeDe(page), "nba", "appliqué avant le premier affichage");
+  assert.equal(await couleurBarre(page), "#10204a");
+  await page.locator("#ecran-telecommande").waitFor();
+  assert.equal(await themeDe(page), "nba");
+  await tel.fermer();
+});
+
 test("accessibilité : noms des boutons, cibles ≥ 48 px (touches ≥ 56 px), texte en rem, animations et contraste", async () => {
   const tv = await banc.tv({ nom: "Salon", design: "galerie" });
   const tel = await banc.telephone("iphone");
@@ -595,8 +647,9 @@ test("réglages : rendu générique par groupe, design, interrupteurs, curseur l
   ]);
   assert.equal(await page.inputValue('.reglage[data-cle="volume"] input[type=range]'), "9");
   assert.equal(await page.textContent('.reglage[data-cle="volume"] .reglage-valeur'), "60 %");
-  assert.equal(await page.locator('.reglage[data-cle="design"] .options-designs .option').count(), 7);
+  assert.equal(await page.locator('.reglage[data-cle="design"] .options-designs .option').count(), 8);
   assert.equal(await page.locator('.reglage[data-cle="design"] .apercu-design[data-id="galerie"]').count(), 1);
+  assert.equal(await page.locator('.reglage[data-cle="design"] .apercu-design[data-id="nba"]').count(), 1);
   assert.equal(await page.locator('.reglage[data-cle="ambiance_decalage"] .options-pastilles .option').count(), 5);
   assert.equal(await page.textContent('.reglage[data-cle="design"] .option.choisie .option-nom'), "Verre");
 

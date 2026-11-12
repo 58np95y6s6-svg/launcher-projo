@@ -314,7 +314,7 @@ const VERSION_NOUVELLE = "2.9";
 const DESIGNS = [
   { id: "verre", nom: "Verre" }, { id: "pastel", nom: "Pastel" }, { id: "console", nom: "Console" },
   { id: "une", nom: "À la une" }, { id: "chaines", nom: "Chaînes" }, { id: "studio", nom: "Studio" },
-  { id: "galerie", nom: "Galerie" },
+  { id: "galerie", nom: "Galerie" }, { id: "nba", nom: "NBA" },
 ];
 
 function itemsReglages() {

@@ -1,5 +1,5 @@
 // Captures de chaque écran, en profil iPhone (390×844) et Android (412×915) :
-// télécommande dans les 7 thèmes (un par design de la TV), feuille du clavier, onglets, alertes,
+// télécommande dans les 8 thèmes (un par design de la TV), feuille du clavier, onglets, alertes,
 // box score NBA (bandeau, formats, choix du match, erreurs, petit écran)…
 // Usage : node remote-pwa-dev/outils/captures.mjs [dossier de sortie] [iphone,android]
 
@@ -10,7 +10,7 @@ import { demarrerBanc, appairerParQR } from "../e2e/banc.mjs";
 const SORTIE = path.resolve(process.argv[2] || "captures-pwa");
 await mkdir(SORTIE, { recursive: true });
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
-const DESIGNS = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio"];
+const DESIGNS = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio", "nba"];
 const banc = await demarrerBanc();
 
 async function serie(modele) {
@@ -157,7 +157,7 @@ async function serie(modele) {
   await page.locator('.reglage[data-cle="maj"]').evaluate((e) => e.scrollIntoView({ block: "center" }));
   await capture("reglages-mise-a-jour");
 
-  // Thème qui suit la TV : le design choisi dans Réglages, puis les 7 designs sur la télécommande
+  // Thème qui suit la TV : le design choisi dans Réglages, puis les 8 designs sur la télécommande
   await page.locator("#reglages-defile").evaluate((e) => { e.scrollTop = 0; });
   await salon.design("une");
   await theme("une");
@@ -170,12 +170,26 @@ async function serie(modele) {
   await salon.design("pastel");
   await theme("pastel");
   await capture("envoyer-theme-pastel");
+  // NBA : les quatre onglets et le choix du design
+  await salon.design("nba");
+  await theme("nba");
+  await capture("envoyer-theme-nba");
+  await page.click("#onglet-applis");
+  await capture("applis-theme-nba");
+  await page.click("#onglet-reglages");
+  await page.locator("#reglages-defile").evaluate((e) => { e.scrollTop = 0; });
+  await capture("reglages-theme-nba");
+  await page.locator('.reglage[data-cle="design"]').evaluate((e) => e.scrollIntoView({ block: "start" }));
+  await capture("reglages-design-nba");
+  await page.locator("#reglages-defile").evaluate((e) => { e.scrollTop = 0; });
   await page.click("#onglet-telecommande");
   for (const d of DESIGNS) {
     await salon.design(d);
     await theme(d);
     await capture(`telecommande-${d}`);
   }
+  await salon.design("studio");
+  await theme("studio");
   await salon.envoyer({ t: "focus_text", type: "recherche", s: "", action: "search" });
   await page.locator("#saisie.actif").waitFor();
   await pause(600);
@@ -187,6 +201,13 @@ async function serie(modele) {
   await page.locator("#saisie.actif").waitFor();
   await pause(600);
   await capture("clavier-verre");
+  await salon.envoyer({ t: "focus_lost" });
+  await salon.design("nba");
+  await theme("nba");
+  await salon.envoyer({ t: "focus_text", type: "recherche", s: "", action: "search" });
+  await page.locator("#saisie.actif").waitFor();
+  await pause(600);
+  await capture("clavier-nba");
   await salon.envoyer({ t: "focus_lost" });
   await salon.design("galerie");
   await theme("galerie");
@@ -241,6 +262,20 @@ async function serie(modele) {
   await salon.nba({ erreur: "accessibilite" });
   await page.locator("#nba-erreur:not([hidden])").waitFor();
   await capture("nba-erreur-verre");
+  await salon.design("nba");
+  await theme("nba");
+  await capture("nba-erreur-nba");
+  await salon.nba({ erreur: null });
+  await page.locator("#nba-erreur").waitFor({ state: "hidden" });
+  await page.click("#btn-nba-matchs");
+  await page.locator("#feuille-nba:not([hidden])").waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-changer-de-match-nba");
+  await page.click("#btn-nba-fermer");
+  await salon.nba({ scenario: "termine" });
+  await page.locator("#nba-direct.termine").waitFor();
+  await capture("nba-termine-nba");
+  await salon.nba({ scenario: "deux" });
   await salon.nba({ erreur: null });
   await salon.design("galerie");
   await theme("galerie");
