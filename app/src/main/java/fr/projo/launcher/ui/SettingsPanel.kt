@@ -31,6 +31,8 @@ import fr.projo.launcher.ambiance.ModeAmbiance
 import fr.projo.launcher.puces.PucesNfc
 import fr.projo.launcher.liens.EnvoiTv
 import fr.projo.launcher.data.CleTmdb
+import fr.projo.launcher.data.AmbianceCarteNba
+import fr.projo.launcher.data.AmbianceNba
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.modules.HoteModules
@@ -265,6 +267,9 @@ private fun contenuReglages(
     // Galerie : défilement automatique des affiches (lu une fois)
     remember { DefilementGalerie.charger(contexte) }
     val defilement = DefilementGalerie.secondes
+    // NBA : ambiance de la carte (lue une fois)
+    remember { AmbianceCarteNba.charger(contexte) }
+    val ambianceNba = AmbianceCarteNba.ambiance
     // Mode Ambiance : réglages enregistrés, lus une fois (résumé et source utilisée sur la tuile)
     remember { ModeAmbiance.charger(contexte) }
     remember { PucesNfc.charger(contexte) }
@@ -414,13 +419,25 @@ private fun contenuReglages(
                 optionActive = design.ordinal,
                 onClick = actions.design,
             ),
-            Reglage(
+            // Pas de zone de modules dans le design NBA (la carte occupe l'écran)
+            if (design == Design.NBA) null else Reglage(
                 cle = "modules",
                 icone = IconesModules.Meteo,
                 titre = "Modules · " + hote.modules.joinToString(" + ") { it.nom },
                 valeur = "Météo, sport… à la place des scores NBA · changer",
                 teinte = Teintes.modules,
                 onClick = actions.modules,
+            ),
+            // NBA seulement : OK passe à l'ambiance suivante (Leaders, Parquet, Nuit d'arène)
+            if (design != Design.NBA) null else Reglage(
+                cle = "carte-nba",
+                icone = ProjoIcons.Photo,
+                titre = "Ambiance de la carte · " + ambianceNba.nom,
+                valeur = ambianceNba.detail + " · changer",
+                teinte = Teintes.carteNba,
+                options = AmbianceNba.entries.map { it.nom },
+                optionActive = ambianceNba.ordinal,
+                onClick = { AmbianceCarteNba.ecrire(contexte, AmbianceCarteNba.suivante(ambianceNba)) },
             ),
             // Studio et Galerie seulement : clé TMDB de leurs suggestions (jamais la clé elle-même, voir resumeCleTmdb)
             if (!design.suggestionsTmdb) null else Reglage(
@@ -572,6 +589,7 @@ object Teintes {
     val modules = Color(0xFFEC4899)
     val suggestions = Color(0xFFE11D48)
     val defilement = Color(0xFF0EA5A0)
+    val carteNba = Color(0xFFF6C445)
     val masquees = Color(0xFF64748B)
     val nouveautes = Color(0xFF14B8A6)
     val ambiance = Color(0xFFE879F9)

@@ -93,6 +93,7 @@ fun HomeScreen(
         surFocus = { app, c -> selection = app; couleur = c },
         sansSelection = { selection = null },
         fireTv = LocalFireTv.current,
+        appuisMaison = homePressCount,
         // Le premier favori n'existe peut-être plus à l'écran si la rangée a défilé
         sortieNba = {
             scope.launch {
@@ -110,5 +111,6 @@ fun HomeScreen(
         Design.CHAINES -> HomeChaines(ctx)
         Design.STUDIO -> HomeStudio(ctx)
         Design.GALERIE -> HomeGalerie(ctx)
+        Design.NBA -> HomeNba(ctx)
     }
 }

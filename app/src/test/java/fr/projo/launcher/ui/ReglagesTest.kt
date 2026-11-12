@@ -24,6 +24,8 @@ import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import fr.projo.launcher.LauncherViewModel
+import fr.projo.launcher.data.AmbianceCarteNba
+import fr.projo.launcher.data.AmbianceNba
 import fr.projo.launcher.data.IconLoader
 import fr.projo.launcher.data.NbaRepository
 import fr.projo.launcher.data.ReglageNouveautes
@@ -42,7 +44,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /**
- * Panneau Réglages, pour CHACUN des 7 designs (chacun a sa forme : feuille, fenêtre, grille…) :
+ * Panneau Réglages, pour CHACUN des 8 designs (chacun a sa forme : feuille, fenêtre, grille…) :
  * focus initial sur le volume, toutes les tuiles présentes (Suggestions pour Studio et Galerie seulement)
  * et atteignables à la télécommande sans que le focus s'échappe, ◀ et Retour ferment, réglage
  * du volume (◀ ▶ règlent sans fermer), actions des tuiles « Affiches des nouveautés » et
@@ -129,7 +131,8 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     /**
      * Toutes les tuiles de l'app, celles ajoutées depuis comprises (« Ouverture automatique » sur tous
      * les appareils, plus seulement Fire TV) ; « Suggestions » pour Studio et
-     * Galerie seulement, « Défilement des affiches » pour Galerie seulement.
+     * Galerie seulement, « Défilement des affiches » pour Galerie seulement ; NBA : « Ambiance
+     * de la carte », sans « Modules » (pas de zone de modules).
      */
     @Test
     fun tuilesDuPanneau() {
@@ -137,7 +140,8 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         attendreFocus("reglage:volume", "ouverture")
         val attendues = listOfNotNull(
             "volume", "auto", "maj", "wifi", "bluetooth", "stockage",
-            "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design.suggestionsTmdb },
+            "accueil", "hdmi", "design", "modules".takeIf { design.avecModules }, "carte-nba".takeIf { design == Design.NBA },
+            "suggestions".takeIf { design.suggestionsTmdb },
             "defilement".takeIf { design == Design.GALERIE }, "masquees", "nouveautes", "ambiance",
             "appairer", "telephones", "envoyer", "puces", "aide-telecommande",
             "langue", "date", "son", "tous",
@@ -166,6 +170,17 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
             attendreFocus("reglage:nouveautes", "après OK")
             touche(Key.DirectionCenter)
             if (!ReglageNouveautes.actif) fail("[${design.name}] 2e OK sur « Affiches des nouveautés » : le réglage devait se réactiver")
+            if (design == Design.NBA) {
+                // Ambiance de la carte : chaque OK passe à la suivante, sans fermer le panneau
+                AmbianceCarteNba.ecrire(contexte, AmbianceNba.LEADERS)
+                donnerFocus("reglage:carte-nba")
+                touche(Key.DirectionCenter)
+                if (AmbianceCarteNba.ambiance != AmbianceNba.PARQUET) {
+                    fail("[NBA] OK sur « Ambiance de la carte » : Parquet attendu, obtenu ${AmbianceCarteNba.ambiance}")
+                }
+                if (!texteAffiche("Ambiance de la carte · Parquet")) fail("[NBA] « Ambiance de la carte » : libellé « Parquet » absent")
+                AmbianceCarteNba.ecrire(contexte, AmbianceNba.LEADERS)
+            }
             if (design.suggestionsTmdb) {
                 donnerFocus("reglage:suggestions")
                 touche(Key.DirectionCenter)
@@ -387,7 +402,11 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             val echelle = LocalConfiguration.current.screenWidthDp / 960f
-            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design, LocalStudioSource provides SourceStudioFactice()) {
+            CompositionLocalProvider(
+                LocalScale provides echelle, LocalDesign provides design, LocalStudioSource provides SourceStudioFactice(),
+                // NBA : sans réseau non plus
+                LocalSourceNba provides SourceNbaFactice(null, null),
+            ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Box {
                         HomeScreen(
@@ -428,7 +447,11 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
                 ouvert = true
             }
             // Studio : suggestions factices (repli, sans réseau), comme dans StudioTest
-            CompositionLocalProvider(LocalScale provides echelle, LocalDesign provides design, LocalStudioSource provides SourceStudioFactice()) {
+            CompositionLocalProvider(
+                LocalScale provides echelle, LocalDesign provides design, LocalStudioSource provides SourceStudioFactice(),
+                // NBA : sans réseau non plus
+                LocalSourceNba provides SourceNbaFactice(null, null),
+            ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                     Box {
                         HomeScreen(

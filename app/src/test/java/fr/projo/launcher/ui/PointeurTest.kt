@@ -258,7 +258,10 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
 
     // ------------------------------------------------------------------ apps
 
-    /** Toucher un favori le lance (une seule fois) et lui donne le focus ; clic souris sur une app de « Mes apps », idem. */
+    /**
+     * Toucher un favori le lance (une seule fois) et lui donne le focus ; clic souris sur une app
+     * de « Mes apps » (NBA, sans « Mes apps » : un autre favori), idem.
+     */
     @Test
     fun favoriEtMesApps() {
         afficher()
@@ -266,9 +269,9 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
         toucher(noeud(f))
         if (lances != listOf(ui.favorites[1].packageName)) fail("$d toucher $f : lancé(s) $lances")
         focusSur(f, "toucher $f")
-        val a = appVisible()
+        val a = if (design.avecMesApps) appVisible() else favori(3)
         cliquer(noeud(a))
-        if (lances != listOf(ui.favorites[1].packageName, a.removePrefix("app:"))) fail("$d clic sur $a : lancé(s) $lances")
+        if (lances != listOf(ui.favorites[1].packageName, a.substringAfter(':'))) fail("$d clic sur $a : lancé(s) $lances")
         focusSur(a, "clic sur $a")
         if (menus.isNotEmpty()) fail("$d aucun menu attendu, obtenu $menus")
     }
@@ -281,9 +284,9 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
         appuiLong(noeud(f))
         if (menus != listOf(ui.favorites[2].packageName)) fail("$d appui long sur $f : menus $menus")
         focusSur(f, "appui long sur $f")
-        val a = appVisible()
+        val a = if (design.avecMesApps) appVisible() else favori(4)
         clicDroit(noeud(a))
-        if (menus != listOf(ui.favorites[2].packageName, a.removePrefix("app:"))) fail("$d clic droit sur $a : menus $menus")
+        if (menus != listOf(ui.favorites[2].packageName, a.substringAfter(':'))) fail("$d clic droit sur $a : menus $menus")
         focusSur(a, "clic droit sur $a")
         if (lances.isNotEmpty()) fail("$d rien ne devait se lancer, obtenu $lances")
     }
@@ -424,6 +427,7 @@ class PointeurTest(nomDesign: String) : BancPointeur(nomDesign) {
     /** Zone de modules (Météo + Sport) : toucher et clic y mettent le focus (Studio : écran 2 à la molette ; Chaînes : enveloppe). */
     @Test
     fun moduleAuPointeur() {
+        org.junit.Assume.assumeTrue("${design.name} : pas de zone de modules", design.avecModules)
         hoteModules = ModulesFactices.hote("meteo", "sport")
         afficher()
         when (design) {

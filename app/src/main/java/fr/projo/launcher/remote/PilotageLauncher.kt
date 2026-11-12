@@ -21,6 +21,8 @@ import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.AppRepository
 import fr.projo.launcher.data.LauncherPrefs
 import fr.projo.launcher.data.PrefsState
+import fr.projo.launcher.data.AmbianceCarteNba
+import fr.projo.launcher.data.AmbianceNba
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.data.ReglageNouveautes
 import fr.projo.launcher.liens.EnvoiTv
@@ -230,6 +232,7 @@ class PilotageLauncher(
     private fun lireEtat(): EtatTv {
         ReglageNouveautes.charger(app)
         DefilementGalerie.charger(app)
+        AmbianceCarteNba.charger(app)
         ModeAmbiance.charger(app)
         EnvoiTv.charger(app)
         DecalageNba.charger(app)
@@ -251,6 +254,7 @@ class PilotageLauncher(
             design = Design.from(p?.design),
             nouveautes = ReglageNouveautes.actif,
             defilementGalerie = DefilementGalerie.secondes,
+            ambianceNba = AmbianceCarteNba.ambiance,
             ambianceAuto = ModeAmbiance.auto,
             intensite = ModeAmbiance.intensite,
             couleurs = ModeAmbiance.couleurs,
@@ -304,6 +308,7 @@ class PilotageLauncher(
             }
             ReglagesTv.NOUVEAUTES -> if (v is Boolean) ReglageNouveautes.ecrire(app, v)
             ReglagesTv.GALERIE_DEFILEMENT -> (v as? String)?.toIntOrNull()?.let { DefilementGalerie.ecrire(app, it) }
+            ReglagesTv.NBA_AMBIANCE -> if (v is String) AmbianceCarteNba.ecrire(app, AmbianceNba.de(v))
             ReglagesTv.AMBIANCE_AUTO -> if (v is Boolean) ModeAmbiance.ecrireAuto(app, v)
             ReglagesTv.AMBIANCE_INTENSITE -> if (v is String) ModeAmbiance.ecrireIntensite(app, Intensite.de(v))
             ReglagesTv.AMBIANCE_COULEURS -> if (v is String) ModeAmbiance.ecrireCouleurs(app, CouleursNeon.de(v))
@@ -357,6 +362,7 @@ class PilotageLauncher(
         // Réglages gardés en mémoire (états Compose) : changés depuis les dialogues de la TV
         ReglageNouveautes.charger(app)
         DefilementGalerie.charger(app)
+        AmbianceCarteNba.charger(app)
         ModeAmbiance.charger(app)
         DecalageNba.charger(app)
         scope.launch {
@@ -364,6 +370,7 @@ class PilotageLauncher(
                 listOf<Any>(
                     ReglageNouveautes.actif,
                     DefilementGalerie.secondes,
+                    AmbianceCarteNba.ambiance,
                     DecalageNba.secondes,
                     ModeAmbiance.auto,
                     ModeAmbiance.intensite,

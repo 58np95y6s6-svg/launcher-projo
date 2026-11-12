@@ -125,6 +125,12 @@ abstract class BancAccueil(nomDesign: String) {
     /** VPN de la TV (pastille de Galerie) ; null : pas de pastille, comme avant. */
     protected var vpnTv: EtatVpnTv? = null
 
+    /**
+     * Données du design NBA ; null : le classement de la maquette (NbaFactice), sans réseau, à
+     * l'heure courante.
+     */
+    protected var sourceNba: SourceNba? = null
+
     /** Appuis sur la touche Maison (launcher déjà affiché) : à incrémenter pour la simuler. */
     protected val appuisMaison = androidx.compose.runtime.mutableIntStateOf(0)
 
@@ -162,6 +168,7 @@ abstract class BancAccueil(nomDesign: String) {
             wifi = { rapides += "wifi" }, bluetooth = { rapides += "bluetooth" },
             settings = { rapides += "reglages"; surReglages() }, settingsLong = { rapides += "reglagesLong" }, update = { rapides += "maj" },
         )
+        val donneesNba = sourceNba ?: sourceNbaParDefaut()
         compose.mainClock.autoAdvance = false
         compose.setContent {
             // Comme MainActivity : interface dessinée pour 960 dp de large
@@ -173,6 +180,7 @@ abstract class BancAccueil(nomDesign: String) {
                 LocalHoteModules provides hoteModules,
                 LocalStudioSource provides sourceStudio,
                 LocalVpnTv provides vpnTv,
+                LocalSourceNba provides donneesNba,
             ) {
                 MaterialTheme(colorScheme = darkColorScheme()) {
                   androidx.compose.foundation.layout.Box {
@@ -204,6 +212,10 @@ abstract class BancAccueil(nomDesign: String) {
             fail("[${design.name}] OUTILLAGE : focus initial attendu sur $attendu, obtenu ${decrire(f)} (écran ${racine.width}×${racine.height} px)")
         }
     }
+
+    /** Design NBA sans source donnée : le classement de la maquette, mis à jour il y a 4 minutes. */
+    private fun sourceNbaParDefaut(): SourceNba? =
+        if (design != Design.NBA) null else SourceNbaFactice(NbaFactice.classement(System.currentTimeMillis() - 4 * 60_000L), horloge = null)
 
     /** Fait avancer l'horloge de Compose (animations, défilements) puis attend le repos. */
     protected fun avancer(ms: Long) {

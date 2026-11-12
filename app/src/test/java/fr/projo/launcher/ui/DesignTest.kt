@@ -3,6 +3,8 @@ package fr.projo.launcher.ui
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
@@ -29,12 +31,15 @@ class DesignTest {
     @Test
     fun designsDansLOrdre() {
         assertEquals(
-            listOf(Design.VERRE, Design.PASTEL, Design.CONSOLE, Design.UNE, Design.CHAINES, Design.STUDIO, Design.GALERIE),
+            listOf(Design.VERRE, Design.PASTEL, Design.CONSOLE, Design.UNE, Design.CHAINES, Design.STUDIO, Design.GALERIE, Design.NBA),
             Design.entries.toList(),
         )
         assertEquals("identifiants uniques", Design.entries.size, Design.entries.map { it.id }.toSet().size)
         assertEquals("galerie", Design.GALERIE.id)
         assertEquals("Galerie", Design.GALERIE.nom)
+        assertEquals("nba", Design.NBA.id)
+        assertEquals("NBA", Design.NBA.nom)
+        assertEquals("Carte des divisions, bilans en direct et dock", Design.NBA.resume)
     }
 
     /** Suggestions TMDB (réglage « Suggestions de films et séries ») : Studio et Galerie seulement. */
@@ -87,7 +92,7 @@ class PreferenceDesignTest {
     }
 }
 
-/** Réglages → Design : les 7 designs proposés, « Verre » (par défaut) coché ; capture « dialogue_design ». */
+/** Réglages → Design : les 8 designs proposés, « Verre » (par défaut) coché ; capture « dialogue_design ». */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [33], qualifiers = ECRAN_TV)
@@ -108,10 +113,18 @@ class CapturesDesignTest : BancAccueil("VERRE") {
         avancer(1500)
         fun present(texte: String) =
             compose.onAllNodes(hasText(texte, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        if (!present("✓ " + Design.VERRE.nom + " — ")) fail("Réglages → Design : « Verre » (par défaut) devrait être coché")
+        // La liste dépasse la fenêtre : défilement jusqu'à chaque design qui n'est pas encore composé
+        val liste = compose.onAllNodes(androidx.compose.ui.test.hasScrollToIndexAction(), useUnmergedTree = true).onFirst()
         for (d in Design.entries) {
+            if (!present(d.nom + " — " + d.resume)) {
+                liste.performScrollToIndex(d.ordinal)
+                avancer(300)
+            }
             if (!present(d.nom + " — " + d.resume)) fail("Réglages → Design : « ${d.nom} » absent")
         }
-        if (!present("✓ " + Design.VERRE.nom + " — ")) fail("Réglages → Design : « Verre » (par défaut) devrait être coché")
+        liste.performScrollToIndex(0)
+        avancer(300)
         for (nom in listOf("Aurore", "Graphite", "Playlist", "Néon")) {
             if (present(nom)) fail("Réglages → Design : « $nom » ne devrait plus être proposé")
         }

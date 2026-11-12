@@ -34,9 +34,10 @@ class CapturesTest(nomDesign: String) : BancAccueil(nomDesign) {
         capturer("1_accueil_favori1")
     }
 
-    /** 1er élément de « Mes apps » sélectionné. */
+    /** 1er élément de « Mes apps » sélectionné (NBA : pas de « Mes apps »). */
     @Test
     fun mesAppsPremier() {
+        org.junit.Assume.assumeTrue("${design.name} : pas de « Mes apps »", design.avecMesApps)
         afficher()
         donnerFocus(app(0))
         capturer("2_mesapps_app1")
