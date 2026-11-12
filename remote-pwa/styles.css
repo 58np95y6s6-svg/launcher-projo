@@ -15,6 +15,27 @@
   font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap;
   src: url("polices/instrument-serif.ttf") format("truetype");
 }
+/* Thème NBA seulement : un navigateur ne télécharge une police que si un texte l'utilise */
+@font-face {
+  font-family: "Oswald"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("polices/oswald-demi-gras.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oswald"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("polices/oswald-gras.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("polices/barlow-condensed-demi-gras.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("polices/barlow-condensed-gras.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed"; font-style: normal; font-weight: 800; font-display: swap;
+  src: url("polices/barlow-condensed-extra-gras.woff2") format("woff2");
+}
 
 /* ---------- Thèmes : un par design de la TV ----------
    Contrastes vérifiés (WCAG AA) : texte et texte secondaire sur les surfaces et le fond, OK,
@@ -145,6 +166,26 @@
   --rayon: 28px; --rayon-btn: 20px; --rayon-carte: 22px; --rayon-champ: 16px;
   --titre: "Manrope", system-ui, sans-serif; --titre-poids: 800; --titre-taille: 2.125rem; --titre-espace: -0.02em;
   --flou: blur(18px); --barre: rgba(250, 251, 252, 0.85);
+}
+/* NBA : bleu nuit de la carte, verre sombre, or des leaders ; titres et chiffres en Oswald,
+   libellés en Barlow Condensed (règles propres plus bas, « Thème NBA ») */
+:root[data-theme="nba"] {
+  color-scheme: dark;
+  --fond: radial-gradient(130% 75% at 50% 0%, #10204a 0%, #0a1534 48%, #050a1c 100%);
+  --fond-uni: #050a1c; --couleur-etat: #10204a;
+  --surface: rgba(30, 50, 110, 0.32); --surface-forte: rgba(255, 255, 255, 0.1); --feuille: #0d1a3f;
+  --bord: rgba(255, 255, 255, 0.13); --trait: rgba(255, 255, 255, 0.12);
+  --texte: #fff; --texte-2: rgba(255, 255, 255, 0.7); --accent: #f6c445; --lien: #f6c445; --focus: #f6c445;
+  --ok-fond: #f6c445; --ok-texte: #0a1534; --principal: #fff; --principal-texte: #0a1534;
+  --actif: #f6c445; --allume: #f6c445; --erreur: #FFC9C2;
+  --ombre: 0 16px 40px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06); --ombre-legere: 0 8px 22px rgba(0, 0, 0, 0.35);
+  --ombre-ok: 0 12px 30px rgba(246, 196, 69, 0.26);
+  --rayon: 28px; --rayon-btn: 20px; --rayon-carte: 22px; --rayon-champ: 16px;
+  --titre: "Oswald", "Arial Narrow", sans-serif; --titre-poids: 700; --titre-taille: 2.375rem; --titre-espace: .01em;
+  --flou: blur(18px) saturate(1.3); --barre: rgba(5, 10, 28, 0.84);
+  --voile: rgba(2, 5, 16, 0.6);
+  --direct: #FF8F84;
+  --condensee: "Barlow Condensed", "Arial Narrow", sans-serif;
 }
 
 /* Contraste renforcé (Réglages d'accessibilité) : bordures nettes, texte secondaire plein */
@@ -573,7 +614,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .touche-lecture { min-height: 4.25rem; }
 .touche.appui, .vol.appui, .vol-milieu.appui { transform: scale(.96); filter: brightness(.96); }
 :root[data-theme="verre"] .touche.appui, :root[data-theme="console"] .touche.appui,
-:root[data-theme="une"] .touche.appui { filter: brightness(1.35); }
+:root[data-theme="une"] .touche.appui, :root[data-theme="nba"] .touche.appui { filter: brightness(1.35); }
 
 .volume {
   display: flex; min-height: 4.25rem; border-radius: var(--rayon-btn); overflow: hidden; min-width: 0;
@@ -795,6 +836,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .apercu-design[data-id="chaines"] { background: radial-gradient(circle, #1FA9DE 38%, #fff 42%); }
 .apercu-design[data-id="studio"] { background: linear-gradient(135deg, #fafbfc, #c9d6ea); }
 .apercu-design[data-id="galerie"] { background: radial-gradient(circle, #2B2D33 30%, #e6e7ea 34%); }
+.apercu-design[data-id="nba"] {
+  background: linear-gradient(135deg, transparent 0 52%, #f6c445 52% 70%, #c8102e 70%), radial-gradient(circle at 35% 30%, #2a4596, #050a1c 85%);
+}
 
 /* Boutons côte à côte, pleine largeur ; le principal plein */
 .boutons-reglage { display: flex; gap: .5rem; margin-top: .75rem; }
@@ -1044,6 +1088,65 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .banniere span { flex: 1; min-width: 0; }
 .banniere .ic { width: 22px; height: 22px; }
 
+/* ---------- Thème NBA : typographie de la carte des divisions ----------
+   Comme sur la TV : titres et chiffres en Oswald, libellés en Barlow Condensed (capitales
+   espacées) ; le texte courant (détails, listes, champs) reste en Manrope, plus lisible en petit. */
+
+:root[data-theme="nba"] :is(.titre-ecran, .titre-feuille, .panneau-titre) { text-transform: uppercase; }
+/* Barre bicolore à gauche des titres d'onglet, comme « CLASSEMENT NBA » sur la TV (ici en or) */
+:root[data-theme="nba"] .panneau-titre { position: relative; padding-left: 1.125rem; }
+:root[data-theme="nba"] .panneau-titre::before {
+  content: ""; position: absolute; left: 0; top: .12em; bottom: .12em; width: 6px; border-radius: 2px;
+  background: linear-gradient(var(--accent) 0 64%, color-mix(in srgb, var(--accent) 38%, transparent) 64%);
+}
+:root[data-theme="nba"] :is(.pave-ok, .nba-points, .nba-tiret, .match-score, .reglage-valeur, .num, .btn-rond) {
+  font-family: var(--titre); font-weight: 600; letter-spacing: .02em;
+}
+/* :where() : spécificité basse, les réglages par élément qui suivent l'emportent */
+:root[data-theme="nba"] :where(
+  .puce-etat, .pastille-tv, .pave-indice, .touche, .vol-milieu, .segment, .onglet, .groupe-titre, .saisie-aide,
+  .btn-principal, .btn-secondaire, .btn-petit, .btn-reglage, .btn-nba-matchs, .btn-texte, .btn-titre,
+  .options-pastilles .option, .options-designs .option, .nba-direct, .nba-aucun, .etiquette
+) {
+  font-family: var(--condensee); font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+}
+/* En-tête : « SALON » en Oswald, l'état dessous comme le sous-titre de la TV */
+:root[data-theme="nba"] .puce-nom { font-family: var(--titre); font-weight: 600; font-size: 1.25rem; text-transform: uppercase; letter-spacing: .03em; }
+:root[data-theme="nba"] .puce-etat { font-size: .875rem; letter-spacing: .1em; }
+:root[data-theme="nba"] .pastille-tv { font-size: 1rem; letter-spacing: .08em; }
+:root[data-theme="nba"] .btn-rond { font-size: 1.375rem; }
+/* Les capitales condensées sont plus étroites : un cran plus grandes que Manrope */
+:root[data-theme="nba"] .touche { font-size: 1rem; }
+:root[data-theme="nba"] .vol-milieu, :root[data-theme="nba"] .segment { font-size: 1rem; }
+:root[data-theme="nba"] .onglet { font-size: min(.8125rem, 13px); letter-spacing: .03em; }
+:root[data-theme="nba"] .pave-indice { font-size: .875rem; font-weight: 600; letter-spacing: .1em; }
+:root[data-theme="nba"] :is(.groupe-titre, .saisie-aide) { font-size: .9375rem; letter-spacing: .16em; }
+:root[data-theme="nba"] :is(.btn-principal, .btn-secondaire) { font-size: 1.1875rem; }
+:root[data-theme="nba"] :is(.btn-petit, .btn-reglage, .btn-texte, .btn-titre) { font-size: 1rem; }
+:root[data-theme="nba"] :is(.options-pastilles .option, .options-designs .option) { font-size: 1rem; }
+:root[data-theme="nba"] .pave-ok { font-weight: 700; font-size: min(2rem, var(--ok) * .34); letter-spacing: .04em; }
+:root[data-theme="nba"] .reglage-valeur { font-size: 1.125rem; }
+/* Pavé et touches : verre sombre, reflet en haut comme les îles de la carte */
+:root[data-theme="nba"] .plaque { background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 55%); }
+
+/* Box score : chiffres en Oswald comme les bilans de la carte, pastilles cerclées de blanc */
+:root[data-theme="nba"] .nba-score { gap: .375rem; }
+:root[data-theme="nba"] .nba-badge {
+  width: 2rem; height: 2rem; font-family: var(--condensee); font-size: .75rem; font-weight: 800; letter-spacing: .03em;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+:root[data-theme="nba"] .nba-points { font-weight: 700; font-size: 1.5625rem; line-height: 1; letter-spacing: 0; }
+:root[data-theme="nba"] .nba-tiret { font-size: 1.125rem; color: var(--texte-2); }
+:root[data-theme="nba"] .nba-match .nba-statut { margin-top: .375rem; font-size: .9375rem; }
+:root[data-theme="nba"] .nba-direct { font-size: .875rem; font-weight: 800; letter-spacing: .14em; }
+:root[data-theme="nba"] .nba-statut-texte { font-family: var(--condensee); font-weight: 700; letter-spacing: .05em; }
+:root[data-theme="nba"] .btn-nba-matchs { font-size: .9375rem; letter-spacing: .05em; line-height: 1.05; }
+:root[data-theme="nba"] .btn-nba-matchs span { max-width: 5em; text-wrap: balance; }
+:root[data-theme="nba"] .match-badges { gap: .375rem; }
+:root[data-theme="nba"] .match-detail .nba-direct { letter-spacing: .1em; }
+:root[data-theme="nba"] .match-score { font-size: 1.3125rem; letter-spacing: 0; }
+:root[data-theme="nba"] .match-statut { font-family: var(--condensee); font-weight: 700; font-size: .9375rem; letter-spacing: .05em; }
+
 .noscript { padding: 24px; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1055,4 +1158,5 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   :root { --marge: 14px; }
   .rangee, .barre { gap: .5rem; }
   .vol { width: 3rem; }
+  :root[data-theme="nba"] .onglet { font-size: 12px; letter-spacing: .02em; }
 }

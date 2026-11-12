@@ -39,8 +39,15 @@ const FICHIERS = [
   "polices/manrope-moyen.ttf",
   "polices/manrope-gras.ttf",
   "polices/instrument-serif.ttf",
+  "polices/oswald-demi-gras.woff2",
+  "polices/oswald-gras.woff2",
+  "polices/barlow-condensed-demi-gras.woff2",
+  "polices/barlow-condensed-gras.woff2",
+  "polices/barlow-condensed-extra-gras.woff2",
   "polices/manrope-OFL.txt",
   "polices/instrument-serif-OFL.txt",
+  "polices/oswald-OFL.txt",
+  "polices/barlow-condensed-OFL.txt",
 ];
 
 self.addEventListener("install", (e) => {

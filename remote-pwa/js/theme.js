@@ -4,11 +4,11 @@
 // Sans TV, ou design absent / inconnu : Galerie (clair), ou Verre si le téléphone est en mode sombre.
 // Logique pure (testée sous Node) ; seul appliquerTheme() touche au DOM.
 
-export const DESIGNS = Object.freeze(["galerie", "verre", "pastel", "console", "une", "chaines", "studio"]);
+export const DESIGNS = Object.freeze(["galerie", "verre", "pastel", "console", "une", "chaines", "studio", "nba"]);
 
 export const NOMS_DESIGN = Object.freeze({
   galerie: "Galerie", verre: "Verre", pastel: "Pastel", console: "Console",
-  une: "À la une", chaines: "Chaînes", studio: "Studio",
+  une: "À la une", chaines: "Chaînes", studio: "Studio", nba: "NBA",
 });
 
 /** Clé (localStorage) du dernier thème venu d'une TV, lue au démarrage par theme-initial.js. */

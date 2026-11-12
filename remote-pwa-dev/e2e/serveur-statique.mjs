@@ -15,7 +15,7 @@ const PWA = path.resolve(ICI, "../../remote-pwa");
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json", ".webmanifest": "application/manifest+json",
-  ".png": "image/png", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".txt": "text/plain; charset=utf-8",
+  ".png": "image/png", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8",
 };
 
 export function configTest({ portPeerJS, versionApp = "1.0.0-test", versionProtocole = 1 }) {
