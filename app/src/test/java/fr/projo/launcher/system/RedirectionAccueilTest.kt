@@ -1,9 +1,13 @@
 package fr.projo.launcher.system
 
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.ResolveInfo
 import android.view.accessibility.AccessibilityEvent
 import fr.projo.launcher.MainActivity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -15,7 +19,8 @@ import org.robolectric.shadows.ShadowLooper
 import java.util.concurrent.TimeUnit
 
 /**
- * Ouverture automatique (Fire TV) : la pause « accueil Amazon » après un appui long sur Maison.
+ * Ouverture automatique : la pause « accueil Amazon » après un appui long sur Maison, et les
+ * accueils surveillés (tous ceux de l'appareil, sauf iBiTV et le système).
  * Bug corrigé : le clavier iBiTV (même paquet), ouvert pour une recherche dans l'accueil
  * Amazon, annulait la pause et l'on était renvoyé vers iBiTV en plein téléchargement.
  */
@@ -115,6 +120,59 @@ class RedirectionAccueilTest {
         s.paquetAffiche = { "com.netflix.ninja" }
         s.verifierEcran()
         assertNull(ouverte())
+    }
+
+    /** Écrans d'accueil déclarés sur l'appareil (paquet → activité). */
+    private fun accueilsDeclares(vararg paquets: Pair<String, String>) {
+        val infos = paquets.map { (paquet, classe) ->
+            ResolveInfo().apply { activityInfo = ActivityInfo().apply { packageName = paquet; name = classe } }
+        }
+        @Suppress("DEPRECATION")
+        shadowOf(RuntimeEnvironment.getApplication().packageManager)
+            .addResolveInfoForIntent(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), infos)
+    }
+
+    /**
+     * Bug corrigé (boîtier X96 mini) : iBiTV choisi comme accueil par défaut, mais le boîtier relance
+     * MediaLauncher à chaque démarrage, et seul l'accueil par défaut était surveillé.
+     */
+    @Test
+    fun lAccueilDuBoitierEstRemplaceMemeSiIBiTVEstParDefaut() {
+        val soi = RuntimeEnvironment.getApplication().packageName
+        accueilsDeclares(
+            "com.droidlogic.mboxlauncher" to "com.droidlogic.mboxlauncher.Launcher",
+            soi to MainActivity::class.java.name,
+            "com.android.settings" to "com.android.settings.FallbackHome",
+        )
+        val s = service()
+        s.paquetAffiche = { "com.droidlogic.mboxlauncher" }
+        s.verifierEcran()
+        assertEquals(MainActivity::class.java.name, ouverte())
+    }
+
+    /** Les Réglages (écran d'attente « FallbackHome » au démarrage) ne sont jamais remplacés. */
+    @Test
+    fun lesReglagesNeSontJamaisRemplaces() {
+        accueilsDeclares("com.android.settings" to "com.android.settings.FallbackHome")
+        val s = service()
+        s.ecran("com.android.settings", "com.android.settings.Settings")
+        assertNull(ouverte())
+    }
+
+    @Test
+    fun accueilsARemplacerSansIBiTVNiSysteme() {
+        val soi = "fr.projo.launcher"
+        val r = FireTv.accueilsARemplacer(
+            listOf(
+                "com.droidlogic.mboxlauncher", "com.google.android.tvlauncher", soi, "android",
+                "com.android.settings", "com.android.tv.settings", "com.android.provision",
+                "com.google.android.tungsten.setupwraith", "com.android.setupwizard",
+                "com.amazon.firebat", "com.amazon.avod",
+            ),
+            soi,
+        )
+        assertEquals(setOf("com.droidlogic.mboxlauncher", "com.google.android.tvlauncher"), r)
+        assertTrue(FireTv.accueilsARemplacer(emptyList(), soi).isEmpty())
     }
 
     @Test

@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 
@@ -98,6 +99,26 @@ object FireTv {
         false
     }
 
+    /**
+     * Paquets jamais remplacés, même s'ils se déclarent écran d'accueil : écran d'attente du
+     * démarrage (« FallbackHome » des Réglages), réglages, choix d'appli d'Android.
+     */
+    private val PAS_DES_ACCUEILS = setOf(
+        "android", "com.android.settings", "com.android.tv.settings", "com.android.provision",
+        // Prime Video : jamais un accueil (il était renvoyé vers iBiTV dès son ouverture)
+        "com.amazon.firebat", "com.amazon.avod", "com.amazon.avod.thirdpartyclient",
+    )
+
+    /** Assistants de première configuration (« setupwizard », « setupwraith », « provision », « oobe »). */
+    private val ASSISTANTS = Regex("setup|provision|oobe", RegexOption.IGNORE_CASE)
+
+    /**
+     * Parmi [paquets] (ceux qui se déclarent écran d'accueil), les accueils à remplacer par iBiTV :
+     * tous sauf iBiTV ([soi]), les Réglages et les assistants de configuration.
+     */
+    fun accueilsARemplacer(paquets: Collection<String>, soi: String): Set<String> =
+        paquets.filter { it != soi && it !in PAS_DES_ACCUEILS && !ASSISTANTS.containsMatchIn(it) }.toSet()
+
     /** Paquet de l'écran d'accueil par défaut (autre que iBiTV), s'il y en a un. */
     fun accueilParDefaut(context: Context): String? = try {
         val ri = context.packageManager.resolveActivity(
@@ -106,5 +127,21 @@ object FireTv {
         ri?.activityInfo?.packageName?.takeIf { it != context.packageName && it != "android" }
     } catch (e: Exception) {
         null
+    }
+
+    /**
+     * Écrans d'accueil installés à remplacer (accueil Android TV, MediaLauncher des boîtiers…),
+     * même quand iBiTV est l'accueil par défaut : certains boîtiers relancent le leur à chaque
+     * démarrage.
+     */
+    @Suppress("DEPRECATION")
+    fun accueilsInstalles(context: Context): Set<String> = try {
+        val drapeaux = if (Build.VERSION.SDK_INT >= 23) PackageManager.MATCH_ALL else 0
+        val paquets = context.packageManager
+            .queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), drapeaux)
+            .mapNotNull { it.activityInfo?.packageName }
+        accueilsARemplacer(paquets, context.packageName)
+    } catch (e: Exception) {
+        emptySet()
     }
 }

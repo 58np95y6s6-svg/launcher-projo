@@ -116,7 +116,7 @@ class RedirectionAccueil : NavigationTelecommande() {
                 // Mise en veille : la pause « accueil Amazon » s'arrête
                 Intent.ACTION_SCREEN_OFF -> { enReve = false; PucesNfc.enReve = false; pauseJusqua = 0 }
                 // Réveil : Fire OS remet souvent son accueil, sans toujours le signaler
-                Intent.ACTION_SCREEN_ON -> verifierPlusTard(800, 2_500)
+                Intent.ACTION_SCREEN_ON -> { majAccueils(); verifierPlusTard(800, 2_500) }
             }
         }
     }
@@ -124,13 +124,27 @@ class RedirectionAccueil : NavigationTelecommande() {
 
     override fun onCreate() {
         super.onCreate()
+        majAccueils()
         ambiance.attacher()
+    }
+
+    /**
+     * Accueils surveillés. Fire TV : ceux d'Amazon et l'accueil par défaut (inchangé). Autres
+     * appareils : tous les écrans d'accueil installés (sauf iBiTV et le système), même si iBiTV
+     * est l'accueil par défaut : certains boîtiers (X96, MediaLauncher) relancent le leur au démarrage.
+     */
+    private fun majAccueils() {
+        accueils = if (FireTv.estFireTv(this)) {
+            FireTv.ACCUEILS_AMAZON + listOfNotNull(FireTv.accueilParDefaut(this))
+        } else {
+            FireTv.ACCUEILS_AMAZON + FireTv.accueilsInstalles(this)
+        }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        // On ajoute l'accueil par défaut de l'appareil, quel qu'il soit
-        FireTv.accueilParDefaut(this)?.let { accueils = FireTv.ACCUEILS_AMAZON + it }
+        // Accueils à remplacer (voir majAccueils)
+        majAccueils()
         try {
             ContextCompat.registerReceiver(this, surEcran, IntentFilter().apply {
                 addAction(Intent.ACTION_DREAMING_STARTED)
