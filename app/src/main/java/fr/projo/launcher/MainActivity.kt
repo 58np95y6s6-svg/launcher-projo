@@ -419,21 +419,22 @@ class MainActivity : ComponentActivity() {
         }
         if (montrerAide) {
             // Ouverture automatique : activation en un clic par ADB local (sans ordinateur),
-            // ou à la main dans la page Accessibilité si le Fire TV la propose
+            // ou à la main dans la page Accessibilité si l'appareil la propose
+            val appareil = FireTv.leAppareil(this)
             MenuDialog(
                 title = "Ouverture automatique",
                 subtitle = "iBiTV s'ouvrira au démarrage et à chaque appui sur Maison " +
-                    "(appui long sur Maison : accueil Amazon).\n" +
+                    "(appui long sur Maison : ${FireTv.accueilDuFabricant(this)}).\n" +
                     "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
                     "2. Choisis « Activer en un clic » puis accepte la fenêtre « Autoriser le débogage » " +
                     "(coche « Toujours autoriser »).\n" +
                     "Ce service sert aussi à la télécommande smartphone : à la demande d'un téléphone appairé, " +
                     "il lit le contenu des fenêtres pour déplacer la sélection.\n" +
-                    "Après une mise à jour d'iBiTV, redémarre le Fire TV (ou refais « Activer en un clic ») " +
+                    "Après une mise à jour d'iBiTV, redémarre $appareil (ou refais « Activer en un clic ») " +
                     "pour que Maison ouvre de nouveau iBiTV tout de suite et que le téléphone puisse naviguer.",
                 actions = listOf(
                     MenuAction("Activer en un clic") {
-                        toast("Activation… accepte la fenêtre du Fire TV si elle apparaît")
+                        toast("Activation… accepte la fenêtre « Autoriser le débogage » si elle apparaît")
                         lifecycleScope.launch {
                             val erreur = withContext(Dispatchers.IO) { AdbLocal.activerOuverture(this@MainActivity) }
                             toast(erreur ?: "Ouverture automatique activée ✓")
@@ -441,10 +442,15 @@ class MainActivity : ComponentActivity() {
                     },
                     MenuAction("Activer depuis un iPhone") { montrerIphone = true },
                     MenuAction("Ouvrir les options pour les développeurs") {
-                        if (!FireTv.ouvrirOptionsDeveloppeur(this)) toast("Ma Fire TV → À propos : clique 7 fois sur le nom de l'appareil")
+                        if (!FireTv.ouvrirOptionsDeveloppeur(this)) {
+                            toast(
+                                if (FireTv.estFireTv(this)) "Ma Fire TV → À propos : clique 7 fois sur le nom de l'appareil"
+                                else "Réglages → À propos : clique 7 fois sur « Numéro de build »",
+                            )
+                        }
                     },
                     MenuAction("Ouvrir la page Accessibilité") {
-                        if (!FireTv.ouvrirAccessibilite(this)) toast("Ce Fire TV n'a pas cette page : utilise « Activer en un clic »")
+                        if (!FireTv.ouvrirAccessibilite(this)) toast("Cette page est introuvable : utilise « Activer en un clic »")
                     },
                     MenuAction("Fermer") {},
                 ),
@@ -453,12 +459,12 @@ class MainActivity : ComponentActivity() {
         }
         if (montrerIphone) {
             // Activation depuis une app ADB sur iPhone (les Fire OS récents bloquent l'ADB local)
-            val ip = FireTv.adresseIp() ?: "(Ma Fire TV → À propos → Réseau)"
+            val ip = FireTv.adresseIp() ?: if (FireTv.estFireTv(this)) "(Ma Fire TV → À propos → Réseau)" else "(Réglages → Réseau)"
             val cmds = FireTv.commandesShell(this)
             MenuDialog(
                 title = "Activer depuis un iPhone",
                 subtitle = "1. Options pour les développeurs → « Débogage ADB » : Activé.\n" +
-                    "2. Sur l'iPhone, installe une app ADB (ex. « Bugjaeger - Mobile ADB »), même Wi-Fi que le Fire TV.\n" +
+                    "2. Sur l'iPhone, installe une app ADB (ex. « Bugjaeger - Mobile ADB »), même Wi-Fi que ${FireTv.leAppareil(this)}.\n" +
                     "3. Connecte-toi à $ip, port 5555, et accepte « Autoriser le débogage » sur la télé.\n" +
                     "4. Dans le terminal (shell) de l'app, tape :\n\n" + cmds.joinToString("\n\n"),
                 actions = listOf(MenuAction("Fermer") {}),

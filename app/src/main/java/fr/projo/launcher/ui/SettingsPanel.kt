@@ -273,7 +273,7 @@ private fun contenuReglages(
     val versionCle = CleTmdb.version
     val resumeCle = if (design.suggestionsTmdb) remember(versionCle) { resumeCleTmdb(contexte) } else ""
     val majDispo = maj.info?.available == true || maj.telechargement != null
-    // Fire TV : pas d'entrée HDMI ni de choix d'écran d'accueil, mais l'ouverture automatique
+    // Fire TV : pas d'entrée HDMI ni de choix d'écran d'accueil
     val fireTv = LocalFireTv.current
 
     // ---------------- Volume (et mise à jour, mise en avant si disponible)
@@ -314,8 +314,8 @@ private fun contenuReglages(
         note = maj.message,
         onClick = actions.update,
     )
-    // Version Fire TV : ouverture automatique, toujours visible et tout en haut
-    val auto = if (fireTv) {
+    // Ouverture automatique, toujours visible et tout en haut (Fire TV et autres boîtiers)
+    val auto = run {
         val actif = FireTv.redirectionActive(contexte)
         // Après une mise à jour (Android 9) : le service tourne sans la touche Maison
         val aFinir = remember(actif) { actif && FireTv.majAFinir(contexte) }
@@ -324,15 +324,16 @@ private fun contenuReglages(
             icone = ProjoIcons.Accueil,
             titre = "Ouverture automatique",
             valeur = when {
-                aFinir -> "À finir : redémarre le Fire TV (ou OK → Activer en un clic)"
-                actif -> "Activée ✓ · Maison ouvre iBiTV, appui long : Amazon"
+                aFinir -> "À finir : redémarre ${FireTv.leAppareil(contexte)} (ou OK → Activer en un clic)"
+                actif -> "Activée ✓ · Maison ouvre iBiTV, appui long : ${FireTv.accueilDuFabricant(contexte)}"
                 else -> "Désactivée · OK pour l'activer"
             },
             teinte = Teintes.accueil,
-            accent = !actif || aFinir,
+            // Mise en avant tant qu'elle n'est pas activée : seulement sur Fire TV, où elle est indispensable
+            accent = (fireTv && !actif) || aFinir,
             onClick = actions.ouvertureAuto,
         )
-    } else null
+    }
     val haut = SectionReglages("s-haut", "", listOfNotNull(volume, auto, majEnAvant.takeIf { majDispo }))
 
     // ---------------- Connexions

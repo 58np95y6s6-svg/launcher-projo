@@ -53,14 +53,14 @@ object AdbLocal {
             if (FireTv.redirectionActive(context)) {
                 // Laisse au système le temps de relier le service avant de vérifier
                 Thread.sleep(1_000)
-                if (FireTv.majAFinir(context)) "Activée, mais il faut redémarrer le Fire TV pour que Maison ouvre iBiTV." else null
-            } else "Le Fire TV a refusé l'activation. Réessaie et accepte la fenêtre « Autoriser le débogage »."
+                if (FireTv.majAFinir(context)) "Activée, mais il faut redémarrer ${FireTv.leAppareil(context)} pour que Maison ouvre iBiTV." else null
+            } else "${FireTv.leAppareil(context).replaceFirstChar { it.uppercase() }} a refusé l'activation. Réessaie et accepte la fenêtre « Autoriser le débogage »."
         } catch (e: ConnectException) {
             "Connexion refusée : active « Débogage ADB » (Options pour les développeurs). S'il l'est déjà, " +
-                "ton Fire OS bloque cette méthode : utilise « Activer depuis un iPhone »."
+                "ce système bloque cette méthode : utilise « Activer depuis un iPhone » ou « Ouvrir la page Accessibilité »."
         } catch (e: Exception) {
-            "Activation impossible (${e.javaClass.simpleName}). Les Fire OS récents bloquent cette méthode : " +
-                "utilise « Activer depuis un iPhone »."
+            "Activation impossible (${e.javaClass.simpleName}). Certains systèmes bloquent cette méthode : " +
+                "utilise « Activer depuis un iPhone » ou « Ouvrir la page Accessibilité »."
         }
     }
 

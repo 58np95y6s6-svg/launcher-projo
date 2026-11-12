@@ -119,6 +119,21 @@ object FireTv {
     fun accueilsARemplacer(paquets: Collection<String>, soi: String): Set<String> =
         paquets.filter { it != soi && it !in PAS_DES_ACCUEILS && !ASSISTANTS.containsMatchIn(it) }.toSet()
 
+    /** « le Fire TV » ou « le boîtier » (textes de l'ouverture automatique). */
+    fun leAppareil(context: Context): String = if (estFireTv(context)) "le Fire TV" else "le boîtier"
+
+    /** Écran donné par un appui long sur Maison : « Amazon » ou « accueil du boîtier ». */
+    fun accueilDuFabricant(context: Context): String = if (estFireTv(context)) "Amazon" else "accueil du boîtier"
+
+    /** iBiTV est-il l'écran d'accueil par défaut ? */
+    fun iBiTVParDefaut(context: Context): Boolean = try {
+        context.packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.packageName == context.packageName
+    } catch (e: Exception) {
+        false
+    }
+
     /** Paquet de l'écran d'accueil par défaut (autre que iBiTV), s'il y en a un. */
     fun accueilParDefaut(context: Context): String? = try {
         val ri = context.packageManager.resolveActivity(

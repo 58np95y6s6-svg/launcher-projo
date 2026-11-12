@@ -127,7 +127,8 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
     }
 
     /**
-     * Toutes les tuiles de l'app, celles ajoutées depuis comprises ; « Suggestions » pour Studio et
+     * Toutes les tuiles de l'app, celles ajoutées depuis comprises (« Ouverture automatique » sur tous
+     * les appareils, plus seulement Fire TV) ; « Suggestions » pour Studio et
      * Galerie seulement, « Défilement des affiches » pour Galerie seulement.
      */
     @Test
@@ -135,7 +136,7 @@ class ReglagesTest(nomDesign: String) : BancAccueil(nomDesign) {
         ouvrir()
         attendreFocus("reglage:volume", "ouverture")
         val attendues = listOfNotNull(
-            "volume", "maj", "wifi", "bluetooth", "stockage",
+            "volume", "auto", "maj", "wifi", "bluetooth", "stockage",
             "accueil", "hdmi", "design", "modules", "suggestions".takeIf { design.suggestionsTmdb },
             "defilement".takeIf { design == Design.GALERIE }, "masquees", "nouveautes", "ambiance",
             "appairer", "telephones", "envoyer", "puces", "aide-telecommande",
