@@ -6,7 +6,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
@@ -89,9 +92,11 @@ class NbaTest : BancAccueil("NBA") {
     /** Tous les éléments focalisés et leurs étiquettes (diagnostic des échecs). */
     private fun etatDuFocus(): String {
         val n = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+        val ecran = compose.onAllNodes(hasTestTag("nba:ecran"), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+            ?.config?.getOrNull(SemanticsProperties.StateDescription)
         val vue = compose.activity.window.decorView.findFocus()
         return n.joinToString(" ; ") { it.config.getOrNull(SemanticsProperties.TestTag) ?: "(sans étiquette)" } +
-            " | lancés $lances, menus $menus | vue Android focalisée : ${vue?.javaClass?.simpleName} (${vue?.isFocused})"
+            " | lancés $lances, menus $menus | vue Android focalisée : ${vue?.javaClass?.simpleName} (${vue?.isFocused}) | écran : $ecran"
     }
 
     private fun attendreChoisie(code: String?, etape: String) {
@@ -237,6 +242,22 @@ class NbaTest : BancAccueil("NBA") {
         attendreChoisie("OKC", "après la fiche")
         appuyer(Key.Back)
         attendreFocus(favori(0), "Retour sur la carte")
+    }
+
+    /** Toucher une pastille ouvre sa fiche ; ▶ puis Retour à la télécommande. */
+    @Test
+    fun ficheAuToucher() {
+        source()
+        afficher()
+        compose.onAllNodes(hasTestTag("nba:pastille:OKC"), useUnmergedTree = true).onFirst()
+            .performTouchInput { click() }
+        avancer(800)
+        verifierTextes("Oklahoma City Thunder", "Défaite 108–118")
+        attendreChoisie("OKC", "toucher OKC")
+        appuyer(Key.DirectionRight)
+        if (!present("nba:fiche:effectif")) fail("[NBA] ▶ après le toucher : onglet Effectif attendu (${etatDuFocus()})")
+        appuyer(Key.Back)
+        if (present("nba:fiche")) fail("[NBA] Retour après le toucher : la fiche devait se fermer (${etatDuFocus()})")
     }
 
     @Test

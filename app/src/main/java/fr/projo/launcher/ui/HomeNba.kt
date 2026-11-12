@@ -48,6 +48,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -221,6 +223,7 @@ internal fun EcranNba(
     var carteActive by remember { mutableStateOf(false) }
     var fiche by remember { mutableStateOf<String?>(null) }
     var ficheActive by remember { mutableStateOf(false) }
+    var touchesVues by remember { mutableIntStateOf(0) }
     var onglet by remember { mutableIntStateOf(0) }
     val focusCarte = remember { FocusRequester() }
     val focusFiche = remember { FocusRequester() }
@@ -312,7 +315,10 @@ internal fun EcranNba(
         Modifier
             .fillMaxSize()
             .fondNba(palette.fond)
+            .testTag("nba:ecran")
+            .semantics { stateDescription = "touches=$touchesVues carte=$carteActive choisie=$choisie fiche=$fiche ficheActive=$ficheActive centres=${centres.size}" }
             .onPreviewKeyEvent { e ->
+                touchesVues++
                 when {
                     ficheActive -> toucheFiche(e)
                     carteActive -> toucheCarte(e)
