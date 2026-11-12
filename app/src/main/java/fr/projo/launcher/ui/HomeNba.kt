@@ -2,7 +2,6 @@ package fr.projo.launcher.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,13 +20,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -48,8 +43,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -84,7 +77,8 @@ import kotlin.math.roundToInt
  * Navigation : focus initial sur le 1er favori du dock ; ▲ entre sur la carte (pastille la plus
  * proche au-dessus de la tuile), ◀ ▲ ▶ ▼ vont de pastille en pastille, ▼ en bas de la carte ou
  * Retour reviennent au dock ; OK ouvre la fiche de l'équipe (Résumé / Effectif avec ◀ ▶, Retour
- * la ferme).
+ * la ferme). Le focus reste sur la tuile du dock pendant ce temps : l'écran lit les touches
+ * avant elle.
  */
 
 /** Ce que l'écran NBA lit : DonneesNba en vrai, des données factices dans les tests. */
@@ -218,48 +212,27 @@ internal fun EcranNba(
     val apparition by animateFloatAsState(if (image != null) 1f else 0f, tween(400), label = "carte")
 
     // ------------------------------------------------ sélection et fiche
+    // Le focus reste sur la tuile du dock d'où l'on est monté : la carte et la fiche lisent les
+    // touches avant elle (en aperçu) tant qu'une pastille est sélectionnée. Aucun changement de
+    // focus, donc rien à perdre ni à rendre.
     val centres = remember(carte) { carte?.pastilles?.associate { it.code to FormePastille.centre(it) } ?: emptyMap() }
     var choisie by remember { mutableStateOf<String?>(null) }
-    var carteActive by remember { mutableStateOf(false) }
     var fiche by remember { mutableStateOf<String?>(null) }
-    var ficheActive by remember { mutableStateOf(false) }
-    var touchesVues by remember { mutableIntStateOf(0) }
     var onglet by remember { mutableIntStateOf(0) }
-    val focusCarte = remember { FocusRequester() }
-    val focusFiche = remember { FocusRequester() }
-    var retourDock by remember { mutableStateOf<FocusRequester?>(null) }
-    val versDock: () -> Unit = {
+    var dockActif by remember { mutableStateOf(false) }
+    val quitterCarte: () -> Unit = {
+        fiche = null
         choisie = null
-        val fr = retourDock
-        if (fr == null || runCatching { fr.requestFocus() }.isFailure) ctx.sortieNba()
     }
-    val entrerCarte: (Float, FocusRequester) -> Unit = { x, fr ->
-        NavCarteNba.voisine(Offset(x, HAUT_DOCK), SensNba.HAUT, centres)?.let { code ->
-            choisie = code
-            retourDock = fr
-            runCatching { focusCarte.requestFocus() }
-        }
+    // Maison : retour à l'accueil, sans sélection
+    LaunchedEffect(ctx.appuisMaison) { if (ctx.appuisMaison > 0) quitterCarte() }
+    val entrerCarte: (Float) -> Unit = { x ->
+        NavCarteNba.voisine(Offset(x, HAUT_DOCK), SensNba.HAUT, centres)?.let { choisie = it }
     }
     val ouvrirFiche: (String) -> Unit = { code ->
         choisie = code
         onglet = 0
         fiche = code
-    }
-    LaunchedEffect(fiche) {
-        if (fiche == null) return@LaunchedEffect
-        withFrameNanos {}
-        runCatching { focusFiche.requestFocus() }
-    }
-    // Retour : la carte reprend le focus ; focus parti ailleurs (Maison…) : plus de sélection
-    val fermerFiche: (Boolean) -> Unit = { rendre ->
-        if (fiche != null) {
-            fiche = null
-            if (rendre) {
-                runCatching { focusCarte.requestFocus() }
-            } else {
-                choisie = null
-            }
-        }
     }
     val toucheCarte: (KeyEvent) -> Boolean = { e ->
         val sens = when (e.key) {
@@ -277,7 +250,8 @@ internal fun EcranNba(
                     if (suivante != null) {
                         choisie = suivante
                     } else if (sens == SensNba.BAS) {
-                        versDock()
+                        // ▼ sous les pastilles du bas : retour au dock
+                        quitterCarte()
                     }
                 }
                 true
@@ -287,13 +261,15 @@ internal fun EcranNba(
                 true
             }
             e.key == Key.Back || e.key == Key.Escape -> {
-                if (e.type == KeyEventType.KeyUp) versDock()
+                if (e.type == KeyEventType.KeyUp) quitterCarte()
                 true
             }
+            // Menu : rien (pas celui de l'app du dock, cachée derrière la carte)
+            e.key == Key.Menu -> true
             else -> false
         }
     }
-    // Fiche : ◀ ▶ changent d'onglet, Retour la ferme ; le reste ne la quitte pas
+    // Fiche : ◀ ▶ changent d'onglet, Retour la ferme (la pastille reste sélectionnée)
     val toucheFiche: (KeyEvent) -> Boolean = { e ->
         when (e.key) {
             Key.DirectionLeft, Key.DirectionRight -> {
@@ -301,27 +277,22 @@ internal fun EcranNba(
                 true
             }
             Key.Back, Key.Escape -> {
-                if (e.type == KeyEventType.KeyUp) fermerFiche(true)
+                if (e.type == KeyEventType.KeyUp) fiche = null
                 true
             }
-            Key.DirectionUp, Key.DirectionDown, Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> true
+            Key.DirectionUp, Key.DirectionDown, Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Menu -> true
             else -> false
         }
     }
-    val choisieAffichee = if (carteActive || fiche != null) choisie else null
 
-    // Touches de la carte et de la fiche, lues avant tout le reste (elles ont le focus)
     Box(
         Modifier
             .fillMaxSize()
             .fondNba(palette.fond)
-            .testTag("nba:ecran")
-            .semantics { stateDescription = "touches=$touchesVues carte=$carteActive choisie=$choisie fiche=$fiche ficheActive=$ficheActive centres=${centres.size}" }
             .onPreviewKeyEvent { e ->
-                touchesVues++
                 when {
-                    ficheActive -> toucheFiche(e)
-                    carteActive -> toucheCarte(e)
+                    fiche != null -> toucheFiche(e)
+                    choisie != null -> toucheCarte(e)
                     else -> false
                 }
             },
@@ -341,46 +312,30 @@ internal fun EcranNba(
             },
         )
         carte?.let { c ->
-            CouchePastilles(c, bilans, logos, choisieAffichee, k) { code ->
-                choisie = code
-                runCatching { focusCarte.requestFocus() }
+            CouchePastilles(c, bilans, logos, choisie, k) { code ->
+                // Toucher une pastille : sa fiche (le dock prend le focus s'il ne l'a pas, pour les touches)
+                if (!dockActif) runCatching { ctx.premierFocus.requestFocus() }
                 ouvrirFiche(code)
             }
         }
         EnTeteNba(palette, maintenant, k)
         TuileTop3(bilans, palette, logos, k, hauteur)
         EtatBilans(classement, maintenant, k, hauteur)
-        DockNba(ctx, k, hauteur, entrer = entrerCarte)
+        DockNba(
+            ctx, k, hauteur, modeCarte = choisie != null, entrer = entrerCarte,
+            surFocus = { aLeFocus ->
+                dockActif = aLeFocus
+                // Focus parti du dock (Réglages, bibliothèque…) : plus de sélection
+                if (!aLeFocus) quitterCarte()
+            },
+        )
         // « Mes apps » n'a pas de rangée ici : son état de défilement doit tout de même être attaché à une rangée
         LazyRow(state = ctx.rangeeApps, modifier = Modifier.size(0.dp)) {}
-        // Focus de la carte : invisible, sur toute la carte ; atteint seulement par ▲ depuis le dock
-        // (intercepté par ses tuiles) ou un clic sur une pastille
-        Box(
-            Modifier
-                .offset { IntOffset((100f * k).roundToInt(), (180f * k).roundToInt()) }
-                .size(1600.mq, 720.mq)
-                .testTag("nba:carte")
-                .focusRequester(focusCarte)
-                .onFocusChanged {
-                    carteActive = it.isFocused
-                    // Focus parti ailleurs que sur la fiche (Maison, clic sur le dock…) : plus de sélection
-                    if (!it.isFocused && fiche == null) choisie = null
-                }
-                .focusable(),
-        )
+        // Repère de la sélection sur la carte (tests, accessibilité)
+        if (choisie != null) Spacer(Modifier.size(1.dp).testTag("nba:carte"))
         val code = fiche
         if (code != null) {
-            FicheNba(
-                code = code,
-                bilan = bilans?.get(code),
-                source = source,
-                logos = logos,
-                k = k,
-                onglet = onglet,
-                focus = focusFiche,
-                surFocus = { ficheActive = it },
-                fermer = fermerFiche,
-            )
+            FicheNba(code = code, bilan = bilans?.get(code), source = source, logos = logos, k = k, onglet = onglet)
         }
     }
 }

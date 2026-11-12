@@ -171,6 +171,8 @@ class HomeContext(
     val sortieNba: () -> Unit,
     /** Fire TV : pas d'entrée HDMI, donc pas de bouton Sources. */
     val fireTv: Boolean = false,
+    /** Appuis sur Maison, launcher déjà affiché (NBA : la sélection sur la carte s'efface). */
+    val appuisMaison: Int = 0,
 )
 
 /** Bouton rapide (Sources, Wi-Fi, Bluetooth, Réglages) avec son action. */

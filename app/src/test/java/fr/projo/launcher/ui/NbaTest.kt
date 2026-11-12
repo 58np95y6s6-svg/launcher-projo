@@ -92,16 +92,19 @@ class NbaTest : BancAccueil("NBA") {
     /** Tous les éléments focalisés et leurs étiquettes (diagnostic des échecs). */
     private fun etatDuFocus(): String {
         val n = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
-        val ecran = compose.onAllNodes(hasTestTag("nba:ecran"), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
-            ?.config?.getOrNull(SemanticsProperties.StateDescription)
         val vue = compose.activity.window.decorView.findFocus()
         return n.joinToString(" ; ") { it.config.getOrNull(SemanticsProperties.TestTag) ?: "(sans étiquette)" } +
-            " | lancés $lances, menus $menus | vue Android focalisée : ${vue?.javaClass?.simpleName} (${vue?.isFocused}) | écran : $ecran"
+            " | lancés $lances, menus $menus | vue Android focalisée : ${vue?.javaClass?.simpleName} (${vue?.isFocused})"
     }
 
     private fun attendreChoisie(code: String?, etape: String) {
         val c = choisie()
         if (c != code) fail("[NBA] $etape : pastille sélectionnée attendue $code, obtenue $c (focus ${decrire(focus())} ; ${etatDuFocus()})")
+    }
+
+    /** Une pastille est sélectionnée : la carte lit les touches (le focus reste sur le dock). */
+    private fun attendreCarte(etape: String) {
+        if (!present("nba:carte")) fail("[NBA] $etape : sélection sur la carte attendue (${etatDuFocus()})")
     }
 
     private fun attendreFocus(etiquette: String, etape: String) {
@@ -178,10 +181,10 @@ class NbaTest : BancAccueil("NBA") {
     fun navigationSurLaCarte() {
         source()
         afficher()
-        println("[NBA] avant ▲ : ${etatDuFocus()}")
         appuyer(Key.DirectionUp)
-        println("[NBA] après ▲ : ${etatDuFocus()}")
-        attendreFocus("nba:carte", "▲ depuis le 1er favori")
+        attendreCarte("▲ depuis le 1er favori")
+        // Le focus reste sur la tuile d'où l'on est monté
+        attendreFocus(favori(0), "▲ depuis le 1er favori")
         attendreChoisie("SAS", "▲ depuis le 1er favori")
         appuyer(Key.DirectionUp)
         attendreChoisie("DAL", "▲ depuis SAS")
@@ -200,12 +203,15 @@ class NbaTest : BancAccueil("NBA") {
         appuyer(Key.DirectionDown)
         attendreFocus(favori(0), "▼ depuis HOU")
         attendreChoisie(null, "retour au dock")
+        if (present("nba:carte")) fail("[NBA] ▼ depuis HOU : la carte ne devait plus lire les touches")
         // Retour depuis la carte : le dock aussi
         appuyer(Key.DirectionRight)
         appuyer(Key.DirectionUp)
-        attendreFocus("nba:carte", "▲ depuis le 2e favori")
+        attendreCarte("▲ depuis le 2e favori")
+        attendreChoisie("SAS", "▲ depuis le 2e favori")
         appuyer(Key.Back)
         attendreFocus(favori(1), "Retour sur la carte")
+        attendreChoisie(null, "Retour sur la carte")
         if (lances.isNotEmpty()) fail("[NBA] rien ne devait se lancer : $lances")
     }
 
@@ -220,7 +226,7 @@ class NbaTest : BancAccueil("NBA") {
         attendreChoisie("OKC", "▲ ▲ ▲")
         appuyer(Key.DirectionCenter)
         avancer(500)
-        attendreFocus("nba:fiche", "OK sur OKC")
+        if (!present("nba:fiche")) fail("[NBA] OK sur OKC : fiche attendue (${etatDuFocus()})")
         verifierTextes(
             "Oklahoma City Thunder", "1er OUEST · 1er NORD-OUEST", "3 victoires de suite", "sur les 10 derniers",
             "RÉSUMÉ", "EFFECTIF", "DERNIER MATCH", "Défaite 108–118", "à Portland · mer. 11 nov.",
@@ -232,13 +238,12 @@ class NbaTest : BancAccueil("NBA") {
         appuyer(Key.DirectionRight)
         if (!present("nba:fiche:effectif") || present("nba:fiche:resume")) fail("[NBA] ▶ : onglet Effectif attendu")
         verifierTextes("#2", "S. Gilgeous-Alexander", "B. Fleming", "BLESSÉ")
-        attendreFocus("nba:fiche", "▶ dans la fiche")
         capturer("fiche_effectif")
         appuyer(Key.DirectionLeft)
         if (!present("nba:fiche:resume")) fail("[NBA] ◀ : onglet Résumé attendu")
         appuyer(Key.Back)
         if (present("nba:fiche")) fail("[NBA] Retour : la fiche devait se fermer")
-        attendreFocus("nba:carte", "Retour dans la fiche")
+        attendreCarte("Retour dans la fiche")
         attendreChoisie("OKC", "après la fiche")
         appuyer(Key.Back)
         attendreFocus(favori(0), "Retour sur la carte")

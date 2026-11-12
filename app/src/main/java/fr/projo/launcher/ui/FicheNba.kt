@@ -2,7 +2,6 @@ package fr.projo.launcher.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -78,8 +74,7 @@ private sealed interface EtatFiche {
 
 /**
  * Fiche de l'équipe [code] ([bilan] : son bilan au classement, s'il est connu), onglet
- * [onglet] (0 : Résumé, 1 : Effectif). [surFocus] : la fiche prend ou perd le focus ; [fermer] :
- * focus parti ailleurs (false ; Retour est lu par l'écran, qui ferme avec true).
+ * [onglet] (0 : Résumé, 1 : Effectif) ; les touches sont lues par l'écran (EcranNba).
  */
 @Composable
 internal fun FicheNba(
@@ -89,9 +84,6 @@ internal fun FicheNba(
     logos: Map<String, ImageBitmap>,
     k: Float,
     onglet: Int,
-    focus: FocusRequester,
-    surFocus: (Boolean) -> Unit,
-    fermer: (Boolean) -> Unit,
 ) {
     val etat by produceState<EtatFiche>(EtatFiche.Chargement, code, source) {
         val f = runCatching {
@@ -99,7 +91,6 @@ internal fun FicheNba(
         }.getOrNull()
         value = if (f != null) EtatFiche.Prete(f) else EtatFiche.Erreur
     }
-    var aEuLeFocus by remember(code) { mutableStateOf(false) }
     // Apparition : glisse un peu depuis la droite et se dévoile (une fois, à l'ouverture)
     val entree = remember(code) { Animatable(if (source.synchrone) 1f else 0f) }
     LaunchedEffect(code) { entree.animateTo(1f, tween(220)) }
@@ -112,14 +103,8 @@ internal fun FicheNba(
                 translationX = (1f - entree.value) * 40f * k
             }
             .verreNba(k, 26f, opacite = 0.97f)
-            .testTag("nba:fiche")
-            .focusRequester(focus)
-            // Touches : lues par l'écran (EcranNba) tant que la fiche a le focus
-            .onFocusChanged {
-                surFocus(it.hasFocus)
-                if (it.hasFocus) aEuLeFocus = true else if (aEuLeFocus) fermer(false)
-            }
-            .focusable(),
+            // Touches : lues par l'écran (EcranNba), le focus reste sur le dock
+            .testTag("nba:fiche"),
     ) {
         Column(Modifier.padding(horizontal = 32.mq, vertical = 28.mq)) {
             val f = (etat as? EtatFiche.Prete)?.fiche

@@ -96,11 +96,19 @@ private sealed class ElementDockNba(val cle: String) {
 }
 
 /**
- * Le dock. [entrer] : ▲ depuis une tuile (centre de la tuile en px de maquette, et de quoi
- * y revenir) : la carte prend le focus si une pastille est au-dessus.
+ * Le dock. [entrer] : ▲ depuis une tuile (centre de la tuile en px de maquette) : sélection de
+ * la pastille au-dessus. [modeCarte] : une pastille est sélectionnée (le focus reste sur la
+ * tuile, qui ne se montre plus sélectionnée). [surFocus] : le dock prend ou perd le focus.
  */
 @Composable
-internal fun DockNba(ctx: HomeContext, k: Float, hauteur: Float, entrer: (Float, FocusRequester) -> Unit) {
+internal fun DockNba(
+    ctx: HomeContext,
+    k: Float,
+    hauteur: Float,
+    modeCarte: Boolean,
+    entrer: (Float) -> Unit,
+    surFocus: (Boolean) -> Unit,
+) {
     val ui = ctx.ui
     val elements = buildList {
         if (ui.loaded && ui.favorites.isEmpty()) add(ElementDockNba.Aide)
@@ -147,7 +155,10 @@ internal fun DockNba(ctx: HomeContext, k: Float, hauteur: Float, entrer: (Float,
                     )
                 }
                 .testTag("rangee:favoris")
-                .onFocusChanged { if (!it.hasFocus) nom = null }
+                .onFocusChanged {
+                    if (!it.hasFocus) nom = null
+                    surFocus(it.hasFocus)
+                }
                 // Molette de la souris : fait défiler la rangée (Pointeur.kt)
                 .moletteRangee(ctx.rangeeFavoris),
             contentPadding = PaddingValues(horizontal = 22.mq),
@@ -156,7 +167,7 @@ internal fun DockNba(ctx: HomeContext, k: Float, hauteur: Float, entrer: (Float,
         ) {
             items(elements.size, key = { elements[it].cle }) { i ->
                 val e = elements[i]
-                val surFocus: (Boolean, String, LayoutCoordinates?) -> Unit = { f, n, c ->
+                val surFocusTuile: (Boolean, String, LayoutCoordinates?) -> Unit = { f, n, c ->
                     if (f) {
                         nom = n
                         val z = zone[0]
@@ -168,27 +179,27 @@ internal fun DockNba(ctx: HomeContext, k: Float, hauteur: Float, entrer: (Float,
                     }
                 }
                 when (e) {
-                    is ElementDockNba.App -> TuileApp(ctx, e, k, entrer, surFocus)
-                    ElementDockNba.Aide -> AideDockNba(ctx, k, entrer, surFocus)
+                    is ElementDockNba.App -> TuileApp(ctx, e, k, modeCarte, entrer, surFocusTuile)
+                    ElementDockNba.Aide -> AideDockNba(ctx, k, modeCarte, entrer, surFocusTuile)
                     ElementDockNba.Separateur -> Spacer(
                         Modifier.width(1.5f.mq).fillMaxHeight().drawBehind {
                             drawRect(Color.White.copy(alpha = 0.14f), topLeft = Offset(0f, (D_DESSUS + 26f) * k), size = Size(size.width, 64f * k))
                         },
                     )
                     ElementDockNba.Biblio -> TuileDockNba(
-                        "biblio", "Toutes les apps", k, ctx.focusBiblio, ctx.actions.openLibrary, null, entrer, surFocus,
+                        "biblio", "Toutes les apps", k, modeCarte, ctx.focusBiblio, ctx.actions.openLibrary, null, entrer, surFocusTuile,
                         fond = Color.White.copy(alpha = 0.08f), contour = true,
                     ) {
                         Spacer(Modifier.align(Alignment.Center).size(34.mq).drawBehind { grilleApps(Color.White) })
                     }
                     ElementDockNba.Reglages -> TuileDockNba(
-                        "rapide:Réglages", "Réglages", k, ctx.focusReglages, ctx.actions.settings, ctx.actions.settingsLong, entrer, surFocus,
+                        "rapide:Réglages", "Réglages", k, modeCarte, ctx.focusReglages, ctx.actions.settings, ctx.actions.settingsLong, entrer, surFocusTuile,
                         fond = Color.White.copy(alpha = 0.08f), contour = true,
                     ) {
                         Spacer(Modifier.align(Alignment.Center).size(36.mq).drawBehind { roueCrantee(Color.White) })
                     }
                     ElementDockNba.MiseAJour -> TuileDockNba(
-                        "rapide:Mise à jour", "Mise à jour", k, null, ctx.actions.update, null, entrer, surFocus,
+                        "rapide:Mise à jour", "Mise à jour", k, modeCarte, null, ctx.actions.update, null, entrer, surFocusTuile,
                         fond = OrNba, contour = false,
                     ) {
                         Spacer(Modifier.align(Alignment.Center).size(36.mq).drawBehind { flecheMiseAJour(Color(0xFF0A1534)) })
@@ -198,7 +209,7 @@ internal fun DockNba(ctx: HomeContext, k: Float, hauteur: Float, entrer: (Float,
         }
         // Nom de la tuile sélectionnée, au-dessus d'elle (hors de la rangée : jamais coupé)
         val n = nom
-        if (n != null) {
+        if (n != null && !modeCarte) {
             Box(
                 Modifier
                     .layout { m, _ ->
@@ -233,10 +244,11 @@ private fun TuileDockNba(
     etiquette: String,
     nom: String,
     k: Float,
+    modeCarte: Boolean,
     fr: FocusRequester?,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
-    entrer: (Float, FocusRequester) -> Unit,
+    entrer: (Float) -> Unit,
     surFocus: (Boolean, String, LayoutCoordinates?) -> Unit,
     fond: Color,
     contour: Boolean,
@@ -244,8 +256,8 @@ private fun TuileDockNba(
     contenu: @Composable BoxScope.() -> Unit,
 ) {
     var focus by remember { mutableStateOf(false) }
-    val t by animateFloatAsState(if (focus) 1f else 0f, tween(160), label = "tuile")
-    val retour = remember { FocusRequester() }
+    // Pastille sélectionnée sur la carte : la tuile garde le focus mais ne se montre plus choisie
+    val t by animateFloatAsState(if (focus && !modeCarte) 1f else 0f, tween(160), label = "tuile")
     val place = remember { arrayOfNulls<LayoutCoordinates>(1) }
     CaseDockNba {
         Box(
@@ -273,7 +285,6 @@ private fun TuileDockNba(
                 modifier = Modifier
                     .testTag(etiquette)
                     .then(if (fr != null) Modifier.focusRequester(fr) else Modifier)
-                    .focusRequester(retour)
                     .onFocusChanged {
                         focus = it.hasFocus
                         surFocus(it.hasFocus, nom, place[0])
@@ -283,7 +294,7 @@ private fun TuileDockNba(
                             it.key == Key.DirectionUp -> {
                                 if (it.type == KeyEventType.KeyDown) {
                                     val c = place[0]
-                                    if (c != null && c.isAttached) entrer((c.positionInRoot().x + c.size.width / 2f) / k, retour)
+                                    if (c != null && c.isAttached) entrer((c.positionInRoot().x + c.size.width / 2f) / k)
                                 }
                                 true
                             }
@@ -326,7 +337,8 @@ private fun TuileApp(
     ctx: HomeContext,
     e: ElementDockNba.App,
     k: Float,
-    entrer: (Float, FocusRequester) -> Unit,
+    modeCarte: Boolean,
+    entrer: (Float) -> Unit,
     surFocus: (Boolean, String, LayoutCoordinates?) -> Unit,
 ) {
     val app = e.app
@@ -334,7 +346,7 @@ private fun TuileApp(
     val couleur = visuel?.color ?: if (app.isSpecial) IconLoader.COULEUR_HDMI else IconLoader.COULEUR_PAR_DEFAUT
     val art = visuel?.art
     TuileDockNba(
-        "favori:" + app.packageName, app.label, k, if (e.premier) ctx.premierFocus else null,
+        "favori:" + app.packageName, app.label, k, modeCarte, if (e.premier) ctx.premierFocus else null,
         onClick = { ctx.actions.launch(app) }, onLongClick = { ctx.actions.openMenu(app) }, entrer = entrer, surFocus = surFocus,
         fond = lerp(couleur, Color.Black, 0.35f), contour = false, menu = { ctx.actions.openMenu(app) },
     ) {
@@ -357,11 +369,11 @@ private fun TuileApp(
 private fun AideDockNba(
     ctx: HomeContext,
     k: Float,
-    entrer: (Float, FocusRequester) -> Unit,
+    modeCarte: Boolean,
+    entrer: (Float) -> Unit,
     surFocus: (Boolean, String, LayoutCoordinates?) -> Unit,
 ) {
     var focus by remember { mutableStateOf(false) }
-    val retour = remember { FocusRequester() }
     val place = remember { arrayOfNulls<LayoutCoordinates>(1) }
     CaseDockNba {
         SurfaceCliquable(
@@ -369,7 +381,6 @@ private fun AideDockNba(
             modifier = Modifier
                 .testTag("aide")
                 .focusRequester(ctx.premierFocus)
-                .focusRequester(retour)
                 .onGloballyPositioned { place[0] = it }
                 .onFocusChanged {
                     focus = it.hasFocus
@@ -378,12 +389,12 @@ private fun AideDockNba(
                 .onPreviewKeyEvent {
                     if (it.key == Key.DirectionUp) {
                         val c = place[0]
-                        if (it.type == KeyEventType.KeyDown && c != null && c.isAttached) entrer((c.positionInRoot().x + c.size.width / 2f) / k, retour)
+                        if (it.type == KeyEventType.KeyDown && c != null && c.isAttached) entrer((c.positionInRoot().x + c.size.width / 2f) / k)
                         true
                     } else false
                 }
                 .drawBehind {
-                    if (focus) {
+                    if (focus && !modeCarte) {
                         drawRoundRect(
                             Color.White, topLeft = Offset(-2f * k, -2f * k), size = Size(size.width + 4f * k, size.height + 4f * k),
                             cornerRadius = CornerRadius(24f * k), style = Stroke(4f * k),
