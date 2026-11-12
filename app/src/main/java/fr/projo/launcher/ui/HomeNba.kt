@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
@@ -348,14 +347,14 @@ internal fun EcranNba(
         DockNba(ctx, k, hauteur, entrer = entrerCarte)
         // « Mes apps » n'a pas de rangée ici : son état de défilement doit tout de même être attaché à une rangée
         LazyRow(state = ctx.rangeeApps, modifier = Modifier.size(0.dp)) {}
-        // Focus de la carte : invisible, sur toute la carte, tant qu'une pastille est sélectionnée
+        // Focus de la carte : invisible, sur toute la carte ; atteint seulement par ▲ depuis le dock
+        // (intercepté par ses tuiles) ou un clic sur une pastille
         Box(
             Modifier
                 .offset { IntOffset((100f * k).roundToInt(), (180f * k).roundToInt()) }
                 .size(1600.mq, 720.mq)
                 .testTag("nba:carte")
                 .focusRequester(focusCarte)
-                .focusProperties { canFocus = choisie != null }
                 .onFocusChanged {
                     carteActive = it.isFocused
                     // Focus parti ailleurs que sur la fiche (Maison, clic sur le dock…) : plus de sélection

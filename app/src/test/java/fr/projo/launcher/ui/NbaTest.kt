@@ -89,8 +89,9 @@ class NbaTest : BancAccueil("NBA") {
     /** Tous les éléments focalisés et leurs étiquettes (diagnostic des échecs). */
     private fun etatDuFocus(): String {
         val n = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+        val vue = compose.activity.window.decorView.findFocus()
         return n.joinToString(" ; ") { it.config.getOrNull(SemanticsProperties.TestTag) ?: "(sans étiquette)" } +
-            " | lancés $lances, menus $menus"
+            " | lancés $lances, menus $menus | vue Android focalisée : ${vue?.javaClass?.simpleName} (${vue?.isFocused})"
     }
 
     private fun attendreChoisie(code: String?, etape: String) {
@@ -172,7 +173,9 @@ class NbaTest : BancAccueil("NBA") {
     fun navigationSurLaCarte() {
         source()
         afficher()
+        println("[NBA] avant ▲ : ${etatDuFocus()}")
         appuyer(Key.DirectionUp)
+        println("[NBA] après ▲ : ${etatDuFocus()}")
         attendreFocus("nba:carte", "▲ depuis le 1er favori")
         attendreChoisie("SAS", "▲ depuis le 1er favori")
         appuyer(Key.DirectionUp)
