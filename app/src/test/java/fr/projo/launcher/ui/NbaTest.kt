@@ -70,6 +70,22 @@ class NbaTest : BancAccueil("NBA") {
         chargementSansFin: Boolean = false,
     ) = SourceNbaFactice(classement, t, chargementSansFin = chargementSansFin).also { sourceNba = it }
 
+    /**
+     * Appui sur une touche, puis l'état changé par la carte ou la fiche (sans animation ni
+     * changement de focus) signalé à Compose et recomposé (horloge du test avancée à la main).
+     */
+    private fun touche(k: Key) {
+        appuyer(k)
+        appliquer()
+    }
+
+    private fun appliquer() {
+        compose.runOnIdle { androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications() }
+        avancer(200)
+        compose.runOnIdle { androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications() }
+        avancer(200)
+    }
+
     private fun texte(s: String) =
         compose.onAllNodes(hasText(s, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
@@ -181,35 +197,35 @@ class NbaTest : BancAccueil("NBA") {
     fun navigationSurLaCarte() {
         source()
         afficher()
-        appuyer(Key.DirectionUp)
+        touche(Key.DirectionUp)
         attendreCarte("▲ depuis le 1er favori")
         // Le focus reste sur la tuile d'où l'on est monté
         attendreFocus(favori(0), "▲ depuis le 1er favori")
         attendreChoisie("SAS", "▲ depuis le 1er favori")
-        appuyer(Key.DirectionUp)
+        touche(Key.DirectionUp)
         attendreChoisie("DAL", "▲ depuis SAS")
-        appuyer(Key.DirectionUp)
+        touche(Key.DirectionUp)
         attendreChoisie("OKC", "▲ depuis DAL")
         capturer("selection")
-        appuyer(Key.DirectionRight)
+        touche(Key.DirectionRight)
         attendreChoisie("MEM", "▶ depuis OKC")
-        appuyer(Key.DirectionLeft)
+        touche(Key.DirectionLeft)
         attendreChoisie("IND", "◀ depuis MEM")
         for (attendue in listOf("MEM", "ATL", "NOP", "HOU")) {
-            appuyer(Key.DirectionDown)
+            touche(Key.DirectionDown)
             attendreChoisie(attendue, "▼ vers $attendue")
         }
         // ▼ sous les pastilles du bas : retour au dock, sur la tuile de départ
-        appuyer(Key.DirectionDown)
+        touche(Key.DirectionDown)
         attendreFocus(favori(0), "▼ depuis HOU")
         attendreChoisie(null, "retour au dock")
         if (present("nba:carte")) fail("[NBA] ▼ depuis HOU : la carte ne devait plus lire les touches")
         // Retour depuis la carte : le dock aussi
-        appuyer(Key.DirectionRight)
-        appuyer(Key.DirectionUp)
+        touche(Key.DirectionRight)
+        touche(Key.DirectionUp)
         attendreCarte("▲ depuis le 2e favori")
         attendreChoisie("SAS", "▲ depuis le 2e favori")
-        appuyer(Key.Back)
+        touche(Key.Back)
         attendreFocus(favori(1), "Retour sur la carte")
         attendreChoisie(null, "Retour sur la carte")
         if (lances.isNotEmpty()) fail("[NBA] rien ne devait se lancer : $lances")
@@ -222,9 +238,9 @@ class NbaTest : BancAccueil("NBA") {
     fun ficheResumeEtEffectif() {
         source()
         afficher()
-        repeat(3) { appuyer(Key.DirectionUp) }
+        repeat(3) { touche(Key.DirectionUp) }
         attendreChoisie("OKC", "▲ ▲ ▲")
-        appuyer(Key.DirectionCenter)
+        touche(Key.DirectionCenter)
         avancer(500)
         if (!present("nba:fiche")) fail("[NBA] OK sur OKC : fiche attendue (${etatDuFocus()})")
         verifierTextes(
@@ -235,17 +251,17 @@ class NbaTest : BancAccueil("NBA") {
         )
         if (!present("nba:fiche:resume")) fail("[NBA] onglet Résumé absent")
         capturer("fiche_resume")
-        appuyer(Key.DirectionRight)
+        touche(Key.DirectionRight)
         if (!present("nba:fiche:effectif") || present("nba:fiche:resume")) fail("[NBA] ▶ : onglet Effectif attendu")
         verifierTextes("#2", "S. Gilgeous-Alexander", "B. Fleming", "BLESSÉ")
         capturer("fiche_effectif")
-        appuyer(Key.DirectionLeft)
+        touche(Key.DirectionLeft)
         if (!present("nba:fiche:resume")) fail("[NBA] ◀ : onglet Résumé attendu")
-        appuyer(Key.Back)
+        touche(Key.Back)
         if (present("nba:fiche")) fail("[NBA] Retour : la fiche devait se fermer")
         attendreCarte("Retour dans la fiche")
         attendreChoisie("OKC", "après la fiche")
-        appuyer(Key.Back)
+        touche(Key.Back)
         attendreFocus(favori(0), "Retour sur la carte")
     }
 
@@ -257,11 +273,12 @@ class NbaTest : BancAccueil("NBA") {
         compose.onAllNodes(hasTestTag("nba:pastille:OKC"), useUnmergedTree = true).onFirst()
             .performTouchInput { click() }
         avancer(800)
+        appliquer()
         verifierTextes("Oklahoma City Thunder", "Défaite 108–118")
         attendreChoisie("OKC", "toucher OKC")
-        appuyer(Key.DirectionRight)
+        touche(Key.DirectionRight)
         if (!present("nba:fiche:effectif")) fail("[NBA] ▶ après le toucher : onglet Effectif attendu (${etatDuFocus()})")
-        appuyer(Key.Back)
+        touche(Key.Back)
         if (present("nba:fiche")) fail("[NBA] Retour après le toucher : la fiche devait se fermer (${etatDuFocus()})")
     }
 
@@ -269,12 +286,12 @@ class NbaTest : BancAccueil("NBA") {
     fun ficheIndisponible() {
         source()
         afficher()
-        appuyer(Key.DirectionUp)
+        touche(Key.DirectionUp)
         attendreChoisie("SAS", "▲")
-        appuyer(Key.DirectionCenter)
+        touche(Key.DirectionCenter)
         avancer(500)
         verifierTextes("San Antonio Spurs", "Fiche indisponible pour l'instant")
-        appuyer(Key.Back)
+        touche(Key.Back)
         attendreChoisie("SAS", "Retour")
     }
 
@@ -282,8 +299,8 @@ class NbaTest : BancAccueil("NBA") {
     fun ficheEnChargement() {
         source(chargementSansFin = true)
         afficher()
-        appuyer(Key.DirectionUp)
-        appuyer(Key.DirectionCenter)
+        touche(Key.DirectionUp)
+        touche(Key.DirectionCenter)
         avancer(500)
         if (!present("nba:fiche:chargement")) fail("[NBA] squelette de chargement absent (${etatDuFocus()})")
         verifierTextes("San Antonio Spurs", "6–7")
@@ -297,9 +314,11 @@ class NbaTest : BancAccueil("NBA") {
         if (s.suivis.firstOrNull() != true) fail("[NBA] suivre(true) attendu à l'affichage : ${s.suivis}")
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         avancer(500)
+        appliquer()
         if (s.suivis.lastOrNull() != false) fail("[NBA] iBiTV au second plan : suivre(false) attendu : ${s.suivis}")
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         avancer(500)
+        appliquer()
         if (s.suivis.lastOrNull() != true) fail("[NBA] retour au premier plan : suivre(true) attendu : ${s.suivis}")
     }
 }
