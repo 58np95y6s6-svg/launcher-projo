@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -35,11 +34,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -83,8 +77,9 @@ private sealed interface EtatFiche {
 }
 
 /**
- * Fiche de l'équipe [code] ([bilan] : son bilan au classement, s'il est connu). [fermer] :
- * Retour (true : le focus revient sur la carte) ou focus parti ailleurs (false).
+ * Fiche de l'équipe [code] ([bilan] : son bilan au classement, s'il est connu), onglet
+ * [onglet] (0 : Résumé, 1 : Effectif). [surFocus] : la fiche prend ou perd le focus ; [fermer] :
+ * focus parti ailleurs (false ; Retour est lu par l'écran, qui ferme avec true).
  */
 @Composable
 internal fun FicheNba(
@@ -93,7 +88,9 @@ internal fun FicheNba(
     source: SourceNba,
     logos: Map<String, ImageBitmap>,
     k: Float,
+    onglet: Int,
     focus: FocusRequester,
+    surFocus: (Boolean) -> Unit,
     fermer: (Boolean) -> Unit,
 ) {
     val etat by produceState<EtatFiche>(EtatFiche.Chargement, code, source) {
@@ -102,7 +99,6 @@ internal fun FicheNba(
         }.getOrNull()
         value = if (f != null) EtatFiche.Prete(f) else EtatFiche.Erreur
     }
-    var onglet by remember(code) { mutableIntStateOf(0) }
     var aEuLeFocus by remember(code) { mutableStateOf(false) }
     // Apparition : glisse un peu depuis la droite et se dévoile (une fois, à l'ouverture)
     val entree = remember(code) { Animatable(if (source.synchrone) 1f else 0f) }
@@ -118,22 +114,10 @@ internal fun FicheNba(
             .verreNba(k, 26f, opacite = 0.97f)
             .testTag("nba:fiche")
             .focusRequester(focus)
+            // Touches : lues par l'écran (EcranNba) tant que la fiche a le focus
             .onFocusChanged {
+                surFocus(it.hasFocus)
                 if (it.hasFocus) aEuLeFocus = true else if (aEuLeFocus) fermer(false)
-            }
-            .onKeyEvent { e ->
-                when (e.key) {
-                    Key.DirectionLeft, Key.DirectionRight -> {
-                        if (e.type == KeyEventType.KeyDown) onglet = if (e.key == Key.DirectionLeft) 0 else 1
-                        true
-                    }
-                    Key.Back, Key.Escape -> {
-                        if (e.type == KeyEventType.KeyUp) fermer(true)
-                        true
-                    }
-                    Key.DirectionUp, Key.DirectionDown, Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> true
-                    else -> false
-                }
             }
             .focusable(),
     ) {

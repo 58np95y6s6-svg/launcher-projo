@@ -43,7 +43,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -180,22 +180,30 @@ internal fun EcranNba(
 
     // ------------------------------------------------ logos (leaders d'abord), mémoire puis disque et réseau
     val logos = remember { mutableStateMapOf<String, ImageBitmap>() }
-    val tentes = remember { HashSet<String>() }
-    var tentatives by remember { mutableIntStateOf(0) }
-    LaunchedEffect(source, leaders) {
+    val echecs = remember { HashSet<String>() }
+    var essais by remember { mutableIntStateOf(0) }
+    // Logos manquants (premier démarrage hors ligne) : nouvel essai à chaque classement reçu du réseau
+    val majEnLigne = classement?.takeIf { !it.horsLigne }?.misAJour
+    LaunchedEffect(source, leaders, majEnLigne) {
         for (code in (leaders.values + EquipesNba.toutes.map { it.code }).distinct()) {
-            if (code in tentes) continue
+            if (code in logos) continue
             val logo = source.logoEnMemoire(code)
                 ?: if (source.synchrone) source.logo(code) else withContext(Dispatchers.IO) { runCatching { source.logo(code) }.getOrNull() }
-            if (logo != null) logos[code] = logo
-            tentes += code
-            tentatives++
+            if (logo != null) {
+                logos[code] = logo
+                echecs -= code
+            } else {
+                echecs += code
+            }
+            essais++
         }
     }
-    // Filigranes : les logos des leaders, une fois tous essayés (un seul nouveau dessin de la carte)
-    val leadersPrets = tentatives >= 0 && leaders.values.all { it in tentes }
-    val filigranes = remember(leaders, leadersPrets) {
-        leaders.mapValues { (_, code) -> FiligraneNba(code, if (leadersPrets) logos[code] else null) }
+    // Filigranes : les logos des leaders, une fois tous essayés (un seul nouveau dessin de la carte,
+    // puis un autre seulement si un logo manquant arrive plus tard)
+    val leadersPrets = essais >= 0 && leaders.values.all { it in logos || it in echecs }
+    val logosLeaders = if (leadersPrets) leaders.values.count { it in logos } else -1
+    val filigranes = remember(leaders, logosLeaders) {
+        leaders.mapValues { (_, code) -> FiligraneNba(code, if (logosLeaders >= 0) logos[code] else null) }
     }
 
     // ------------------------------------------------ image de la carte (une par ambiance et jeu de leaders)
@@ -213,6 +221,8 @@ internal fun EcranNba(
     var choisie by remember { mutableStateOf<String?>(null) }
     var carteActive by remember { mutableStateOf(false) }
     var fiche by remember { mutableStateOf<String?>(null) }
+    var ficheActive by remember { mutableStateOf(false) }
+    var onglet by remember { mutableIntStateOf(0) }
     val focusCarte = remember { FocusRequester() }
     val focusFiche = remember { FocusRequester() }
     var retourDock by remember { mutableStateOf<FocusRequester?>(null) }
@@ -230,6 +240,7 @@ internal fun EcranNba(
     }
     val ouvrirFiche: (String) -> Unit = { code ->
         choisie = code
+        onglet = 0
         fiche = code
     }
     LaunchedEffect(fiche) {
@@ -280,9 +291,36 @@ internal fun EcranNba(
             else -> false
         }
     }
+    // Fiche : ◀ ▶ changent d'onglet, Retour la ferme ; le reste ne la quitte pas
+    val toucheFiche: (KeyEvent) -> Boolean = { e ->
+        when (e.key) {
+            Key.DirectionLeft, Key.DirectionRight -> {
+                if (e.type == KeyEventType.KeyDown) onglet = if (e.key == Key.DirectionLeft) 0 else 1
+                true
+            }
+            Key.Back, Key.Escape -> {
+                if (e.type == KeyEventType.KeyUp) fermerFiche(true)
+                true
+            }
+            Key.DirectionUp, Key.DirectionDown, Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> true
+            else -> false
+        }
+    }
     val choisieAffichee = if (carteActive || fiche != null) choisie else null
 
-    Box(Modifier.fillMaxSize().fondNba(palette.fond)) {
+    // Touches de la carte et de la fiche, lues avant tout le reste (elles ont le focus)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .fondNba(palette.fond)
+            .onPreviewKeyEvent { e ->
+                when {
+                    ficheActive -> toucheFiche(e)
+                    carteActive -> toucheCarte(e)
+                    else -> false
+                }
+            },
+    ) {
         // Carte : l'image en mémoire, réaffichée telle quelle
         Spacer(
             Modifier.fillMaxSize().testTag("nba:image").drawBehind {
@@ -310,11 +348,11 @@ internal fun EcranNba(
         DockNba(ctx, k, hauteur, entrer = entrerCarte)
         // « Mes apps » n'a pas de rangée ici : son état de défilement doit tout de même être attaché à une rangée
         LazyRow(state = ctx.rangeeApps, modifier = Modifier.size(0.dp)) {}
-        // Focus de la carte : invisible, il reçoit les touches tant qu'une pastille est sélectionnée
+        // Focus de la carte : invisible, sur toute la carte, tant qu'une pastille est sélectionnée
         Box(
             Modifier
-                .offset { IntOffset((960f * k).roundToInt(), (540f * k).roundToInt()) }
-                .size(1.dp)
+                .offset { IntOffset((100f * k).roundToInt(), (180f * k).roundToInt()) }
+                .size(1600.mq, 720.mq)
                 .testTag("nba:carte")
                 .focusRequester(focusCarte)
                 .focusProperties { canFocus = choisie != null }
@@ -323,7 +361,6 @@ internal fun EcranNba(
                     // Focus parti ailleurs que sur la fiche (Maison, clic sur le dock…) : plus de sélection
                     if (!it.isFocused && fiche == null) choisie = null
                 }
-                .onKeyEvent(toucheCarte)
                 .focusable(),
         )
         val code = fiche
@@ -334,7 +371,9 @@ internal fun EcranNba(
                 source = source,
                 logos = logos,
                 k = k,
+                onglet = onglet,
                 focus = focusFiche,
+                surFocus = { ficheActive = it },
                 fermer = fermerFiche,
             )
         }

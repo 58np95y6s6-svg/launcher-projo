@@ -86,9 +86,16 @@ class NbaTest : BancAccueil("NBA") {
             ?.config?.getOrNull(SemanticsProperties.TestTag)?.removePrefix("nba:pastille:")
     }
 
+    /** Tous les éléments focalisés et leurs étiquettes (diagnostic des échecs). */
+    private fun etatDuFocus(): String {
+        val n = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+        return n.joinToString(" ; ") { it.config.getOrNull(SemanticsProperties.TestTag) ?: "(sans étiquette)" } +
+            " | lancés $lances, menus $menus"
+    }
+
     private fun attendreChoisie(code: String?, etape: String) {
         val c = choisie()
-        if (c != code) fail("[NBA] $etape : pastille sélectionnée attendue $code, obtenue $c (focus ${decrire(focus())})")
+        if (c != code) fail("[NBA] $etape : pastille sélectionnée attendue $code, obtenue $c (focus ${decrire(focus())} ; ${etatDuFocus()})")
     }
 
     private fun attendreFocus(etiquette: String, etape: String) {
@@ -97,7 +104,7 @@ class NbaTest : BancAccueil("NBA") {
     }
 
     private fun verifierTextes(vararg attendus: String) {
-        for (s in attendus) if (!texte(s)) fail("[NBA] texte « $s » absent")
+        for (s in attendus) if (!texte(s)) fail("[NBA] texte « $s » absent (${etatDuFocus()})")
     }
 
     // ------------------------------------------------------------------ accueil
@@ -249,7 +256,7 @@ class NbaTest : BancAccueil("NBA") {
         appuyer(Key.DirectionUp)
         appuyer(Key.DirectionCenter)
         avancer(500)
-        if (!present("nba:fiche:chargement")) fail("[NBA] squelette de chargement absent")
+        if (!present("nba:fiche:chargement")) fail("[NBA] squelette de chargement absent (${etatDuFocus()})")
         verifierTextes("San Antonio Spurs", "6–7")
     }
 
