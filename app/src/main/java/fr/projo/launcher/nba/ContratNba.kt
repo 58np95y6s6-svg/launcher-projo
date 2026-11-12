@@ -1,9 +1,5 @@
 package fr.projo.launcher.nba
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-
 /*
  * Design « NBA » (docs/design-nba.md) : ce que l'affichage utilise. Les données (ESPN) le
  * remplissent ; l'affichage ne dépend de rien d'autre.
@@ -78,34 +74,3 @@ data class FicheEquipe(
     val effectif: List<JoueurNba>,
     val blessures: List<BlessureNba>,
 )
-
-/**
- * Données du design NBA. Version minimale (remplacée par la lecture ESPN) : aucun classement,
- * aucune fiche, logos à leur adresse ESPN.
- */
-object DonneesNba {
-    private val _classement = MutableStateFlow<ClassementNba?>(null)
-
-    /** Dernier classement connu (cache disque au démarrage, puis rafraîchi). */
-    val classement: StateFlow<ClassementNba?> = _classement.asStateFlow()
-
-    /** Le design NBA est-il affiché ? (rafraîchissement toutes les 10 min tant qu'il l'est, rien sinon) */
-    fun suivre(actif: Boolean) {}
-
-    /** Fiche d'une équipe, null si indisponible. */
-    suspend fun fiche(code: String): FicheEquipe? = null
-
-    /** Adresse du logo d'une équipe (code NBA). */
-    fun logo(code: String): String = "https://a.espncdn.com/i/teamlogos/nba/500/${codeEspn(code).lowercase()}.png"
-
-    /** Code NBA → abréviation ESPN (GSW → GS…). */
-    fun codeEspn(code: String): String = when (code) {
-        "GSW" -> "GS"
-        "NYK" -> "NY"
-        "SAS" -> "SA"
-        "NOP" -> "NO"
-        "UTA" -> "UTAH"
-        "WAS" -> "WSH"
-        else -> code
-    }
-}

@@ -1,0 +1,1053 @@
+{
+ "timestamp": "2026-11-12T21:49:43Z",
+ "status": "success",
+ "season": {
+  "year": 2027,
+  "displayName": "2026-27",
+  "type": 2,
+  "name": "Regular Season"
+ },
+ "coach": [
+  {
+   "id": "4356384",
+   "firstName": "Mark",
+   "lastName": "Daigneault",
+   "experience": 6
+  }
+ ],
+ "team": {
+  "id": "25",
+  "abbreviation": "OKC",
+  "location": "Oklahoma City",
+  "name": "Thunder",
+  "displayName": "Oklahoma City Thunder",
+  "clubhouse": "https://www.espn.com/nba/team/_/name/okc/oklahoma-city-thunder",
+  "color": "007ac1",
+  "logo": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+  "recordSummary": "8-4",
+  "seasonSummary": "2026-27",
+  "standingSummary": "3rd in Northwest Division"
+ },
+ "athletes": [
+  {
+   "id": "4684208",
+   "firstName": "Brooks",
+   "lastName": "Barnhizer",
+   "fullName": "Brooks Barnhizer",
+   "displayName": "Brooks Barnhizer",
+   "shortName": "B. Barnhizer",
+   "weight": 226.0,
+   "displayWeight": "226 lbs",
+   "height": 78.0,
+   "displayHeight": "6' 6\"",
+   "age": 24,
+   "jersey": "23",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 2
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "2991350",
+   "firstName": "Alex",
+   "lastName": "Caruso",
+   "fullName": "Alex Caruso",
+   "displayName": "Alex Caruso",
+   "shortName": "A. Caruso",
+   "weight": 186.0,
+   "displayWeight": "186 lbs",
+   "height": 77.0,
+   "displayHeight": "6' 5\"",
+   "age": 32,
+   "debutYear": 2017,
+   "jersey": "9",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 10
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 19550160,
+    "outgoingTradeValue": 19550160,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 19550160,
+    "salaryRemaining": 0,
+    "yearsRemaining": 3,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4702384",
+   "firstName": "Nique",
+   "lastName": "Clifford",
+   "fullName": "Nique Clifford",
+   "displayName": "Nique Clifford",
+   "shortName": "N. Clifford",
+   "weight": 175.0,
+   "displayWeight": "175 lbs",
+   "height": 77.0,
+   "displayHeight": "6' 5\"",
+   "age": 24,
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 2
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 3263400,
+    "outgoingTradeValue": 3263400,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 3263400,
+    "salaryRemaining": 0,
+    "yearsRemaining": 3,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5105800",
+   "firstName": "Josh",
+   "lastName": "Dix",
+   "fullName": "Josh Dix",
+   "displayName": "Josh Dix",
+   "shortName": "J. Dix",
+   "weight": 206.0,
+   "displayWeight": "206 lbs",
+   "height": 77.0,
+   "displayHeight": "6' 5\"",
+   "age": 22,
+   "jersey": "21",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4278073",
+   "firstName": "Shai",
+   "lastName": "Gilgeous-Alexander",
+   "fullName": "Shai Gilgeous-Alexander",
+   "displayName": "Shai Gilgeous-Alexander",
+   "shortName": "S. Gilgeous-Alexander",
+   "weight": 195.0,
+   "displayWeight": "195 lbs",
+   "height": 78.0,
+   "displayHeight": "6' 6\"",
+   "age": 28,
+   "debutYear": 2018,
+   "jersey": "2",
+   "hand": {
+    "type": "RIGHT",
+    "abbreviation": "R",
+    "displayValue": "Right"
+   },
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 9
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 40806150,
+    "outgoingTradeValue": 40806150,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 40806150,
+    "salaryRemaining": 0,
+    "yearsRemaining": 5,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4222252",
+   "firstName": "Isaiah",
+   "lastName": "Hartenstein",
+   "fullName": "Isaiah Hartenstein",
+   "displayName": "Isaiah Hartenstein",
+   "shortName": "I. Hartenstein",
+   "weight": 250.0,
+   "displayWeight": "250 lbs",
+   "height": 84.0,
+   "displayHeight": "7' 0\"",
+   "age": 28,
+   "debutYear": 2018,
+   "jersey": "55",
+   "position": {
+    "id": "9",
+    "name": "Center",
+    "displayName": "Center",
+    "abbreviation": "C",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 9
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 28500000,
+    "outgoingTradeValue": 28500000,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 28500000,
+    "salaryRemaining": 0,
+    "yearsRemaining": 1,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4433255",
+   "firstName": "Chet",
+   "lastName": "Holmgren",
+   "fullName": "Chet Holmgren",
+   "displayName": "Chet Holmgren",
+   "shortName": "C. Holmgren",
+   "weight": 208.0,
+   "displayWeight": "208 lbs",
+   "height": 85.0,
+   "displayHeight": "7' 1\"",
+   "age": 24,
+   "jersey": "7",
+   "position": {
+    "id": "9",
+    "name": "Center",
+    "displayName": "Center",
+    "abbreviation": "C",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Out",
+     "date": "2026-10-31T01:02Z"
+    }
+   ],
+   "experience": {
+    "years": 4
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 41500000,
+    "outgoingTradeValue": 41500000,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 41500000,
+    "salaryRemaining": 0,
+    "yearsRemaining": 5,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5174983",
+   "firstName": "Aday",
+   "lastName": "Mara",
+   "fullName": "Aday Mara",
+   "displayName": "Aday Mara",
+   "shortName": "A. Mara",
+   "weight": 262.0,
+   "displayWeight": "262 lbs",
+   "height": 87.0,
+   "displayHeight": "7' 3\"",
+   "age": 21,
+   "jersey": "15",
+   "position": {
+    "id": "9",
+    "name": "Center",
+    "displayName": "Center",
+    "abbreviation": "C",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4683778",
+   "firstName": "Jared",
+   "lastName": "McCain",
+   "fullName": "Jared McCain",
+   "displayName": "Jared McCain",
+   "shortName": "J. McCain",
+   "weight": 195.0,
+   "displayWeight": "195 lbs",
+   "height": 75.0,
+   "displayHeight": "6' 3\"",
+   "age": 22,
+   "jersey": "3",
+   "hand": {
+    "type": "BOTH",
+    "abbreviation": "B",
+    "displayValue": "Both"
+   },
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 3
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 4422600,
+    "outgoingTradeValue": 4422600,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 4422600,
+    "salaryRemaining": 0,
+    "yearsRemaining": 2,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4900671",
+   "firstName": "Ajay",
+   "lastName": "Mitchell",
+   "fullName": "Ajay Mitchell",
+   "displayName": "Ajay Mitchell",
+   "shortName": "A. Mitchell",
+   "weight": 190.0,
+   "displayWeight": "190 lbs",
+   "height": 76.0,
+   "displayHeight": "6' 4\"",
+   "age": 24,
+   "jersey": "25",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Day-To-Day",
+     "date": "2026-11-12T15:04Z"
+    }
+   ],
+   "experience": {
+    "years": 3
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 2850000,
+    "outgoingTradeValue": 2850000,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 2850000,
+    "salaryRemaining": 0,
+    "yearsRemaining": 2,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4432185",
+   "firstName": "Micah",
+   "lastName": "Peavy",
+   "fullName": "Micah Peavy",
+   "displayName": "Micah Peavy",
+   "shortName": "M. Peavy",
+   "weight": 220.0,
+   "displayWeight": "220 lbs",
+   "height": 79.0,
+   "displayHeight": "6' 7\"",
+   "age": 25,
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 2
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 2150917,
+    "outgoingTradeValue": 2150917,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 2150917,
+    "salaryRemaining": 0,
+    "yearsRemaining": 3,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5061603",
+   "firstName": "Thomas",
+   "lastName": "Sorber",
+   "fullName": "Thomas Sorber",
+   "displayName": "Thomas Sorber",
+   "shortName": "T. Sorber",
+   "weight": 250.0,
+   "displayWeight": "250 lbs",
+   "height": 81.0,
+   "displayHeight": "6' 9\"",
+   "age": 20,
+   "jersey": "12",
+   "position": {
+    "id": "9",
+    "name": "Center",
+    "displayName": "Center",
+    "abbreviation": "C",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Out",
+     "date": "2026-11-03T22:45Z"
+    }
+   ],
+   "experience": {
+    "years": 0
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 4887720,
+    "outgoingTradeValue": 4887720,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 4887720,
+    "salaryRemaining": 0,
+    "yearsRemaining": 3,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5241364",
+   "firstName": "Bennett",
+   "lastName": "Stirtz",
+   "fullName": "Bennett Stirtz",
+   "displayName": "Bennett Stirtz",
+   "shortName": "B. Stirtz",
+   "weight": 190.0,
+   "displayWeight": "190 lbs",
+   "height": 76.0,
+   "displayHeight": "6' 4\"",
+   "age": 23,
+   "jersey": "14",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 0
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "5159925",
+   "firstName": "Nikola",
+   "lastName": "Topic",
+   "fullName": "Nikola Topic",
+   "displayName": "Nikola Topic",
+   "shortName": "N. Topic",
+   "weight": 200.0,
+   "displayWeight": "200 lbs",
+   "height": 78.0,
+   "displayHeight": "6' 6\"",
+   "age": 21,
+   "jersey": "44",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 2
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 5429760,
+    "outgoingTradeValue": 5429760,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 5429760,
+    "salaryRemaining": 0,
+    "yearsRemaining": 2,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4683692",
+   "firstName": "Cason",
+   "lastName": "Wallace",
+   "fullName": "Cason Wallace",
+   "displayName": "Cason Wallace",
+   "shortName": "C. Wallace",
+   "weight": 195.0,
+   "displayWeight": "195 lbs",
+   "height": 75.0,
+   "displayHeight": "6' 3\"",
+   "age": 23,
+   "jersey": "22",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Out",
+     "date": "2026-10-31T01:16Z"
+    }
+   ],
+   "experience": {
+    "years": 4
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 7420806,
+    "outgoingTradeValue": 7420806,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 7420806,
+    "salaryRemaining": 0,
+    "yearsRemaining": 1,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4593803",
+   "firstName": "Jalen",
+   "lastName": "Williams",
+   "fullName": "Jalen Williams",
+   "displayName": "Jalen Williams",
+   "shortName": "J. Williams",
+   "weight": 211.0,
+   "displayWeight": "211 lbs",
+   "height": 77.0,
+   "displayHeight": "6' 5\"",
+   "age": 25,
+   "jersey": "8",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Out",
+     "date": "2026-10-28T23:41Z"
+    }
+   ],
+   "experience": {
+    "years": 5
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 41500000,
+    "outgoingTradeValue": 41500000,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 41500000,
+    "salaryRemaining": 0,
+    "yearsRemaining": 5,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "4432823",
+   "firstName": "Jaylin",
+   "lastName": "Williams",
+   "fullName": "Jaylin Williams",
+   "displayName": "Jaylin Williams",
+   "shortName": "J. Williams",
+   "weight": 240.0,
+   "displayWeight": "240 lbs",
+   "height": 81.0,
+   "displayHeight": "6' 9\"",
+   "age": 24,
+   "jersey": "6",
+   "position": {
+    "id": "7",
+    "name": "Forward",
+    "displayName": "Forward",
+    "abbreviation": "F",
+    "leaf": false
+   },
+   "injuries": [
+    {
+     "status": "Out",
+     "date": "2026-11-11T21:19Z"
+    }
+   ],
+   "experience": {
+    "years": 5
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 7774648,
+    "outgoingTradeValue": 7774648,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 7774648,
+    "salaryRemaining": 0,
+    "yearsRemaining": 2,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  },
+  {
+   "id": "3133626",
+   "firstName": "Kenrich",
+   "lastName": "Williams",
+   "fullName": "Kenrich Williams",
+   "displayName": "Kenrich Williams",
+   "shortName": "K. Williams",
+   "weight": 210.0,
+   "displayWeight": "210 lbs",
+   "height": 79.0,
+   "displayHeight": "6' 7\"",
+   "age": 31,
+   "debutYear": 2018,
+   "jersey": "34",
+   "position": {
+    "id": "3",
+    "name": "Guard",
+    "displayName": "Guard",
+    "abbreviation": "G",
+    "leaf": false
+   },
+   "injuries": [],
+   "experience": {
+    "years": 9
+   },
+   "contract": {
+    "birdStatus": 0,
+    "baseYearCompensation": {
+     "active": false
+    },
+    "poisonPillProvision": {
+     "active": false
+    },
+    "incomingTradeValue": 7163000,
+    "outgoingTradeValue": 7163000,
+    "minimumSalaryException": false,
+    "optionType": 0,
+    "salary": 7163000,
+    "salaryRemaining": 0,
+    "yearsRemaining": 1,
+    "season": {
+     "year": 2027,
+     "startDate": "2026-09-30T07:00Z",
+     "endDate": "2027-06-26T06:59Z"
+    },
+    "tradeKicker": {
+     "active": false,
+     "percentage": 0.0,
+     "value": 0,
+     "tradeValue": 0
+    },
+    "tradeRestriction": false,
+    "unsignedForeignPick": false,
+    "active": true
+   },
+   "status": {
+    "id": "1",
+    "name": "Active",
+    "type": "active",
+    "abbreviation": "Active"
+   }
+  }
+ ]
+}

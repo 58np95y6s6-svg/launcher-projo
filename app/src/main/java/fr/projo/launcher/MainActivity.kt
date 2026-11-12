@@ -110,6 +110,8 @@ class MainActivity : ComponentActivity() {
         EnvoiTv.demarrer(this)
         // Puces NFC et raccourci iOS : la TV écoute sur le Wi-Fi si l'une des deux fonctions est activée
         PucesNfc.demarrerSiActif(this)
+        // Design NBA : classement et équipes relus du cache disque (aucune requête)
+        fr.projo.launcher.nba.DonneesNba.demarrer(this)
 
         // Le bouton Retour ne quitte jamais l'écran d'accueil.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {

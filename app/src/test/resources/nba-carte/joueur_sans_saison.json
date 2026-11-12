@@ -1,0 +1,66 @@
+{
+ "statistics": {
+  "displayName": "Stats",
+  "labels": [
+   "GP",
+   "MIN",
+   "FG%",
+   "3P%",
+   "FT%",
+   "REB",
+   "AST",
+   "BLK",
+   "STL",
+   "PF",
+   "TO",
+   "PTS"
+  ],
+  "names": [
+   "gamesPlayed",
+   "avgMinutes",
+   "fieldGoalPct",
+   "threePointPct",
+   "freeThrowPct",
+   "avgRebounds",
+   "avgAssists",
+   "avgBlocks",
+   "avgSteals",
+   "avgFouls",
+   "avgTurnovers",
+   "avgPoints"
+  ],
+  "displayNames": [
+   "Games Played",
+   "Minutes Per Game",
+   "Field Goal Percentage",
+   "3-Point Field Goal Percentage",
+   "Free Throw Percentage",
+   "Rebounds Per Game",
+   "Assists Per Game",
+   "Blocks Per Game",
+   "Steals Per Game",
+   "Fouls Per Game",
+   "Turnovers Per Game",
+   "Points Per Game"
+  ],
+  "splits": [
+   {
+    "displayName": "Career",
+    "stats": [
+     "438",
+     "20.1",
+     "59.2",
+     "23.5",
+     "67.8",
+     "6.8",
+     "2.2",
+     "0.9",
+     "0.8",
+     "2.5",
+     "1.2",
+     "7.1"
+    ]
+   }
+  ]
+ }
+}
