@@ -229,6 +229,7 @@ fun Design.styleReglages(): StyleReglages = when (this) {
     Design.CHAINES -> StyleChaines
     Design.STUDIO -> StyleStudio
     Design.GALERIE -> StyleGalerie
+    Design.NBA -> StyleNba
 }
 
 // ------------------------------------------------------------------ Verre
@@ -483,4 +484,41 @@ private val StyleGalerie = StyleReglages(
     jaugeStockage = Jauge.CURSEUR,
     verreClair = true,
     ombre = 24,
+)
+
+// ------------------------------------------------------------------ NBA
+
+/**
+ * NBA : feuille de verre sombre bleu nuit contre le bord droit, comme la tuile du top 3 et le
+ * dock de son accueil ; la tuile sélectionnée devient une plaque blanche à l'encre bleu nuit,
+ * accent or des leaders.
+ */
+private val StyleNba = StyleReglages(
+    disposition = Disposition.FEUILLE_DROITE,
+    tuiles = FormeTuiles.LIGNES,
+    selection = Selection.PLATEAU,
+    pastille = Pastille.RONDE,
+    enTete = EnTete.SIMPLE,
+    ouverture = Ouverture.GLISSE_DROITE,
+    couleurs = CouleursReglages(
+        fond = listOf(Color(0xFF131C33), Color(0xFF0D1426), Color(0xFF080C18)),
+        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f),
+        carte = Color.White.copy(alpha = 0.06f),
+        carteFocus = listOf(Color.White, Color(0xFFE9ECF3)),
+        texteFocus = Color(0xFF0A1534), texteDiscretFocus = Color(0xFF0A1534).copy(alpha = 0.66f),
+        accent = Color(0xFFF6C445), accentFond = Color(0xFFF6C445).copy(alpha = 0.16f),
+        filet = Color.White.copy(alpha = 0.10f), anneau = Color.White,
+        pastille = Color.White.copy(alpha = 0.10f), alerte = Color(0xFFFFB86B),
+        voile = Color(0xFF050A1C).copy(alpha = 0.55f),
+    ),
+    mesures = MesuresReglages(
+        largeur = 384, haut = 20, bas = 20, cote = 20, rayon = 26, marge = 20, rayonTuile = 14, ecart = 9,
+        padH = 14, padV = 11, pastille = 32,
+    ),
+    typo = TypoReglages(titre = 14, valeur = 11, section = 10, chiffre = 15, enTete = 28),
+    agrandissement = 1.03f,
+    jaugeVolume = Jauge.CURSEUR,
+    jaugeStockage = Jauge.CURSEUR,
+    reflet = true,
+    ombre = 22,
 )

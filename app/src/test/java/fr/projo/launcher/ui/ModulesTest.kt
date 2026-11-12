@@ -101,7 +101,8 @@ class ModulesTest(nomDesign: String) : BancAccueil(nomDesign) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun designs(): List<Array<Any>> = Design.entries.map { arrayOf<Any>(it.name) }
+        // NBA : pas de zone de modules (la carte occupe l'écran)
+        fun designs(): List<Array<Any>> = Design.entries.filter { it.avecModules }.map { arrayOf<Any>(it.name) }
     }
 
     @Test

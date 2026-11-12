@@ -34,7 +34,8 @@ enum class Design(val id: String, val nom: String, val resume: String) {
     UNE("une", "À la une", "Nom géant, l'écran aux couleurs de l'app"),
     CHAINES("chaines", "Chaînes", "Grille de chaînes, heure à segments"),
     STUDIO("studio", "Studio", "Clair, verre et suggestions, sur deux écrans"),
-    GALERIE("galerie", "Galerie", "Verre flottant, galerie animée et dock");
+    GALERIE("galerie", "Galerie", "Verre flottant, galerie animée et dock"),
+    NBA("nba", "NBA", "Carte des divisions, bilans en direct et dock");
 
     companion object {
         /** Design par défaut : « Verre ». */
@@ -118,6 +119,13 @@ fun Design.colors(): DesignColors = when (this) {
         focusFond = Color(0xFF2B2D33), focusTexte = Color.White,
         voile = Color(0xFF2B2D33).copy(alpha = 0.3f), fondBibliotheque = Color(0xFFE9EAED),
         clair = true,
+    )
+    // « NBA » : bleu nuit des îles, verre sombre, accent or des leaders
+    Design.NBA -> DesignColors(
+        panneau = Color(0xF50B1224), carte = Color.White.copy(alpha = 0.07f),
+        texte = Color.White, texteDiscret = Color.White.copy(alpha = 0.62f), accent = Color(0xFFF6C445),
+        focusFond = Color.White, focusTexte = Color(0xFF0A1534),
+        voile = Color(0xFF050A1C).copy(alpha = 0.6f), fondBibliotheque = Color(0xFA0A1226),
     )
 }
 

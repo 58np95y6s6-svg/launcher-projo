@@ -2,6 +2,7 @@ package fr.projo.launcher.remote
 
 import fr.projo.launcher.ambiance.CouleursNeon
 import fr.projo.launcher.ambiance.Intensite
+import fr.projo.launcher.data.AmbianceNba
 import fr.projo.launcher.data.AppInfo
 import fr.projo.launcher.data.DefilementGalerie
 import fr.projo.launcher.ui.Design
@@ -129,6 +130,30 @@ class ReglagesTvTest {
         assertNull(ReglagesTv.valider(items(), ReglagesTv.GALERIE_DEFILEMENT, "5", null))
         // Tuile de la TV : chaque OK passe au choix suivant, en boucle
         assertEquals(listOf(15, 0, 5, 8), listOf(8, 15, 0, 5).map { DefilementGalerie.suivant(it) })
+    }
+
+    /** NBA seulement : « Ambiance de la carte » (Leaders, Parquet, Nuit d'arène), juste après les affiches des nouveautés. */
+    @Test
+    fun ambianceDeLaCarteAvecNbaSeulement() {
+        assertFalse(items().any { it.cle == ReglagesTv.NBA_AMBIANCE })
+        assertFalse(items(etatTv().copy(design = Design.GALERIE)).any { it.cle == ReglagesTv.NBA_AMBIANCE })
+        val r = items(etatTv().copy(design = Design.NBA, ambianceNba = AmbianceNba.NUIT))
+        val cles = r.map { it.cle }
+        assertEquals(cles.indexOf("nouveautes") + 1, cles.indexOf(ReglagesTv.NBA_AMBIANCE))
+        val d = r.de<ReglageTv.Choix>(ReglagesTv.NBA_AMBIANCE)
+        assertEquals("Affichage", d.groupe)
+        assertEquals("nuit", d.valeur)
+        assertEquals(listOf("leaders", "parquet", "nuit"), d.options.map { it.id })
+        assertEquals(listOf("Leaders", "Parquet", "Nuit d'arène"), d.options.map { it.nom })
+        assertEquals(Changement(ReglagesTv.NBA_AMBIANCE, "parquet"), ReglagesTv.valider(r, ReglagesTv.NBA_AMBIANCE, "parquet", null))
+        assertNull(ReglagesTv.valider(r, ReglagesTv.NBA_AMBIANCE, "bois", null))
+        // Un autre design : le réglage n'existe pas, le changement est ignoré
+        assertNull(ReglagesTv.valider(items(), ReglagesTv.NBA_AMBIANCE, "parquet", null))
+        // Tuile de la TV : chaque OK passe à l'ambiance suivante, en boucle
+        assertEquals(
+            listOf(AmbianceNba.PARQUET, AmbianceNba.NUIT, AmbianceNba.LEADERS),
+            AmbianceNba.entries.map { fr.projo.launcher.data.AmbianceCarteNba.suivante(it) },
+        )
     }
 
     @Test
