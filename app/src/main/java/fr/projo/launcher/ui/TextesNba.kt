@@ -22,6 +22,18 @@ object TextesNba {
     /** Rang à plat : « 1er », « 6e ». */
     fun rangTexte(n: Int): String = rang(n).let { it.first + it.second }
 
+    /**
+     * Poste en abréviation française. ESPN donne le poste précis (PG, SG, SF, PF, C) ou seulement
+     * la ligne (G, F), parfois deux (« G-F ») : MJ meneur, AR arrière, AI ailier, AF ailier fort,
+     * P pivot ; G (les arrières) → AR, F (les ailiers) → AI. Inconnu : tel quel.
+     */
+    fun poste(code: String?): String? {
+        val c = code?.trim()?.uppercase(Locale.ROOT)?.ifEmpty { null } ?: return null
+        return c.split('-', '/').joinToString("-") { POSTES[it.trim()] ?: it.trim() }
+    }
+
+    private val POSTES = mapOf("PG" to "MJ", "SG" to "AR", "SF" to "AI", "PF" to "AF", "C" to "P", "G" to "AR", "F" to "AI")
+
     /** « EST » / « OUEST ». */
     fun conference(c: ConferenceNba): String = if (c == ConferenceNba.EST) "EST" else "OUEST"
 

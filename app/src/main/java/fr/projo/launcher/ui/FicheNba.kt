@@ -293,7 +293,7 @@ private fun LigneTitulaire(j: JoueurNba) {
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             TexteNba(j.nom, 19f, Color.White, Modifier.alignByBaseline())
-            j.poste?.let { TexteNba("  $it", 15f, Color.White.copy(alpha = 0.5f), Modifier.alignByBaseline(), poids = FontWeight.SemiBold) }
+            TextesNba.poste(j.poste)?.let { TexteNba("  $it", 15f, Color.White.copy(alpha = 0.5f), Modifier.alignByBaseline(), poids = FontWeight.SemiBold) }
         }
         for (v in listOf(j.minutes, j.points, j.rebonds, j.passes)) {
             Box(Modifier.width(64.mq), contentAlignment = Alignment.CenterEnd) {
@@ -331,7 +331,7 @@ private fun LigneJoueur(j: JoueurNba, k: Float) {
         }
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             TexteNba(j.nom, 19f, Color.White, Modifier.alignByBaseline().weight(1f, fill = false))
-            j.poste?.let { TexteNba("  $it", 15f, Color.White.copy(alpha = 0.5f), Modifier.alignByBaseline(), poids = FontWeight.SemiBold) }
+            TextesNba.poste(j.poste)?.let { TexteNba("  $it", 15f, Color.White.copy(alpha = 0.5f), Modifier.alignByBaseline(), poids = FontWeight.SemiBold) }
         }
         if (j.blesse) {
             Box(

@@ -111,6 +111,8 @@ Sud-Ouest DAL HOU MEM NOP SAS.
     heure locale) ; **Cinq de départ** (les 5 titulaires du dernier match, avec moyennes de la
     saison : MIN, PTS, REB, PD) ; **Blessures** (nom, statut traduit, zone : « Absent · orteil »).
   - Effectif : tous les joueurs (numéro, nom, poste, « blessé » le cas échéant), deux colonnes.
+  - Postes en abréviations françaises : MJ, AR, AI, AF, P (ESPN : PG, SG, SF, PF, C ; G → AR,
+    F → AI ; « G-F » → « AR-AI »).
   - Chargement : squelette discret ; erreur : « Fiche indisponible pour l'instant ».
 
 ## Données (ESPN, flux publics, sans clé)

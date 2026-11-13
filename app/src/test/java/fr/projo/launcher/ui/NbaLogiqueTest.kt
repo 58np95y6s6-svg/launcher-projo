@@ -20,6 +20,21 @@ class NbaLogiqueTest {
 
     private val paris = TimeZone.getTimeZone("Europe/Paris")
 
+    // ------------------------------------------------------------------ postes
+
+    /** Postes d'ESPN en français : précis, par ligne (G, F) ou doubles (« G-F »). */
+    @Test
+    fun postesEnFrancais() {
+        assertEquals(listOf("MJ", "AR", "AI", "AF", "P"), listOf("PG", "SG", "SF", "PF", "C").map { TextesNba.poste(it) })
+        assertEquals("AR", TextesNba.poste("G"))
+        assertEquals("AI", TextesNba.poste("f"))
+        assertEquals("AR-AI", TextesNba.poste("G-F"))
+        assertEquals("AI-P", TextesNba.poste("F-C"))
+        assertEquals("XX", TextesNba.poste("XX"))
+        assertNull(TextesNba.poste(" "))
+        assertNull(TextesNba.poste(null))
+    }
+
     // ------------------------------------------------------------------ couleurs des leaders
 
     private fun leaders(vararg codes: String): Map<DivisionNba, String> = DivisionNba.entries.zip(codes).toMap()
