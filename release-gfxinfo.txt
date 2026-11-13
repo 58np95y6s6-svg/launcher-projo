@@ -1,0 +1,61 @@
+Applications Graphics Acceleration Info:
+Uptime: 137954 Realtime: 137954
+
+** Graphics info for pid 4686 [fr.projo.launcher] **
+
+Stats since: 120078196713ns
+Total frames rendered: 192
+Janky frames: 192 (100.00%)
+50th percentile: 81ms
+90th percentile: 97ms
+95th percentile: 105ms
+99th percentile: 121ms
+Number Missed Vsync: 137
+Number High input latency: 0
+Number Slow UI thread: 93
+Number Slow bitmap uploads: 2
+Number Slow issue draw commands: 192
+Number Frame deadline missed: 192
+HISTOGRAM: 5ms=0 6ms=0 7ms=0 8ms=0 9ms=0 10ms=0 11ms=0 12ms=0 13ms=0 14ms=0 15ms=0 16ms=0 17ms=0 18ms=0 19ms=0 20ms=0 21ms=0 22ms=0 23ms=0 24ms=0 25ms=0 26ms=0 27ms=0 28ms=0 29ms=1 30ms=0 31ms=0 32ms=3 34ms=4 36ms=3 38ms=6 40ms=4 42ms=5 44ms=1 46ms=3 48ms=4 53ms=7 57ms=6 61ms=6 65ms=8 69ms=7 73ms=16 77ms=12 81ms=20 85ms=21 89ms=14 93ms=13 97ms=10 101ms=4 105ms=6 109ms=3 113ms=1 117ms=2 121ms=1 125ms=0 129ms=0 133ms=0 150ms=1 200ms=0 250ms=0 300ms=0 350ms=0 400ms=0 450ms=0 500ms=0 550ms=0 600ms=0 650ms=0 700ms=0 750ms=0 800ms=0 850ms=0 900ms=0 950ms=0 1000ms=0 1050ms=0 1100ms=0 1150ms=0 1200ms=0 1250ms=0 1300ms=0 1350ms=0 1400ms=0 1450ms=0 1500ms=0 1550ms=0 1600ms=0 1650ms=0 1700ms=0 1750ms=0 1800ms=0 1850ms=0 1900ms=0 1950ms=0 2000ms=0 2050ms=0 2100ms=0 2150ms=0 2200ms=0 2250ms=0 2300ms=0 2350ms=0 2400ms=0 2450ms=0 2500ms=0 2550ms=0 2600ms=0 2650ms=0 2700ms=0 2750ms=0 2800ms=0 2850ms=0 2900ms=0 2950ms=0 3000ms=0 3050ms=0 3100ms=0 3150ms=0 3200ms=0 3250ms=0 3300ms=0 3350ms=0 3400ms=0 3450ms=0 3500ms=0 3550ms=0 3600ms=0 3650ms=0 3700ms=0 3750ms=0 3800ms=0 3850ms=0 3900ms=0 3950ms=0 4000ms=0 4050ms=0 4100ms=0 4150ms=0 4200ms=0 4250ms=0 4300ms=0 4350ms=0 4400ms=0 4450ms=0 4500ms=0 4550ms=0 4600ms=0 4650ms=0 4700ms=0 4750ms=0 4800ms=0 4850ms=0 4900ms=0 4950ms=0
+50th gpu percentile: 25ms
+90th gpu percentile: 4950ms
+95th gpu percentile: 4950ms
+99th gpu percentile: 4950ms
+GPU HISTOGRAM: 1ms=0 2ms=0 3ms=0 4ms=0 5ms=0 6ms=0 7ms=0 8ms=1 9ms=0 10ms=0 11ms=1 12ms=5 13ms=7 14ms=9 15ms=3 16ms=7 17ms=8 18ms=2 19ms=7 20ms=8 21ms=1 22ms=8 23ms=13 24ms=13 25ms=11 4950ms=88
+Font Cache (CPU):
+  Size: 119.92 kB 
+  Glyph Count: 40 
+CPU Caches:
+GPU Caches:
+  1-D Circular Blur:
+    Texture: 512.00 bytes (1 entry)
+  Other:
+    Other: 23.11 KB (1 entry)
+    Buffer Object: 2.05 KB (2 entries)
+  Image:
+    Texture: 1013.42 KB (18 entries)
+  Scratch:
+    Buffer Object: 112.00 KB (3 entries)
+    Texture: 2.00 MB (1 entry)
+    RenderTarget: 15.38 MB (22 entries)
+Other Caches:
+                         Current / Maximum
+  Layers Total           0.00 KB (numLayers = 0)
+Total GPU memory usage:
+  19397720 bytes, 18.50 MB (1.29 MB is purgeable)
+
+
+Pipeline=Skia (OpenGL)
+Profile data in ms:
+
+	fr.projo.launcher/fr.projo.launcher.MainActivity/android.view.ViewRootImpl@2d6ecbb (visibility=0)
+View hierarchy:
+
+  fr.projo.launcher/fr.projo.launcher.MainActivity/android.view.ViewRootImpl@2d6ecbb
+  7 views, 8.19 kB of render nodes
+
+
+Total ViewRootImpl   : 1
+Total attached Views : 7
+Total RenderNode     : 8.19 kB (used) / 32.89 kB (capacity)
+

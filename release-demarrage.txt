@@ -1,0 +1,7 @@
+Starting: Intent { cmp=fr.projo.launcher/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: fr.projo.launcher/.MainActivity
+TotalTime: 2041
+WaitTime: 2048
+Complete
