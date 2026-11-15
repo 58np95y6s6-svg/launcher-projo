@@ -158,6 +158,49 @@ class LectureEspnTest {
         }
     }
 
+    /** Les 3 derniers matchs terminés, le plus récent d'abord (le prochain n'en fait pas partie). */
+    @Test
+    fun calendrierTroisDerniers() {
+        for (nom in listOf("calendrier.json", "calendrier_scores_texte.json")) {
+            val c = LectureEspn.calendrier(exempleCarte(nom), "OKC")
+            assertEquals(listOf("401909975", "401909965", "401909941"), c.derniers.map { it.idMatch })
+            assertEquals(
+                listOf(
+                    MatchEquipe("POR", false, LectureNba.dateUtc("2026-11-12T03:00Z"), 108, 118),
+                    MatchEquipe("POR", false, LectureNba.dateUtc("2026-11-11T04:00Z"), 103, 123),
+                    MatchEquipe("WAS", true, LectureNba.dateUtc("2026-11-08T01:00Z"), 114, 75),
+                ),
+                c.derniers.map { it.match },
+            )
+            assertEquals(listOf(false, false, true), c.derniers.map { it.match.victoire })
+            assertEquals(c.derniers.first(), c.dernier)
+        }
+    }
+
+    /** Plus de 3 matchs terminés, dans le désordre : les 3 plus récents seulement, triés. */
+    @Test
+    fun calendrierDerniersTriesEtLimites() {
+        val json = modifie("calendrier.json") { r ->
+            val a = r.getJSONArray("events")
+            // Un match plus ancien (copie du premier, une semaine avant), ajouté à la fin
+            val ancien = JSONObject(a.getJSONObject(0).toString()).put("id", "401909900").put("date", "2026-11-01T01:00Z")
+            ancien.getJSONArray("competitions").getJSONObject(0).put("date", "2026-11-01T01:00Z")
+            a.put(ancien)
+            // Le plus récent déplacé en tête
+            val recent = a.remove(2) as JSONObject
+            val tous = (0 until a.length()).map { a.get(it) }
+            while (a.length() > 0) a.remove(0)
+            a.put(recent)
+            tous.forEach { a.put(it) }
+        }
+        val c = LectureEspn.calendrier(json, "OKC")
+        assertEquals(listOf("401909975", "401909965", "401909941"), c.derniers.map { it.idMatch })
+        assertEquals("401909304", c.prochain?.idMatch)
+        // Un seul match terminé : une liste d'un match
+        val seul = modifie("calendrier.json") { r -> r.getJSONArray("events").let { a -> while (a.length() > 1) a.remove(a.length() - 1) } }
+        assertEquals(listOf("401909941"), LectureEspn.calendrier(seul, "OKC").derniers.map { it.idMatch })
+    }
+
     @Test
     fun calendrierMatchADomicile() {
         // Seul le premier match (victoire 114-75 contre Washington, à domicile) reste
@@ -187,6 +230,7 @@ class LectureEspnTest {
     fun calendrierSansMatch() {
         val c = LectureEspn.calendrier("""{"events":[]}""", "OKC")
         assertNull(c.dernier)
+        assertTrue(c.derniers.isEmpty())
         assertNull(c.prochain)
         try {
             LectureEspn.calendrier("{}", "OKC")

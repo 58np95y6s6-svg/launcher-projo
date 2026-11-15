@@ -38,7 +38,7 @@ data class BilanNba(
 /** Classement des 30 équipes ; [misAJour] en ms (epoch) ; [horsLigne] : dernier rafraîchissement raté. */
 data class ClassementNba(val equipes: Map<String, BilanNba>, val misAJour: Long, val horsLigne: Boolean)
 
-/** Match d'une équipe (dernier ou prochain) ; [debut] en ms (epoch). */
+/** Match d'une équipe (passé ou prochain) ; [debut] en ms (epoch). */
 data class MatchEquipe(
     val adversaire: String,
     val domicile: Boolean,
@@ -64,13 +64,19 @@ data class JoueurNba(
 /** Blessure : [statut] déjà traduit (« Absent »…), [zone] traduite si connue (« genou »). */
 data class BlessureNba(val nom: String, val statut: String, val zone: String?)
 
-/** Fiche d'une équipe (sélection sur la carte). */
+/**
+ * Fiche d'une équipe (sélection sur la carte) : [derniers] matchs terminés (3 au plus, le plus
+ * récent d'abord), [prochain] match.
+ */
 data class FicheEquipe(
     val code: String,
     val nomComplet: String,
-    val dernier: MatchEquipe?,
+    val derniers: List<MatchEquipe>,
     val prochain: MatchEquipe?,
     val titulaires: List<JoueurNba>,
     val effectif: List<JoueurNba>,
     val blessures: List<BlessureNba>,
-)
+) {
+    /** Dernier match terminé. */
+    val dernier: MatchEquipe? get() = derniers.firstOrNull()
+}

@@ -12,8 +12,14 @@ internal data class EquipeEspn(val code: String, val id: String, val nom: String
 /** Un match du calendrier et son identifiant ESPN (résumé du match). */
 internal data class MatchLu(val idMatch: String, val match: MatchEquipe)
 
-/** Calendrier d'une équipe : dernier match terminé, premier match pas encore terminé. */
-internal data class CalendrierLu(val nomEquipe: String?, val dernier: MatchLu?, val prochain: MatchLu?)
+/**
+ * Calendrier d'une équipe : ses [derniers] matchs terminés (3 au plus, le plus récent d'abord),
+ * son premier match pas encore terminé.
+ */
+internal data class CalendrierLu(val nomEquipe: String?, val derniers: List<MatchLu>, val prochain: MatchLu?) {
+    /** Dernier match terminé. */
+    val dernier: MatchLu? get() = derniers.firstOrNull()
+}
 
 /** Joueur de l'effectif ; [blessure] : statut d'origine (« Out »…), null s'il n'est pas blessé. */
 internal data class JoueurLu(
@@ -177,14 +183,14 @@ internal object LectureEspn {
     // ------------------------------------------------------------------ calendrier
 
     /**
-     * Calendrier d'une équipe ([code] NBA ; [idEquipe] ESPN en secours) : dernier match terminé
-     * (`status.type.completed`) avec les scores, premier match pas encore terminé (ni annulé ni
-     * reporté). [MatchEquipe.debut] : `date` (UTC).
+     * Calendrier d'une équipe ([code] NBA ; [idEquipe] ESPN en secours) : les [DERNIERS] derniers
+     * matchs terminés (`status.type.completed`) avec les scores, le plus récent d'abord, et le
+     * premier match pas encore terminé (ni annulé ni reporté). [MatchEquipe.debut] : `date` (UTC).
      */
     fun calendrier(json: String, code: String, idEquipe: String? = null): CalendrierLu {
         val r = JSONObject(json)
         val evenements = r.optJSONArray("events") ?: throw FormatInconnu("events")
-        var dernier: MatchLu? = null
+        val termines = ArrayList<MatchLu>()
         var prochain: MatchLu? = null
         for (e in objets(evenements)) {
             sansErreur {
@@ -210,14 +216,19 @@ internal object LectureEspn {
                 )
                 val ecarte = etat == "post" || nomStatut.contains("CANCEL") || nomStatut.contains("POSTPONE")
                 when {
-                    termine -> if (dernier.let { it == null || m.match.debut >= it.match.debut }) dernier = m
+                    termine -> termines += m
                     !ecarte -> if (prochain.let { it == null || m.match.debut < it.match.debut }) prochain = m
                 }
                 Unit
             }
         }
-        return CalendrierLu(texte(r.optJSONObject("team"), "displayName"), dernier, prochain)
+        // Le plus récent d'abord (à la même heure : le dernier lu)
+        val derniers = termines.asReversed().sortedByDescending { it.match.debut }.take(DERNIERS)
+        return CalendrierLu(texte(r.optJSONObject("team"), "displayName"), derniers, prochain)
     }
+
+    /** Nombre de matchs terminés gardés (résumé des derniers matchs). */
+    const val DERNIERS = 3
 
     private fun codeConcurrent(c: JSONObject): String? =
         texte(c.optJSONObject("team"), "abbreviation")?.let { EquipesNba.codeNba(it) }

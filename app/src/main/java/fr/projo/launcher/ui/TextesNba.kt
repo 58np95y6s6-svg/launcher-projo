@@ -3,12 +3,15 @@ package fr.projo.launcher.ui
 import fr.projo.launcher.nba.BilanNba
 import fr.projo.launcher.nba.ConferenceNba
 import fr.projo.launcher.nba.DivisionNba
+import fr.projo.launcher.nba.JoueurNba
 import fr.projo.launcher.nba.MatchEquipe
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /*
  * Design « NBA » : textes affichés (rangs, saison, bilans, matchs), en français et à l'heure locale.
@@ -21,6 +24,18 @@ object TextesNba {
 
     /** Rang à plat : « 1er », « 6e ». */
     fun rangTexte(n: Int): String = rang(n).let { it.first + it.second }
+
+    /**
+     * Poste en abréviation française. ESPN donne le poste précis (PG, SG, SF, PF, C) ou seulement
+     * la ligne (G, F), parfois deux (« G-F ») : MJ meneur, AR arrière, AI ailier, AF ailier fort,
+     * P pivot ; G (les arrières) → AR, F (les ailiers) → AI. Inconnu : tel quel.
+     */
+    fun poste(code: String?): String? {
+        val c = code?.trim()?.uppercase(Locale.ROOT)?.ifEmpty { null } ?: return null
+        return c.split('-', '/').joinToString("-") { POSTES[it.trim()] ?: it.trim() }
+    }
+
+    private val POSTES = mapOf("PG" to "MJ", "SG" to "AR", "SF" to "AI", "PF" to "AF", "C" to "P", "G" to "AR", "F" to "AI")
 
     /** « EST » / « OUEST ». */
     fun conference(c: ConferenceNba): String = if (c == ConferenceNba.EST) "EST" else "OUEST"
@@ -116,6 +131,47 @@ object TextesNba {
     /** Prochain match : « ven. 14 nov. · 4:30 · à LA Clippers ». */
     fun prochain(m: MatchEquipe, fuseau: TimeZone = TimeZone.getDefault()): String =
         "${jour(m.debut, fuseau)} · ${heure(m.debut, fuseau)} · ${lieu(m)}"
+
+    /** « 124–119 » (l'équipe d'abord) ; score inconnu : « –– ». */
+    fun score(m: MatchEquipe): String =
+        if (m.score != null && m.scoreAdversaire != null) "${m.score}–${m.scoreAdversaire}" else "––"
+
+    /** Issue d'un match : « V », « D » ; inconnue : « – ». */
+    fun issue(m: MatchEquipe): String = when (m.victoire) {
+        true -> "V"
+        false -> "D"
+        null -> "–"
+    }
+
+    /**
+     * Retard sur [chef] (le leader de la division), en matchs : ((V du leader − V) + (D − D du
+     * leader)) / 2.
+     */
+    fun retard(chef: BilanNba, b: BilanNba): Double =
+        ((chef.victoires - b.victoires) + (b.defaites - chef.defaites)) / 2.0
+
+    /** Colonne « ÉCART » : « — » pour le leader, sinon le retard (« 1 », « 2,5 », « 0 »). */
+    fun ecart(chef: BilanNba, b: BilanNba): String = if (b.code == chef.code) "—" else demiMatchs(retard(chef, b))
+
+    /** Nombre de matchs au demi près, virgule française : 2.5 → « 2,5 », 1.0 → « 1 », −1.5 → « −1,5 ». */
+    fun demiMatchs(v: Double): String {
+        val demis = (v * 2).roundToInt()
+        val n = abs(demis)
+        return (if (demis < 0) "−" else "") + (n / 2) + (if (n % 2 == 1) ",5" else "")
+    }
+
+    /** Intitulé du classement d'une division : « DIVISION SUD-OUEST ». */
+    fun intituleDivision(d: DivisionNba): String = "DIVISION " + d.nom.uppercase(FR)
+
+    /**
+     * Meilleur marqueur parmi les titulaires (le plus de points en moyenne) : « meilleur
+     * marqueur : V. Wembanyama, 30,3 pts · 11,7 reb » ; aucun point connu : null.
+     */
+    fun meilleurMarqueur(titulaires: List<JoueurNba>): String? {
+        val j = titulaires.filter { it.points != null && !it.points.isNaN() }.maxByOrNull { it.points!! } ?: return null
+        val reb = j.rebonds?.takeIf { !it.isNaN() }?.let { " · ${moyenne(it)} reb" }.orEmpty()
+        return "meilleur marqueur : ${j.nom}, ${moyenne(j.points)} pts$reb"
+    }
 
     /** Moyenne avec une décimale, virgule française (« 32,1 ») ; inconnue : « – ». */
     fun moyenne(v: Double?): String = if (v == null || v.isNaN()) "–" else String.format(FR, "%.1f", v)

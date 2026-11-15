@@ -1,9 +1,11 @@
 package fr.projo.launcher.ui
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import fr.projo.launcher.data.AmbianceNba
 import fr.projo.launcher.nba.BilanNba
 import fr.projo.launcher.nba.DivisionNba
+import fr.projo.launcher.nba.JoueurNba
 import fr.projo.launcher.nba.MatchEquipe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -14,11 +16,27 @@ import java.util.TimeZone
 
 /**
  * Design NBA, logique pure : couleurs de l'ambiance Leaders (règle de la maquette, au pixel près),
- * navigation entre pastilles, rangs, saison, textes de la fiche, classement factice.
+ * navigation entre pastilles, rangs, saison, textes de la fiche et du survol (écart avec le
+ * leader, meilleur marqueur), caméra du survol, classement factice.
  */
 class NbaLogiqueTest {
 
     private val paris = TimeZone.getTimeZone("Europe/Paris")
+
+    // ------------------------------------------------------------------ postes
+
+    /** Postes d'ESPN en français : précis, par ligne (G, F) ou doubles (« G-F »). */
+    @Test
+    fun postesEnFrancais() {
+        assertEquals(listOf("MJ", "AR", "AI", "AF", "P"), listOf("PG", "SG", "SF", "PF", "C").map { TextesNba.poste(it) })
+        assertEquals("AR", TextesNba.poste("G"))
+        assertEquals("AI", TextesNba.poste("f"))
+        assertEquals("AR-AI", TextesNba.poste("G-F"))
+        assertEquals("AI-P", TextesNba.poste("F-C"))
+        assertEquals("XX", TextesNba.poste("XX"))
+        assertNull(TextesNba.poste(" "))
+        assertNull(TextesNba.poste(null))
+    }
 
     // ------------------------------------------------------------------ couleurs des leaders
 
@@ -240,6 +258,102 @@ class NbaLogiqueTest {
         assertEquals("–", TextesNba.moyenne(null))
         assertEquals("Oklahoma City Thunder", TextesNba.nomComplet("OKC"))
         assertEquals("Golden State", TextesNba.ville("GSW"))
+    }
+
+    // ------------------------------------------------------------------ survol
+
+    /** Écart avec le leader de la division : ((V du leader − V) + (D − D du leader)) / 2, au demi-match. */
+    @Test
+    fun ecartAvecLeLeader() {
+        val sas = BilanNba("SAS", 10, 2, 2, 1, 10, null)
+        fun b(code: String, v: Int, d: Int) = BilanNba(code, v, d, 5, 2, 0, null)
+        assertEquals("—", TextesNba.ecart(sas, sas))
+        assertEquals("1", TextesNba.ecart(sas, b("HOU", 9, 3)))
+        assertEquals("2,5", TextesNba.ecart(sas, b("DAL", 7, 4)))
+        assertEquals("6", TextesNba.ecart(sas, b("NOP", 4, 8)))
+        // Même bilan que le leader : 0 ; moins de matchs joués, meilleur % : en avance
+        assertEquals("0", TextesNba.ecart(sas, b("MEM", 10, 2)))
+        assertEquals(-0.5, TextesNba.retard(sas, b("MEM", 10, 1)), 1e-9)
+        assertEquals("−0,5", TextesNba.ecart(sas, b("MEM", 10, 1)))
+        assertEquals("1,5", TextesNba.demiMatchs(1.5))
+        assertEquals("12", TextesNba.demiMatchs(12.0))
+        // Classement de la maquette : Sud-Ouest mené par Houston (9–4)
+        val c = NbaFactice.classement(0L).equipes
+        val chef = c.values.first { it.rangDivision == 1 && DivisionNba.de(it.code) == DivisionNba.SUD_OUEST }
+        assertEquals("HOU", chef.code)
+        assertEquals(listOf("—", "2", "2", "3", "6"), listOf("HOU", "DAL", "MEM", "SAS", "NOP").map { TextesNba.ecart(chef, c.getValue(it)) })
+        assertEquals("DIVISION SUD-OUEST", TextesNba.intituleDivision(DivisionNba.SUD_OUEST))
+    }
+
+    /** Meilleur marqueur : le titulaire qui marque le plus en moyenne ; sans points connus : rien. */
+    @Test
+    fun meilleurMarqueur() {
+        assertEquals(
+            "meilleur marqueur : V. Wembanyama, 30,3 pts · 11,7 reb",
+            TextesNba.meilleurMarqueur(NbaFactice.ficheSas.titulaires),
+        )
+        assertEquals(
+            "meilleur marqueur : S. Gilgeous-Alexander, 31,8 pts · 5,2 reb",
+            TextesNba.meilleurMarqueur(NbaFactice.ficheOkc.titulaires),
+        )
+        val sansRebonds = JoueurNba("A. B", null, null, false, 30.0, 12.0, null, null)
+        assertEquals("meilleur marqueur : A. B, 12,0 pts", TextesNba.meilleurMarqueur(listOf(sansRebonds)))
+        assertNull(TextesNba.meilleurMarqueur(listOf(sansRebonds.copy(points = null))))
+        assertNull(TextesNba.meilleurMarqueur(emptyList()))
+    }
+
+    /** Matchs du survol : score (l'équipe d'abord), issue, lieu, date (heure de Paris). */
+    @Test
+    fun textesDuSurvol() {
+        val tz = TimeZone.getDefault()
+        TimeZone.setDefault(paris)
+        try {
+            val m = NbaFactice.ficheSas.derniers
+            assertEquals(listOf("119–124", "122–96", "125–103"), m.map { TextesNba.score(it) })
+            assertEquals(listOf("D", "V", "V"), m.map { TextesNba.issue(it) })
+            assertEquals(listOf("à Chicago", "à Phoenix", "à Portland"), m.map { TextesNba.lieu(it) })
+            assertEquals(listOf("jeu. 12 nov.", "mar. 10 nov.", "dim. 8 nov."), m.map { TextesNba.jour(it.debut) })
+            val p = NbaFactice.ficheSas.prochain!!
+            assertEquals("sam. 14 nov. · 3:30", TextesNba.jour(p.debut) + " · " + TextesNba.heure(p.debut))
+            assertEquals("contre Golden State", TextesNba.lieu(p))
+            assertEquals("––", TextesNba.score(p))
+            assertEquals("–", TextesNba.issue(p))
+        } finally {
+            TimeZone.setDefault(tz)
+        }
+    }
+
+    /** Caméra du survol : cadrage dans la zone à gauche du panneau, au plus × 1,75, trajet sans à-coup. */
+    @Test
+    fun cameraDuSurvol() {
+        val zone = CameraNba.ZONE
+        // Carte entière : rien ne bouge
+        assertEquals(Offset(100f, 200f), CameraNba.CARTE.vers(Offset(100f, 200f)))
+        // Petit cadre : agrandi au maximum, son milieu au point visé
+        val petit = Rect(1155f, 131f, 1688f, 499f)
+        val c1 = CameraNba.sur(petit)
+        assertEquals(CameraNba.ECHELLE_MAX, c1.echelle, 1e-4f)
+        assertEquals(CameraNba.CIBLE, c1.vers(petit.center))
+        // Grand cadre : la hauteur limite ; soulevé (× 1,05, monté de 26 px), il tient dans la zone
+        val grand = Rect(220f, 127f, 960f, 654f)
+        val c2 = CameraNba.sur(grand)
+        assertEquals(zone.height / (grand.height * CameraNba.AGRANDI), c2.echelle, 1e-4f)
+        val (e, d) = c2.soulevee(grand.center, 1f)
+        val haut = grand.topLeft * e + d
+        val bas = grand.bottomRight * e + d
+        assertTrue("$haut", haut.x >= zone.left - 0.5f && haut.y >= zone.top - 0.5f)
+        assertTrue("$bas", bas.x <= zone.right + 0.5f && bas.y <= zone.bottom + 0.5f)
+        assertEquals(c2.echelle * CameraNba.AGRANDI, e, 1e-4f)
+        // Posé (levée 0) : la caméra seule
+        assertEquals(c2.echelle to c2.decalage, c2.soulevee(grand.center, 0f))
+        // Trajet : départ, arrivée ; à mi-chemin, échelle géométrique et milieu d'arrivée à mi-route
+        assertEquals(CameraNba.CARTE, CameraNba.entre(CameraNba.CARTE, c1, 0f))
+        assertEquals(c1, CameraNba.entre(CameraNba.CARTE, c1, 1f))
+        val mi = CameraNba.entre(CameraNba.CARTE, c1, 0.5f)
+        assertEquals(kotlin.math.sqrt(c1.echelle), mi.echelle, 1e-4f)
+        val attendu = (petit.center + CameraNba.CIBLE) / 2f
+        assertEquals(attendu.x, mi.vers(petit.center).x, 0.01f)
+        assertEquals(attendu.y, mi.vers(petit.center).y, 0.01f)
     }
 
     /** Classement factice : les rangs de la maquette (OKC 1er Ouest, CLE 1er Est, NYK 3e Est…). */
