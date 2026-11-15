@@ -2,6 +2,7 @@ package fr.projo.launcher.remote
 
 import fr.projo.launcher.boxscore.Affichage
 import fr.projo.launcher.boxscore.EtatNba
+import fr.projo.launcher.boxscore.ParisNba
 import fr.projo.launcher.liens.Liens
 import fr.projo.launcher.liens.ResultatLien
 import org.json.JSONArray
@@ -46,8 +47,9 @@ interface HoteSession {
     val liens: LiensTv? get() = null
 
     /**
-     * Box score NBA par-dessus la vidéo. null : non proposé, `fonctions` n'annonce pas `nba` et
-     * `nba_etat` / `nba_afficher` / `nba_choisir` sont ignorés.
+     * Box score NBA par-dessus la vidéo (et paris suivis). null : non proposé, `fonctions`
+     * n'annonce ni `nba` ni `nba_paris`, et `nba_etat` / `nba_afficher` / `nba_choisir` /
+     * `nba_paris_ajouter` / `nba_paris_effacer` sont ignorés.
      */
     val nba: NbaTv? get() = null
 
@@ -256,13 +258,16 @@ class SessionTelecommande(
 
     /**
      * Fonctions annoncées : `apps` et `reglages` avec le pilotage, `liens` avec l'envoi de liens,
-     * `nba` avec le box score ; null si aucune.
+     * `nba` et `nba_paris` avec le box score ; null si aucune.
      */
     private fun fonctions(): List<String>? {
         val f = buildList {
             if (hote.pilotage != null) addAll(Protocole.FONCTIONS)
             if (hote.liens != null) add(Protocole.FONCTION_LIENS)
-            if (hote.nba != null) add(Protocole.FONCTION_NBA)
+            if (hote.nba != null) {
+                add(Protocole.FONCTION_NBA)
+                add(Protocole.FONCTION_NBA_PARIS)
+            }
         }
         return f.ifEmpty { null }
     }
@@ -345,17 +350,17 @@ class SessionTelecommande(
             "pair_request" -> envoyer(Protocole.paired(hote.nomTv, hote.registre.idTv(), Base64Url.encoder(hote.identite.spki)))
             "apps_liste", "apps_images", "app_ouvrir", "reglages_liste", "reglage" -> hote.pilotage?.let { pilotage(it, t, m) }
             "liens_etat", "lien_ouvrir" -> hote.liens?.let { liens(it, t, m) }
-            "nba_etat", "nba_afficher", "nba_choisir" -> hote.nba?.let { nba(it, t, m) }
+            "nba_etat", "nba_afficher", "nba_choisir", "nba_paris_ajouter", "nba_paris_effacer" -> hote.nba?.let { nba(it, t, m) }
         }
     }
 
     // ------------------------------------------------------------------ box score NBA
 
     /**
-     * `nba_etat` (état, et abonnement de cette connexion), `nba_afficher` et `nba_choisir`
-     * (docs/telecommande.md, « Box score NBA »). Format ou identifiant inconnu : ignoré ; le
-     * téléphone reçoit quand même l'état actuel pour se recaler. Journal : types d'événements
-     * seulement, jamais de score.
+     * `nba_etat` (état, et abonnement de cette connexion), `nba_afficher`, `nba_choisir`,
+     * `nba_paris_ajouter` et `nba_paris_effacer` (docs/telecommande.md, « Box score NBA »). Format,
+     * identifiant ou texte illisible : ignoré ; le téléphone reçoit quand même l'état actuel pour se
+     * recaler. Journal : types d'événements seulement, jamais de score ni de texte de pari.
      */
     private fun nba(n: NbaTv, t: String, m: JSONObject) {
         val repondre: (EtatNba) -> Unit = { envoyerSiAuthentifiee(Protocole.nba(it)) }
@@ -383,6 +388,19 @@ class SessionTelecommande(
                 }
                 hote.journal("nba : match demandé")
                 n.choisir(id, repondre)
+            }
+            "nba_paris_ajouter" -> {
+                val texte = m.opt("texte") as? String
+                if (texte.isNullOrBlank()) {
+                    n.etat(repondre)
+                    return
+                }
+                hote.journal("nba : pari reçu")
+                n.ajouterParis(ParisNba.limiter(texte), repondre)
+            }
+            "nba_paris_effacer" -> {
+                hote.journal("nba : effacement des paris demandé")
+                n.effacerParis(repondre)
             }
         }
     }

@@ -65,6 +65,28 @@ class NbaLauncher(
         }
     }
 
+    override fun ajouterParis(texte: String, rappel: (EtatNba) -> Unit) {
+        principal.post {
+            try {
+                BoxScoreNba.ajouterParis(texte)
+            } catch (e: Exception) {
+                Log.w(TAG, "nba : pari illisible")
+            }
+            repondre(rappel)
+        }
+    }
+
+    override fun effacerParis(rappel: (EtatNba) -> Unit) {
+        principal.post {
+            try {
+                BoxScoreNba.effacerParis()
+            } catch (e: Exception) {
+                Log.w(TAG, "nba : paris impossibles à effacer")
+            }
+            repondre(rappel)
+        }
+    }
+
     /** Une connexion s'est fermée : le suivi du tableau du jour s'arrête s'il n'y a plus d'abonné. Fil de la télécommande. */
     fun majAbonnement() {
         val actif = abonnes()

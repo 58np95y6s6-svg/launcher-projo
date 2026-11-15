@@ -51,6 +51,9 @@ object Protocole {
     /** Fonction annoncée quand le box score NBA est disponible (bandeau de la PWA). */
     const val FONCTION_NBA = "nba"
 
+    /** Fonction annoncée avec le box score : paris suivis (format « pari », `nba_paris_*`). */
+    const val FONCTION_NBA_PARIS = "nba_paris"
+
     /** `nba_afficher.id`, `nba_choisir.id` (« LAL-BOS ») : longueur maximale acceptée. */
     const val ID_MATCH_MAX = 20
 
@@ -164,7 +167,10 @@ object Protocole {
 
     // ------------------------------------------------------------------ box score NBA
 
-    /** `nba` : matchs (15 au plus), match choisi (null), format, décalage, erreur facultative. */
+    /**
+     * `nba` : matchs (15 au plus), match choisi (null), format, décalage, erreur facultative, lignes
+     * des paris suivis (`paris`, 20 au plus : `{id, libelle, etat, match?, valeur?, seuil?}`).
+     */
     fun nba(e: EtatNba): String {
         val matchs = JSONArray()
         for (match in e.matchs) {
@@ -176,6 +182,15 @@ object Protocole {
         val m = message("nba").put("matchs", matchs).put("choisi", e.choisi ?: JSONObject.NULL)
             .put("affichage", e.affichage.id).put("decalage", e.decalage)
         e.erreur?.let { m.put("erreur", it) }
+        val paris = JSONArray()
+        for (p in e.paris) {
+            val o = JSONObject().put("id", p.id).put("libelle", p.libelle).put("etat", p.etat.id)
+            p.match?.let { o.put("match", it) }
+            p.valeur?.let { o.put("valeur", it) }
+            p.seuil?.let { o.put("seuil", it) }
+            paris.put(o)
+        }
+        m.put("paris", paris)
         return m.toString()
     }
 

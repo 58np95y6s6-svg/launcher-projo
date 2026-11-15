@@ -1,10 +1,11 @@
 package fr.projo.launcher.boxscore
 
-/** Format du box score sur la TV (`nba.affichage`). */
+/** Format du box score sur la TV (`nba.affichage`) ; [PARI] : lignes du pari suivi pour le match affiché. */
 enum class Affichage(val id: String) {
     CACHE("cache"),
     RESUME("resume"),
-    DETAILS("details");
+    DETAILS("details"),
+    PARI("pari");
 
     companion object {
         /** Format demandé par le téléphone ; null si inconnu. */
@@ -26,6 +27,8 @@ data class EtatNba(
     val decalage: Int,
     /** `accessibilite`, `source` ou null. */
     val erreur: String?,
+    /** Lignes des paris suivis (`nba.paris`), dans l'ordre d'ajout. */
+    val paris: List<PariEtat> = emptyList(),
 ) {
     companion object {
         const val ERREUR_ACCESSIBILITE = "accessibilite"
@@ -36,9 +39,16 @@ data class EtatNba(
 /**
  * Ce que montre la fenêtre de la TV : rien ([affichage] = CACHE), le box score du match choisi
  * ([box]), ou un texte d'attente ([attente] : « Synchronisation avec la vidéo… »…).
- * [equipe] : onglet des détails (0 : extérieur, 1 : domicile).
+ * [equipe] : onglet des détails (0 : extérieur, 1 : domicile). [paris] : format pari, lignes du
+ * match affiché (8 au plus).
  */
-data class VueTv(val affichage: Affichage, val box: BoxScore?, val attente: String?, val equipe: Int) {
+data class VueTv(
+    val affichage: Affichage,
+    val box: BoxScore?,
+    val attente: String?,
+    val equipe: Int,
+    val paris: List<PariEtat> = emptyList(),
+) {
     companion object {
         val CACHEE = VueTv(Affichage.CACHE, null, null, 0)
     }
@@ -58,6 +68,9 @@ data class VueTv(val affichage: Affichage, val box: BoxScore?, val attente: Stri
  * Décalage : chaque réponse est gardée avec son heure d'arrivée ; on montre la plus récente
  * arrivée il y a au moins [decalage] secondes. Avant la première, la fenêtre de la TV attend
  * (« Synchronisation avec la vidéo… ») et `nba` garde les dernières valeurs montrées.
+ *
+ * Paris suivis ([ajouterParis]) : jugés sur les mêmes données décalées ; le dernier box score
+ * montré de chaque match du jour est gardé, pour les lignes d'un match qui n'est plus affiché.
  */
 class SuiviNba {
 
@@ -98,6 +111,9 @@ class SuiviNba {
         const val ECHECS_AVANT_REPLI = 2
         const val ESSAI_NBA_MS = 10 * 60_000L
         const val MATCHS_MAX = 15
+
+        /** Lignes de pari montrées au plus dans le format pari. */
+        const val PARIS_TV_MAX = 8
 
         const val SYNCHRONISATION = "Synchronisation avec la vidéo…"
         const val CHARGEMENT = "Chargement…"
@@ -151,6 +167,12 @@ class SuiviNba {
     /** L'horloge du match suivi tournait entre les deux dernières réponses montrées. */
     private var horlogeTourne = false
 
+    /** Paris suivis (mémoire seulement). */
+    private val paris = SuiviParis()
+
+    /** Dernier box score montré de chaque match du jour (le plus récent en dernier). */
+    private val boxsVus = LinkedHashMap<String, BoxScore>()
+
     private var prochainTableau = 0L
     private var prochainBox = 0L
     private var suiviTableau = false
@@ -203,6 +225,18 @@ class SuiviNba {
     fun changerEquipe(e: Int) {
         equipe = e.coerceIn(0, 1)
     }
+
+    /** `nba_paris_ajouter` : lignes reconnues dans [texte], ajoutées si elles ne sont pas déjà là. */
+    fun ajouterParis(texte: String, t: Long): SuiviParis.Ajout {
+        avancer(t)
+        return paris.ajouter(texte, t)
+    }
+
+    /** `nba_paris_effacer` : plus aucune ligne. */
+    fun effacerParis(): Boolean = paris.effacer()
+
+    /** Nombre de lignes de pari gardées. */
+    val nombreParis: Int get() = paris.nombre
 
     // ------------------------------------------------------------------ requêtes
 
@@ -320,8 +354,10 @@ class SuiviNba {
             if ((avant?.arrivee ?: Long.MIN_VALUE) <= s.arrivee) {
                 horlogeTourne = tourne(avant?.donnees?.match, s.donnees.match)
                 vueBox = s
+                memoriser(s.donnees)
             }
         }
+        paris.expirer(t)
         majChoix()
         // Plus aucun match à montrer (journée finie) : le box score se cache
         if (affichage != Affichage.CACHE && vueTableau != null && choisi() == null) {
@@ -382,13 +418,34 @@ class SuiviNba {
         suiviBox = box
     }
 
+    /** Box score montré gardé pour les paris (les matchs qui ne sont plus dans le tableau du jour sont oubliés). */
+    private fun memoriser(b: BoxScore) {
+        boxsVus.remove(b.match.id)
+        boxsVus[b.match.id] = b
+        val ids = vueTableau?.donnees?.map { it.id }?.toSet()
+        if (ids != null) boxsVus.keys.retainAll(ids + b.match.id)
+        while (boxsVus.size > MATCHS_MAX) boxsVus.remove(boxsVus.keys.first())
+    }
+
+    /** Match du box score montré, s'il est plus récent que le tableau du jour (5 s contre 30 s). */
+    private fun matchFrais(): MatchNba? =
+        vueBox?.takeIf { (vueTableau?.arrivee ?: Long.MIN_VALUE) <= it.arrivee }?.donnees?.match
+
+    /** Données montrées pour juger les paris : matchs du jour (le plus frais de chacun) et box scores gardés. */
+    private fun donneesParis(): DonneesParis {
+        val frais = matchFrais()
+        val tous = vueTableau?.donnees.orEmpty()
+        val matchs = tous.map { if (frais != null && it.id == frais.id) frais else it } +
+            listOfNotNull(frais?.takeIf { f -> tous.none { it.id == f.id } })
+        return DonneesParis(matchs, boxsVus.values.toList().asReversed())
+    }
+
     /** État `nba` (scores et statuts décalés, comme l'écran de la TV). */
     fun etat(): EtatNba {
         val l = liste()
         val choisi = choisi(l)
         // Le box score (15 s) est plus frais que le tableau (30 s) pour le match choisi
-        val frais = if (choisi == null || choisi != idBox) null else
-            vueBox?.takeIf { (vueTableau?.arrivee ?: Long.MIN_VALUE) <= it.arrivee }?.donnees?.match
+        val frais = if (choisi == null || choisi != idBox) null else matchFrais()
         val matchs = l.map { m ->
             val v = if (frais != null && m.id == choisi) {
                 m.copy(
@@ -409,7 +466,7 @@ class SuiviNba {
             erreurSource -> EtatNba.ERREUR_SOURCE
             else -> null
         }
-        return EtatNba(matchs, choisi, affichage, decalage, erreur)
+        return EtatNba(matchs, choisi, affichage, decalage, erreur, paris.etats(donneesParis()))
     }
 
     private fun equipeEtat(e: EquipeMatch): EquipeEtat {
@@ -434,7 +491,10 @@ class SuiviNba {
             decalage > 0 -> SYNCHRONISATION
             else -> CHARGEMENT
         }
-        return VueTv(affichage, box, attente, equipe)
+        // Format pari : les lignes du match affiché seulement
+        val lignes = if (affichage != Affichage.PARI || box == null) emptyList() else
+            paris.etats(donneesParis()).filter { it.match == box.match.id }.take(PARIS_TV_MAX)
+        return VueTv(affichage, box, attente, equipe, lignes)
     }
 
     /** L'horloge a baissé d'une réponse à l'autre, même période, match en cours (pas une fin de période). */

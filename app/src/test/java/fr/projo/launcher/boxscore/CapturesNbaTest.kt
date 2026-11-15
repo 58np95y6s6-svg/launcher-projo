@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -38,7 +39,8 @@ import java.io.File
 /**
  * Captures du box score NBA (1920 × 1080) sur un faux fond de vidéo sombre, avec les exemples de
  * flux de app/src/test/resources/nba/ : résumé, détails (deux équipes, et source ESPN sans point
- * « sur le terrain »), attente « Synchronisation avec la vidéo… ». Résultats dans
+ * « sur le terrain »), attente « Synchronisation avec la vidéo… », pari suivi (ticket de
+ * l'utilisateur en plein match, et match sans ligne du pari). Résultats dans
  * app/build/captures/nba_*.png.
  *
  * SDK 35 : un bac à sable Robolectric à part, pour ne pas partager l'état de Compose (répartiteur
@@ -138,6 +140,66 @@ class CapturesNbaTest {
         compose.onNodeWithText("Synchronisation avec la vidéo…").assertIsDisplayed()
         val carte = compose.onNodeWithTag("nba_attente").fetchSemanticsNode().boundsInRoot
         assertEquals(600f, carte.width, 2f)
+    }
+
+    /** Vue de la TV au format pari, par le vrai suivi : ticket collé, tableau du jour et box score servis. */
+    private fun vuePari(texte: String, box: BoxScore): VueTv {
+        val s = SuiviNba().apply { accessibilite = true }
+        s.ajouterParis(texte, 0)
+        s.abonnement(true, 0)
+        fun servir() {
+            repeat(5) {
+                when (val e = s.prochaine(0)) {
+                    is SuiviNba.Etape.Tableau -> s.tableauRecu(0, e.source, SuiviNba.Reponse.Ok(listOf(box.match)))
+                    is SuiviNba.Etape.Box -> s.boxRecu(0, e, SuiviNba.Reponse.Ok(box))
+                    else -> return
+                }
+            }
+        }
+        servir()
+        assertEquals(Affichage.PARI, s.afficher(Affichage.PARI, box.match.id, 0))
+        servir()
+        return s.vueTv(0)
+    }
+
+    @Test
+    fun pari() {
+        // Ticket Betclic de l'utilisateur (le football est ignoré), plus une ligne perdue
+        val vue = vuePari(TICKET_BETCLIC + "\nJoel Embiid Moins de 8,5 rebonds", boxPhiInd())
+        assertEquals(5, vue.paris.size)
+        capturer("pari", vue)
+        compose.onNodeWithTag("nba_pari").assertIsDisplayed()
+        compose.onNodeWithText("MON PARI").assertIsDisplayed()
+        compose.onNodeWithText("3e QT · 5:48").assertIsDisplayed()
+        compose.onAllNodesWithTag("nba_pari_ligne").assertCountEquals(5)
+        compose.onNodeWithText("76ers vainqueurs").assertIsDisplayed()
+        compose.onNodeWithText("\u22123").assertIsDisplayed()
+        compose.onNodeWithText("T. Maxey · + de 19,5 pts").assertIsDisplayed()
+        compose.onNodeWithText("23").assertIsDisplayed()
+        compose.onNodeWithText("K. Caldwell-Pope · + de 9,5 pts").assertIsDisplayed()
+        compose.onNodeWithText(" / 9,5").assertIsDisplayed()
+        compose.onNodeWithText("I. Zubac · + de 2,5 pd").assertIsDisplayed()
+        compose.onNodeWithText("J. Embiid · - de 8,5 reb").assertIsDisplayed()
+        compose.onNodeWithText(" / 8,5").assertIsDisplayed()
+        compose.onAllNodesWithText("Turquie", substring = true).assertCountEquals(0)
+        val carte = compose.onNodeWithTag("nba_pari").fetchSemanticsNode().boundsInRoot
+        // 600 px de large, en haut à droite (marges de 56 px), comme le résumé
+        assertEquals(600f, carte.width, 2f)
+        assertEquals(1920f - 56f, carte.right, 2f)
+        assertEquals(56f, carte.top, 2f)
+        assertTrue("carte trop haute : ${carte.bottom}", carte.bottom < 1080f - 24f)
+    }
+
+    @Test
+    fun pariAucuneLigne() {
+        // Le ticket ne parle pas de LAL-BOS
+        val vue = vuePari(TICKET_BETCLIC, nba)
+        assertTrue(vue.paris.isEmpty())
+        capturer("pari_aucune", vue)
+        compose.onNodeWithTag("nba_pari").assertIsDisplayed()
+        compose.onNodeWithText("MON PARI").assertIsDisplayed()
+        compose.onNodeWithText("Aucune ligne de ton pari dans ce match").assertIsDisplayed()
+        compose.onAllNodesWithTag("nba_pari_ligne").assertCountEquals(0)
     }
 
     @Test

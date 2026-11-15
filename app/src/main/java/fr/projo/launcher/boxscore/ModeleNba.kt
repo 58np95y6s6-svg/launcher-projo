@@ -46,7 +46,11 @@ data class MatchNba(
     val statut: String get() = Statuts.texte(etat, periode, horloge, finDePeriode)
 }
 
-/** Ligne d'un joueur. [surTerrain] : null si la source ne le dit pas (ESPN). */
+/**
+ * Ligne d'un joueur. [nom] : forme courte du box score (« T. Maxey ») ; [nomComplet] : « Tyrese
+ * Maxey » si la source le donne (paris suivis), vide sinon. [surTerrain] : null si la source ne le
+ * dit pas (ESPN).
+ */
 data class JoueurNba(
     val nom: String,
     val titulaire: Boolean,
@@ -61,6 +65,7 @@ data class JoueurNba(
     val troisReussis: Int,
     val troisTentes: Int,
     val plusMoins: Int?,
+    val nomComplet: String = "",
 )
 
 /** Statistiques d'une équipe ; pourcentages entre 0 et 1, null si inconnus. */

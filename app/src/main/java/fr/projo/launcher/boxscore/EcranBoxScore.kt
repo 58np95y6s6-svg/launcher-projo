@@ -33,6 +33,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -60,6 +63,11 @@ private val FondVerre = Color(0xFF0C0E14).copy(alpha = 0.86f)
 private val Lisere = Color.White.copy(alpha = 0.09f)
 private val RougeDirect = Color(0xFFFF5A5F)
 private val PointDirect = Color(0xFFFF3B42)
+private val VertGagne = Color(0xFF34D27B)
+private val RougePerdu = Color(0xFFFF5A5F)
+
+/** Écart d'un pari « vainqueur » qui remplit toute la demi-barre. */
+private const val ECART_PLEIN = 20f
 
 /** Largeur des colonnes du tableau des joueurs (MIN, PTS, REB, PD, TIRS, 3 PTS, +/-), marge de 14 comprise. */
 private val Colonnes = listOf("MIN" to 50, "PTS" to 55, "REB" to 52, "PD" to 49, "TIRS" to 89, "3 PTS" to 88, "+/-" to 49)
@@ -69,8 +77,9 @@ private const val PLACE_LIGNES = 505f
 private const val LIGNE = 37f
 
 /**
- * Contenu de la fenêtre : la carte (résumé) ou le panneau (détails) en haut à droite, à 56 px des
- * bords, avec de la place à gauche et en bas pour l'ombre. Rien quand le box score est caché.
+ * Contenu de la fenêtre : la carte (résumé, pari) ou le panneau (détails) en haut à droite, à
+ * 56 px des bords, avec de la place à gauche et en bas pour l'ombre. Rien quand le box score est
+ * caché.
  */
 @Composable
 fun EcranBoxScore(vue: VueTv, modifier: Modifier = Modifier) {
@@ -80,6 +89,7 @@ fun EcranBoxScore(vue: VueTv, modifier: Modifier = Modifier) {
         when {
             box == null -> CarteAttente(vue.attente.orEmpty(), details = vue.affichage == Affichage.DETAILS)
             vue.affichage == Affichage.RESUME -> CarteResume(box)
+            vue.affichage == Affichage.PARI -> CartePari(box, vue.paris)
             else -> PanneauDetails(box, vue.equipe)
         }
     }
@@ -122,6 +132,140 @@ private fun PanneauDetails(b: BoxScore, equipe: Int) {
         val (eq, eqMatch) = if (equipe == 0) b.ext to b.match.ext else b.dom to b.match.dom
         Tableau(eq, eqMatch, b.surTerrainConnu)
         Aide()
+    }
+}
+
+/**
+ * Pari suivi : en-tête du match comme le résumé, puis « MON PARI » et les lignes de ce match
+ * (8 au plus) : état (✓ gagné, ✗ perdu, point en cours, cercle en attente), libellé, valeur
+ * actuelle et seuil (« 12 / 19,5 ») ou écart du vainqueur (« +2 »), barre d'avancement.
+ */
+@Composable
+private fun CartePari(b: BoxScore, paris: List<PariEtat>) {
+    Verre(largeur = 600, rayon = 28, haut = 22, cotes = 26, bas = 22, flou = 70, dy = 24, modifier = Modifier.testTag("nba_pari")) {
+        Tete(b.match, MesuresResume)
+        TitreSection("MON PARI")
+        if (paris.isEmpty()) {
+            Texte(
+                "Aucune ligne de ton pari dans ce match", 17f, gras = false, couleur = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.mq, bottom = 6.mq), alignement = TextAlign.Center,
+            )
+        }
+        for (p in paris) LignePariTv(p)
+    }
+}
+
+/** Une ligne du pari : pastille d'état, libellé, valeur ; barre d'avancement en dessous. */
+@Composable
+private fun LignePariTv(p: PariEtat) {
+    val attente = p.etat == EtatPari.ATTENTE || p.etat == EtatPari.NON_SUIVI
+    Column(Modifier.fillMaxWidth().padding(vertical = 7.mq).testTag("nba_pari_ligne")) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Pastille(p.etat)
+            Spacer(Modifier.width(12.mq))
+            Texte(
+                p.libelle, 18f, gras = true, couleur = Color.White.copy(alpha = if (attente) 0.6f else 1f),
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.mq))
+            ValeurPari(p)
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 8.mq)) {
+            Spacer(Modifier.width(34.mq))
+            if (p.seuil == null) {
+                BarreEcart(p, Modifier.weight(1f))
+            } else {
+                val part = if (p.valeur == null || p.seuil <= 0.0) 0f else (p.valeur / p.seuil).toFloat()
+                Barre(part = part, depuisLaDroite = false, couleur = couleurPari(p), modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** Couleur d'une ligne : verte gagnée, rouge perdue, blanche en cours ; pour le vainqueur en cours, selon l'écart. */
+private fun couleurPari(p: PariEtat): Color = when (p.etat) {
+    EtatPari.GAGNE -> VertGagne
+    EtatPari.PERDU -> RougePerdu
+    EtatPari.EN_COURS -> when {
+        p.seuil != null -> Color.White.copy(alpha = 0.85f)
+        (p.valeur ?: 0) > 0 -> VertGagne.copy(alpha = 0.8f)
+        (p.valeur ?: 0) < 0 -> RougePerdu.copy(alpha = 0.8f)
+        else -> Color.White.copy(alpha = 0.85f)
+    }
+    else -> Color.White.copy(alpha = 0.35f)
+}
+
+/** « 12 / 19,5 » (valeur colorée selon l'état) ; vainqueur : écart « +2 », « −2 ». */
+@Composable
+private fun ValeurPari(p: PariEtat) {
+    val couleurValeur = when (p.etat) {
+        EtatPari.GAGNE -> VertGagne
+        EtatPari.PERDU -> RougePerdu
+        EtatPari.EN_COURS -> Color.White
+        else -> Color.White.copy(alpha = 0.6f)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (p.seuil == null) {
+            Texte(ecart(p.valeur), 19f, gras = true, couleur = couleurValeur)
+        } else {
+            Texte(p.valeur?.toString() ?: "–", 19f, gras = true, couleur = couleurValeur, modifier = Modifier.alignByBaseline())
+            Texte(" / " + texteNombre(p.seuil), 16f, gras = false, couleur = Color.White.copy(alpha = 0.55f), modifier = Modifier.alignByBaseline())
+        }
+    }
+}
+
+/** Écart du vainqueur : « +2 », « −2 » (vrai signe moins), « 0 » ; « – » inconnu. */
+private fun ecart(v: Int?): String = when {
+    v == null -> "–"
+    v > 0 -> "+$v"
+    v < 0 -> "\u2212${-v}"
+    else -> "0"
+}
+
+/** Vainqueur : barre partagée au milieu, remplie vers la droite si l'équipe mène, vers la gauche sinon. */
+@Composable
+private fun BarreEcart(p: PariEtat, modifier: Modifier) {
+    val v = p.valeur ?: 0
+    val part = (kotlin.math.abs(v) / ECART_PLEIN).coerceIn(0f, 1f)
+    val couleur = couleurPari(p)
+    val repere = Color.White.copy(alpha = 0.45f)
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Barre(part = if (v < 0) part else 0f, depuisLaDroite = true, couleur = couleur, modifier = Modifier.weight(1f))
+        Box(Modifier.padding(horizontal = 3.mq).width(2.mq).height(12.mq).background(repere, RoundedCornerShape(1.mq)))
+        Barre(part = if (v > 0) part else 0f, depuisLaDroite = false, couleur = couleur, modifier = Modifier.weight(1f))
+    }
+}
+
+/** État d'une ligne : ✓ sur vert (gagnée), ✗ sur rouge (perdue), point blanc (en cours), cercle (en attente). */
+@Composable
+private fun Pastille(etat: EtatPari) {
+    val px = pxMaquette()
+    Canvas(Modifier.size(22.mq)) {
+        val r = size.minDimension / 2f
+        val c = center
+        when (etat) {
+            EtatPari.GAGNE -> {
+                drawCircle(VertGagne, r)
+                val coche = Path().apply {
+                    moveTo(c.x - r * 0.45f, c.y + r * 0.02f)
+                    lineTo(c.x - r * 0.12f, c.y + r * 0.36f)
+                    lineTo(c.x + r * 0.48f, c.y - r * 0.32f)
+                }
+                drawPath(coche, Color.White, style = Stroke(width = 2.6f * px, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+            EtatPari.PERDU -> {
+                drawCircle(RougePerdu, r)
+                val d = r * 0.36f
+                val trait = Stroke(width = 2.6f * px, cap = StrokeCap.Round)
+                drawLine(Color.White, Offset(c.x - d, c.y - d), Offset(c.x + d, c.y + d), trait.width, trait.cap)
+                drawLine(Color.White, Offset(c.x - d, c.y + d), Offset(c.x + d, c.y - d), trait.width, trait.cap)
+            }
+            EtatPari.EN_COURS -> {
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent), c, r), r)
+                drawCircle(Color.White, r * 0.42f)
+            }
+            else -> drawCircle(Color.White.copy(alpha = 0.45f), r * 0.5f, style = Stroke(width = 2f * px))
+        }
     }
 }
 

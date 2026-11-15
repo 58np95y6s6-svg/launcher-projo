@@ -122,6 +122,7 @@ object LectureNba {
             troisReussis = entier(s, "threePointersMade") ?: 0,
             troisTentes = entier(s, "threePointersAttempted") ?: 0,
             plusMoins = entier(s, "plusMinusPoints"),
+            nomComplet = texte(p, "name") ?: listOfNotNull(texte(p, "firstName"), texte(p, "familyName")).joinToString(" "),
         )
     }
 
@@ -266,6 +267,7 @@ object LectureNba {
                     troisReussis = r3,
                     troisTentes = t3,
                     plusMoins = nombre(v(iPm)),
+                    nomComplet = texte(ath, "displayName").orEmpty(),
                 )
             }
         }.sortedBy { !it.titulaire }

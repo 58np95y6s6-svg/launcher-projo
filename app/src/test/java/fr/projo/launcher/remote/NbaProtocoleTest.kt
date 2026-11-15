@@ -3,7 +3,10 @@ package fr.projo.launcher.remote
 import fr.projo.launcher.boxscore.Affichage
 import fr.projo.launcher.boxscore.EquipeEtat
 import fr.projo.launcher.boxscore.EtatNba
+import fr.projo.launcher.boxscore.EtatPari
 import fr.projo.launcher.boxscore.MatchEtat
+import fr.projo.launcher.boxscore.PariEtat
+import fr.projo.launcher.boxscore.ParisNba
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,6 +43,23 @@ class NbaFactice : NbaTv {
     override fun choisir(id: String, rappel: (EtatNba) -> Unit) {
         demandes += "choisir $id"
         if (etat.matchs.any { it.id == id }) etat = etat.copy(choisi = id)
+        rappel(etat)
+    }
+
+    /** Textes de pari reçus. */
+    val textes = mutableListOf<String>()
+
+    override fun ajouterParis(texte: String, rappel: (EtatNba) -> Unit) {
+        textes += texte
+        demandes += "paris ajouter"
+        val lignes = ParisNba.lire(texte).mapIndexed { i, _ -> PariEtat("p${etat.paris.size + i + 1}", "ligne", EtatPari.ATTENTE) }
+        etat = etat.copy(paris = etat.paris + lignes)
+        rappel(etat)
+    }
+
+    override fun effacerParis(rappel: (EtatNba) -> Unit) {
+        demandes += "paris effacer"
+        etat = etat.copy(paris = emptyList())
         rappel(etat)
     }
 }
@@ -100,16 +120,18 @@ class NbaProtocoleTest {
     fun nbaAnnonceDansFonctions() {
         val (s, _) = session()
         s.recevoir(hello())
-        assertEquals(listOf("nba"), fonctions(envoyes.single()))
+        assertEquals(listOf("nba", "nba_paris"), fonctions(envoyes.single()))
         val (s2, _) = session(pilotage = PilotageFactice())
         s2.recevoir(hello())
-        assertEquals(listOf("apps", "reglages", "nba"), fonctions(envoyes.single()))
+        assertEquals(listOf("apps", "reglages", "nba", "nba_paris"), fonctions(envoyes.single()))
         // Sans box score : ni annonce ni réponse
         val (s3, _) = session(avecNba = false)
         s3.recevoir(hello())
         assertFalse(envoyes.single().has("fonctions"))
         s3.recevoir(msg("nba_etat"))
         s3.recevoir(msg("nba_afficher", "affichage" to "resume"))
+        s3.recevoir(msg("nba_paris_ajouter", "texte" to "Tyrese Maxey Plus de 19,5 points"))
+        s3.recevoir(msg("nba_paris_effacer"))
         assertEquals(1, envoyes.size)
         assertFalse(s3.abonneNba)
     }
@@ -120,6 +142,8 @@ class NbaProtocoleTest {
         s.recevoir(msg("nba_etat"))
         s.recevoir(msg("nba_afficher", "affichage" to "details", "id" to "LAL-BOS"))
         s.recevoir(msg("nba_choisir", "id" to "LAL-BOS"))
+        s.recevoir(msg("nba_paris_ajouter", "texte" to "Tyrese Maxey Plus de 19,5 points"))
+        s.recevoir(msg("nba_paris_effacer"))
         assertTrue(envoyes.isEmpty())
         assertTrue(nba.demandes.isEmpty())
         assertFalse(s.abonneNba)
@@ -136,7 +160,8 @@ class NbaProtocoleTest {
         val m = envoyes.single()
         assertEquals("nba", m.getString("t"))
         assertEquals(1, m.getInt("v"))
-        assertEquals(setOf("v", "t", "matchs", "choisi", "affichage", "decalage"), m.keys().asSequence().toSet())
+        assertEquals(setOf("v", "t", "matchs", "choisi", "affichage", "decalage", "paris"), m.keys().asSequence().toSet())
+        assertEquals(0, m.getJSONArray("paris").length())
         val match = m.getJSONArray("matchs").getJSONObject(0)
         assertEquals(setOf("id", "ext", "dom", "statut", "direct"), match.keys().asSequence().toSet())
         assertEquals("LAL-BOS", match.getString("id"))
@@ -218,5 +243,91 @@ class NbaProtocoleTest {
         }
         s.recevoir(msg("nba_afficher", "affichage" to "resume", "id" to 42))
         assertEquals(listOf("afficher resume null"), nba.demandes)
+    }
+
+    // ------------------------------------------------------------------ paris suivis
+
+    @Test
+    fun parisAjouterEtEffacer() {
+        val (s, hote) = connectee()
+        s.recevoir(msg("nba_paris_ajouter", "texte" to TICKET))
+        assertEquals(listOf("paris ajouter"), nba.demandes)
+        assertEquals(TICKET, nba.textes.single())
+        // Réponse : `nba` avec les lignes, à ce téléphone (même sans abonnement)
+        val m = envoyes.single()
+        assertEquals("nba", m.getString("t"))
+        assertEquals(2, m.getJSONArray("paris").length())
+        s.recevoir(msg("nba_paris_effacer"))
+        assertEquals("paris effacer", nba.demandes.last())
+        assertEquals(0, envoyes.last().getJSONArray("paris").length())
+        // Journal : jamais le texte, une cote ni une mise
+        assertTrue(hote.journaux.contains("nba : pari reçu"))
+        assertTrue(hote.journaux.contains("nba : effacement des paris demandé"))
+        assertTrue(hote.journaux.none { it.contains("Maxey") || it.contains("19,5") || it.contains("1,50") || it.contains("8,75") })
+    }
+
+    @Test
+    fun parisTexteIllisibleIgnore() {
+        val (s, _) = connectee()
+        // Pas une chaîne, vide : rien d'ajouté, l'état actuel est renvoyé
+        for (t in listOf(42, null, "", "   ", JSONObject())) {
+            envoyes.clear()
+            s.recevoir(msg("nba_paris_ajouter", "texte" to t))
+            assertEquals("nba", envoyes.single().getString("t"))
+        }
+        assertTrue(nba.demandes.isEmpty())
+        // Texte trop long : 4000 caractères au plus transmis, sans la ligne entamée
+        val long = "Tyrese Maxey Plus de 19,5 points\n" + "x".repeat(5000)
+        s.recevoir(msg("nba_paris_ajouter", "texte" to long))
+        assertEquals("Tyrese Maxey Plus de 19,5 points", nba.textes.single())
+    }
+
+    @Test
+    fun parisDansLEtatNba() {
+        val e = nba.etat.copy(
+            affichage = Affichage.PARI,
+            paris = listOf(
+                PariEtat("p1", "76ers vainqueurs", EtatPari.EN_COURS, "PHI-IND", -3, null),
+                PariEtat("p2", "T. Maxey · + de 19,5 pts", EtatPari.GAGNE, "PHI-IND", 23, 19.5),
+                PariEtat("p3", "Total du match · - de 221,5 pts", EtatPari.ATTENTE, null, null, 221.5),
+                PariEtat("p4", "Philadelphie 76ers (-4,5) · Handicap", EtatPari.NON_SUIVI),
+                PariEtat("p5", "J. Embiid · - de 10 reb", EtatPari.PERDU, "PHI-IND", 11, 10.0),
+            ),
+        )
+        val m = JSONObject(Protocole.nba(e))
+        assertEquals("pari", m.getString("affichage"))
+        val p = m.getJSONArray("paris")
+        assertEquals(5, p.length())
+        val vainqueur = p.getJSONObject(0)
+        assertEquals(setOf("id", "libelle", "etat", "match", "valeur"), vainqueur.keys().asSequence().toSet())
+        assertEquals("p1", vainqueur.getString("id"))
+        assertEquals("76ers vainqueurs", vainqueur.getString("libelle"))
+        assertEquals("en_cours", vainqueur.getString("etat"))
+        assertEquals("PHI-IND", vainqueur.getString("match"))
+        assertEquals(-3, vainqueur.getInt("valeur"))
+        val maxey = p.getJSONObject(1)
+        assertEquals(setOf("id", "libelle", "etat", "match", "valeur", "seuil"), maxey.keys().asSequence().toSet())
+        assertEquals("gagne", maxey.getString("etat"))
+        assertEquals(23, maxey.getInt("valeur"))
+        assertEquals(19.5, maxey.getDouble("seuil"), 0.0)
+        val total = p.getJSONObject(2)
+        assertEquals(setOf("id", "libelle", "etat", "seuil"), total.keys().asSequence().toSet())
+        assertEquals("attente", total.getString("etat"))
+        assertEquals(setOf("id", "libelle", "etat"), p.getJSONObject(3).keys().asSequence().toSet())
+        assertEquals("non_suivi", p.getJSONObject(3).getString("etat"))
+        assertEquals("perdu", p.getJSONObject(4).getString("etat"))
+        assertEquals(10.0, p.getJSONObject(4).getDouble("seuil"), 0.0)
+    }
+
+    @Test
+    fun afficherFormatPari() {
+        val (s, _) = connectee()
+        s.recevoir(msg("nba_afficher", "affichage" to "pari", "id" to "LAL-BOS"))
+        assertEquals(listOf("afficher pari LAL-BOS"), nba.demandes)
+        assertEquals("pari", envoyes.last().getString("affichage"))
+    }
+
+    private companion object {
+        const val TICKET = "Tyrese Maxey + de 19,5\nNombre de points du joueur (paliers)\nPhiladelphie 76ers\nVainqueur du match\nCote 8,75\nMise 1,50 €"
     }
 }

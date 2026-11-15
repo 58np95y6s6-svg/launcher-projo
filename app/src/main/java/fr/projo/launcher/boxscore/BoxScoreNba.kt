@@ -35,7 +35,8 @@ import java.lang.ref.WeakReference
  * Rien ne tourne tant qu'aucun téléphone n'est abonné et que rien n'est affiché : ni requête,
  * ni minuterie. La fenêtre est retirée dès que le box score est caché.
  *
- * Journal : types d'événements seulement (« nba : affichage résumé »), jamais de score.
+ * Journal : types d'événements seulement (« nba : affichage résumé »), jamais de score ; pour les
+ * paris, le nombre de lignes seulement (jamais le texte, une cote ni une mise).
  */
 object BoxScoreNba {
 
@@ -110,6 +111,30 @@ object BoxScoreNba {
         if (suivi.choisir(id, horloge())) journal("nba : match choisi")
         publier()
         relancer()
+    }
+
+    /** `nba_paris_ajouter` : lignes du pari collé (journal : leur nombre seulement). */
+    fun ajouterParis(texte: String) {
+        val a = suivi.ajouterParis(texte, horloge())
+        val n = a.ajoutees
+        val lignes = when (n) {
+            0 -> "aucune ligne nouvelle"
+            1 -> "1 ligne"
+            else -> "$n lignes"
+        }
+        val nonSuivies = when (a.nonSuivies) {
+            0 -> ""
+            1 -> ", 1 non suivie"
+            else -> ", ${a.nonSuivies} non suivies"
+        }
+        journal("nba : pari ajouté ($lignes$nonSuivies)")
+        publier()
+    }
+
+    /** `nba_paris_effacer` : plus aucune ligne. */
+    fun effacerParis() {
+        if (suivi.effacerParis()) journal("nba : paris effacés")
+        publier()
     }
 
     /** Un téléphone au moins est abonné à `nba` (ou plus aucun). */
@@ -309,6 +334,7 @@ object BoxScoreNba {
         Affichage.CACHE -> "caché"
         Affichage.RESUME -> "résumé"
         Affichage.DETAILS -> "détails"
+        Affichage.PARI -> "pari"
     }
 
     private fun journal(evenement: String) {

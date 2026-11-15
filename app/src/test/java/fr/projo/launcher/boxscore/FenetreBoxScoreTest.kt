@@ -24,6 +24,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadow.api.Shadow
+import org.robolectric.shadows.ShadowLog
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.shadows.ShadowWindowManagerImpl
 import java.util.concurrent.TimeUnit
@@ -164,6 +165,45 @@ class FenetreBoxScoreTest {
         val avant = faux.tableaux
         ShadowLooper.idleMainLooper(5, TimeUnit.MINUTES)
         assertEquals(avant, faux.tableaux)
+    }
+
+    @Test
+    fun formatPariSansToucheEtJournalSansTexte() {
+        ShadowLog.clear()
+        val s = Robolectric.setupService(RedirectionAccueil::class.java)
+        BoxScoreNba.attacher(s)
+        BoxScoreNba.abonnement(true)
+        attendre()
+        BoxScoreNba.ajouterParis("Luka Dončić + de 30,5\nNombre de points du joueur (paliers)\nCote 1,85\nMise 2,00 €")
+        // Même pari collé deux fois : une seule ligne
+        BoxScoreNba.ajouterParis("Luka Dončić Plus de 30,5 points")
+        assertEquals(1, BoxScoreNba.etat().paris.size)
+        BoxScoreNba.afficher(Affichage.PARI, "LAL-BOS")
+        attendre()
+        assertEquals(1, s.fenetres().size)
+        assertEquals(Affichage.PARI, BoxScoreNba.etat().affichage)
+        // 34 points dans l'exemple : gagné ; ligne montrée dans la fenêtre
+        val ligne = BoxScoreNba.etat().paris.single()
+        assertEquals(EtatPari.GAGNE, ligne.etat)
+        assertEquals("LAL-BOS", ligne.match)
+        assertEquals(34, ligne.valeur)
+        assertEquals(listOf(ligne), BoxScoreNba.vue.value.paris)
+        // Aucune touche gardée (comme le résumé)
+        assertFalse(s.touche(KeyEvent.KEYCODE_BACK, KeyEvent.ACTION_DOWN))
+        assertFalse(s.touche(KeyEvent.KEYCODE_BACK, KeyEvent.ACTION_UP))
+        assertFalse(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN))
+        assertEquals(Affichage.PARI, BoxScoreNba.etat().affichage)
+        // Effacées
+        BoxScoreNba.effacerParis()
+        assertTrue(BoxScoreNba.etat().paris.isEmpty())
+        assertTrue(BoxScoreNba.vue.value.paris.isEmpty())
+        // Journal : le nombre de lignes, jamais le texte, une cote ni une mise
+        val journal = ShadowLog.getLogsForTag("Projo.Nba").map { it.msg }
+        assertTrue(journal.toString(), "nba : pari ajouté (1 ligne)" in journal)
+        assertTrue(journal.toString(), "nba : pari ajouté (aucune ligne nouvelle)" in journal)
+        assertTrue(journal.toString(), "nba : affichage pari" in journal)
+        assertTrue(journal.toString(), "nba : paris effacés" in journal)
+        assertTrue(journal.toString(), journal.none { it.contains("Don") || it.contains("30,5") || it.contains("1,85") || it.contains("2,00") })
     }
 
     @Test

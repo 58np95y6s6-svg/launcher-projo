@@ -19,4 +19,10 @@ interface NbaTv {
 
     /** `nba_choisir` : ignoré si [id] n'est pas dans la liste. */
     fun choisir(id: String, rappel: (EtatNba) -> Unit)
+
+    /** `nba_paris_ajouter` : [texte] du pari collé (déjà limité à 4000 caractères). */
+    fun ajouterParis(texte: String, rappel: (EtatNba) -> Unit)
+
+    /** `nba_paris_effacer` : retire toutes les lignes. */
+    fun effacerParis(rappel: (EtatNba) -> Unit)
 }
