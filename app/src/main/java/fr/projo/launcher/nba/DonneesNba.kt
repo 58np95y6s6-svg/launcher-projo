@@ -1,6 +1,10 @@
 package fr.projo.launcher.nba
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -8,7 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,13 +20,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 /**
  * Données du design NBA (docs/design-nba.md, « Données ») : flux publics d'ESPN, lus par
  * [EntrepotNba]. Le classement est relu du disque au démarrage de l'appli ([demarrer]), puis
  * rafraîchi toutes les 10 min seulement tant que le design est affiché ([suivre]) ; rien ne
- * tourne sinon.
+ * tourne sinon. Après un échec, le retour du réseau relance l'essai sans attendre ([reseauRetrouve]).
  */
 object DonneesNba {
 
@@ -49,6 +54,9 @@ object DonneesNba {
     private var boucle: Job? = null
     private var demarre = false
 
+    /** Réveille la boucle pendant son attente (retour du réseau). */
+    private val reveil = Channel<Unit>(Channel.CONFLATED)
+
     @Volatile
     private var entrepot = nouvelEntrepot()
 
@@ -69,6 +77,26 @@ object DonneesNba {
             demarre = true
         }
         entrepot.brancher(FichiersNba(File(context.applicationContext.noBackupFilesDir, "nba-carte")))
+        suivreReseau(context.applicationContext)
+    }
+
+    /** Un réseau avec Internet devient disponible : appelé aussi tout de suite s'il y en a déjà un. */
+    private fun suivreReseau(app: Context) {
+        val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        try {
+            val demande = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+            cm.registerNetworkCallback(demande, object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = reseauRetrouve()
+            })
+        } catch (e: Exception) {
+            journal("nba carte : suivi du réseau indisponible")
+        }
+    }
+
+    /** Retour du réseau : après un échec, nouvel essai tout de suite (au lieu d'attendre jusqu'à 10 min). */
+    internal fun reseauRetrouve() {
+        entrepot.plan.reseauRetrouve()
+        reveil.trySend(Unit)
     }
 
     /** Le design NBA est-il affiché ? (rafraîchissement toutes les 10 min tant qu'il l'est, rien sinon) */
@@ -98,7 +126,7 @@ object DonneesNba {
                     }
                 }
             }
-            if (attente > 0) delay(attente)
+            if (attente > 0) withTimeoutOrNull(attente) { reveil.receive() }
         }
     }
 

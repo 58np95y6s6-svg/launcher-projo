@@ -17,6 +17,20 @@ class PlanClassementTest {
         assertEquals(Etape.Arret, plan.etape(100 * minute, 0L))
     }
 
+    /** Boîtier démarré avant son Wi-Fi : le retour du réseau relance l'essai sans attendre la reprise. */
+    @Test
+    fun retourDuReseauApresEchec() {
+        plan.actif = true
+        plan.echec(0L)
+        assertEquals(Etape.Attendre(minute), plan.etape(0L, null))
+        plan.reseauRetrouve()
+        assertEquals(Etape.Charger, plan.etape(1_000L, null))
+        // Classement encore frais : rien de plus
+        plan.reussite(2_000L)
+        plan.reseauRetrouve()
+        assertEquals(Etape.Attendre(10 * minute - 1_000L), plan.etape(3_000L, 2_000L))
+    }
+
     @Test
     fun toutDeSuiteSiPerimeOuAbsent() {
         plan.actif = true

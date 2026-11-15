@@ -183,7 +183,7 @@ dans le journal à part le type d'événement (jamais d'URL).
 
 | Donnée | Adresse | Rythme |
 |---|---|---|
-| Classement | `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings` | au démarrage du design, puis toutes les 10 min tant qu'il est affiché ; cache disque |
+| Classement | `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings` | au démarrage du design, puis toutes les 10 min tant qu'il est affiché ; après un échec, nouvel essai dans 1, 2, 4, 8 puis 10 min, ou tout de suite au retour du réseau (boîtier démarré avant son Wi-Fi) ; cache disque |
 | Équipes (id ESPN, logos) | `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams` | une fois par jour ; cache disque |
 | Calendrier d'une équipe | `…/site/v2/sports/basketball/nba/teams/<id>/schedule` | fiche demandée (survol ou fiche) ; cache 30 min |
 | Effectif (et blessures) | `…/site/v2/sports/basketball/nba/teams/<id>/roster` | fiche demandée ; cache 1 h |

@@ -4,7 +4,8 @@ package fr.projo.launcher.nba
  * Rythme du classement (docs/design-nba.md, « Données »), sans Android ni réseau : rien tant que
  * le design NBA n'est pas affiché ; affiché, chargement tout de suite si le dernier classement a
  * plus de 10 min (ou s'il n'y en a pas), puis toutes les 10 min. Après un échec, nouvel essai
- * dans 1 min, puis 2, 4, 8… sans dépasser 10 min. Heures en ms (epoch) ; une heure qui recule
+ * dans 1 min, puis 2, 4, 8… sans dépasser 10 min, sauf si le réseau revient entre-temps
+ * ([reseauRetrouve] : nouvel essai tout de suite). Heures en ms (epoch) ; une heure qui recule
  * (horloge remise à l'heure) compte comme un classement périmé.
  */
 internal class PlanClassement(
@@ -51,6 +52,17 @@ internal class PlanClassement(
     fun echec(t: Long) {
         echecs++
         dernierEssai = t
+    }
+
+    /**
+     * Le réseau revient (boîtier qui démarre avant son Wi-Fi…) : l'attente après échec est oubliée,
+     * le prochain essai a lieu tout de suite si le classement est périmé. Sans échec en cours : rien.
+     */
+    @Synchronized
+    fun reseauRetrouve() {
+        if (echecs == 0) return
+        echecs = 0
+        dernierEssai = null
     }
 
     /** Attente avant un nouvel essai après [n] échecs de suite (n ≥ 1). */
