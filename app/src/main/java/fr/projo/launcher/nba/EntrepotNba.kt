@@ -259,7 +259,7 @@ internal class EntrepotNba(
         return FicheEquipe(
             code = code,
             nomComplet = equipes[code]?.nom ?: calendrier?.nomEquipe ?: effectif?.nomEquipe ?: EquipesNba.de(code).nom.ifEmpty { code },
-            dernier = calendrier?.dernier?.match,
+            derniers = calendrier?.derniers?.map { it.match }.orEmpty(),
             prochain = calendrier?.prochain?.match,
             titulaires = titulaires,
             effectif = joueurs.map { JoueurNba(it.nom, it.numero, it.poste, it.blessure != null, null, null, null, null) },

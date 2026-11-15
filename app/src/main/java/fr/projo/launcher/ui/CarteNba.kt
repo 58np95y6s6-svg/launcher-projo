@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.ShaderBrush
@@ -52,6 +53,10 @@ import kotlin.math.hypot
  * pastilles et disques des logos) est dessiné UNE fois dans une image en mémoire, hors du fil
  * principal, puis seulement réaffiché : une par ambiance et par jeu de leaders. Les logos, bilans
  * et rangs des pastilles sont dessinés par-dessus (PastillesNba.kt).
+ *
+ * Survol (SurvolNba.kt) : la division soulevée est redessinée seule, nette, à l'échelle de la
+ * caméra (rendreDivisionNba), et son ombre portée floutée dans une petite image
+ * (rendreOmbreDivisionNba).
  */
 
 /** Île d'une division (contour pair-impair) et son rectangle englobant. */
@@ -321,16 +326,7 @@ private fun DrawScope.dessinerCarteNba(
     }
     // Planches et reflet (clair en haut à gauche, sombre en bas à droite)
     val planches = if (palette.planche > 0f) motifPlanches(palette.planche) else null
-    for (ile in carte.iles) {
-        if (planches != null) {
-            clipPath(ile.chemin) {
-                translate(ORIGINE_PLANCHES.x, ORIGINE_PLANCHES.y) {
-                    drawRect(planches, topLeft = ile.bornes.topLeft - ORIGINE_PLANCHES, size = ile.bornes.size)
-                }
-            }
-        }
-        drawPath(ile.chemin, reflet(ile.bornes, palette.eclat))
-    }
+    for (ile in carte.iles) plancherIle(ile, planches, palette)
     // Ambiance Leaders : ronds centraux et logo du leader en silhouette blanche
     if (palette.filigrane) {
         clipPath(carte.toutesLesIles) {
@@ -357,8 +353,28 @@ private fun DrawScope.dessinerCarteNba(
         texte(mesure, n.division.nom.uppercase(Locale.FRENCH), n.x, n.y, 22f, NbaEtroit, FontWeight.ExtraBold, 5f, couleur)
     }
     // Villes : trait vers le logo (pastille décalée) et point lumineux ; un seul par groupe
+    dessinerVilles(carte, carte.capsules)
+    // Capsules des pastilles : ombre, fond, liseré, séparateurs, disques blancs et anneaux
+    val ombrePastille = Paint().apply { color = Color.Black.copy(alpha = 0.45f) }.flouNba(OMBRE_PASTILLE_SIGMA)
+    for (capsule in carte.capsules) dessinerCapsule(capsule, ombrePastille, contour = null)
+}
+
+/** Planches (motif [planches], null : aucune) et reflet d'une île. */
+private fun DrawScope.plancherIle(ile: IleNba, planches: ShaderBrush?, palette: PaletteNba) {
+    if (planches != null) {
+        clipPath(ile.chemin) {
+            translate(ORIGINE_PLANCHES.x, ORIGINE_PLANCHES.y) {
+                drawRect(planches, topLeft = ile.bornes.topLeft - ORIGINE_PLANCHES, size = ile.bornes.size)
+            }
+        }
+    }
+    drawPath(ile.chemin, reflet(ile.bornes, palette.eclat))
+}
+
+/** Villes de ces capsules : trait vers le logo (pastille décalée) et point lumineux ; un seul par groupe. */
+private fun DrawScope.dessinerVilles(carte: CarteNba, capsules: List<List<PlacePastilleNba>>) {
     val lueur = Paint().apply { color = Color.White.copy(alpha = 0.85f) }.flouNba(LUEUR_SIGMA)
-    for (capsule in carte.capsules) {
+    for (capsule in capsules) {
         val p = capsule.first()
         val v = carte.villes[p.code] ?: continue
         val logo = Offset(p.x, p.y)
@@ -367,9 +383,170 @@ private fun DrawScope.dessinerCarteNba(
         drawCircle(Color.White, 6f, v)
         drawCircle(Color.Black.copy(alpha = 0.35f), 6f, v, style = Stroke(1f))
     }
-    // Capsules des pastilles : ombre, fond, liseré, séparateurs, disques blancs et anneaux
-    val ombrePastille = Paint().apply { color = Color.Black.copy(alpha = 0.45f) }.flouNba(OMBRE_PASTILLE_SIGMA)
-    for (capsule in carte.capsules) dessinerCapsule(capsule, ombrePastille, contour = null)
+}
+
+// ------------------------------------------------------------------ survol : la division soulevée
+
+/** Marge de l'image d'une division soulevée autour de son cadre (ombres des capsules, lueur du bord), px de référence. */
+private const val MARGE_LEVEE = 34f
+
+/** Partie de la carte couverte par l'image d'une division soulevée (px de référence). */
+fun cadreLevee(carte: CarteNba, d: DivisionNba): Rect = CameraNba.cadre(carte, d).inflate(MARGE_LEVEE)
+
+/**
+ * La division [division] seule, nette, à [echelle] px par px de référence (l'échelle de la caméra
+ * arrêtée sur elle, agrandissement compris) : son île (remplissage, planches, reflet, logo du
+ * leader, frontières, liserés, monuments posés dessus), un bord lumineux de [bord] px de référence
+ * et sa lueur, son nom, ses villes et les capsules de ses pastilles (logos et textes par-dessus,
+ * PastillesNba.kt). Fonction longue : hors du fil principal ; [mesure] est propre à ce dessin.
+ */
+fun rendreDivisionNba(
+    carte: CarteNba,
+    division: DivisionNba,
+    palette: PaletteNba,
+    filigranes: Map<DivisionNba, FiligraneNba>,
+    mesure: TextMeasurer,
+    echelle: Float,
+    bord: Float,
+): ImageCarteNba {
+    val cadre = cadreLevee(carte, division)
+    val w = ceil(cadre.width * echelle).toInt().coerceAtLeast(1)
+    val h = ceil(cadre.height * echelle).toInt().coerceAtLeast(1)
+    val image = ImageBitmap(w, h)
+    val ile = carte.iles.firstOrNull { it.division == division }
+    CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(image), Size(w.toFloat(), h.toFloat())) {
+        withTransform({
+            scale(echelle, echelle, pivot = Offset.Zero)
+            translate(-cadre.left, -cadre.top)
+        }) {
+            if (ile != null) dessinerIleLevee(carte, ile, palette, filigranes, mesure, bord)
+            dessinerPastillesLevees(carte, division, palette, mesure)
+        }
+    }
+    image.prepareToDraw()
+    return ImageCarteNba(image, cadre, echelle)
+}
+
+/** Île soulevée : comme sur la carte, puis un bord blanc lumineux (sa lueur d'abord). */
+private fun DrawScope.dessinerIleLevee(
+    carte: CarteNba,
+    ile: IleNba,
+    palette: PaletteNba,
+    filigranes: Map<DivisionNba, FiligraneNba>,
+    mesure: TextMeasurer,
+    bord: Float,
+) {
+    val d = ile.division
+    drawPath(ile.chemin, palette.fonds[d] ?: PaletteNba.ARDOISE)
+    plancherIle(ile, if (palette.planche > 0f) motifPlanches(palette.planche) else null, palette)
+    clipPath(ile.chemin) {
+        if (palette.filigrane) {
+            for (rond in carte.ronds) if (rond.division == d) dessinerFiligrane(rond, filigranes[d], mesure)
+        }
+        drawPath(carte.frontieres, palette.etats, style = Stroke(0.9f * 1.3f))
+    }
+    drawPath(ile.chemin, palette.lisere, style = Stroke(1.4f * 1.3f, join = StrokeJoin.Round))
+    palette.conferences?.let { conf ->
+        clipPath(ile.chemin) {
+            drawPath(ile.chemin, conf[ile.conference] ?: Color.White, alpha = 0.9f, style = Stroke(2.6f * 1.3f, join = StrokeJoin.Round))
+        }
+    }
+    // Monuments posés sur l'île, découpés par elle (ceux de la mer restent sur la carte)
+    val dessus = carte.monuments.filter { !it.enMer && it.bornes.overlaps(ile.bornes) }
+    if (dessus.isNotEmpty()) clipPath(ile.chemin) { for (m in dessus) dessinerMonument(m, palette, mesure) }
+    // Bord lumineux : lueur douce, puis liseré blanc net
+    val lueur = Paint().apply {
+        color = LUEUR_BORD
+        style = PaintingStyle.Stroke
+        strokeWidth = bord * 2f
+        strokeJoin = StrokeJoin.Round
+    }.flouNba(bord * 1.5f)
+    drawIntoCanvas { it.drawPath(ile.chemin, lueur) }
+    drawPath(ile.chemin, Color.White.copy(alpha = 0.5f), style = Stroke(bord, join = StrokeJoin.Round))
+}
+
+/** Nom, villes et capsules (sans logos ni textes) d'une division soulevée. */
+private fun DrawScope.dessinerPastillesLevees(carte: CarteNba, d: DivisionNba, palette: PaletteNba, mesure: TextMeasurer) {
+    for (n in carte.noms) {
+        if (n.division != d) continue
+        val couleur = if (n.horsIle) PaletteNba.CLAIR.copy(alpha = 0.6f) else palette.noms
+        texte(mesure, n.division.nom.uppercase(Locale.FRENCH), n.x, n.y, 22f, NbaEtroit, FontWeight.ExtraBold, 5f, couleur)
+    }
+    val capsules = carte.capsules.filter { m -> m.any { DivisionNba.de(it.code) == d } }
+    dessinerVilles(carte, capsules)
+    val ombre = Paint().apply { color = Color.Black.copy(alpha = 0.45f) }.flouNba(OMBRE_PASTILLE_SIGMA)
+    for (capsule in capsules) dessinerCapsule(capsule, ombre, contour = null)
+}
+
+/** Lueur du bord d'une île soulevée (#c8d2eb, 55 %). */
+private val LUEUR_BORD = Color(0xFFC8D2EB).copy(alpha = 0.55f)
+
+/** Ombre d'une division soulevée (px de l'écran à l'échelle de la caméra) : portée et ambiante. */
+private const val OMBRE_LEVEE_DY = 26f
+private const val OMBRE_LEVEE_FLOU = 26f
+private const val OMBRE_LEVEE_OPACITE = 0.75f
+private const val OMBRE_AMBIANTE_FLOU = 70f
+private const val OMBRE_AMBIANTE_OPACITE = 0.35f
+
+/**
+ * Ombre d'une division soulevée, laissée à sa place : portée (décalée de 26 px vers le bas, floutée
+ * de 26 px, noir 75 %) et ambiante (large, 70 px, 35 %), en px de l'écran quand la caméra est à
+ * [zoom]. Petite image ([echelle] px par px de référence : un quart de l'écran suffit, c'est flou).
+ */
+fun rendreOmbreDivisionNba(carte: CarteNba, division: DivisionNba, zoom: Float, echelle: Float): ImageCarteNba {
+    val base = CameraNba.cadre(carte, division)
+    val flou = OMBRE_LEVEE_FLOU / zoom
+    val large = OMBRE_AMBIANTE_FLOU / zoom
+    val dy = OMBRE_LEVEE_DY / zoom
+    val m = 3f * large
+    val cadre = Rect(base.left - m, base.top - m, base.right + m, base.bottom + m + dy)
+    val w = ceil(cadre.width * echelle).toInt().coerceAtLeast(1)
+    val h = ceil(cadre.height * echelle).toInt().coerceAtLeast(1)
+    val image = ImageBitmap(w, h)
+    val ile = carte.iles.firstOrNull { it.division == division }
+    val capsules = carte.capsules.filter { c -> c.any { DivisionNba.de(it.code) == division } }
+    CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(image), Size(w.toFloat(), h.toFloat())) {
+        withTransform({
+            scale(echelle, echelle, pivot = Offset.Zero)
+            translate(-cadre.left, -cadre.top)
+        }) {
+            drawIntoCanvas { c ->
+                for ((opacite, sigma, decalage) in listOf(
+                    Triple(OMBRE_AMBIANTE_OPACITE, large, 0f),
+                    Triple(OMBRE_LEVEE_OPACITE, flou, dy),
+                )) {
+                    // Silhouette opaque floutée dans un calque, posé à son opacité (île et capsules ne s'additionnent pas)
+                    c.saveLayer(cadre, Paint().apply { alpha = opacite })
+                    val noir = Paint().apply { color = Color.Black }.flouNba(sigma)
+                    c.save()
+                    c.translate(0f, decalage)
+                    if (ile != null) c.drawPath(ile.chemin, noir)
+                    for (capsule in capsules) {
+                        val r = FormePastille.capsule(capsule)
+                        c.drawRoundRect(r.left, r.top, r.right, r.bottom, FormePastille.RAYON, FormePastille.RAYON, noir)
+                    }
+                    c.restore()
+                    c.restore()
+                }
+            }
+        }
+    }
+    image.prepareToDraw()
+    return ImageCarteNba(image, cadre, echelle)
+}
+
+/**
+ * Image de la carte [im] dessinée à sa place, dans un repère à [k] px par px de référence
+ * (transformation exacte, sans arrondi : nette quand elle tombe pixel pour pixel).
+ */
+internal fun DrawScope.dessinerImageCarte(im: ImageCarteNba, k: Float, alpha: Float = 1f, filtre: ColorFilter? = null) {
+    val e = k / im.echelle
+    withTransform({
+        translate(im.cadre.left * k, im.cadre.top * k)
+        scale(e, e, pivot = Offset.Zero)
+    }) {
+        drawImage(im.image, alpha = alpha, colorFilter = filtre)
+    }
 }
 
 /** Capsule d'une pastille (ou d'un groupe), sans les logos ni les textes ; [contour] : sélection. */
@@ -497,12 +674,12 @@ private fun motifPlanches(p: Float): ShaderBrush {
     return ShaderBrush(ImageShader(tuile, TileMode.Repeated, TileMode.Repeated))
 }
 
-/** Logo dans le disque d'une pastille (un peu en retrait de l'anneau). */
-internal fun DrawScope.dessinerLogo(logo: ImageBitmap, centre: Offset, cote: Float) {
+/** Logo dans le disque d'une pastille (un peu en retrait de l'anneau) ; [filtre] : couleurs (carte en retrait). */
+internal fun DrawScope.dessinerLogo(logo: ImageBitmap, centre: Offset, cote: Float, filtre: ColorFilter? = null) {
     if (logo.width <= 0 || logo.height <= 0) return
     translate(centre.x - cote / 2f, centre.y - cote / 2f) {
         scale(cote / logo.width, cote / logo.height, pivot = Offset.Zero) {
-            drawImage(logo, filterQuality = FilterQuality.Medium)
+            drawImage(logo, filterQuality = FilterQuality.Medium, colorFilter = filtre)
         }
     }
 }

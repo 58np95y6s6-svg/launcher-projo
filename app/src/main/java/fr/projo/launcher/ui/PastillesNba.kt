@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -41,7 +42,8 @@ import kotlin.math.roundToInt
 /*
  * Design « NBA » : les 30 pastilles posées sur la carte (logos, bilans et rangs) et la
  * navigation de l'une à l'autre. Leurs capsules sont déjà dans l'image de la carte (CarteNba.kt) ;
- * la pastille sélectionnée est redessinée entière par-dessus, agrandie et cerclée de blanc.
+ * la pastille sélectionnée est redessinée entière par-dessus, agrandie et cerclée de blanc. En
+ * survol, les pastilles de la division soulevée sont dessinées avec elle (SurvolNba.kt).
  */
 
 /** Or des leaders de division (« 1er DIV. »). */
@@ -166,9 +168,11 @@ internal fun rangsPastille(b: BilanNba, exposants: TextUnit): AnnotatedString = 
 }
 
 /**
- * Logos, bilans et rangs des 30 pastilles ([bilans] null : pas encore de classement, « –– »
- * et pas de rangs), puis la pastille [choisie] par-dessus. [surClic] : toucher ou clic sur une
- * pastille.
+ * Logos, bilans et rangs des pastilles ([bilans] null : pas encore de classement, « –– » et pas
+ * de rangs), puis la pastille [choisie] par-dessus. [surClic] : toucher ou clic sur une pastille.
+ * [equipes] : les pastilles posées (null : toutes) ; [cachees] : posées (étiquette, clic) mais
+ * dessinées ailleurs (division soulevée) ; [etiquette] : préfixe des étiquettes ; [filtreLogos] :
+ * couleurs des logos (carte en retrait), lu au dessin ; [modifier] : la couche entière.
  */
 @Composable
 internal fun CouchePastilles(
@@ -178,33 +182,42 @@ internal fun CouchePastilles(
     choisie: String?,
     k: Float,
     surClic: (String) -> Unit,
+    equipes: Set<String>? = null,
+    cachees: Set<String> = emptySet(),
+    etiquette: String = "nba:pastille:",
+    filtreLogos: () -> ColorFilter? = { null },
+    modifier: Modifier = Modifier,
 ) {
-    Box(Modifier.fillMaxSize()) {
+    val posees = if (equipes == null) carte.pastilles else carte.pastilles.filter { it.code in equipes }
+    Box(modifier.fillMaxSize()) {
         // Tous les logos d'un seul dessin
         Spacer(
             Modifier.fillMaxSize().drawBehind {
-                for (p in carte.pastilles) {
+                val filtre = filtreLogos()
+                for (p in posees) {
+                    if (p.code in cachees) continue
                     val logo = logos[p.code] ?: continue
-                    dessinerLogo(logo, Offset(p.x * k, p.y * k), COTE_LOGO * k)
+                    dessinerLogo(logo, Offset(p.x * k, p.y * k), COTE_LOGO * k, filtre)
                 }
             },
         )
-        for (p in carte.pastilles) {
+        for (p in posees) {
             key(p.code) {
                 val ligne = FormePastille.ligne(p)
                 Box(
                     Modifier
                         .offset { IntOffset((ligne.left * k).roundToInt(), (ligne.top * k).roundToInt()) }
                         .size(ligne.width.mq, ligne.height.mq)
-                        .testTag("nba:pastille:" + p.code)
+                        .testTag(etiquette + p.code)
                         .semantics { selected = p.code == choisie }
                         .cliquableSansFocus { surClic(p.code) },
                 ) {
-                    ContenuPastille(p, bilans, logos[p.code] != null, Offset(ligne.left, ligne.top), k)
+                    if (p.code !in cachees) ContenuPastille(p, bilans, logos[p.code] != null, Offset(ligne.left, ligne.top), k)
                 }
             }
         }
-        val membres = choisie?.let { c -> carte.capsules.firstOrNull { m -> m.any { it.code == c } } }
+        val membres = choisie?.takeIf { it !in cachees }?.let { c -> posees.firstOrNull { it.code == c } }
+            ?.let { carte.capsules.firstOrNull { m -> m.any { it.code == choisie } } }
         if (choisie != null && membres != null) PastilleChoisie(membres, choisie, bilans, logos, k)
     }
 }

@@ -16,7 +16,8 @@ import java.util.TimeZone
 
 /**
  * Données NBA factices des tests (aucun réseau) : les bilans de la maquette (maquette2.html,
- * objet BILANS) et ses rangs, calculés comme elle ; une fiche réaliste du Thunder.
+ * objet BILANS) et ses rangs, calculés comme elle ; des fiches réalistes du Thunder, des Spurs
+ * et des Celtics (leurs 3 derniers matchs, le prochain, le cinq de départ).
  */
 object NbaFactice {
 
@@ -70,12 +71,19 @@ object NbaFactice {
     private fun j(nom: String, numero: String, poste: String, min: Double? = null, pts: Double? = null, reb: Double? = null, pd: Double? = null, blesse: Boolean = false) =
         JoueurNba(nom, numero, poste, blesse, min, pts, reb, pd)
 
+    private fun m(adversaire: String, domicile: Boolean, jour: Int, heure: Int, minute: Int, score: Int? = null, eux: Int? = null) =
+        MatchEquipe(adversaire, domicile, utc(Calendar.NOVEMBER, jour, heure, minute), score, eux)
+
     /** Fiche du Thunder : battu à Portland le 11 novembre, à LA Clippers le 14 (4:30 à Paris). */
     val ficheOkc = FicheEquipe(
         code = "OKC",
         nomComplet = "Oklahoma City Thunder",
-        dernier = MatchEquipe("POR", domicile = false, debut = utc(Calendar.NOVEMBER, 11, 3, 0), score = 108, scoreAdversaire = 118),
-        prochain = MatchEquipe("LAC", domicile = false, debut = utc(Calendar.NOVEMBER, 14, 3, 30), score = null, scoreAdversaire = null),
+        derniers = listOf(
+            m("POR", domicile = false, 11, 3, 0, 108, 118),
+            m("DEN", domicile = true, 9, 1, 0, 121, 112),
+            m("MEM", domicile = true, 7, 1, 0, 115, 101),
+        ),
+        prochain = m("LAC", domicile = false, 14, 3, 30),
         titulaires = listOf(
             j("S. Gilgeous-Alexander", "2", "MJ", 34.1, 31.8, 5.2, 6.4),
             j("J. Williams", "8", "AI", 32.4, 21.3, 5.1, 5.0),
@@ -96,6 +104,58 @@ object NbaFactice {
             BlessureNba("A. Mitchell", "Incertain", "cheville"),
         ),
     )
+
+    /** Fiche des Spurs : battus à Chicago le 12 novembre (heure de Paris), contre Golden State le 14 (3:30). */
+    val ficheSas = FicheEquipe(
+        code = "SAS",
+        nomComplet = "San Antonio Spurs",
+        derniers = listOf(
+            m("CHI", domicile = false, 12, 1, 0, 119, 124),
+            m("PHX", domicile = false, 10, 2, 0, 122, 96),
+            m("POR", domicile = false, 8, 3, 0, 125, 103),
+        ),
+        prochain = m("GSW", domicile = true, 14, 2, 30),
+        titulaires = listOf(
+            j("D. Fox", "4", "MJ", 33.6, 23.4, 4.1, 6.3),
+            j("S. Castle", "5", "AR", 30.9, 15.2, 4.4, 4.8),
+            j("D. Vassell", "24", "AR", 28.7, 13.1, 3.6, 2.5),
+            j("H. Barnes", "40", "AI", 26.4, 10.4, 4.2, 1.9),
+            j("V. Wembanyama", "1", "P", 33.2, 30.3, 11.7, 3.6),
+        ),
+        effectif = listOf(
+            j("V. Wembanyama", "1", "P"), j("D. Fox", "4", "MJ"), j("S. Castle", "5", "AR"), j("D. Vassell", "24", "AR"),
+            j("H. Barnes", "40", "AI"), j("K. Johnson", "3", "AI"), j("J. Sochan", "10", "AF"), j("D. Harper", "2", "MJ"),
+            j("L. Kornet", "7", "P", blesse = true), j("B. Wesley", "14", "AR"),
+        ),
+        blessures = listOf(BlessureNba("L. Kornet", "Au jour le jour", "cheville")),
+    )
+
+    /** Fiche des Celtics : battus à New York le 12 novembre, contre Miami le 14 (1:30). */
+    val ficheBos = FicheEquipe(
+        code = "BOS",
+        nomComplet = "Boston Celtics",
+        derniers = listOf(
+            m("NYK", domicile = false, 12, 0, 30, 108, 112),
+            m("TOR", domicile = true, 10, 0, 30, 121, 104),
+            m("ORL", domicile = false, 8, 0, 0, 117, 109),
+        ),
+        prochain = m("MIA", domicile = true, 14, 0, 30),
+        titulaires = listOf(
+            j("J. Brown", "7", "AR", 35.1, 27.6, 6.2, 4.4),
+            j("D. White", "9", "MJ", 32.8, 17.9, 4.5, 5.1),
+            j("P. Pritchard", "11", "MJ", 29.4, 15.3, 3.6, 3.9),
+            j("S. Hauser", "30", "AI", 25.2, 9.6, 3.9, 1.4),
+            j("N. Queta", "88", "P", 24.7, 8.8, 8.9, 1.2),
+        ),
+        effectif = listOf(
+            j("J. Brown", "7", "AR"), j("D. White", "9", "MJ"), j("P. Pritchard", "11", "MJ"), j("S. Hauser", "30", "AI"),
+            j("N. Queta", "88", "P"), j("J. Tatum", "0", "AI", blesse = true), j("A. Simons", "4", "AR"), j("J. Walsh", "27", "AI"),
+        ),
+        blessures = listOf(BlessureNba("J. Tatum", "Absent", "tendon d'Achille")),
+    )
+
+    /** Toutes les fiches factices, par équipe. */
+    val fiches: Map<String, FicheEquipe> = mapOf("OKC" to ficheOkc, "SAS" to ficheSas, "BOS" to ficheBos)
 }
 
 /**
@@ -115,11 +175,15 @@ class SourceNbaFactice(
     /** Appels à suivre(), dans l'ordre. */
     val suivis = mutableListOf<Boolean>()
 
+    /** Fiches demandées, dans l'ordre. */
+    val demandes = mutableListOf<String>()
+
     override fun suivre(actif: Boolean) {
         suivis += actif
     }
 
     override suspend fun fiche(code: String): FicheEquipe? {
+        demandes += code
         if (chargementSansFin) awaitCancellation()
         return fiches[code]
     }

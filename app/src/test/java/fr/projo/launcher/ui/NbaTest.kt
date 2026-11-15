@@ -9,7 +9,10 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
@@ -35,8 +38,9 @@ import java.util.TimeZone
 /**
  * Design « NBA » (données factices de la maquette, heure de Paris) : accueil dans les trois
  * ambiances, sans classement, hors ligne ; navigation du dock à la carte et de pastille en
- * pastille ; fiche (Résumé, Effectif, indisponible, chargement) ; suivi du classement selon
- * l'affichage. Captures nba_*.png à comparer aux maquettes.
+ * pastille ; survol d'une division (caméra, panneau, fiche demandée une fois l'équipe choisie) ;
+ * fiche (Résumé, Effectif, indisponible, chargement) ; suivi du classement selon l'affichage.
+ * Captures nba_*.png à comparer aux maquettes.
  */
 @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -68,7 +72,8 @@ class NbaTest : BancAccueil("NBA") {
     private fun source(
         classement: ClassementNba? = NbaFactice.classement(t - 4 * 60_000L),
         chargementSansFin: Boolean = false,
-    ) = SourceNbaFactice(classement, t, chargementSansFin = chargementSansFin).also { sourceNba = it }
+        fiches: Map<String, fr.projo.launcher.nba.FicheEquipe> = mapOf("OKC" to NbaFactice.ficheOkc),
+    ) = SourceNbaFactice(classement, t, fiches = fiches, chargementSansFin = chargementSansFin).also { sourceNba = it }
 
     /**
      * Appui sur une touche, puis l'état changé par la carte ou la fiche (sans animation ni
@@ -130,6 +135,27 @@ class NbaTest : BancAccueil("NBA") {
 
     private fun verifierTextes(vararg attendus: String) {
         for (s in attendus) if (!texte(s)) fail("[NBA] texte « $s » absent (${etatDuFocus()})")
+    }
+
+    /** Division cadrée par la caméra (« sudouest »…), « carte » : la carte entière. */
+    private fun camera(): String? {
+        val m = SemanticsMatcher("caméra") { it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("nba:camera:") == true }
+        return compose.onAllNodes(m, useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+            ?.config?.getOrNull(SemanticsProperties.TestTag)?.removePrefix("nba:camera:")
+    }
+
+    private fun attendreCamera(division: String, etape: String) {
+        val c = camera()
+        if (c != division) fail("[NBA] $etape : caméra attendue sur $division, obtenue sur $c (pastille ${choisie()})")
+    }
+
+    /** Touches enchaînées sans attendre (moins que la pause avant la demande de la fiche). */
+    private fun rafale(vararg touches: Key) {
+        for (k in touches) {
+            compose.onRoot().performKeyInput { pressKey(k) }
+            compose.runOnIdle { androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications() }
+            avancer(100)
+        }
     }
 
     // ------------------------------------------------------------------ accueil
@@ -229,6 +255,146 @@ class NbaTest : BancAccueil("NBA") {
         attendreFocus(favori(1), "Retour sur la carte")
         attendreChoisie(null, "Retour sur la carte")
         if (lances.isNotEmpty()) fail("[NBA] rien ne devait se lancer : $lances")
+    }
+
+    // ------------------------------------------------------------------ survol
+
+    /**
+     * ▲ depuis le dock : survol du Sud-Ouest (caméra, panneau : en-tête, 3 derniers matchs,
+     * prochain, classement de la division) ; ▶ ◀ ▲ dans la division : la caméra ne bouge pas ;
+     * ▲ vers OKC : le Nord-Ouest ; OK : la fiche à la place du panneau ; Retour : le survol ;
+     * Retour : la carte entière, sans sélection.
+     */
+    @Test
+    fun survolDuneDivision() {
+        source(fiches = NbaFactice.fiches)
+        afficher()
+        attendreCamera("carte", "accueil")
+        if (present("nba:survol")) fail("[NBA] accueil : pas de panneau de survol")
+        touche(Key.DirectionUp)
+        avancer(600)
+        attendreChoisie("SAS", "▲ depuis le 1er favori")
+        attendreCamera("sudouest", "▲ depuis le 1er favori")
+        attendreFocus(favori(0), "survol")
+        if (!present("nba:survol")) fail("[NBA] ▲ : panneau de survol attendu (${etatDuFocus()})")
+        if (!present("nba:levee:sudouest")) fail("[NBA] ▲ : Sud-Ouest soulevé attendu")
+        verifierTextes(
+            "San Antonio Spurs", "6–7", "11e OUEST · 4e SUD-OUEST", "Défaite au dernier match",
+            "meilleur marqueur : V. Wembanyama, 30,3 pts · 11,7 reb",
+            "3 DERNIERS MATCHS", "119–124", "à Chicago", "jeu. 12 nov.", "122–96", "à Phoenix", "mar. 10 nov.",
+            "125–103", "à Portland", "dim. 8 nov.",
+            "PROCHAIN MATCH", "sam. 14 nov. · 3:30", "contre Golden State",
+            "DIVISION SUD-OUEST", "ÉCART", "HOU", "9–4", "NOP", "3–10",
+            "fiche complète", "équipe voisine", "carte entière",
+        )
+        if (!present("nba:survol:matchs")) fail("[NBA] survol : les 3 derniers matchs attendus")
+        capturer("survol")
+        // Dans la division : la caméra reste
+        touche(Key.DirectionRight)
+        attendreChoisie("HOU", "▶ depuis SAS")
+        attendreCamera("sudouest", "▶ depuis SAS")
+        verifierTextes("Houston Rockets", "Matchs indisponibles pour l'instant")
+        touche(Key.DirectionLeft)
+        attendreChoisie("SAS", "◀ depuis HOU")
+        touche(Key.DirectionUp)
+        attendreChoisie("DAL", "▲ depuis SAS")
+        attendreCamera("sudouest", "▲ depuis SAS")
+        // Vers une autre division : la caméra la suit
+        touche(Key.DirectionUp)
+        attendreChoisie("OKC", "▲ depuis DAL")
+        attendreCamera("nordouest", "▲ depuis DAL")
+        verifierTextes("Oklahoma City Thunder", "DIVISION NORD-OUEST", "108–118", "contre Denver")
+        // OK : la fiche complète remplace le panneau (la caméra reste)
+        touche(Key.DirectionCenter)
+        if (!present("nba:fiche")) fail("[NBA] OK en survol : fiche attendue (${etatDuFocus()})")
+        if (present("nba:survol")) fail("[NBA] OK en survol : le panneau de survol devait s'effacer")
+        attendreCamera("nordouest", "fiche ouverte")
+        verifierTextes("CINQ DE DÉPART", "Défaite 108–118")
+        // Retour : de nouveau le survol
+        touche(Key.Back)
+        if (present("nba:fiche")) fail("[NBA] Retour dans la fiche : elle devait se fermer")
+        if (!present("nba:survol")) fail("[NBA] Retour dans la fiche : le survol attendu")
+        attendreChoisie("OKC", "Retour dans la fiche")
+        attendreCamera("nordouest", "Retour dans la fiche")
+        // Retour : la carte entière, plus de sélection
+        touche(Key.Back)
+        attendreChoisie(null, "Retour en survol")
+        attendreCamera("carte", "Retour en survol")
+        attendreFocus(favori(0), "Retour en survol")
+        if (present("nba:survol") || present("nba:carte")) fail("[NBA] Retour en survol : ni panneau ni sélection")
+        if (present("nba:levee:nordouest")) fail("[NBA] Retour en survol : le Nord-Ouest devait être reposé")
+        if (lances.isNotEmpty()) fail("[NBA] rien ne devait se lancer : $lances")
+    }
+
+    /** ▼ sous les pastilles du bas et Maison : la carte entière aussi. */
+    @Test
+    fun survolQuitteParLeBasEtMaison() {
+        source(fiches = NbaFactice.fiches)
+        afficher()
+        touche(Key.DirectionUp)
+        attendreCamera("sudouest", "▲")
+        touche(Key.DirectionDown)
+        attendreChoisie(null, "▼ depuis SAS")
+        attendreCamera("carte", "▼ depuis SAS")
+        touche(Key.DirectionUp)
+        attendreCamera("sudouest", "▲ de nouveau")
+        appuisMaison.intValue++
+        appliquer()
+        avancer(600)
+        attendreChoisie(null, "Maison")
+        attendreCamera("carte", "Maison")
+        if (present("nba:survol")) fail("[NBA] Maison : plus de panneau de survol")
+    }
+
+    /** Flèches enchaînées : la fiche n'est demandée que pour l'équipe où l'on s'arrête. */
+    @Test
+    fun survolFicheDemandeeALArret() {
+        val s = source(fiches = NbaFactice.fiches)
+        afficher()
+        rafale(Key.DirectionUp, Key.DirectionUp, Key.DirectionUp)
+        appliquer()
+        avancer(800)
+        attendreChoisie("OKC", "▲ ▲ ▲ enchaînés")
+        attendreCamera("nordouest", "▲ ▲ ▲ enchaînés")
+        if (s.demandes != listOf("OKC")) fail("[NBA] flèches enchaînées : fiche demandée pour OKC seulement, obtenu ${s.demandes}")
+        verifierTextes("Oklahoma City Thunder", "108–118")
+        // OK : la fiche déjà lue sert telle quelle
+        touche(Key.DirectionCenter)
+        verifierTextes("CINQ DE DÉPART")
+        if (s.demandes != listOf("OKC")) fail("[NBA] OK : la fiche ne devait pas être redemandée (${s.demandes})")
+    }
+
+    /** Survol d'une division de l'Est (Boston, Atlantique), par les flèches. */
+    @Test
+    fun survolEst() {
+        source(fiches = NbaFactice.fiches)
+        afficher()
+        touche(Key.DirectionUp)
+        for ((sens, attendue) in listOf(
+            Key.DirectionUp to "DAL", Key.DirectionRight to "ATL", Key.DirectionRight to "CHA", Key.DirectionRight to "WAS",
+            Key.DirectionRight to "BKN", Key.DirectionUp to "NYK", Key.DirectionRight to "BOS",
+        )) {
+            touche(sens)
+            attendreChoisie(attendue, "vers $attendue")
+        }
+        avancer(1000)
+        attendreCamera("atlantique", "BOS")
+        verifierTextes("Boston Celtics", "10–3", "DIVISION ATLANTIQUE", "108–112", "à New York", "contre Miami", "meilleur marqueur : J. Brown")
+        capturer("survol_est")
+    }
+
+    /** Survol en ambiance Parquet (Oklahoma City, Nord-Ouest). */
+    @Test
+    fun survolParquet() {
+        ambiance(AmbianceNba.PARQUET)
+        source(fiches = NbaFactice.fiches)
+        afficher()
+        repeat(3) { touche(Key.DirectionUp) }
+        avancer(1000)
+        attendreChoisie("OKC", "▲ ▲ ▲")
+        attendreCamera("nordouest", "▲ ▲ ▲")
+        verifierTextes("Oklahoma City Thunder", "DIVISION NORD-OUEST", "contre Memphis")
+        capturer("survol_parquet")
     }
 
     // ------------------------------------------------------------------ fiche
@@ -359,6 +525,50 @@ class CarteNbaTest {
         assertEquals(kotlin.math.ceil(carte.cadre.width * 0.5f).toInt(), image.image.width)
         val p = image.image.asAndroidBitmap().getPixel(((480f - image.cadre.left) * 0.5f).toInt(), ((260f - image.cadre.top) * 0.5f).toInt())
         return Triple((p shr 16) and 0xFF, (p shr 8) and 0xFF, p and 0xFF)
+    }
+
+    /** Caméra du survol sur la vraie carte : chaque division (île, 5 pastilles, villes) soulevée tient dans la zone. */
+    @Test
+    fun cameraDesDivisions() {
+        val zone = CameraNba.ZONE
+        for (d in DivisionNba.entries) {
+            val cadre = CameraNba.cadre(carte, d)
+            for (p in carte.pastilles.filter { DivisionNba.de(it.code) == d }) {
+                assertTrue("$d : pastille ${p.code} hors du cadre", cadre.contains(FormePastille.centre(p)))
+            }
+            assertTrue("$d : île hors du cadre", carte.iles.first { it.division == d }.bornes.let { cadre.contains(it.topLeft) && cadre.contains(it.bottomRight) })
+            val cam = CameraNba.division(carte, d)
+            assertTrue("$d : échelle ${cam.echelle}", cam.echelle > 1.2f && cam.echelle <= CameraNba.ECHELLE_MAX)
+            val (e, dec) = cam.soulevee(cadre.center, 1f)
+            val haut = cadre.topLeft * e + dec
+            val bas = cadre.bottomRight * e + dec
+            assertTrue("$d soulevée : $haut – $bas hors de $zone", haut.x >= zone.left - 0.5f && haut.y >= zone.top - 0.5f && bas.x <= zone.right + 0.5f && bas.y <= zone.bottom + 0.5f)
+        }
+        // Petite division : agrandie au maximum ; la plus grande (Nord-Ouest) un peu moins
+        assertEquals(CameraNba.ECHELLE_MAX, CameraNba.division(carte, DivisionNba.ATLANTIQUE).echelle, 1e-4f)
+        assertTrue(CameraNba.division(carte, DivisionNba.NORD_OUEST).echelle < 1.45f)
+    }
+
+    /** Division soulevée : île nette à l'échelle de la caméra (couleur de son leader, transparente autour), ombre au quart. */
+    @Test
+    fun divisionSoulevee() {
+        val mesure = TextMeasurer(createFontFamilyResolver(RuntimeEnvironment.getApplication()), Density(1f), LayoutDirection.Ltr, 0)
+        val leaders = DivisionNba.entries.associateWith { d -> NbaFactice.classement(0L).equipes.values.first { it.rangDivision == 1 && DivisionNba.de(it.code) == d }.code }
+        val palette = PaletteNba.de(AmbianceNba.LEADERS, leaders)
+        val im = rendreLevee(carte, DivisionNba.SUD_OUEST, palette, emptyMap(), mesure, 1f, Unit)
+        val zoom = CameraNba.division(carte, DivisionNba.SUD_OUEST).echelle
+        assertEquals(zoom * CameraNba.AGRANDI, im.ile.echelle, 1e-4f)
+        assertEquals(kotlin.math.ceil(im.ile.cadre.width * im.ile.echelle).toInt(), im.ile.image.width)
+        val bitmap = im.ile.image.asAndroidBitmap()
+        fun point(x: Float, y: Float) = bitmap.getPixel(((x - im.ile.cadre.left) * im.ile.echelle).toInt(), ((y - im.ile.cadre.top) * im.ile.echelle).toInt())
+        // Milieu de l'île (Texas) : le rouge de Houston, leader ; coin de l'image : transparent
+        val p = point(700f, 620f)
+        val (r, g, b) = Triple((p shr 16) and 0xFF, (p shr 8) and 0xFF, p and 0xFF)
+        assertTrue("Sud-Ouest rouge de Houston ($r, $g, $b)", r > g + 60 && r > b + 40)
+        assertEquals(0, bitmap.getPixel(0, 0) ushr 24)
+        // Ombre : petite image, plus large que l'île (flou), noire
+        assertTrue(im.ombre.image.width < im.ile.image.width / 2)
+        assertTrue(im.ombre.cadre.width > im.ile.cadre.width)
     }
 
     @Test

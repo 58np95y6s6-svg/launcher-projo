@@ -1,5 +1,6 @@
 package fr.projo.launcher.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,11 +30,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -63,8 +67,11 @@ import fr.projo.launcher.nba.ConferenceNba
 import fr.projo.launcher.nba.DivisionNba
 import fr.projo.launcher.nba.DonneesNba
 import fr.projo.launcher.nba.FicheEquipe
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -79,6 +86,10 @@ import kotlin.math.roundToInt
  * Retour reviennent au dock ; OK ouvre la fiche de l'équipe (Résumé / Effectif avec ◀ ▶, Retour
  * la ferme). Le focus reste sur la tuile du dock pendant ce temps : l'écran lit les touches
  * avant elle.
+ *
+ * Survol (SurvolNba.kt) : tant qu'une pastille est sélectionnée, la caméra cadre sa division, qui
+ * se soulève ; le reste de la carte passe en retrait ; le panneau de survol résume l'équipe (la
+ * fiche complète le remplace).
  */
 
 /** Ce que l'écran NBA lit : DonneesNba en vrai, des données factices dans les tests. */
@@ -209,7 +220,7 @@ internal fun EcranNba(
         val dessiner = { rendreCarteNba(c, palette, filigranes, TextMeasurer(resolveur, Density(1f), LayoutDirection.Ltr, 0), echelleImage) }
         value = runCatching { if (source.synchrone) dessiner() else withContext(Dispatchers.Default) { dessiner() } }.getOrNull() ?: value
     }
-    val apparition by animateFloatAsState(if (image != null) 1f else 0f, tween(400), label = "carte")
+    val apparition = animateFloatAsState(if (image != null) 1f else 0f, tween(400), label = "carte")
 
     // ------------------------------------------------ sélection et fiche
     // Le focus reste sur la tuile du dock d'où l'on est monté : la carte et la fiche lisent les
@@ -226,6 +237,69 @@ internal fun EcranNba(
     }
     // Maison : retour à l'accueil, sans sélection
     LaunchedEffect(ctx.appuisMaison) { if (ctx.appuisMaison > 0) quitterCarte() }
+
+    // ------------------------------------------------ survol de la division choisie
+    val division = choisie?.let { DivisionNba.de(it) }?.takeIf { carte != null }
+    val camera = remember { CameraAnimee(CameraNba.CARTE) }
+    LaunchedEffect(carte, division) {
+        val c = carte
+        if (c != null && division != null) camera.aller(CameraNba.division(c, division), SURVOL_MS) else camera.aller(CameraNba.CARTE, RETOUR_CARTE_MS)
+    }
+    // Carte en retrait (assombrie, désaturée) et top 3 effacé pendant le survol
+    val voile = animateFloatAsState(
+        if (division != null) 1f else 0f,
+        tween(if (division != null) SURVOL_MS else RETOUR_CARTE_MS, easing = EaseInOutNba), label = "voile",
+    )
+    // Images de la division soulevée (et des précédentes, le temps qu'elles redescendent) : 3 au plus
+    val images = remember { mutableStateMapOf<DivisionNba, ImagesLevee>() }
+    val ordreImages = remember { ArrayList<DivisionNba>() }
+    LaunchedEffect(carte, division, palette, filigranes, k) {
+        val c = carte ?: return@LaunchedEffect
+        val d = division ?: return@LaunchedEffect
+        val cle = CleLevee(palette, filigranes, k)
+        if (images[d]?.cle != cle) {
+            val dessiner = { rendreLevee(c, d, palette, filigranes, TextMeasurer(resolveur, Density(1f), LayoutDirection.Ltr, 0), k, cle) }
+            val im = try {
+                if (source.synchrone) dessiner() else withContext(Dispatchers.Default) { dessiner() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            } catch (e: OutOfMemoryError) {
+                null
+            }
+            if (im != null) images[d] = im
+        }
+        ordreImages.remove(d)
+        ordreImages.add(d)
+        while (ordreImages.size > 3) images.remove(ordreImages.removeAt(0))
+    }
+    // Levée de chaque division : la choisie monte dès que son image est prête, les autres redescendent
+    val levees = remember { DivisionNba.entries.associateWith { Animatable(0f) } }
+    val prete = division != null && images[division] != null
+    LaunchedEffect(division, prete) {
+        for ((d, a) in levees) {
+            val haut = d == division && prete
+            launch { a.animateTo(if (haut) 1f else 0f, tween(if (haut) SURVOL_MS else RETOUR_CARTE_MS, easing = EaseInOutNba)) }
+        }
+    }
+    // Fiche de l'équipe survolée : demandée après une courte pause (les flèches enchaînées ne la demandent pas)
+    val ficheSurvol by produceState<Pair<String, EtatFiche>?>(null, choisie, source) {
+        val code = choisie ?: return@produceState
+        delay(DELAI_FICHE_MS)
+        val f = try {
+            if (source.synchrone) source.fiche(code) else withContext(Dispatchers.IO) { source.fiche(code) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        value = code to (if (f != null) EtatFiche.Prete(f) else EtatFiche.Erreur)
+    }
+    val etatSurvol = ficheSurvol?.takeIf { it.first == choisie }?.second ?: EtatFiche.Chargement
+    // Bas du panneau de survol : au-dessus du dock s'il passe dessous
+    var droiteDock by remember { mutableFloatStateOf(0f) }
+    val basPanneau = if (droiteDock > PanneauSurvol.GAUCHE - 24f) hauteur - 146f - 20f else hauteur - (1080f - PanneauSurvol.BAS)
     val entrerCarte: (Float) -> Unit = { x ->
         NavCarteNba.voisine(Offset(x, HAUT_DOCK), SensNba.HAUT, centres)?.let { choisie = it }
     }
@@ -297,29 +371,45 @@ internal fun EcranNba(
                 }
             },
     ) {
-        // Carte : l'image en mémoire, réaffichée telle quelle
-        Spacer(
-            Modifier.fillMaxSize().testTag("nba:image").drawBehind {
-                val im = image ?: return@drawBehind
-                val e = k / im.echelle
-                drawImage(
-                    im.image,
-                    dstOffset = IntOffset((im.cadre.left * k).roundToInt(), (im.cadre.top * k).roundToInt()),
-                    dstSize = IntSize((im.image.width * e).roundToInt(), (im.image.height * e).roundToInt()),
-                    alpha = apparition,
-                    filterQuality = FilterQuality.Low,
+        // Toucher une pastille : sa fiche (le dock prend le focus s'il ne l'a pas, pour les touches)
+        val toucherPastille: (String) -> Unit = { code ->
+            if (!dockActif) runCatching { ctx.premierFocus.requestFocus() }
+            ouvrirFiche(code)
+        }
+        // Carte (calque de la caméra) : l'image en mémoire, réaffichée telle quelle, et les pastilles
+        // (sauf celles de la division soulevée, dessinées avec elle)
+        Box(Modifier.fillMaxSize().cameraNba(camera, k)) {
+            Spacer(
+                Modifier.fillMaxSize().testTag("nba:image").drawBehind {
+                    val im = image ?: return@drawBehind
+                    val e = k / im.echelle
+                    drawImage(
+                        im.image,
+                        dstOffset = IntOffset((im.cadre.left * k).roundToInt(), (im.cadre.top * k).roundToInt()),
+                        dstSize = IntSize((im.image.width * e).roundToInt(), (im.image.height * e).roundToInt()),
+                        alpha = apparition.value,
+                        colorFilter = RetraitNba.filtre(voile.value),
+                        filterQuality = FilterQuality.Low,
+                    )
+                },
+            )
+            carte?.let { c ->
+                CouchePastilles(
+                    c, bilans, logos, choisie, k, toucherPastille,
+                    cachees = division?.equipes?.toSet() ?: emptySet(),
+                    filtreLogos = { RetraitNba.filtre(voile.value) },
+                    modifier = Modifier.graphicsLayer {
+                        alpha = RetraitNba.opacitePastilles(voile.value)
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                    },
                 )
-            },
-        )
-        carte?.let { c ->
-            CouchePastilles(c, bilans, logos, choisie, k) { code ->
-                // Toucher une pastille : sa fiche (le dock prend le focus s'il ne l'a pas, pour les touches)
-                if (!dockActif) runCatching { ctx.premierFocus.requestFocus() }
-                ouvrirFiche(code)
             }
         }
+        // Survol : le reste en retrait, puis la division soulevée (ombre, île, pastilles)
+        Spacer(Modifier.fillMaxSize().voileSurvol({ voile.value }, palette.fond.arrets.last().second, k))
+        carte?.let { c -> CouchesLevees(c, division, levees, images, camera, bilans, logos, choisie, k, toucherPastille) }
         EnTeteNba(palette, maintenant, k)
-        TuileTop3(bilans, palette, logos, k, hauteur)
+        TuileTop3(bilans, palette, logos, k, hauteur) { 1f - voile.value }
         EtatBilans(classement, maintenant, k, hauteur)
         DockNba(
             ctx, k, hauteur, modeCarte = choisie != null, entrer = entrerCarte,
@@ -328,14 +418,23 @@ internal fun EcranNba(
                 // Focus parti du dock (Réglages, bibliothèque…) : plus de sélection
                 if (!aLeFocus) quitterCarte()
             },
+            surDroite = { droiteDock = it },
         )
         // « Mes apps » n'a pas de rangée ici : son état de défilement doit tout de même être attaché à une rangée
         LazyRow(state = ctx.rangeeApps, modifier = Modifier.size(0.dp)) {}
-        // Repère de la sélection sur la carte (tests, accessibilité)
+        // Repères de la sélection et de la caméra (tests, accessibilité)
         if (choisie != null) Spacer(Modifier.size(1.dp).testTag("nba:carte"))
+        Spacer(Modifier.size(1.dp).testTag("nba:camera:" + (division?.id ?: "carte")))
+        PanneauSurvolNba(
+            visible = choisie != null && fiche == null, code = choisie, bilans = bilans, etat = etatSurvol,
+            logos = logos, k = k, bas = basPanneau,
+        )
         val code = fiche
         if (code != null) {
-            FicheNba(code = code, bilan = bilans?.get(code), source = source, logos = logos, k = k, onglet = onglet)
+            FicheNba(
+                code = code, bilan = bilans?.get(code), source = source, logos = logos, k = k, onglet = onglet,
+                deja = (etatSurvol as? EtatFiche.Prete)?.fiche?.takeIf { code == choisie },
+            )
         }
     }
 }
@@ -399,14 +498,22 @@ internal fun Modifier.verreNba(k: Float, rayon: Float, opacite: Float = 0.84f): 
     )
 }
 
-/** « TOP 3 DES CONFÉRENCES » : Ouest | Est, trois lignes (rang, logo, code, bilan). */
+/** « TOP 3 DES CONFÉRENCES » : Ouest | Est, trois lignes (rang, logo, code, bilan) ; [opacite] lue au dessin (effacée en survol). */
 @Composable
-private fun TuileTop3(bilans: Map<String, BilanNba>?, palette: PaletteNba, logos: Map<String, ImageBitmap>, k: Float, hauteur: Float) {
+private fun TuileTop3(
+    bilans: Map<String, BilanNba>?,
+    palette: PaletteNba,
+    logos: Map<String, ImageBitmap>,
+    k: Float,
+    hauteur: Float,
+    opacite: () -> Float = { 1f },
+) {
     val haut = hauteur - 30f - 229f
     Box(
         Modifier
             .offset { IntOffset((48f * k).roundToInt(), (haut * k).roundToInt()) }
             .size(452.mq, 229.mq)
+            .graphicsLayer { alpha = opacite() }
             .verreNba(k, 26f)
             .testTag("nba:top3"),
     ) {

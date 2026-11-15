@@ -98,11 +98,13 @@ Sud-Ouest DAL HOU MEM NOP SAS.
 
 - Depuis le dock, ▲ entre sur la carte (équipe la plus proche au-dessus de la tuile
   sélectionnée). Sur la carte, ◀ ▲ ▶ ▼ vont à la pastille la plus proche dans la direction
-  (cône de ±60°, distance pondérée) ; ▼ depuis les pastilles du bas revient au dock ; Retour
-  revient au dock. Pastille sélectionnée : légèrement agrandie (×1,08), contour blanc 3 px,
-  le reste de la carte inchangé (pas de voile).
+  (cône de ±60°, distance pondérée, en px de référence : la caméra du survol n'y change rien) ;
+  ▼ depuis les pastilles du bas revient au dock ; Retour revient au dock. Pastille sélectionnée :
+  légèrement agrandie (×1,08), contour blanc 3 px. Tant qu'une pastille est sélectionnée, la
+  carte est en **survol** de sa division (voir « Survol d'une division »).
 - OK ouvre la **fiche** : panneau à droite (680 de large, hauteur selon le contenu, mêmes verre
-  sombre et polices), deux onglets (◀ ▶) **Résumé** et **Effectif** ; Retour la ferme.
+  sombre et polices), deux onglets (◀ ▶) **Résumé** et **Effectif** ; Retour la ferme (retour au
+  survol).
   - En-tête : grand logo, nom (« Oklahoma City Thunder »), bilan, « 6e OUEST · 2e NORD-OUEST »,
     série (« 3 victoires de suite » / « 2 défaites de suite ») et 10 derniers (« 7–3 sur les 10
     derniers »).
@@ -115,6 +117,65 @@ Sud-Ouest DAL HOU MEM NOP SAS.
     F → AI ; « G-F » → « AR-AI »).
   - Chargement : squelette discret ; erreur : « Fiche indisponible pour l'instant ».
 
+## Survol d'une division
+
+Quand on se promène d'équipe en équipe, la caméra cadre la division de l'équipe sélectionnée, qui
+se soulève de la carte ; un panneau résume l'équipe (maquette `maquette-survol.png`, script
+`scripts/survol.py`, dossier de travail hors dépôt). Code : `ui/SurvolNba.kt`.
+
+- **État** : survol = une pastille sélectionnée (`choisie`) et la fiche fermée. Avec la fiche
+  ouverte, la caméra et la division soulevée restent (seul le panneau laisse la place à la fiche).
+- **Caméra** (calque de la carte et de ses pastilles, `graphicsLayer`, pas de nouveau dessin) :
+  cadre de la division = son île, ses 5 pastilles et ses villes (+ 8 px) ; elle est agrandie pour
+  que ce cadre, soulevé, tienne dans la zone à gauche du panneau (x 40…1230, y 140…900), au plus
+  ×1,75, son milieu soulevé au milieu de la zone (Atlantique, Centrale, Pacifique ×1,75 ;
+  Sud-Est ×1,61 ; Sud-Ouest ×1,59 ; Nord-Ouest ×1,33). 450 ms, lent – rapide – lent
+  (cubic-bezier 0,42 0 0,58 1) ; l'échelle varie de façon géométrique et le milieu de la division
+  d'arrivée glisse en ligne droite. Pastille de la même division : la caméra ne bouge pas ; d'une
+  autre division (les flèches peuvent sortir de la division) : la caméra glisse vers elle. Sortie
+  du survol : retour à la carte entière en 400 ms.
+- **Division soulevée** : agrandie ×1,05 autour du milieu de son cadre et montée de 26 px ;
+  ombre portée laissée à sa place (décalée de 26 px vers le bas, flou 26 px, noir 75 %) et ombre
+  ambiante large (flou 70 px, noir 35 %) ; bord lumineux le long de l'île (blanc 50 %, 2 px, lueur
+  #c8d2eb 55 % floutée). La levée suit la caméra ; la division précédente redescend en s'effaçant.
+  Nette à l'échelle de la caméra : l'île (remplissage, planches, reflet, logo du leader en
+  filigrane, frontières, liserés, monuments posés dessus, nom, villes, capsules des pastilles) est
+  redessinée seule dans une image à l'échelle finale (×1,05 compris), hors du fil principal, dès
+  qu'on entre dans la division (≈ 60–90 ms sur un PC) ; son ombre dans une image au quart. Les
+  logos, bilans et rangs de ses 5 pastilles (et la pastille choisie, agrandie et cerclée) sont
+  redessinés par-dessus, en vectoriel. Images gardées : 3 divisions au plus (≈ 4 Mo chacune en
+  1080p, 2,4 Mpx au plus).
+- **Le reste en retrait** : la carte (image ×1, simplement agrandie : un peu floue, c'est voulu)
+  désaturée de moitié (matrice de couleurs), voile noir 62 % (38 % de luminosité), bords assombris
+  (vignette) ; logos et textes des autres pastilles à 55 % en plus ; fondu de la couleur du fond
+  sous l'en-tête (titre et heure restent lisibles, non agrandis). Le top 3 s'efface ; le dock et
+  l'état des bilans ne changent pas.
+- **Panneau de survol** (x 1262, y 140, 600 de large, jusqu'à y 986 ; au-dessus du dock, à
+  20 px, quand le dock passe dessous ; verre sombre, coins 30) :
+  - en-tête : logo dans un disque blanc cerclé de la couleur de l'équipe (92), nom (Oswald 38),
+    bilan (Oswald 32) et « 11e OUEST · 4e SUD-OUEST » (exposants) ; puis « 10 victoires de suite ·
+    meilleur marqueur : V. Wembanyama, 30,3 pts · 11,7 reb » (série du classement ; meilleur
+    marqueur = le titulaire qui marque le plus, d'après la fiche ; sur deux lignes si trop long) ;
+  - « 3 DERNIERS MATCHS » : 3 lignes au plus, la plus récente d'abord : pastille V / D (vert
+    #50dc82 / rouge #ff5c5c), logo de l'adversaire, score (l'équipe d'abord, « 124–119 »),
+    « à Chicago » / « contre Golden State », date « jeu. 12 nov. » (heure locale) ;
+  - « PROCHAIN MATCH » : logo, « sam. 14 nov. · 3:30 », lieu ;
+  - « DIVISION SUD-OUEST » : les 5 équipes par rang de division (rang, logo, code, bilan,
+    « ÉCART » = ((V du leader − V) + (D − D du leader)) / 2, virgule française, « — » pour le
+    leader), l'équipe survolée surlignée ;
+  - aide : touches « OK » fiche complète · « FLÈCHES » équipe voisine · « RETOUR » carte entière.
+  En-tête et classement de la division s'affichent tout de suite (classement) ; matchs et
+  meilleur marqueur attendent la fiche (squelette discret ; « Matchs indisponibles pour
+  l'instant » si elle manque). La fiche est demandée 300 ms après la sélection (les flèches
+  enchaînées ne demandent rien), par `DonneesNba.fiche` (caches habituels, fil `IO`) ; OK ouvre
+  la fiche complète avec cette fiche déjà lue.
+- **Touches** : OK : fiche complète (fondu enchaîné panneau → fiche) ; Retour dans la fiche :
+  le survol ; Retour en survol, ▼ sous les pastilles du bas, Maison, focus qui quitte le dock :
+  plus de sélection, retour à la carte entière, le top 3 revient.
+- **Coût** (projecteur 1 Go, Fire TV) : rien n'est créé pendant l'animation (filtres de couleur
+  préparés, transformations de calques) ; la carte n'est pas redessinée ; une image par division
+  survolée (≤ 3 gardées).
+
 ## Données (ESPN, flux publics, sans clé)
 
 Requêtes simples, en-tête `Accept: application/json` seulement ; délai 8 s ; rien n'est écrit
@@ -124,10 +185,13 @@ dans le journal à part le type d'événement (jamais d'URL).
 |---|---|---|
 | Classement | `https://site.api.espn.com/apis/v2/sports/basketball/nba/standings` | au démarrage du design, puis toutes les 10 min tant qu'il est affiché ; cache disque |
 | Équipes (id ESPN, logos) | `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams` | une fois par jour ; cache disque |
-| Calendrier d'une équipe | `…/site/v2/sports/basketball/nba/teams/<id>/schedule` | à l'ouverture de la fiche ; cache 30 min |
-| Effectif (et blessures) | `…/site/v2/sports/basketball/nba/teams/<id>/roster` | à l'ouverture de la fiche ; cache 1 h |
-| Titulaires du dernier match | `…/site/v2/sports/basketball/nba/summary?event=<id>` | à l'ouverture de la fiche ; cache 6 h |
-| Moyennes d'un joueur | `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/<id>/overview` | 5 titulaires, à l'ouverture de la fiche ; cache 6 h |
+| Calendrier d'une équipe | `…/site/v2/sports/basketball/nba/teams/<id>/schedule` | fiche demandée (survol ou fiche) ; cache 30 min |
+| Effectif (et blessures) | `…/site/v2/sports/basketball/nba/teams/<id>/roster` | fiche demandée ; cache 1 h |
+| Titulaires du dernier match | `…/site/v2/sports/basketball/nba/summary?event=<id>` | fiche demandée ; cache 6 h |
+| Moyennes d'un joueur | `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/<id>/overview` | 5 titulaires, fiche demandée ; cache 6 h |
+
+« Fiche demandée » : 300 ms après la sélection d'une équipe sur la carte (survol), ou à
+l'ouverture de la fiche si elle n'est pas encore là.
 | Logos | `team.logos[0].href` (sinon `https://a.espncdn.com/i/teamlogos/nba/500/<abréviation ESPN en minuscules>.png`) | chargeur d'images de l'app, cache disque |
 
 - Classement : `children[]` (Eastern / Western Conference) → `standings.entries[]` :
@@ -138,7 +202,8 @@ dans le journal à part le type d'événement (jamais d'URL).
   `boxscore/EquipesNba`, qui donne aussi les couleurs).
 - Calendrier : `events[]` ; `competitions[0].status.type.completed` ; `competitors[]`
   (`homeAway`, `team.abbreviation`, `score.value` ou `score` texte, `winner`) ; `date` (UTC).
-  Dernier = dernier terminé ; prochain = premier non terminé.
+  Derniers = les 3 derniers terminés, le plus récent d'abord (`derniers`, `dernier` = le
+  premier) ; prochain = premier non terminé (ni annulé ni reporté).
 - Effectif : `athletes[]` : `id`, `displayName`, `shortName`, `jersey`, `position.abbreviation`,
   `injuries[] {status, date, details?{type, location, side}}`.
 - Résumé du match : `boxscore.players[]` (une entrée par équipe, `team.abbreviation`) →
@@ -172,8 +237,11 @@ data class MatchEquipe(val adversaire: String, val domicile: Boolean, val debut:
 data class JoueurNba(val nom: String, val numero: String?, val poste: String?, val blesse: Boolean,
                      val minutes: Double?, val points: Double?, val rebonds: Double?, val passes: Double?)
 data class BlessureNba(val nom: String, val statut: String, val zone: String?)
-data class FicheEquipe(val code: String, val nomComplet: String, val dernier: MatchEquipe?, val prochain: MatchEquipe?,
-                       val titulaires: List<JoueurNba>, val effectif: List<JoueurNba>, val blessures: List<BlessureNba>)
+data class FicheEquipe(val code: String, val nomComplet: String,
+                       val derniers: List<MatchEquipe> /* 3 au plus, le plus récent d'abord */, val prochain: MatchEquipe?,
+                       val titulaires: List<JoueurNba>, val effectif: List<JoueurNba>, val blessures: List<BlessureNba>) {
+    val dernier: MatchEquipe? get() = derniers.firstOrNull()
+}
 object DonneesNba {
     val classement: StateFlow<ClassementNba?>   // cache disque au démarrage, puis rafraîchi
     fun suivre(actif: Boolean)                   // design NBA affiché ? (10 min tant qu'actif ; rien sinon)
@@ -189,6 +257,14 @@ Thème `nba` (le design de la TV choisit le thème, comme les autres) : bleu nui
 
 ## Tests et captures
 
-Analyseurs testés sur de vrais extraits ESPN raccourcis (`app/src/test/resources/nba-carte/`) ;
-captures Robolectric : accueil NBA dans les 3 ambiances, pastille sélectionnée, fiche (Résumé
-et Effectif), sans classement (premier démarrage hors ligne).
+Analyseurs testés sur de vrais extraits ESPN raccourcis (`app/src/test/resources/nba-carte/`),
+dont les 3 derniers matchs (triés, limités à 3) ; logique pure (`NbaLogiqueTest`) : écart avec le
+leader, meilleur marqueur, textes des matchs, caméra (cadrage, levée, trajet) ; carte
+(`CarteNbaTest`) : chaque division soulevée tient dans la zone, image nette de la division
+soulevée. Écran (`NbaTest`) : entrée en survol depuis le dock, flèches dans la division (caméra
+immobile) et vers une autre (caméra qui suit), OK → fiche, Retour → survol, Retour / ▼ / Maison →
+carte entière sans sélection, fiche demandée une seule fois après des flèches enchaînées.
+Captures Robolectric : accueil NBA dans les 3 ambiances, pastille sélectionnée (survol), survol
+`nba_survol` (Spurs, Leaders), `nba_survol_est` (Celtics), `nba_survol_parquet` (Thunder,
+Parquet), fiche (Résumé et Effectif, ouverte depuis le survol), sans classement (premier
+démarrage hors ligne).

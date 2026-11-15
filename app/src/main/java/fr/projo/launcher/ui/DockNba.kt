@@ -99,6 +99,7 @@ private sealed class ElementDockNba(val cle: String) {
  * Le dock. [entrer] : ▲ depuis une tuile (centre de la tuile en px de maquette) : sélection de
  * la pastille au-dessus. [modeCarte] : une pastille est sélectionnée (le focus reste sur la
  * tuile, qui ne se montre plus sélectionnée). [surFocus] : le dock prend ou perd le focus.
+ * [surDroite] : bord droit du verre (px de maquette), à chaque placement.
  */
 @Composable
 internal fun DockNba(
@@ -108,6 +109,7 @@ internal fun DockNba(
     modeCarte: Boolean,
     entrer: (Float) -> Unit,
     surFocus: (Boolean) -> Unit,
+    surDroite: (Float) -> Unit = {},
 ) {
     val ui = ctx.ui
     val elements = buildList {
@@ -142,6 +144,8 @@ internal fun DockNba(
                         p.place(max((c.maxWidth - p.width) / 2, (D_GAUCHE_MIN * k).roundToInt()), 0)
                     }
                 }
+                // Bord droit du verre (le panneau de survol ne doit pas passer dessus)
+                .onGloballyPositioned { surDroite((it.positionInRoot().x + it.size.width) / k) }
                 .fillMaxHeight()
                 .drawBehind {
                     // Verre sous les tuiles (le dessus reste libre pour la tuile levée)

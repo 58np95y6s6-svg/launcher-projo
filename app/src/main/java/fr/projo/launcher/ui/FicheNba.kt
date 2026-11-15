@@ -65,8 +65,8 @@ private const val F_GAUCHE = 1176f
 private const val F_HAUT = 150f
 private const val F_LARGEUR = 680f
 
-/** État de la fiche. */
-private sealed interface EtatFiche {
+/** État de la fiche (et du panneau de survol). */
+internal sealed interface EtatFiche {
     object Chargement : EtatFiche
     object Erreur : EtatFiche
     class Prete(val fiche: FicheEquipe) : EtatFiche
@@ -74,7 +74,8 @@ private sealed interface EtatFiche {
 
 /**
  * Fiche de l'équipe [code] ([bilan] : son bilan au classement, s'il est connu), onglet
- * [onglet] (0 : Résumé, 1 : Effectif) ; les touches sont lues par l'écran (EcranNba).
+ * [onglet] (0 : Résumé, 1 : Effectif) ; les touches sont lues par l'écran (EcranNba). [deja] :
+ * la fiche déjà lue pour le panneau de survol (rien à redemander).
  */
 @Composable
 internal fun FicheNba(
@@ -84,8 +85,10 @@ internal fun FicheNba(
     logos: Map<String, ImageBitmap>,
     k: Float,
     onglet: Int,
+    deja: FicheEquipe? = null,
 ) {
-    val etat by produceState<EtatFiche>(EtatFiche.Chargement, code, source) {
+    val etat by produceState(if (deja != null) EtatFiche.Prete(deja) else EtatFiche.Chargement, code, source) {
+        if (deja != null) return@produceState
         val f = runCatching {
             if (source.synchrone) source.fiche(code) else withContext(Dispatchers.IO) { source.fiche(code) }
         }.getOrNull()
@@ -123,7 +126,7 @@ internal fun FicheNba(
 
 /** Disque blanc cerclé de la couleur de l'équipe, son logo dedans (ou son code en attendant). */
 @Composable
-private fun DisqueEquipe(code: String, logo: ImageBitmap?, diametre: Float, anneau: Float, k: Float) {
+internal fun DisqueEquipe(code: String, logo: ImageBitmap?, diametre: Float, anneau: Float, k: Float) {
     Box(
         Modifier.size(diametre.mq).drawBehind {
             val r = size.minDimension / 2f
@@ -138,7 +141,7 @@ private fun DisqueEquipe(code: String, logo: ImageBitmap?, diametre: Float, anne
 }
 
 /** Rangs de la fiche, « er »/« e » en exposant : « 6e OUEST · 2e NORD-OUEST ». */
-private fun rangsFiche(b: BilanNba, exposants: TextUnit): AnnotatedString = buildAnnotatedString {
+internal fun rangsFiche(b: BilanNba, exposants: TextUnit): AnnotatedString = buildAnnotatedString {
     val d = DivisionNba.de(b.code) ?: return@buildAnnotatedString
     val exposant = SpanStyle(fontSize = exposants, baselineShift = BaselineShift(0.55f))
     fun rang(n: Int) {

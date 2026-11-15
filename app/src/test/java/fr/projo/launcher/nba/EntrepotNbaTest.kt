@@ -90,6 +90,12 @@ class EntrepotNbaTest {
         assertEquals("Oklahoma City Thunder", f.nomComplet)
         assertEquals(MatchEquipe("POR", false, LectureNba.dateUtc("2026-11-12T03:00Z"), 108, 118), f.dernier)
         assertEquals(false, f.dernier?.victoire)
+        // Les 3 derniers matchs, le plus récent d'abord
+        assertEquals(
+            listOf(LectureNba.dateUtc("2026-11-12T03:00Z"), LectureNba.dateUtc("2026-11-11T04:00Z"), LectureNba.dateUtc("2026-11-08T01:00Z")),
+            f.derniers.map { it.debut },
+        )
+        assertEquals(listOf("POR", "POR", "WAS"), f.derniers.map { it.adversaire })
         assertEquals(MatchEquipe("LAC", false, LectureNba.dateUtc("2026-11-14T03:30Z"), null, null), f.prochain)
         // Cinq de départ du dernier match, avec les moyennes de la saison
         assertEquals(listOf("I. Hartenstein", "A. Mara", "A. Caruso", "S. Gilgeous-Alexander", "J. McCain"), f.titulaires.map { it.nom })
