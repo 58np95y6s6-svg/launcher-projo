@@ -316,8 +316,9 @@ class NbaTest : BancAccueil("NBA") {
         if (!present("nba:survol")) fail("[NBA] Retour dans la fiche : le survol attendu")
         attendreChoisie("OKC", "Retour dans la fiche")
         attendreCamera("nordouest", "Retour dans la fiche")
-        // Retour : la carte entière, plus de sélection
+        // Retour : la carte entière, plus de sélection (animations terminées)
         touche(Key.Back)
+        avancer(600)
         attendreChoisie(null, "Retour en survol")
         attendreCamera("carte", "Retour en survol")
         attendreFocus(favori(0), "Retour en survol")
