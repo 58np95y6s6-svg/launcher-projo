@@ -608,7 +608,7 @@ Téléphone → TV :
 | `t` | Champs | Rôle |
 |---|---|---|
 | `nba_etat` | — | demande l'état et abonne ce téléphone à ses changements (pour cette connexion) |
-| `nba_afficher` | `affichage`, `id`? | change le format (`"cache"`, `"resume"`, `"details"`) ; avec `id`, choisit aussi le match |
+| `nba_afficher` | `affichage`, `id`? | change le format (`"cache"`, `"resume"`, `"details"`, et `"pari"` si `nba_paris` est annoncé) ; avec `id`, choisit aussi le match |
 | `nba_choisir` | `id` | choisit le match, sans changer le format |
 
 TV → téléphone :
@@ -645,6 +645,71 @@ format, erreur, réglage) : au plus un envoi toutes les 300 ms, aux seuls télé
 
 `nba_afficher` / `nba_choisir` : `id` inconnu → ignoré (le choix ne change pas) ; `affichage`
 inconnu → ignoré. Afficher sans match en cours : la TV garde `"cache"` et renvoie `nba`.
+
+### Paris suivis (version 1, ajout compatible)
+
+Le téléphone colle le texte d'un ou plusieurs paris (copié depuis l'appli de paris, ou depuis la
+capture du ticket avec le texte en direct de l'iPhone). La TV en tire les **lignes** qu'elle sait
+suivre et, dans un 4e format **pari**, montre leur avancement en direct pour le match affiché :
+seules les lignes de ce match y figurent.
+
+- `hello` de la TV : `fonctions` contient aussi `"nba_paris"` (sinon la PWA n'affiche ni le
+  4e format ni le collage).
+- `nba_afficher` : `affichage` peut valoir `"pari"`. Même règle que les autres formats (sans match
+  en cours : la TV garde `"cache"`).
+
+Téléphone → TV :
+
+| `t` | Champs | Rôle |
+|---|---|---|
+| `nba_paris_ajouter` | `texte` (chaîne, 4000 caractères au plus) | lit le texte, ajoute les lignes reconnues (une ligne identique déjà présente n'est pas ajoutée deux fois) |
+| `nba_paris_effacer` | — | retire toutes les lignes |
+
+La TV répond par `nba` (à ce téléphone, et aux abonnés). `nba` gagne un champ :
+
+- `paris` (tableau, 20 lignes au plus, dans l'ordre d'ajout) : `{id, libelle, etat, match?, valeur?, seuil?}`
+  - `id` (chaîne) : identifiant de la ligne sur cette TV ;
+  - `libelle` (chaîne, en français) : « T. Maxey · + de 19,5 pts », « 76ers vainqueurs »,
+    « Total du match · - de 221,5 pts » ; pour une ligne que la TV ne sait pas suivre, le texte lu ;
+  - `etat` : `"attente"` (joueur ou équipe pas encore trouvé dans un match en cours, ou box score pas
+    encore chargé), `"en_cours"`, `"gagne"` (acquis, même avant la fin), `"perdu"` (perdu pour de
+    bon), `"non_suivi"` (type de pari non pris en charge) ;
+  - `match` : `id` du match de la ligne (`"PHI-IND"`), absent si inconnu ;
+  - `valeur` (nombre) : valeur actuelle (points du joueur, écart de l'équipe, total du match) ;
+  - `seuil` (nombre) : seuil du pari (19,5) ; absent pour « vainqueur ».
+
+Les valeurs suivent le **décalage**, comme le reste de `nba`. Les lignes restent en mémoire sur la
+TV (pas sur disque) : effacées par `nba_paris_effacer`, au redémarrage de l'appli, ou 12 h après
+leur ajout. Jamais de texte de pari, de cote ni de mise dans les journaux (le nombre de lignes
+seulement).
+
+**Lignes suivies** (texte français des applis de paris : Betclic, Winamax, Unibet, PMU…, sur une
+ou deux lignes ; le reste du ticket — cotes, mises, gains, autres sports — est ignoré) :
+
+- vainqueur du match (prolongations comprises) : « Philadelphie 76ers / Vainqueur du match » ;
+  équipe reconnue par son nom anglais, son surnom (« Sixers ») ou sa ville en français ;
+- statistique d'un joueur, plus de / moins de / paliers (« 20+ » = plus de 19,5) : points, rebonds,
+  passes décisives, paniers à 3 points, et les cumuls points + rebonds + passes, points + rebonds,
+  points + passes, rebonds + passes ; joueur reconnu dans les effectifs du box score (« Tyrese
+  Maxey » ↔ « T. Maxey », accents et tirets ignorés) ;
+- total de points du match, plus de / moins de ;
+- total de points d'une équipe, plus de / moins de.
+
+Une ligne « plus de N » est **gagnée** dès que la valeur dépasse N, **perdue** si le match se
+termine sans ; « moins de N » est **perdue** dès que la valeur dépasse N, **gagnée** à la fin
+sinon ; « vainqueur » : gagné ou perdu à la fin du match, en cours avant (`valeur` : écart actuel,
+positif si l'équipe mène).
+
+**Format `pari` sur la TV** : carte en haut à droite (comme le résumé) : en-tête du match (équipes,
+score, statut), puis « MON PARI » et les lignes de ce match (8 au plus) : état (✓ gagné, ✗ perdu,
+point en cours), libellé, barre d'avancement vers le seuil et valeur actuelle (« 12 / 19,5 »).
+Aucune ligne pour ce match : « Aucune ligne de ton pari dans ce match ». Touches : aucune gardée
+(comme le résumé).
+
+**PWA** : 4e segment **Pari** dans le bandeau (si `nba_paris` est annoncé) ; un bouton « Mon pari »
+ouvre une feuille : les lignes (`paris`) avec leur état, un champ « Colle ton pari », « Ajouter »,
+« Tout effacer », et une aide (« Sur la capture du ticket : appui long sur le texte → Tout
+sélectionner → Copier »). Après un ajout : « N lignes suivies » (et celles non suivies, grisées).
 
 ### Réglage (groupe « Box score NBA »)
 
