@@ -227,6 +227,7 @@ function montrerTelecommande() {
 }
 
 let etatAffiche = null;
+let sessionConnectee = null; // connexion pour laquelle les onglets ont fait leurs demandes
 let dernierEtat = { etat: "aucune" };
 
 function majEtat(detail) {
@@ -234,8 +235,10 @@ function majEtat(detail) {
   const { etat, raison, prochainEssaiMs } = detail;
   const tv = ctrl.tvActive;
   // Nouvelle connexion : les onglets ouverts redemandent leurs données (abonnement aux réglages) ;
-  // le box score NBA s'abonne à chaque connexion (bandeau de la télécommande)
-  if (etat === "connecte" && etatAffiche !== "connecte") {
+  // le box score NBA s'abonne à chaque connexion (bandeau de la télécommande). Une TV appairée alors
+  // qu'une autre était connectée est aussi une nouvelle connexion (l'état reste « connecte »).
+  if (etat === "connecte" && (etatAffiche !== "connecte" || ctrl.session !== sessionConnectee)) {
+    sessionConnectee = ctrl.session;
     applis.surConnexion(); envoyer.surConnexion(); reglages.surConnexion(); nba.surConnexion();
   }
   etatAffiche = etat;
@@ -551,7 +554,7 @@ $("btn-entree").addEventListener("pointerdown", (e) => { if (document.activeElem
 ctrl.addEventListener("focus_text", ({ detail }) => {
   // La TV attend du texte : retour à la télécommande, feuille du clavier ouverte
   if (onglet !== "telecommande") choisirOnglet("telecommande");
-  nba.fermerFeuille();
+  nba.fermerFeuilles();
   typeChamp = detail.type;
   actionChamp = detail.action;
   afficherMdp = false; // mot de passe toujours masqué par défaut
@@ -622,7 +625,9 @@ function majPastille(texteEtat = $("etat-tv").textContent) {
 const applis = new OngletApplis({ ctrl, annoncer, vibrer });
 const reglages = new OngletReglages({ ctrl, annoncer, vibrer });
 const envoyer = new OngletEnvoyer({ ctrl, annoncer, vibrer, confirmer: alerte });
-const nba = new BandeauNba({ ctrl, annoncer, vibrer });
+const nba = new BandeauNba({ ctrl, annoncer, vibrer, confirmer: alerte });
+// Paris suivis : « Mon pari… » dans Réglages, groupe « Box score NBA » (coller un pari avant le match)
+reglages.ajouterLigne({ apres: "nba_decalage", groupe: "Box score NBA", el: nba.ligneReglages });
 
 function ongletsDisponibles() {
   const f = ctrl.fonctions;
@@ -668,7 +673,7 @@ function choisirOnglet(nom, { focus = false } = {}) {
   $("btn-clavier").hidden = nom !== "telecommande";
   $("pastille-tv").hidden = nom === "telecommande";
   majPastille();
-  if (nom !== "telecommande") { fermerClavier(); nba.fermerFeuille(); }
+  if (nom !== "telecommande") { fermerClavier(); nba.fermerFeuilles(); }
   if (nom === "applis") applis.afficher(); else applis.masquer();
   if (nom === "envoyer") envoyer.afficher(); else envoyer.masquer();
   if (nom === "reglages") reglages.afficher(); else reglages.masquer();

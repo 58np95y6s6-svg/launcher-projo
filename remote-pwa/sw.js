@@ -23,6 +23,7 @@ const FICHIERS = [
   "js/journal.js",
   "js/liens.js",
   "js/nba.js",
+  "js/paris-nba.js",
   "js/pilotage.js",
   "js/reglages.js",
   "js/session.js",

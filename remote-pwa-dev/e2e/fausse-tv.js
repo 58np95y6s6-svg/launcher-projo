@@ -2,10 +2,11 @@
 // (docs/telecommande.md) en JavaScript, INDÉPENDAMMENT du code de la PWA (aucun import),
 // comme le fera l'app Android : signalisation PeerJS brute, réponse WebRTC, hello signés,
 // appairage (QR et code de secours), commandes, révocation, pilotage (applis et réglages),
-// Envoyer sur la TV (liens : VPN, raccourci iOS), box score NBA (matchs factices, sans réseau).
+// Envoyer sur la TV (liens : VPN, raccourci iOS), box score NBA (matchs factices, sans réseau) et
+// ses paris suivis (lecture simplifiée du texte collé, joueurs factices).
 //
 // Paramètres d'URL : ?ws=<port du faux serveur PeerJS>&nom=<nom de la TV>&vmax=<version max>
-//   &fonctions=apps,reglages,liens (défaut) | …,nba (box score NBA)
+//   &fonctions=apps,reglages,liens (défaut) | …,nba (box score NBA) | …,nba,nba_paris (paris suivis)
 //   | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
 //   &design=verre (défaut) | galerie | pastel… | aucun (TV ancienne : ni `design` dans hello, ni message `design`)
 
@@ -18,6 +19,7 @@ const VERSION_APP = "test-1.0";
 const FONCTIONS = (params.get("fonctions") ?? "apps,reglages,liens").split(",").filter((f) => f && f !== "aucune");
 const AVEC_LIENS = FONCTIONS.includes("liens");
 const AVEC_NBA = FONCTIONS.includes("nba");
+const AVEC_PARIS = AVEC_NBA && FONCTIONS.includes("nba_paris");
 const DESIGN = params.get("design") ?? "verre";
 const AVEC_DESIGN = DESIGN !== "aucun";
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -165,9 +167,10 @@ function session(pc, canal, viaId) {
       if (m.s !== undefined) r.s = m.s;
       if (m.curseur !== undefined) r.curseur = m.curseur;
       tv.recus.push(r);
-    } else if (PILOTAGE[m.t] && FONCTIONS.length && (AVEC_LIENS || !m.t.startsWith("lien")) && (AVEC_NBA || !m.t.startsWith("nba"))) {
+    } else if (PILOTAGE[m.t] && FONCTIONS.length && (AVEC_LIENS || !m.t.startsWith("lien")) && (AVEC_NBA || !m.t.startsWith("nba"))
+      && (AVEC_PARIS || !m.t.startsWith("nba_paris"))) {
       const r = { appareil: ses.appareil, t: m.t };
-      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord", "affichage"]) if (m[c] !== undefined) r[c] = m[c];
+      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord", "affichage", "texte"]) if (m[c] !== undefined) r[c] = m[c];
       tv.recus.push(r);
       PILOTAGE[m.t](ses, m);
     } else tv.ignores.push(m.t);
@@ -508,6 +511,20 @@ const PILOTAGE = {
     N.demande = m.id;
     pousserNba();
   },
+  // Paris suivis : réponse `nba` à ce téléphone, et aux abonnés
+  nba_paris_ajouter(ses, m) {
+    if (typeof m.texte !== "string" || m.texte.length > MAX_TEXTE_PARI) return; // texte invalide : ignoré
+    const n = ajouterParis(m.texte);
+    log(`nba-paris-${n}`); // le nombre de lignes seulement, jamais le texte
+    ses.envoyer(etatNba());
+    pousserNba();
+  },
+  nba_paris_effacer(ses) {
+    P.lignes = [];
+    log("nba-paris-effaces");
+    ses.envoyer(etatNba());
+    pousserNba();
+  },
 };
 
 // ---------- Envoyer sur la TV : liens (docs/telecommande.md, « Envoyer sur la TV ») ----------
@@ -606,20 +623,31 @@ function reglageLiens(it, m) {
 // ---------- Box score NBA (docs/telecommande.md, « Box score NBA ») ----------
 // Matchs factices (aucune source réseau) ; les tests les changent avec tv.changerNba / tv.scoreNba.
 
-const AFFICHAGES_NBA = ["cache", "resume", "details"];
+const AFFICHAGES_NBA = ["cache", "resume", "details", ...(AVEC_PARIS ? ["pari"] : [])];
 const EQUIPES_NBA = {
   LAL: { nom: "Lakers", couleur: "#552583", texte: "#FDB927" },
   BOS: { nom: "Celtics", couleur: "#007A33", texte: "#FFFFFF" },
   GSW: { nom: "Warriors", couleur: "#1D428A", texte: "#FFC72C" },
   DEN: { nom: "Nuggets", couleur: "#0E2240", texte: "#FEC524" },
+  PHI: { nom: "76ers", couleur: "#006BB6", texte: "#FFFFFF" },
+  IND: { nom: "Pacers", couleur: "#002D62", texte: "#FDBB30" },
+  MEM: { nom: "Grizzlies", couleur: "#5D76A9", texte: "#12173F" },
+  LAC: { nom: "Clippers", couleur: "#C8102E", texte: "#FFFFFF" },
 };
 const equipeNba = (code, score) => ({ code, ...EQUIPES_NBA[code], score });
-/** Jeux de matchs : aucun, un (LAL-BOS), deux (LAL-BOS et GSW-DEN), termine (LAL-BOS fini). */
+/**
+ * Jeux de matchs : aucun, un (LAL-BOS), deux (LAL-BOS et GSW-DEN), termine (LAL-BOS fini),
+ * paris (PHI-IND et MEM-LAC : les matchs du pari des tests).
+ */
 const SCENARIOS_NBA = {
   aucun: () => [],
   un: () => [{ id: "LAL-BOS", ext: equipeNba("LAL", 98), dom: equipeNba("BOS", 102), statut: "4e QT · 2:31", direct: true }],
   deux: () => [...SCENARIOS_NBA.un(), { id: "GSW-DEN", ext: equipeNba("GSW", 54), dom: equipeNba("DEN", 51), statut: "2e QT · 0:45.3", direct: true }],
   termine: () => [{ id: "LAL-BOS", ext: equipeNba("LAL", 112), dom: equipeNba("BOS", 109), statut: "Terminé", direct: false }],
+  paris: () => [
+    { id: "PHI-IND", ext: equipeNba("PHI", 61), dom: equipeNba("IND", 57), statut: "3e QT · 6:12", direct: true },
+    { id: "MEM-LAC", ext: equipeNba("MEM", 48), dom: equipeNba("LAC", 52), statut: "2e QT · 1:05", direct: true },
+  ],
 };
 
 const N = {
@@ -637,6 +665,7 @@ const choisiNba = () => (N.matchs.some((m) => m.id === N.demande) ? N.demande : 
 function etatNba() {
   const e = { t: "nba", matchs: N.matchs, choisi: choisiNba(), affichage: N.affichage, decalage: N.decalage };
   if (N.erreur) e.erreur = N.erreur;
+  if (AVEC_PARIS) e.paris = lignesParis();
   return e;
 }
 
@@ -668,6 +697,82 @@ tv.scoreNba = (id, ext, dom, statut) => {
   m.ext.score = ext;
   m.dom.score = dom;
   if (statut) m.statut = statut;
+  pousserNba();
+};
+
+// ---------- Paris suivis (docs/telecommande.md, « Paris suivis ») ----------
+// Lecture simplifiée du texte collé, suffisante pour les tests : couples « sujet / type » sur deux
+// lignes (« Philadelphie 76ers / Vainqueur du match », « Tyrese Maxey + de 19,5 / Nombre de points du
+// joueur (paliers) ») ; un autre type de pari (« … du match », « Nombre de … ») est gardé « non suivi ».
+// Le reste (cotes, mises) est ignoré. Joueurs et équipes factices ; valeurs tirées des matchs factices.
+
+const MAX_TEXTE_PARI = 4000;
+const MAX_PARIS = 20;
+const P = { lignes: [], n: 0 }; // lignes : {id, cle, libelle, equipe? | joueur?, stat?, seuil?, suivi}
+tv.paris = P;
+/** Joueurs connus (nom en minuscules sans accents) : nom court, match, statistiques actuelles. */
+const JOUEURS_NBA = {
+  "tyrese maxey": { nom: "T. Maxey", match: "PHI-IND", points: 12, passes: 4, rebonds: 2 },
+  "kentavious caldwell-pope": { nom: "K. Caldwell-Pope", match: "MEM-LAC", points: 11, passes: 1, rebonds: 3 },
+  "ivica zubac": { nom: "I. Zubac", match: "MEM-LAC", points: 8, passes: 1, rebonds: 9 },
+};
+tv.joueursNba = JOUEURS_NBA;
+const EQUIPES_PARI = { "philadelphie 76ers": "PHI", "philadelphia 76ers": "PHI", "76ers": "PHI", sixers: "PHI", "los angeles lakers": "LAL", lakers: "LAL", celtics: "BOS", "boston celtics": "BOS" };
+const STATS_PARI = [[/^nombre de points/i, "points", "pts"], [/^nombre de passes/i, "passes", "pd"], [/^nombre de rebonds/i, "rebonds", "reb"]];
+const sansAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const seuilFr = (x) => String(x).replace(".", ",");
+
+/** Texte collé → lignes nouvelles ajoutées (une ligne identique n'est pas ajoutée deux fois) ; renvoie leur nombre. */
+function ajouterParis(texte) {
+  const l = texte.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  let n = 0;
+  const ajouter = (ligne) => {
+    if (P.lignes.length >= MAX_PARIS || P.lignes.some((x) => x.cle === ligne.cle)) return;
+    P.lignes.push({ id: `p${++P.n}`, ...ligne });
+    n++;
+  };
+  for (let i = 0; i + 1 < l.length; i++) {
+    const [sujet, type] = [l[i], l[i + 1]];
+    const plus = sujet.match(/^(.+?)\s*\+\s*de\s+(\d+(?:[.,]\d+)?)$/i);
+    const stat = STATS_PARI.find(([re]) => re.test(type));
+    if (/^vainqueur du match$/i.test(type) && EQUIPES_PARI[sansAccents(sujet)]) {
+      const equipe = EQUIPES_PARI[sansAccents(sujet)];
+      ajouter({ cle: `v|${equipe}`, libelle: `${EQUIPES_NBA[equipe].nom} vainqueurs`, equipe, suivi: true });
+    } else if (plus && stat) {
+      const joueur = sansAccents(plus[1]);
+      const seuil = Number(plus[2].replace(",", "."));
+      const nom = JOUEURS_NBA[joueur]?.nom ?? plus[1];
+      ajouter({ cle: `j|${joueur}|${stat[1]}|${seuil}`, libelle: `${nom} · + de ${seuilFr(seuil)} ${stat[2]}`, joueur, stat: stat[1], seuil, suivi: true });
+    } else if (/ du match$|^nombre de /i.test(type)) {
+      ajouter({ cle: `n|${sansAccents(sujet)}|${sansAccents(type)}`, libelle: `${sujet} · ${type}`, suivi: false });
+    } else continue;
+    i++; // le type est lu avec son sujet
+  }
+  return n;
+}
+
+/** Lignes du message `nba` : état et valeur actuels (matchs factices). */
+function lignesParis() {
+  return P.lignes.map((p) => {
+    const l = { id: p.id, libelle: p.libelle, etat: "non_suivi" };
+    if (!p.suivi) return l;
+    if (p.equipe) {
+      const m = N.matchs.find((x) => x.ext.code === p.equipe || x.dom.code === p.equipe);
+      if (!m) return { ...l, etat: "attente" };
+      const ecart = m.ext.code === p.equipe ? m.ext.score - m.dom.score : m.dom.score - m.ext.score;
+      return { ...l, etat: m.direct ? "en_cours" : ecart > 0 ? "gagne" : "perdu", match: m.id, valeur: ecart };
+    }
+    const j = JOUEURS_NBA[p.joueur];
+    const m = j && N.matchs.find((x) => x.id === j.match);
+    if (!m) return { ...l, etat: "attente", seuil: p.seuil };
+    const valeur = j[p.stat];
+    return { ...l, etat: valeur > p.seuil ? "gagne" : m.direct ? "en_cours" : "perdu", match: m.id, valeur, seuil: p.seuil };
+  });
+}
+
+/** Statistique d'un joueur qui change (« tyrese maxey », "points", 21) : `nba` poussé aux abonnés. */
+tv.statNba = (joueur, stat, valeur) => {
+  JOUEURS_NBA[joueur][stat] = valeur;
   pousserNba();
 };
 

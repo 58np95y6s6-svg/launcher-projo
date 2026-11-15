@@ -103,7 +103,7 @@ test("thème NBA : contrastes WCAG AA sur le fond, le verre sombre, les champs e
     "barre d'onglets": sur(couleur(jeton("barre")), fonds[0]),
   };
   for (const [nom, plan] of Object.entries(plans)) {
-    for (const t of ["texte", "texte-2", "lien", "actif", "erreur", "direct"]) {
+    for (const t of ["texte", "texte-2", "lien", "actif", "erreur", "direct", "gagne"]) {
       const c = contraste(sur(couleur(jeton(t)), plan), plan);
       assert.ok(c >= 4.5, `--${t} sur ${nom} : ${c.toFixed(2)}:1`);
     }

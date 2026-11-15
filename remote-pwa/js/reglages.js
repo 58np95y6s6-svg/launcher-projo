@@ -2,6 +2,8 @@
 // choix, boutons), dans l'ordre reçu, en sections par `groupe`. Aucun réglage n'est codé en dur.
 // Les `reglages` reçus mettent l'affichage à jour sur place (défilement et glissé préservés) ;
 // il n'est reconstruit que si la structure change (et jamais pendant un glissé).
+// Seule exception : des lignes de la PWA elle-même (« Mon pari… »), placées après un réglage de la TV
+// (voir ajouterLigne) ; leur contenu et leur visibilité restent à leur propriétaire.
 
 import { grouperReglages, signatureReglages, proportion, limiteur, Attentes } from "./pilotage.js";
 import { h } from "./dom.js";
@@ -37,6 +39,7 @@ export class OngletReglages {
     this.differe = false;       // structure changée pendant un glissé : à reconstruire au relâcher
     this.installation = new Set(); // réglages dont « installer » a été touché (cette connexion)
     this.n = 0;                 // identifiants uniques des éléments
+    this.lignesPWA = [];        // lignes ajoutées par la PWA : { apres, groupe, el }
 
     this.btnReessayer.addEventListener("click", () => { this.vibrer(); this.demander(); });
     ctrl.addEventListener("reglages", (e) => this.recevoir(e.detail.items));
@@ -85,6 +88,25 @@ export class OngletReglages {
     }, ATTENTE_LISTE_MS);
   }
 
+  /**
+   * Ligne de la PWA dans un groupe de réglages : après le réglage `apres`, sinon à la fin du groupe
+   * `groupe` ; absente si ni l'un ni l'autre n'est affiché.
+   */
+  ajouterLigne({ apres, groupe, el }) {
+    this.lignesPWA.push({ apres, groupe, el });
+    if (this.sig && this.items?.length) this.placerLignes();
+  }
+
+  placerLignes() {
+    for (const { apres, groupe, el } of this.lignesPWA) {
+      const ref = this.controles.get(apres)?.el;
+      if (ref) { ref.after(el); continue; }
+      const titre = [...this.liste.querySelectorAll(".groupe-titre")].find((t) => t.textContent === groupe);
+      if (titre) titre.parentElement.querySelector(".groupe-carte").append(el);
+      else el.remove();
+    }
+  }
+
   // ---------- Réception ----------
 
   recevoir(items) {
@@ -130,6 +152,7 @@ export class OngletReglages {
     });
     this.sig = sig;
     this.liste.replaceChildren(...sections);
+    this.placerLignes();
     this.defile.scrollTop = haut;
     if (focus) this.liste.querySelector(`[data-focus="${CSS.escape(focus)}"]`)?.focus({ preventScroll: true });
   }

@@ -10,7 +10,7 @@
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
 //   liens {vpn, seulementVpn, appliPages, appliVpn?, raccourci?} | lien_ouvert {url, ok, ouvertDans?, raison?}
-//   nba {matchs, choisi, affichage, decalage, erreur?}
+//   nba {matchs, choisi, affichage, decalage, erreur?, paris?}
 //   version {verdict}      "maj_tv" | "recharger"
 //   fin {raison}           "injoignable" | "auth" | "perdue" | "version" | "revoked"
 //                          | "refus" (+ detail.refus) | "fermee"

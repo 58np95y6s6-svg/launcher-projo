@@ -1,10 +1,13 @@
 // Box score NBA : logique pure, sans DOM, testée sous Node.
 // Messages : docs/telecommande.md, « Box score NBA ».
-// Le téléphone choisit le format du box score sur la TV (caché, résumé, détails) et le match ;
-// la TV envoie l'état (`nba`) : matchs en cours, match choisi, format, décalage, erreur.
+// Le téléphone choisit le format du box score sur la TV (caché, résumé, détails, et pari si la TV
+// annonce « nba_paris ») et le match ; la TV envoie l'état (`nba`) : matchs en cours, match choisi,
+// format, décalage, erreur, et les lignes des paris suivis (`paris`).
 
-export const AFFICHAGES = Object.freeze(["cache", "resume", "details"]);
-export const NOMS_AFFICHAGE = Object.freeze({ cache: "Caché", resume: "Résumé", details: "Détails" });
+export const AFFICHAGES = Object.freeze(["cache", "resume", "details", "pari"]);
+export const NOMS_AFFICHAGE = Object.freeze({ cache: "Caché", resume: "Résumé", details: "Détails", pari: "Pari" });
+/** Formats proposés : « pari » seulement si la TV annonce « nba_paris ». */
+export const affichagesProposes = (paris) => (paris ? AFFICHAGES : AFFICHAGES.slice(0, 3));
 export const MAX_MATCHS = 15;
 export const MAX_DECALAGE = 3600;
 export const ERREURS = Object.freeze({
@@ -66,10 +69,11 @@ export function normaliserMatch(m) {
 }
 
 /**
- * Message `nba` → état normalisé {matchs, choisi, affichage, decalage, erreur?}, ou null (`matchs`
- * absent). Matchs invalides ou en double écartés, 15 au plus. `choisi` : un match de la liste
- * (sinon le premier en cours, comme la TV ; null sans match). `affichage` inconnu → null (aucun
+ * Message `nba` → état normalisé {matchs, choisi, affichage, decalage, erreur?, paris?}, ou null
+ * (`matchs` absent). Matchs invalides ou en double écartés, 15 au plus. `choisi` : un match de la
+ * liste (sinon le premier en cours, comme la TV ; null sans match). `affichage` inconnu → null (aucun
  * segment coché : la TV montre un format que cette version ne connaît pas). Erreur inconnue ignorée.
+ * `paris` : seulement si la TV l'envoie (tableau), voir normaliserParis.
  */
 export function normaliserNba(m) {
   if (!m || typeof m !== "object" || !Array.isArray(m.matchs)) return null;
@@ -90,7 +94,138 @@ export function normaliserNba(m) {
     decalage: Number.isInteger(m.decalage) && m.decalage >= 0 && m.decalage <= MAX_DECALAGE ? m.decalage : 0,
   };
   if (str(m.erreur) && Object.hasOwn(ERREURS, m.erreur)) e.erreur = m.erreur;
+  const paris = normaliserParis(m.paris);
+  if (paris) e.paris = paris;
   return e;
+}
+
+// ---------- Paris suivis (« nba_paris ») ----------
+// Le téléphone colle le texte d'un pari ; la TV en tire les lignes qu'elle sait suivre et les
+// renvoie dans `nba.paris` avec leur état et leur valeur (au décalage près).
+
+export const ETATS_PARI = Object.freeze(["attente", "en_cours", "gagne", "perdu", "non_suivi"]);
+export const NOMS_ETAT_PARI = Object.freeze({
+  attente: "En attente", en_cours: "En cours", gagne: "Gagné", perdu: "Perdu", non_suivi: "Non suivi",
+});
+export const MAX_PARIS = 20;
+export const MAX_TEXTE_PARI = 4000;
+const MAX_VALEUR = 100000;
+const nombre = (x) => (typeof x === "number" && Number.isFinite(x) && Math.abs(x) <= MAX_VALEUR ? x : undefined);
+
+/**
+ * Ligne `{id, libelle, etat, match?, valeur?, seuil?}` → forme normalisée, ou null (id ou libellé
+ * absents). État inconnu → "attente" (ligne montrée, sans conclure) ; match, valeur, seuil invalides
+ * ignorés.
+ */
+export function normaliserPari(p) {
+  if (!p || typeof p !== "object" || !str(p.id) || !p.id || p.id.length > 64) return null;
+  const libelle = nettoyer(p.libelle, 160);
+  if (!libelle) return null;
+  const l = { id: p.id, libelle, etat: ETATS_PARI.includes(p.etat) ? p.etat : "attente" };
+  if (str(p.match) && RE_ID.test(p.match)) l.match = p.match;
+  const valeur = nombre(p.valeur), seuil = nombre(p.seuil);
+  if (valeur !== undefined) l.valeur = valeur;
+  if (seuil !== undefined) l.seuil = seuil;
+  return l;
+}
+
+/** `paris` → lignes normalisées (invalides ou en double écartées, 20 au plus), ou null si ce n'est pas un tableau. */
+export function normaliserParis(liste) {
+  if (!Array.isArray(liste)) return null;
+  const vus = new Set();
+  const paris = [];
+  for (const x of liste) {
+    if (paris.length >= MAX_PARIS) break;
+    const p = normaliserPari(x);
+    if (!p || vus.has(p.id)) continue;
+    vus.add(p.id);
+    paris.push(p);
+  }
+  return paris;
+}
+
+/**
+ * Texte collé → texte de `nba_paris_ajouter` : fins de ligne unifiées, blancs autour retirés,
+ * 4000 caractères au plus (sans couper un caractère en deux) ; "" s'il ne reste rien.
+ */
+export function texteAEnvoyer(s) {
+  if (!str(s)) return "";
+  let t = s.replace(/\r\n?/g, "\n").trim();
+  if (t.length > MAX_TEXTE_PARI) {
+    t = t.slice(0, MAX_TEXTE_PARI);
+    if (/[\ud800-\udbff]$/.test(t)) t = t.slice(0, -1);
+    t = t.trimEnd();
+  }
+  return t;
+}
+
+/** 19.5 → « 19,5 », 12 → « 12 », -3 → « −3 » (une décimale au plus, virgule française). */
+export function nombreFr(x) {
+  const r = Math.round(x * 10) / 10;
+  const t = String(Math.abs(r)).replace(".", ",");
+  return r < 0 ? `\u2212${t}` : t;
+}
+
+/** Valeur affichée : « 12 / 19,5 » (avec un seuil), écart du vainqueur « +2 » / « −3 » / « 0 », sinon "". */
+export function valeurPari(p) {
+  if (p.valeur === undefined) return "";
+  if (p.seuil !== undefined) return `${nombreFr(p.valeur)} / ${nombreFr(p.seuil)}`;
+  return p.valeur > 0 ? `+${nombreFr(p.valeur)}` : nombreFr(p.valeur);
+}
+
+/** Avancement vers le seuil (barre), entre 0 et 1 ; null sans valeur ou sans seuil. */
+export function avancementPari(p) {
+  if (p.valeur === undefined || p.seuil === undefined || p.seuil <= 0) return null;
+  return Math.min(1, Math.max(0, p.valeur / p.seuil));
+}
+
+/** « PHI – IND » (codes du match de la ligne), ou "". */
+export const matchPari = (p) => (p.match ? p.match.replace("-", " – ") : "");
+
+const points = (n) => `${nombreFr(n)} ${Math.abs(n) >= 2 ? "points" : "point"}`;
+
+/** Lecteur d'écran : « T. Maxey · + de 19,5 pts : en cours, 12 sur 19,5 » ; « 76ers vainqueurs : en cours, mène de 4 points ». */
+export function textePari(p) {
+  let v = "";
+  if (p.valeur !== undefined && p.seuil !== undefined) v = `${nombreFr(p.valeur)} sur ${nombreFr(p.seuil)}`;
+  else if (p.valeur !== undefined) v = p.valeur > 0 ? `mène de ${points(p.valeur)}` : p.valeur < 0 ? `mené de ${points(-p.valeur)}` : "à égalité";
+  return `${p.libelle} : ${NOMS_ETAT_PARI[p.etat].toLowerCase()}${v ? `, ${v}` : ""}`;
+}
+
+/**
+ * Résumé des lignes (bandeau sans match, Réglages) : « 4 lignes en attente », « 1 ligne gagnée »,
+ * « 2 gagnées · 1 perdue · 1 en cours » ; les lignes non suivies ne comptent que si elles sont seules
+ * (« 2 lignes non suivies ») ; "" sans ligne.
+ */
+export function resumeParis(paris) {
+  if (!paris.length) return "";
+  const lignes = (k) => (k === 1 ? "1 ligne" : `${k} lignes`);
+  const parts = [["gagne", "gagnée", "gagnées"], ["perdu", "perdue", "perdues"], ["en_cours", "en cours", "en cours"], ["attente", "en attente", "en attente"]]
+    .map(([etat, un, plusieurs]) => {
+      const k = paris.filter((p) => p.etat === etat).length;
+      return { k, mot: k === 1 ? un : plusieurs };
+    })
+    .filter((x) => x.k);
+  if (!parts.length) return `${lignes(paris.length)} ${paris.length === 1 ? "non suivie" : "non suivies"}`;
+  if (parts.length === 1) return `${lignes(parts[0].k)} ${parts[0].mot}`;
+  return parts.map((x) => `${x.k} ${x.mot}`).join(" · ");
+}
+
+/** Lignes apparues depuis un ajout (ids absents de `avant`) : {suivies, nonSuivies}. */
+export function bilanAjout(avant, paris) {
+  const b = { suivies: 0, nonSuivies: 0 };
+  for (const p of paris) if (!avant.has(p.id)) b[p.etat === "non_suivi" ? "nonSuivies" : "suivies"]++;
+  return b;
+}
+
+/** « 3 lignes suivies · 1 non suivie », « 1 ligne suivie », « Aucune ligne suivie · 2 non suivies », « Aucune nouvelle ligne ». */
+export function messageAjout({ suivies, nonSuivies }) {
+  const s = suivies === 1 ? "1 ligne suivie" : `${suivies} lignes suivies`;
+  const n = nonSuivies === 1 ? "1 non suivie" : `${nonSuivies} non suivies`;
+  if (suivies && nonSuivies) return `${s} · ${n}`;
+  if (suivies) return s;
+  if (nonSuivies) return `Aucune ligne suivie · ${n}`;
+  return "Aucune nouvelle ligne";
 }
 
 // ---------- Messages ----------
@@ -104,7 +239,7 @@ export function champsNbaAfficher(affichage, id = null) {
 
 // ---------- Affichage ----------
 
-/** Bandeau visible : au moins un match, ou un box score affiché sur la TV. */
+/** Box score dans le bandeau (score et formats) : au moins un match, ou un box score affiché sur la TV. */
 export const bandeauVisible = (etat) => !!etat && (etat.matchs.length > 0 || etat.affichage !== "cache");
 
 /** Match à afficher (celui de `choisi`), ou null. */
@@ -142,6 +277,7 @@ export function annonceAffichage(affichage) {
     case "cache": return "Box score caché sur la TV";
     case "resume": return "Box score en résumé sur la TV";
     case "details": return "Box score en détails sur la TV";
+    case "pari": return "Mon pari affiché sur la TV";
     default: return "";
   }
 }
