@@ -89,7 +89,7 @@ class SuiviNbaTest {
     }
 
     @Test
-    fun boxScoreToutesLes15sSeulementSIlEstAffiche() {
+    fun boxScoreToutesLes5sSeulementSIlEstAffiche() {
         val s = suivi()
         s.abonnement(true, 0)
         s.servir(0)
@@ -100,8 +100,8 @@ class SuiviNbaTest {
         val b = faites.single() as Etape.Box
         assertEquals("GSW-NYK", b.match.id)
         assertEquals(SourceNba.NBA, b.source)
-        assertEquals(Etape.Attendre(16_000), s.prochaine(2_000))
-        assertTrue(s.servir(16_000).single() is Etape.Box)
+        assertEquals(Etape.Attendre(6_000), s.prochaine(2_000))
+        assertTrue(s.servir(6_000).single() is Etape.Box)
         assertEquals(Etape.Tableau(SourceNba.NBA), s.servir(30_000).first())
         // Caché, plus d'abonné : rien ; caché avec un abonné : le tableau seulement
         s.cacher(31_000)
@@ -204,18 +204,6 @@ class SuiviNbaTest {
         assertEquals(Etape.Tableau(SourceNba.ESPN), faites.last())
         // Box score suivant : chez ESPN
         assertEquals(SourceNba.ESPN, (s.servir(2 * SuiviNba.BOX_MS).single() as Etape.Box).source)
-    }
-
-    /** Box score du match choisi toutes les 5 s pendant l'affichage. */
-    @Test
-    fun boxScoreToutesLes5s() {
-        val s = suivi()
-        s.abonnement(true, 0)
-        s.servir(0)
-        s.afficher(Affichage.RESUME, "LAL-BOS", 0)
-        assertTrue(s.servir(0).single() is Etape.Box)
-        assertEquals(Etape.Attendre(5_000), s.prochaine(1_000))
-        assertTrue(s.servir(5_000).single() is Etape.Box)
     }
 
     // ------------------------------------------------------------------ horloge qui défile
