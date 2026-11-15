@@ -144,7 +144,7 @@ se soulève de la carte ; un panneau résume l'équipe (maquette `maquette-survo
   qu'on entre dans la division (≈ 60–90 ms sur un PC) ; son ombre dans une image au quart. Les
   logos, bilans et rangs de ses 5 pastilles (et la pastille choisie, agrandie et cerclée) sont
   redessinés par-dessus, en vectoriel. Images gardées : 3 divisions au plus (≈ 4 Mo chacune en
-  1080p, 2,4 Mpx au plus).
+  1080p, 1,3 Mpx au plus : moins de 16 Mo en tout).
 - **Le reste en retrait** : la carte (image ×1, simplement agrandie : un peu floue, c'est voulu)
   désaturée de moitié (matrice de couleurs), voile noir 62 % (38 % de luminosité), bords assombris
   (vignette) ; logos et textes des autres pastilles à 55 % en plus ; fondu de la couleur du fond

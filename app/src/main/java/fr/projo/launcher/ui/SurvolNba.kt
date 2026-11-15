@@ -223,8 +223,11 @@ internal class ImagesLevee(val ile: ImageCarteNba, val ombre: ImageCarteNba, val
 /** Ce qui fait redessiner une division soulevée. */
 internal data class CleLevee(val palette: PaletteNba, val filigranes: Map<DivisionNba, FiligraneNba>, val k: Float)
 
-/** Pixels au plus de l'image d'une division soulevée (≈ 9 Mo) ; au-delà, elle est un peu moins fine. */
-private const val PIXELS_MAX_LEVEE = 2_400_000f
+/**
+ * Pixels au plus de l'image d'une division soulevée (≈ 5 Mo : 3 gardées, moins de 16 Mo) ; en
+ * 1080p, la plus grande en a ≈ 1 million ; au-delà (écran plus grand), elle est un peu moins fine.
+ */
+private const val PIXELS_MAX_LEVEE = 1_300_000f
 
 /**
  * Images d'une division soulevée : l'île à l'échelle finale de la caméra (× [k] px par px de

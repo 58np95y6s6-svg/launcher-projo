@@ -150,7 +150,7 @@ class NbaTest : BancAccueil("NBA") {
     }
 
     /** Touches enchaînées sans attendre (moins que la pause avant la demande de la fiche). */
-    private fun rafale(vararg touches: Key) {
+    private fun rafale(touches: List<Key>) {
         for (k in touches) {
             compose.onRoot().performKeyInput { pressKey(k) }
             compose.runOnIdle { androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications() }
@@ -351,7 +351,7 @@ class NbaTest : BancAccueil("NBA") {
     fun survolFicheDemandeeALArret() {
         val s = source(fiches = NbaFactice.fiches)
         afficher()
-        rafale(Key.DirectionUp, Key.DirectionUp, Key.DirectionUp)
+        rafale(List(3) { Key.DirectionUp })
         appliquer()
         avancer(800)
         attendreChoisie("OKC", "▲ ▲ ▲ enchaînés")
