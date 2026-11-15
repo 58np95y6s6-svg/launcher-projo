@@ -718,7 +718,7 @@ const JOUEURS_NBA = {
 };
 tv.joueursNba = JOUEURS_NBA;
 const EQUIPES_PARI = { "philadelphie 76ers": "PHI", "philadelphia 76ers": "PHI", "76ers": "PHI", sixers: "PHI", "los angeles lakers": "LAL", lakers: "LAL", celtics: "BOS", "boston celtics": "BOS" };
-const STATS_PARI = [[/^nombre de points/i, "points", "pts"], [/^nombre de passes/i, "passes", "pd"], [/^nombre de rebonds/i, "rebonds", "reb"]];
+const STATS_PARI = [[/^nombre de points/i, "points", "pts"], [/^nombre de passes/i, "passes", "passes"], [/^nombre de rebonds/i, "rebonds", "rebonds"]];
 const sansAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 const seuilFr = (x) => String(x).replace(".", ",");
 

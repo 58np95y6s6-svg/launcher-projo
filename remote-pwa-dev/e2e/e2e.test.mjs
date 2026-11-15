@@ -1371,7 +1371,7 @@ test("paris suivis : segment Pari, « Mon pari », collage, lignes et états, bi
     ["en_cours", "76ers vainqueurs", "+4"],
     ["en_cours", "T. Maxey · + de 19,5 pts", "12 / 19,5"],
     ["gagne", "K. Caldwell-Pope · + de 9,5 pts", "11 / 9,5"],
-    ["en_cours", "I. Zubac · + de 2,5 pd", "1 / 2,5"],
+    ["en_cours", "I. Zubac · + de 2,5 passes", "1 / 2,5"],
     ["non_suivi", "Victor Wembanyama · Premier panier du match", ""],
   ]);
   assert.deepEqual(await page.locator("#liste-pari .pari-detail").allTextContents(),
@@ -1380,7 +1380,7 @@ test("paris suivis : segment Pari, « Mon pari », collage, lignes et états, bi
     "76ers vainqueurs : en cours, mène de 4 points",
     "T. Maxey · + de 19,5 pts : en cours, 12 sur 19,5",
     "K. Caldwell-Pope · + de 9,5 pts : gagné, 11 sur 9,5",
-    "I. Zubac · + de 2,5 pd : en cours, 1 sur 2,5",
+    "I. Zubac · + de 2,5 passes : en cours, 1 sur 2,5",
     "Victor Wembanyama · Premier panier du match : non suivi",
   ]);
   // États : ✓ gagné, tiret non suivi (grisé), point en cours ; avancement vers le seuil
@@ -1479,7 +1479,7 @@ test("paris suivis : toutes les valeurs reçues (attente, écart négatif), autr
     t: "nba", matchs: await salon.eval(() => window.tv.nba.matchs), choisi: "LAL-BOS", affichage: "pari", decalage: 0,
     paris: [
       { id: "a", libelle: "Lakers vainqueurs", etat: "en_cours", match: "LAL-BOS", valeur: -4 },
-      { id: "b", libelle: "L. James · + de 7,5 pd", etat: "attente", seuil: 7.5 },
+      { id: "b", libelle: "L. James · + de 7,5 passes", etat: "attente", seuil: 7.5 },
       { id: "c", libelle: "Total du match · - de 221,5 pts", etat: "perdu", match: "LAL-BOS", valeur: 230, seuil: 221.5 },
       { id: "d", etat: "gagne" },
     ],
@@ -1490,7 +1490,7 @@ test("paris suivis : toutes les valeurs reçues (attente, écart négatif), autr
   await page.locator("#feuille-pari:not([hidden])").waitFor();
   assert.deepEqual(await lignesPari(page), [
     ["en_cours", "Lakers vainqueurs", "\u22124"],
-    ["attente", "L. James · + de 7,5 pd", ""],
+    ["attente", "L. James · + de 7,5 passes", ""],
     ["perdu", "Total du match · - de 221,5 pts", "230 / 221,5"],
   ]);
   assert.equal(await page.textContent('.pari[data-id="b"] .pari-detail'), "En attente");
