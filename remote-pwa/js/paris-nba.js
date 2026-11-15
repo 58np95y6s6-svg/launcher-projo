@@ -148,7 +148,7 @@ export class FeuilleParis {
     const ok = await this.confirmer({
       titre: "Effacer ton pari ?",
       texte: n === 1 ? "La ligne suivie sera retirée de la TV." : `Les ${n} lignes suivies seront retirées de la TV.`,
-      ok: "Tout effacer", annuler: "Annuler",
+      ok: "Effacer", annuler: "Annuler",
     });
     if (!ok) {
       if (this.ouverte) this.el.effacer.focus({ preventScroll: true });
