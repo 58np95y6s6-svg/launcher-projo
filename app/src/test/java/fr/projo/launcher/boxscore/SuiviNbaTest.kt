@@ -156,9 +156,11 @@ class SuiviNbaTest {
     fun boxScoreRepliEtPasEncoreCommence() {
         val s = suivi()
         s.abonnement(true, 0)
-        s.servir(0)
+        // Tout début du match (1er QT, 11:40)
+        val debut = lalBos.copy(periode = 1, horloge = 700.0)
+        s.servir(0, tab = { Reponse.Ok(listOf(debut, gswNyk, miaDen, fini, aVenir)) })
         s.afficher(Affichage.RESUME, "LAL-BOS", 0)
-        // 403 avant l'entre-deux : pas un échec, l'en-tête du tableau s'affiche
+        // 403 juste après l'entre-deux : pas un échec, l'en-tête du tableau s'affiche
         s.servir(0, box = { Reponse.PasCommence })
         assertEquals(SourceNba.NBA, s.source)
         val v = s.vueTv()
@@ -184,6 +186,96 @@ class SuiviNbaTest {
         s2.servir(30_000)
         s2.servir(60_000, tab = { Reponse.Echec() })
         assertEquals(SourceNba.NBA, s2.source)
+    }
+
+    /** Match bien entamé (4e QT) : un box score NBA toujours refusé est un échec, repli sur ESPN au 2e. */
+    @Test
+    fun boxScoreRefuseEnPleinMatchEstUnEchec() {
+        val s = suivi()
+        s.abonnement(true, 0)
+        s.servir(0)
+        s.afficher(Affichage.RESUME, "LAL-BOS", 0)
+        s.servir(0, box = { Reponse.PasCommence })
+        assertEquals(SourceNba.NBA, s.source)
+        // En attendant, l'en-tête du tableau
+        assertEquals("LAL-BOS", s.vueTv().box!!.match.id)
+        val faites = s.servir(SuiviNba.BOX_MS, box = { if (it.source == SourceNba.NBA) Reponse.PasCommence else Reponse.Ok(BoxScore.depuisMatch(it.match)) })
+        assertEquals(SourceNba.ESPN, s.source)
+        assertEquals(Etape.Tableau(SourceNba.ESPN), faites.last())
+        // Box score suivant : chez ESPN
+        assertEquals(SourceNba.ESPN, (s.servir(2 * SuiviNba.BOX_MS).single() as Etape.Box).source)
+    }
+
+    /** Box score du match choisi toutes les 5 s pendant l'affichage. */
+    @Test
+    fun boxScoreToutesLes5s() {
+        val s = suivi()
+        s.abonnement(true, 0)
+        s.servir(0)
+        s.afficher(Affichage.RESUME, "LAL-BOS", 0)
+        assertTrue(s.servir(0).single() is Etape.Box)
+        assertEquals(Etape.Attendre(5_000), s.prochaine(1_000))
+        assertTrue(s.servir(5_000).single() is Etape.Box)
+    }
+
+    // ------------------------------------------------------------------ horloge qui défile
+
+    private fun boxA(horloge: Double?, periode: Int = 4, finDePeriode: Boolean = false) =
+        BoxScore.depuisMatch(lalBos.copy(horloge = horloge, periode = periode, finDePeriode = finDePeriode))
+
+    @Test
+    fun horlogeQuiTourneDefileEntreDeuxReponses() {
+        val s = suivi()
+        s.abonnement(true, 0)
+        s.servir(0)
+        s.afficher(Affichage.RESUME, "LAL-BOS", 0)
+        s.servir(0, box = { Reponse.Ok(boxA(151.0)) })
+        // Une seule réponse : on ne sait pas si l'horloge tourne
+        assertEquals(151.0, s.vueTv(3_000).box!!.match.horloge!!, 1e-9)
+        s.servir(5_000, box = { Reponse.Ok(boxA(146.0)) })
+        // Elle a tourné : elle continue de défiler
+        assertEquals(146.0, s.vueTv(5_000).box!!.match.horloge!!, 1e-9)
+        assertEquals(144.0, s.vueTv(7_000).box!!.match.horloge!!, 1e-9)
+        assertEquals("4e QT · 2:24", s.vueTv(7_000).box!!.match.statut)
+        // Au plus jusqu'à la réponse suivante attendue + 3 s (réponse en retard : elle s'arrête)
+        assertEquals(138.0, s.vueTv(60_000).box!!.match.horloge!!, 1e-9)
+        // Sans instant : la réponse telle quelle
+        assertEquals(146.0, s.vueTv().box!!.match.horloge!!, 1e-9)
+        // Arrêt de jeu : même horloge, plus de défilement
+        s.servir(10_000, box = { Reponse.Ok(boxA(146.0)) })
+        assertEquals(146.0, s.vueTv(13_000).box!!.match.horloge!!, 1e-9)
+    }
+
+    @Test
+    fun horlogeJamaisSous0NiEnFinDePeriode() {
+        val s = suivi()
+        s.abonnement(true, 0)
+        s.servir(0)
+        s.afficher(Affichage.RESUME, "LAL-BOS", 0)
+        s.servir(0, box = { Reponse.Ok(boxA(6.0)) })
+        s.servir(5_000, box = { Reponse.Ok(boxA(1.5)) })
+        assertEquals(0.0, s.vueTv(8_000).box!!.match.horloge!!, 1e-9)
+        // Fin de période, puis période suivante : rien n'est estimé
+        s.servir(10_000, box = { Reponse.Ok(boxA(0.0, finDePeriode = true)) })
+        assertEquals(0.0, s.vueTv(12_000).box!!.match.horloge!!, 1e-9)
+        s.servir(15_000, box = { Reponse.Ok(boxA(720.0, periode = 5)) })
+        s.servir(20_000, box = { Reponse.Ok(boxA(715.0, periode = 5)) })
+        assertEquals(713.0, s.vueTv(22_000).box!!.match.horloge!!, 1e-9)
+    }
+
+    @Test
+    fun horlogeEstimeeAvecLeDecalage() {
+        val s = suivi()
+        s.abonnement(true, 0)
+        s.servir(0)
+        s.decalage = 30
+        s.afficher(Affichage.RESUME, "LAL-BOS", 0)
+        s.servir(0, box = { Reponse.Ok(boxA(151.0)) })
+        s.servir(5_000, box = { Reponse.Ok(boxA(146.0)) })
+        // La réponse de 5 s devient visible à 35 s : elle défile à partir de là
+        s.avancer(35_000)
+        assertEquals(146.0, s.vueTv(35_000).box!!.match.horloge!!, 1e-9)
+        assertEquals(143.0, s.vueTv(38_000).box!!.match.horloge!!, 1e-9)
     }
 
     // ------------------------------------------------------------------ décalage

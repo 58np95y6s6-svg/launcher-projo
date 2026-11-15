@@ -52,7 +52,8 @@ data class VueTv(val affichage: Affichage, val box: BoxScore?, val attente: Stri
  *
  * Rythme (docs/telecommande.md, « Sources (TV) ») : le tableau du jour toutes les 30 s
  * seulement si un téléphone est abonné ou si le box score est affiché ; le box score du match
- * choisi toutes les 15 s seulement s'il est affiché ; sinon rien.
+ * choisi toutes les 5 s seulement s'il est affiché ; sinon rien. Entre deux réponses, l'horloge
+ * du match affichée sur la TV continue de défiler si elle tournait ([vueTv]).
  *
  * Décalage : chaque réponse est gardée avec son heure d'arrivée ; on montre la plus récente
  * arrivée il y a au moins [decalage] secondes. Avant la première, la fenêtre de la TV attend
@@ -87,7 +88,13 @@ class SuiviNba {
 
     companion object {
         const val TABLEAU_MS = 30_000L
-        const val BOX_MS = 15_000L
+        const val BOX_MS = 5_000L
+
+        /** L'horloge estimée défile au plus jusqu'à la réponse suivante attendue, plus cette marge. */
+        const val MARGE_HORLOGE_MS = 3_000L
+
+        /** Box score NBA encore absent (403/404) passé ce temps de jeu : un échec, pas un début de match. */
+        const val HORLOGE_BOX_ATTENDU = 600.0
         const val ECHECS_AVANT_REPLI = 2
         const val ESSAI_NBA_MS = 10 * 60_000L
         const val MATCHS_MAX = 15
@@ -140,6 +147,9 @@ class SuiviNba {
     private var idBox: String? = null
     private val boxs = ArrayDeque<Instantane<BoxScore>>()
     private var vueBox: Instantane<BoxScore>? = null
+
+    /** L'horloge du match suivi tournait entre les deux dernières réponses montrées. */
+    private var horlogeTourne = false
 
     private var prochainTableau = 0L
     private var prochainBox = 0L
@@ -240,13 +250,19 @@ class SuiviNba {
                 if (pourLeMatchSuivi) boxs.addLast(Instantane(t, r.donnees))
             }
             Reponse.PasCommence -> {
-                reussite(etape.source)
+                // Tout début de match : normal. Plus tard, la source refuse le box score (un échec,
+                // le repli sur ESPN viendra) ; l'en-tête du tableau reste affiché en attendant.
+                if (boxAttendu(etape.match)) echec(etape.source, t) else reussite(etape.source)
                 if (pourLeMatchSuivi) boxs.addLast(Instantane(t, BoxScore.depuisMatch(etape.match)))
             }
             is Reponse.Echec -> echec(etape.source, t)
         }
         avancer(t)
     }
+
+    /** Le box score devrait être publié : match en cours depuis plus de 2 minutes de jeu. */
+    private fun boxAttendu(m: MatchNba): Boolean =
+        m.direct && (m.periode > 1 || (m.horloge != null && m.horloge < HORLOGE_BOX_ATTENDU))
 
     /** Instant où la prochaine réponse gardée sera montrée (null : aucune en attente). */
     fun prochaineMaturite(): Long? {
@@ -300,7 +316,11 @@ class SuiviNba {
         }
         while (boxs.isNotEmpty() && boxs.first().arrivee <= limite) {
             val s = boxs.removeFirst()
-            if ((vueBox?.arrivee ?: Long.MIN_VALUE) <= s.arrivee) vueBox = s
+            val avant = vueBox
+            if ((avant?.arrivee ?: Long.MIN_VALUE) <= s.arrivee) {
+                horlogeTourne = tourne(avant?.donnees?.match, s.donnees.match)
+                vueBox = s
+            }
         }
         majChoix()
         // Plus aucun match à montrer (journée finie) : le box score se cache
@@ -337,6 +357,7 @@ class SuiviNba {
             idBox = c
             boxs.clear()
             vueBox = null
+            horlogeTourne = false
             prochainBox = 0L
             equipe = 0
         }
@@ -354,6 +375,7 @@ class SuiviNba {
         if (box && !suiviBox) {
             boxs.clear()
             vueBox = null
+            horlogeTourne = false
             prochainBox = t
             equipe = 0
         }
@@ -395,11 +417,17 @@ class SuiviNba {
         return EquipeEtat(e.code, e.nom.ifEmpty { c.nom }.ifEmpty { e.code }, e.score, c.couleur, c.texte)
     }
 
-    /** Ce que montre la fenêtre de la TV. */
-    fun vueTv(): VueTv {
+    /**
+     * Ce que montre la fenêtre de la TV à l'instant [t] (null : sans estimation de l'horloge).
+     * Si l'horloge tournait entre les deux dernières réponses montrées, elle continue de défiler
+     * depuis l'instant où la dernière est devenue visible, sans passer sous 0 et au plus jusqu'à
+     * la réponse suivante attendue ([BOX_MS] + [MARGE_HORLOGE_MS]) : un arrêt de jeu est corrigé
+     * par la réponse suivante.
+     */
+    fun vueTv(t: Long? = null): VueTv {
         if (affichage == Affichage.CACHE) return VueTv.CACHEE
         // Gardé seulement pour le match suivi (effacé quand le choix change)
-        val box = vueBox?.donnees
+        val box = vueBox?.let { v -> if (t == null) v.donnees else horlogeEstimee(v, t) }
         val attente = when {
             box != null -> null
             erreurSource -> INDISPONIBLE
@@ -407,5 +435,22 @@ class SuiviNba {
             else -> CHARGEMENT
         }
         return VueTv(affichage, box, attente, equipe)
+    }
+
+    /** L'horloge a baissé d'une réponse à l'autre, même période, match en cours (pas une fin de période). */
+    private fun tourne(avant: MatchNba?, apres: MatchNba): Boolean {
+        val a = avant?.horloge ?: return false
+        val b = apres.horloge ?: return false
+        return avant.id == apres.id && apres.direct && !apres.finDePeriode && avant.periode == apres.periode && b < a - 0.05
+    }
+
+    private fun horlogeEstimee(v: Instantane<BoxScore>, t: Long): BoxScore {
+        val m = v.donnees.match
+        val h = m.horloge ?: return v.donnees
+        if (!horlogeTourne || !m.direct || m.finDePeriode) return v.donnees
+        val visible = v.arrivee + decalage * 1000L
+        val ecoule = (t - visible).coerceIn(0L, BOX_MS + MARGE_HORLOGE_MS)
+        val estimee = (h - ecoule / 1000.0).coerceAtLeast(0.0)
+        return if (estimee == h) v.donnees else v.donnees.copy(match = m.copy(horloge = estimee))
     }
 }

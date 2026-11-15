@@ -670,7 +670,9 @@ application/json` ; aucun autre en-tête particulier.
      fieldGoalsAttempted, threePointersMade, threePointersAttempted, plusMinusPoints}`) et
      `statistics` de l'équipe (`fieldGoalsPercentage`, `threePointersPercentage` entre 0 et 1,
      `reboundsTotal`, `assists`, `turnovers` ou `turnoversTotal`, `fieldGoalsMade`…). Avant
-     l'entre-deux, le box score répond 403 ou 404 : « pas encore commencé ».
+     l'entre-deux, le box score répond 403 ou 404 : « pas encore commencé » (l'en-tête du tableau
+     s'affiche). Passé 2 minutes de jeu (2e QT ou plus, ou horloge sous 10:00), un 403 ou 404
+     compte comme un échec : la source refuse le box score, le repli sur ESPN suit.
 2. **ESPN** (repli, après 2 échecs de suite de la source NBA : erreur HTTP, délai, JSON illisible ;
    la TV réessaie la source NBA toutes les 10 minutes) :
    - tableau : `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard` →
@@ -687,9 +689,18 @@ application/json` ; aucun autre en-tête particulier.
    - Codes ESPN → codes NBA : GS → GSW, NY → NYK, SA → SAS, NO → NOP, UTAH → UTA, WSH → WAS.
 
 Rythme : le tableau du jour toutes les 30 s **seulement** si un téléphone est abonné ou si le box
-score est affiché ; le box score du match choisi toutes les 15 s **seulement** s'il est affiché
+score est affiché ; le box score du match choisi toutes les 5 s **seulement** s'il est affiché
 (résumé ou détails). Rien d'autre, jamais en arrière-plan sinon. Les deux sources renvoient le même
 modèle (match, équipes, joueurs, stats d'équipe).
+
+**Horloge qui défile (TV)** : si l'horloge du match a baissé entre les deux dernières réponses
+montrées (même période, match en cours, pas une fin de période), la fenêtre de la TV la fait
+défiler chaque seconde depuis l'instant où la dernière réponse est devenue visible (décalage
+compris), sans passer sous 0 et au plus 8 s (5 s + 3 s de marge : une réponse en retard arrête le
+défilement). Deux réponses avec la même horloge (arrêt de jeu) : plus de défilement. La réponse
+suivante corrige toujours l'estimation. `nba` (téléphones) garde l'horloge de la source. Pendant
+l'affichage, la TV vérifie aussi chaque seconde que la boucle des requêtes tourne, et la relance
+sinon.
 
 **Décalage** : chaque réponse est gardée avec son heure d'arrivée ; la TV montre (et envoie) la plus
 récente arrivée il y a au moins `nba_decalage` secondes. S'il n'y en a pas encore (début de suivi),

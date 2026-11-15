@@ -40,6 +40,7 @@ import java.lang.ref.WeakReference
 object BoxScoreNba {
 
     private const val TAG = "Projo.Nba"
+    private const val BATTEMENT_MS = 1_000L
 
     private val principal = Handler(Looper.getMainLooper())
     /** Une erreur dans la boucle des requêtes ne doit jamais arrêter l'appli (c'est l'accueil). */
@@ -186,7 +187,7 @@ object BoxScoreNba {
             dernierEtat = e
             surChangement?.invoke()
         }
-        val v = suivi.vueTv()
+        val v = suivi.vueTv(t)
         _vue.value = v
         majFenetre(v.affichage)
         principal.removeCallbacks(maturite)
@@ -195,8 +196,21 @@ object BoxScoreNba {
 
     private val maturite = Runnable { publier() }
 
+    /**
+     * Chaque seconde pendant l'affichage : l'horloge du match défile sur la TV, et la boucle des
+     * requêtes est relancée si elle s'est arrêtée (le box score ne doit jamais rester figé).
+     */
+    private val battement = Runnable {
+        publier()
+        if (suivi.affichage != Affichage.CACHE && boucle?.isActive != true) {
+            journal("nba : suivi relancé")
+            relancer()
+        }
+    }
+
     private fun majFenetre(a: Affichage) {
         val f = fenetre
+        principal.removeCallbacks(battement)
         if (a == Affichage.CACHE) {
             f?.cacher()
             ecouterEcran(false)
@@ -210,6 +224,7 @@ object BoxScoreNba {
             return
         }
         ecouterEcran(true)
+        principal.postDelayed(battement, BATTEMENT_MS)
     }
 
     /** Écran éteint pendant l'affichage : le box score se cache (plus rien n'est chargé). */
@@ -305,6 +320,7 @@ object BoxScoreNba {
         boucle?.cancel()
         boucle = null
         principal.removeCallbacks(maturite)
+        principal.removeCallbacks(battement)
         fenetre?.cacher()
         fenetre = null
         service = null
