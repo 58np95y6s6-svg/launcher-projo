@@ -807,7 +807,8 @@ Maquettes de référence : `tv-resume.png` (résumé) et `tv-boxscore.png` (dét
   **Caché · Résumé · Détails** (`nba_afficher`). `erreur` : « Active l'accessibilité d'iBiTV sur la
   TV » ou « Scores NBA indisponibles pour l'instant » sous le score.
 - Le réglage `nba_decalage` apparaît dans l'onglet Réglages (rendu générique).
-- Journaux de la PWA : `nba_afficher <format>` ; jamais de score.
+- Journaux de la PWA : `nba_afficher <format>`, `nba_paris_ajouter`, `nba_paris_effacer` ; jamais de
+  score ni de texte de pari.
 
 ## Côté TV : injection
 

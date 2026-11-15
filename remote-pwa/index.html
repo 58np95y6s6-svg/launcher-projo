@@ -60,6 +60,8 @@
     <symbol id="i-nba-cache" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/></symbol>
     <symbol id="i-nba-resume" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><rect x="12.5" y="8" width="6" height="4" rx="1" fill="currentColor"/></symbol>
     <symbol id="i-nba-details" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><rect x="13" y="7.5" width="6" height="8" rx="1" fill="currentColor"/></symbol>
+    <symbol id="i-nba-pari" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="13" rx="2.5"/><path d="M9 21h6"/><path d="M11.5 11.5l2.2 2.2 4.3-4.7"/></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3.5 8a2 2 0 012-2h13a2 2 0 012 2v1.6a2.4 2.4 0 000 4.8V16a2 2 0 01-2 2h-13a2 2 0 01-2-2v-1.6a2.4 2.4 0 000-4.8z"/><path d="M14.5 6.5V8M14.5 11.25v1.5M14.5 16v1.5"/></symbol>
   </svg>
 
   <div id="banniere-maj" class="banniere" role="status" hidden>
@@ -173,7 +175,11 @@
             <p id="nba-lecteur" class="invisible-lecteur"></p>
             <p id="nba-aucun" class="nba-aucun" hidden>Aucun match NBA en cours</p>
           </div>
-          <button type="button" id="btn-nba-matchs" class="btn-nba-matchs" aria-haspopup="dialog" hidden><svg class="ic" aria-hidden="true"><use href="#i-echanger"/></svg><span>Changer de match</span></button>
+          <!-- « Mon pari » : si la TV annonce « nba_paris » (pastille : nombre de lignes suivies) -->
+          <div class="nba-actions">
+            <button type="button" id="btn-nba-matchs" class="btn-nba-matchs" aria-haspopup="dialog" hidden><svg class="ic" aria-hidden="true"><use href="#i-echanger"/></svg><span>Changer de match</span></button>
+            <button type="button" id="btn-nba-pari" class="btn-nba-matchs btn-nba-pari" aria-haspopup="dialog" hidden><svg class="ic" aria-hidden="true"><use href="#i-ticket"/></svg><span>Mon pari</span><span id="nba-pari-compte" class="nba-pari-compte" aria-hidden="true" hidden></span></button>
+          </div>
         </div>
         <p id="nba-erreur" class="nba-erreur" hidden><svg class="ic" aria-hidden="true"><use href="#i-alerte"/></svg><span id="nba-erreur-texte"></span></p>
         <div id="nba-segments" class="segments" role="radiogroup" aria-label="Box score sur la TV">
@@ -181,6 +187,7 @@
           <label class="segment"><input type="radio" name="nba-affichage" value="cache"><svg class="ic" aria-hidden="true"><use href="#i-nba-cache"/></svg><span>Caché</span></label>
           <label class="segment"><input type="radio" name="nba-affichage" value="resume"><svg class="ic" aria-hidden="true"><use href="#i-nba-resume"/></svg><span>Résumé</span></label>
           <label class="segment"><input type="radio" name="nba-affichage" value="details"><svg class="ic" aria-hidden="true"><use href="#i-nba-details"/></svg><span>Détails</span></label>
+          <label class="segment" hidden><input type="radio" name="nba-affichage" value="pari"><svg class="ic" aria-hidden="true"><use href="#i-nba-pari"/></svg><span>Pari</span></label>
         </div>
         <p id="nba-annonce" class="invisible-lecteur" aria-live="polite" aria-atomic="true"></p>
       </section>
@@ -362,6 +369,29 @@
       <h2 id="titre-nba" class="titre-feuille">Matchs en direct</h2>
       <ul id="liste-nba" class="liste-matchs"></ul>
       <button type="button" id="btn-nba-fermer" class="btn-texte">Fermer</button>
+    </section>
+  </div>
+
+  <!-- ============ Box score NBA : mon pari (si la TV annonce « nba_paris ») ============ -->
+  <!-- Les lignes suivies par la TV et leur état, puis le collage du texte d'un pari -->
+  <div id="feuille-pari" class="voile" hidden>
+    <section class="feuille feuille-pari" role="dialog" aria-modal="true" aria-labelledby="titre-pari">
+      <div class="poignee" aria-hidden="true"></div>
+      <div class="feuille-tete">
+        <h2 id="titre-pari" class="titre-feuille" tabindex="-1">Mon pari</h2>
+        <button type="button" id="btn-pari-fermer" class="btn-icone btn-fermer" aria-label="Fermer"><svg class="ic" aria-hidden="true"><use href="#i-croix"/></svg></button>
+      </div>
+      <p id="pari-retour" class="pari-retour" role="status" aria-live="polite" aria-atomic="true"></p>
+      <ul id="liste-pari" class="liste-pari" aria-label="Lignes suivies" hidden></ul>
+      <p id="pari-vide" class="pari-vide">Aucune ligne suivie pour l'instant.</p>
+      <button type="button" id="btn-pari-effacer" class="btn-effacer-tout" hidden><svg class="ic" aria-hidden="true"><use href="#i-croix"/></svg>Tout effacer</button>
+      <form id="form-pari" class="form-pari" autocomplete="off" novalidate>
+        <label for="champ-pari" class="etiquette">Colle ton pari</label>
+        <textarea id="champ-pari" class="champ champ-pari" rows="4" maxlength="4000" placeholder="Colle ici le texte de ton pari"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-describedby="pari-aide"></textarea>
+        <p id="pari-aide" class="pari-aide">Sur la capture du ticket : appui long sur le texte → Tout sélectionner → Copier, puis colle ici.</p>
+        <button type="submit" id="btn-pari-ajouter" class="btn-principal" disabled><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Ajouter</button>
+      </form>
     </section>
   </div>
 

@@ -1,11 +1,14 @@
-// Box score NBA : décodage et validation du message `nba`, champs envoyés, affichage du bandeau.
+// Box score NBA : décodage et validation du message `nba`, champs envoyés, affichage du bandeau ;
+// paris suivis (`nba.paris`, texte envoyé, valeurs affichées, bilan d'un ajout).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import "../../remote-pwa/config.js";
 import {
   normaliserNba, normaliserMatch, normaliserEquipe, couleurValable, texteLisible, champsNbaAfficher,
   bandeauVisible, matchDe, equipeMenee, ligneStatut, nomsMatch, texteMatch, annonceAffichage,
-  AFFICHAGES, NOMS_AFFICHAGE, ERREURS, MAX_MATCHS,
+  AFFICHAGES, NOMS_AFFICHAGE, ERREURS, MAX_MATCHS, affichagesProposes,
+  normaliserParis, normaliserPari, texteAEnvoyer, nombreFr, valeurPari, avancementPari, matchPari, textePari,
+  bilanAjout, messageAjout, ETATS_PARI, NOMS_ETAT_PARI, MAX_PARIS, MAX_TEXTE_PARI,
 } from "../../remote-pwa/js/nba.js";
 import { decoder } from "../../remote-pwa/js/codec.js";
 import { lireFonctions } from "../../remote-pwa/js/pilotage.js";
@@ -110,7 +113,11 @@ test("nba_afficher : format, et le match affiché (sauf pour cacher)", () => {
   assert.deepEqual(champsNbaAfficher("cache", "LAL-BOS"), { affichage: "cache" });
   assert.deepEqual(champsNbaAfficher("resume", null), { affichage: "resume" });
   assert.deepEqual(champsNbaAfficher("resume", "pas un id"), { affichage: "resume" });
-  assert.deepEqual(NOMS_AFFICHAGE, { cache: "Caché", resume: "Résumé", details: "Détails" });
+  assert.deepEqual(NOMS_AFFICHAGE, { cache: "Caché", resume: "Résumé", details: "Détails", pari: "Pari" });
+  assert.deepEqual(champsNbaAfficher("pari", "PHI-IND"), { affichage: "pari", id: "PHI-IND" });
+  // « pari » proposé seulement si la TV annonce « nba_paris »
+  assert.deepEqual(affichagesProposes(false), ["cache", "resume", "details"]);
+  assert.deepEqual(affichagesProposes(true), ["cache", "resume", "details", "pari"]);
 });
 
 test("bandeau : visible avec un match ou un box score affiché ; score, statut, textes", () => {
@@ -136,6 +143,7 @@ test("bandeau : visible avec un match ou un box score affiché ; score, statut, 
   assert.equal(texteMatch({ ...m, direct: false, statut: "Terminé" }), "Lakers – Celtics, 98 à 102, terminé");
   assert.equal(annonceAffichage("resume"), "Box score en résumé sur la TV");
   assert.equal(annonceAffichage("cache"), "Box score caché sur la TV");
+  assert.equal(annonceAffichage("pari"), "Mon pari affiché sur la TV");
   assert.equal(annonceAffichage(null), "");
   assert.equal(ERREURS.accessibilite, "Active l'accessibilité d'iBiTV sur la TV");
   assert.equal(ERREURS.source, "Scores NBA indisponibles pour l'instant");
@@ -152,5 +160,112 @@ test("nba : fonction annoncée, journal limité au format", () => {
     journal("nba_afficher", "Lakers 98 – 102 Celtics");
     journal("nba_score", "98");
   } finally { console.info = orig; }
-  assert.deepEqual(lignes, ["[iBiTV] nba_afficher cache", "[iBiTV] nba_afficher resume", "[iBiTV] nba_afficher details", "[iBiTV] nba_afficher"]);
+  assert.deepEqual(lignes, ["[iBiTV] nba_afficher cache", "[iBiTV] nba_afficher resume", "[iBiTV] nba_afficher details",
+    "[iBiTV] nba_afficher pari", "[iBiTV] nba_afficher"]);
+});
+
+// ---------- Paris suivis ----------
+
+const PARI = "Philadelphie 76ers\nVainqueur du match\nTyrese Maxey + de 19,5\nNombre de points du joueur (paliers)";
+const ligne = (o = {}) => ({ id: "p1", libelle: "T. Maxey · + de 19,5 pts", etat: "en_cours", match: "PHI-IND", valeur: 12, seuil: 19.5, ...o });
+
+test("paris : fonction annoncée, `paris` normalisé dans `nba` (absent : pas de champ)", () => {
+  assert.deepEqual(lireFonctions(["nba_paris", "nba", "apps"]), ["apps", "nba", "nba_paris"]);
+  // Sans `paris` : l'état ne change pas (TV sans paris suivis)
+  assert.equal(Object.hasOwn(normaliserNba(etat()), "paris"), false);
+  assert.equal(Object.hasOwn(normaliserNba(etat({ paris: "p1" })), "paris"), false);
+  assert.deepEqual(normaliserNba(etat({ paris: [] })).paris, []);
+  const e = normaliserNba(etat({ affichage: "pari", paris: [ligne(), ligne({ id: "p2", libelle: "76ers vainqueurs", valeur: -3, seuil: undefined })] }));
+  assert.equal(e.affichage, "pari");
+  assert.deepEqual(e.paris, [
+    { id: "p1", libelle: "T. Maxey · + de 19,5 pts", etat: "en_cours", match: "PHI-IND", valeur: 12, seuil: 19.5 },
+    { id: "p2", libelle: "76ers vainqueurs", etat: "en_cours", match: "PHI-IND", valeur: -3 },
+  ]);
+  // Via le décodeur : champs en trop retirés
+  const d = decoder(JSON.stringify({ v: 1, t: "nba", ...etat(), paris: [{ ...ligne(), cote: 1.85, mise: 10 }] }));
+  assert.deepEqual(d.paris, [ligne()]);
+});
+
+test("paris : lignes invalides écartées, champs facultatifs vérifiés, 20 lignes au plus", () => {
+  for (const p of [null, "p1", {}, ligne({ id: undefined }), ligne({ id: "" }), ligne({ id: 3 }), ligne({ id: "x".repeat(65) }),
+    ligne({ libelle: undefined }), ligne({ libelle: " \n " }), ligne({ libelle: 12 })]) assert.equal(normaliserPari(p), null, JSON.stringify(p));
+  // État inconnu : « attente » (ligne montrée sans conclure) ; tous les états connus gardés
+  assert.equal(normaliserPari(ligne({ etat: "rembourse" })).etat, "attente");
+  assert.equal(normaliserPari(ligne({ etat: undefined })).etat, "attente");
+  for (const x of ETATS_PARI) assert.equal(normaliserPari(ligne({ etat: x })).etat, x);
+  // Match, valeur, seuil invalides : ignorés ; libellé nettoyé et borné
+  const p = normaliserPari(ligne({ match: "PHI IND", valeur: "12", seuil: Infinity, libelle: "  T. Maxey\n· + de 19,5 pts\u0007 " }));
+  assert.deepEqual(p, { id: "p1", libelle: "T. Maxey · + de 19,5 pts", etat: "en_cours" });
+  assert.equal(normaliserPari(ligne({ valeur: NaN })).valeur, undefined);
+  assert.equal(normaliserPari(ligne({ valeur: 1e9 })).valeur, undefined);
+  assert.equal(normaliserPari(ligne({ libelle: "x".repeat(500) })).libelle.length, 160);
+  // Doublons écartés, 20 au plus, ordre d'ajout gardé
+  const liste = Array.from({ length: 25 }, (_, i) => ligne({ id: `p${i}` }));
+  assert.equal(MAX_PARIS, 20);
+  assert.deepEqual(normaliserParis([ligne(), ligne(), {}, ...liste]).map((x) => x.id), ["p1", ...liste.slice(0, 26).map((x) => x.id).filter((x) => x !== "p1")].slice(0, 20));
+  assert.equal(normaliserParis(null), null);
+  assert.equal(normaliserParis({}), null);
+});
+
+test("paris : texte envoyé (fins de ligne, blancs, 4000 caractères au plus)", () => {
+  assert.equal(texteAEnvoyer(`  \r\n${PARI.replace(/\n/g, "\r\n")}\r\n\r\n  `), PARI);
+  for (const x of ["", "  \n\t ", null, undefined, 12]) assert.equal(texteAEnvoyer(x), "", String(x));
+  assert.equal(MAX_TEXTE_PARI, 4000);
+  assert.equal(texteAEnvoyer("a".repeat(5000)).length, 4000);
+  // Pas de caractère coupé en deux à la limite (émoji : deux unités UTF-16)
+  const t = texteAEnvoyer("a".repeat(3999) + "🏀🏀");
+  assert.equal(t, "a".repeat(3999));
+  assert.ok(texteAEnvoyer("a".repeat(3998) + "🏀🏀").endsWith("🏀"));
+});
+
+test("paris : valeurs (virgule française), écart du vainqueur, avancement, lecteur d'écran", () => {
+  assert.equal(nombreFr(19.5), "19,5");
+  assert.equal(nombreFr(12), "12");
+  assert.equal(nombreFr(0.25), "0,3");
+  assert.equal(nombreFr(-3), "\u22123");
+  assert.equal(nombreFr(-0.01), "0");
+  assert.equal(valeurPari(ligne()), "12 / 19,5");
+  assert.equal(valeurPari(ligne({ valeur: 21.5, seuil: 221.5 })), "21,5 / 221,5");
+  assert.equal(valeurPari({ libelle: "76ers vainqueurs", etat: "en_cours", valeur: 2 }), "+2");
+  assert.equal(valeurPari({ libelle: "76ers vainqueurs", etat: "en_cours", valeur: -3 }), "\u22123");
+  assert.equal(valeurPari({ libelle: "76ers vainqueurs", etat: "en_cours", valeur: 0 }), "0");
+  assert.equal(valeurPari({ libelle: "Maxey", etat: "attente", seuil: 19.5 }), "");
+  assert.equal(avancementPari(ligne()), 12 / 19.5);
+  assert.equal(avancementPari(ligne({ valeur: 30 })), 1);
+  assert.equal(avancementPari(ligne({ valeur: -2 })), 0);
+  assert.equal(avancementPari(ligne({ seuil: undefined })), null);
+  assert.equal(avancementPari(ligne({ seuil: 0 })), null);
+  assert.equal(matchPari(ligne()), "PHI – IND");
+  assert.equal(matchPari({}), "");
+  assert.equal(textePari(ligne()), "T. Maxey · + de 19,5 pts : en cours, 12 sur 19,5");
+  assert.equal(textePari({ libelle: "76ers vainqueurs", etat: "gagne", valeur: 4 }), "76ers vainqueurs : gagné, mène de 4 points");
+  assert.equal(textePari({ libelle: "76ers vainqueurs", etat: "en_cours", valeur: -1 }), "76ers vainqueurs : en cours, mené de 1 point");
+  assert.equal(textePari({ libelle: "76ers vainqueurs", etat: "en_cours", valeur: 0 }), "76ers vainqueurs : en cours, à égalité");
+  assert.equal(textePari({ libelle: "Premier panier", etat: "non_suivi" }), "Premier panier : non suivi");
+  assert.deepEqual(NOMS_ETAT_PARI, { attente: "En attente", en_cours: "En cours", gagne: "Gagné", perdu: "Perdu", non_suivi: "Non suivi" });
+});
+
+test("paris : bilan d'un ajout (lignes nouvelles, suivies ou non)", () => {
+  const paris = [ligne(), ligne({ id: "p2" }), ligne({ id: "p3", etat: "gagne" }), ligne({ id: "p4", etat: "non_suivi" })];
+  assert.deepEqual(bilanAjout(new Set(), paris), { suivies: 3, nonSuivies: 1 });
+  assert.deepEqual(bilanAjout(new Set(["p1", "p2"]), paris), { suivies: 1, nonSuivies: 1 });
+  assert.deepEqual(bilanAjout(new Set(["p1", "p2", "p3", "p4"]), paris), { suivies: 0, nonSuivies: 0 });
+  assert.equal(messageAjout({ suivies: 3, nonSuivies: 1 }), "3 lignes suivies · 1 non suivie");
+  assert.equal(messageAjout({ suivies: 1, nonSuivies: 0 }), "1 ligne suivie");
+  assert.equal(messageAjout({ suivies: 4, nonSuivies: 0 }), "4 lignes suivies");
+  assert.equal(messageAjout({ suivies: 0, nonSuivies: 2 }), "Aucune ligne suivie · 2 non suivies");
+  assert.equal(messageAjout({ suivies: 0, nonSuivies: 0 }), "Aucune nouvelle ligne");
+});
+
+test("paris : journal sans texte de pari", () => {
+  const lignes = [];
+  const orig = console.info;
+  console.info = (l) => lignes.push(l);
+  try {
+    journal("nba_paris_ajouter");
+    journal("nba_paris_ajouter", PARI);
+    journal("nba_paris_effacer");
+    journal("nba_paris_effacer", "Tyrese Maxey");
+  } finally { console.info = orig; }
+  assert.deepEqual(lignes, ["[iBiTV] nba_paris_ajouter", "[iBiTV] nba_paris_ajouter", "[iBiTV] nba_paris_effacer", "[iBiTV] nba_paris_effacer"]);
 });

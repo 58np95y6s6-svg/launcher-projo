@@ -1,6 +1,6 @@
 // Captures de chaque écran, en profil iPhone (390×844) et Android (412×915) :
 // télécommande dans les 8 thèmes (un par design de la TV), feuille du clavier, onglets, alertes,
-// box score NBA (bandeau, formats, choix du match, erreurs, petit écran)…
+// box score NBA (bandeau, formats, choix du match, erreurs, petit écran), paris suivis (« Mon pari »)…
 // Usage : node remote-pwa-dev/outils/captures.mjs [dossier de sortie] [iphone,android]
 
 import { mkdir } from "node:fs/promises";
@@ -11,10 +11,21 @@ const SORTIE = path.resolve(process.argv[2] || "captures-pwa");
 await mkdir(SORTIE, { recursive: true });
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 const DESIGNS = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio", "nba"];
+// Paris suivis : texte d'un vrai ticket (copié depuis la capture), plus un type de pari non suivi
+const PARI = `Philadelphie 76ers
+Vainqueur du match
+Tyrese Maxey + de 19,5
+Nombre de points du joueur (paliers)
+Kentavious Caldwell-Pope + de 9,5
+Nombre de points du joueur (paliers)
+Ivica Zubac + de 2,5
+Nombre de passes décisives du joueur (paliers)
+Victor Wembanyama
+Premier panier du match`;
 const banc = await demarrerBanc();
 
 async function serie(modele) {
-  const salon = await banc.tv({ nom: "Salon", design: "galerie", fonctions: ["apps", "reglages", "liens", "nba"] });
+  const salon = await banc.tv({ nom: "Salon", design: "galerie", fonctions: ["apps", "reglages", "liens", "nba", "nba_paris"] });
   const chambre = await banc.tv({ nom: "Chambre", design: "une" });
   const tel = await banc.telephone(modele);
   let page = await tel.ouvrir();
@@ -277,6 +288,40 @@ async function serie(modele) {
   await capture("nba-termine-nba");
   await salon.nba({ scenario: "deux" });
   await salon.nba({ erreur: null });
+  await salon.design("galerie");
+  await theme("galerie");
+
+  // Paris suivis : Pari sans ligne (la feuille s'ouvre), collage, lignes suivies et bilan
+  await salon.nba({ scenario: "paris", affichage: "cache" });
+  await page.locator("#nba-badge-ext", { hasText: "PHI" }).waitFor();
+  await nbaAffichage("Pari", "pari");
+  await page.locator("#feuille-pari:not([hidden])").waitFor();
+  await capture("nba-pari-feuille-vide");
+  await page.fill("#champ-pari", PARI);
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-pari-collage");
+  await page.click("#btn-pari-ajouter");
+  await page.locator("#pari-retour", { hasText: "suivies" }).waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-pari-lignes");
+  await page.click("#btn-pari-fermer");
+  await capture("nba-pari-bandeau");
+  await salon.statNba("tyrese maxey", "points", 21);
+  await salon.design("nba");
+  await theme("nba");
+  await capture("nba-pari-bandeau-nba");
+  await page.click("#btn-nba-pari");
+  await page.locator("#feuille-pari:not([hidden])").waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-pari-lignes-nba");
+  await page.click("#btn-pari-effacer");
+  await page.locator("#alerte:not([hidden])").waitFor();
+  await capture("nba-pari-tout-effacer-nba");
+  await page.click("#alerte-ok");
+  await page.locator("#pari-vide:not([hidden])").waitFor();
+  await page.click("#btn-pari-fermer");
+  await salon.statNba("tyrese maxey", "points", 12);
+  await salon.nba({ scenario: "deux", affichage: "resume" });
   await salon.design("galerie");
   await theme("galerie");
   // Petit écran (iPhone SE, 375 × 667) : le pavé rétrécit, les touches restent à l'écran

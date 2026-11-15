@@ -1,15 +1,17 @@
 // Box score NBA : bandeau en haut de l'onglet Télécommande (sous la puce de la TV).
 // Score du match choisi (badges aux couleurs des équipes, équipe menée en retrait), « DIRECT » +
 // statut (ou « TERMINÉ »), erreur de la TV, « Changer de match » (feuille) s'il y en a plusieurs,
-// puis le sélecteur Caché · Résumé · Détails (`nba_afficher`).
+// puis le sélecteur Caché · Résumé · Détails (`nba_afficher`). Si la TV annonce « nba_paris » :
+// 4e segment Pari et « Mon pari » (feuille des paris suivis, voir paris-nba.js).
 // `nba_etat` part après chaque authentification si la TV annonce « nba » (abonnement par connexion).
 // Lecteurs d'écran : le format et le match choisis sont annoncés, jamais chaque point marqué.
-// Journaux : `nba_afficher <format>` ; jamais de score, d'équipe ni de match.
+// Journaux : `nba_afficher <format>` ; jamais de score, d'équipe, de match ni de pari.
 
 import {
-  AFFICHAGES, ERREURS, bandeauVisible, matchDe, equipeMenee, ligneStatut, nomsMatch, texteMatch,
+  ERREURS, affichagesProposes, bandeauVisible, matchDe, equipeMenee, ligneStatut, nomsMatch, texteMatch,
   champsNbaAfficher, annonceAffichage, couleurValable,
 } from "./nba.js";
+import { FeuilleParis } from "./paris-nba.js";
 import { Attentes } from "./pilotage.js";
 import { h } from "./dom.js";
 import { journal } from "./journal.js";
@@ -42,8 +44,9 @@ export class BandeauNba {
    * @param {import("./controleur.js").Controleur} o.ctrl
    * @param {(texte:string, o?:{erreur?:boolean}) => void} o.annoncer
    * @param {(ms?:number|number[]) => void} o.vibrer
+   * @param {(o:{titre:string, texte:string, ok?:string, annuler?:string}) => Promise<boolean>} [o.confirmer]
    */
-  constructor({ ctrl, annoncer, vibrer }) {
+  constructor({ ctrl, annoncer, vibrer, confirmer = async () => true }) {
     Object.assign(this, { ctrl, annoncer, vibrer });
     const $ = (id) => document.getElementById(id);
     const bandeau = $("bandeau-nba");
@@ -55,7 +58,9 @@ export class BandeauNba {
       segments: $("nba-segments"), radios: [...bandeau.querySelectorAll('input[name="nba-affichage"]')],
       annonce: $("nba-annonce"),
       feuille: $("feuille-nba"), liste: $("liste-nba"), fermer: $("btn-nba-fermer"),
+      pari: $("btn-nba-pari"), compte: $("nba-pari-compte"),
     };
+    this.feuilleParis = new FeuilleParis({ ctrl, vibrer, confirmer, bouton: this.el.pari });
     this.etat = null;               // dernier `nba` de la TV active
     this.attentes = new Attentes(); // format et match envoyés, affichés tout de suite jusqu'à la réponse
     this.affichageTV = undefined;   // derniers format et match de la TV (annonces)
@@ -68,6 +73,7 @@ export class BandeauNba {
     const e = this.el;
     for (const r of e.radios) r.addEventListener("change", () => { if (r.checked) this.afficher(r.value); });
     e.matchs.addEventListener("click", () => { this.vibrer(); this.ouvrirFeuille(); });
+    e.pari.addEventListener("click", () => { this.vibrer(); this.feuilleParis.ouvrir(); });
     e.fermer.addEventListener("click", () => { this.vibrer(); this.fermerFeuille({ rendreFocus: true }); });
     e.feuille.addEventListener("click", (ev) => { if (ev.target === e.feuille) this.fermerFeuille({ rendreFocus: true }); });
     addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !e.feuille.hidden) this.fermerFeuille({ rendreFocus: true }); });
@@ -76,21 +82,36 @@ export class BandeauNba {
 
   /** La TV active annonce-t-elle le box score ? */
   get disponible() { return this.ctrl.fonctions.includes("nba"); }
+  /** … et les paris suivis (4e format, « Mon pari ») ? */
+  get parisDisponibles() { return this.disponible && this.ctrl.fonctions.includes("nba_paris"); }
 
   // ---------- Cycle de vie ----------
 
   /** Autre TV : rien n'est gardé (l'état arrive avec le `nba` suivant). */
   changerTV() { this.oublier(); }
 
-  /** Fonctions annoncées changées : une TV qui n'annonce plus « nba » n'affiche plus rien. */
-  majFonctions() { if (!this.disponible && this.etat) this.oublier(); }
+  /** Fonctions annoncées changées : une TV qui n'annonce plus « nba » n'affiche plus rien (ni « nba_paris » : plus de paris). */
+  majFonctions() {
+    if (!this.disponible && this.etat) this.oublier();
+    else {
+      if (!this.parisDisponibles) this.feuilleParis.oublier();
+      this.rendre();
+    }
+  }
 
   oublier() {
     this.etat = null;
     this.affichageTV = this.choisiTV = undefined;
     this.scores = null;
     this.attentes.vider();
+    this.feuilleParis.oublier();
     this.rendre();
+  }
+
+  /** Feuilles du bandeau fermées (autre onglet, clavier de la TV). */
+  fermerFeuilles() {
+    this.fermerFeuille();
+    this.feuilleParis.fermer();
   }
 
   /** Nouvelle connexion : `nba_etat` (état et abonnement, valable pour cette connexion). */
@@ -112,6 +133,7 @@ export class BandeauNba {
     if (etat.erreur && etat.erreur !== avant?.erreur) phrases.push(ERREURS[etat.erreur]);
     this.affichageTV = etat.affichage;
     this.choisiTV = etat.choisi;
+    if (this.parisDisponibles) this.feuilleParis.maj(etat.paris ?? []);
     this.rendre();
     if (phrases.length && bandeauVisible(etat)) this.parler(phrases.join(". "));
   }
@@ -125,9 +147,12 @@ export class BandeauNba {
 
   // ---------- Envois ----------
 
-  /** Segment touché : `nba_afficher` (avec le match affiché ici, sauf pour cacher). */
+  /**
+   * Segment touché : `nba_afficher` (avec le match affiché ici, sauf pour cacher). Pari sans aucune
+   * ligne suivie : la feuille « Mon pari » s'ouvre aussi, pour coller le pari.
+   */
   afficher(affichage) {
-    if (!AFFICHAGES.includes(affichage)) return;
+    if (!affichagesProposes(this.parisDisponibles).includes(affichage)) return;
     this.vibrer();
     if (!this.ctrl.nbaAfficher(champsNbaAfficher(affichage, this.matchAffiche()?.id))) {
       this.annoncer("La TV n'est pas connectée", { erreur: true });
@@ -138,6 +163,7 @@ export class BandeauNba {
     this.attentes.noter("affichage", affichage);
     this.rendre();
     this.planifierRecalage();
+    if (affichage === "pari" && !this.feuilleParis.paris.length) this.feuilleParis.ouvrir();
   }
 
   /** Match touché dans la feuille : `nba_choisir`. */
@@ -200,14 +226,26 @@ export class BandeauNba {
     e.erreur.hidden = !erreur;
     e.erreurTexte.textContent = erreur;
 
-    const i = AFFICHAGES.indexOf(this.affichageAffiche());
-    e.radios.forEach((r, j) => {
-      r.checked = i === j;
-      r.closest(".segment").classList.toggle("choisi", i === j);
+    // Paris suivis : 4e segment et « Mon pari » (toujours là quand ils sont annoncés : le bandeau ne saute pas)
+    const paris = this.parisDisponibles;
+    e.bandeau.classList.toggle("avec-paris", paris);
+    e.pari.hidden = !paris;
+    const n = paris ? this.feuilleParis.paris.length : 0;
+    e.compte.hidden = !n;
+    e.compte.textContent = n ? String(n) : "";
+    e.pari.setAttribute("aria-label", n ? `Mon pari : ${n} ${n === 1 ? "ligne suivie" : "lignes suivies"}` : "Mon pari");
+
+    const formats = affichagesProposes(paris);
+    const i = formats.indexOf(this.affichageAffiche());
+    e.radios.forEach((r) => {
+      const j = formats.indexOf(r.value);
+      r.closest(".segment").hidden = j < 0;
+      r.checked = j >= 0 && i === j;
+      r.closest(".segment").classList.toggle("choisi", j >= 0 && i === j);
     });
     if (i >= 0) {
       e.segments.style.setProperty("--i", String(i));
-      e.segments.dataset.choix = AFFICHAGES[i];
+      e.segments.dataset.choix = formats[i];
     } else delete e.segments.dataset.choix;
   }
 

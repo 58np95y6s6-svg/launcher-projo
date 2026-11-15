@@ -9,7 +9,7 @@
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
 //   liens {vpn, seulementVpn, appliPages, appliVpn?, raccourci?} | lien_ouvert {url, ok, ouvertDans?, raison?}
-//   nba {matchs, choisi, affichage, decalage, erreur?}
+//   nba {matchs, choisi, affichage, decalage, erreur?, paris?}
 //   version {verdict}
 //   revoquee {tv}
 
@@ -312,7 +312,10 @@ export class Controleur extends EventTarget {
 
   /** `nba_etat` : état (matchs, format) et abonnement à ses changements pour cette connexion. */
   nbaEtat() { return this.session?.envoyer("nba_etat") ?? false; }
-  /** @param {{affichage:"cache"|"resume"|"details", id?:string}} champs */
+  /** @param {{affichage:"cache"|"resume"|"details"|"pari", id?:string}} champs */
   nbaAfficher(champs) { return this.session?.envoyer("nba_afficher", champs) ?? false; }
   nbaChoisir(id) { return this.session?.envoyer("nba_choisir", { id }) ?? false; }
+  /** Paris suivis : texte collé (4000 caractères au plus), lu par la TV. */
+  nbaParisAjouter(texte) { return this.session?.envoyer("nba_paris_ajouter", { texte }) ?? false; }
+  nbaParisEffacer() { return this.session?.envoyer("nba_paris_effacer") ?? false; }
 }
