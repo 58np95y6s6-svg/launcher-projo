@@ -626,6 +626,8 @@ const applis = new OngletApplis({ ctrl, annoncer, vibrer });
 const reglages = new OngletReglages({ ctrl, annoncer, vibrer });
 const envoyer = new OngletEnvoyer({ ctrl, annoncer, vibrer, confirmer: alerte });
 const nba = new BandeauNba({ ctrl, annoncer, vibrer, confirmer: alerte });
+// Paris suivis : « Mon pari… » dans Réglages, groupe « Box score NBA » (coller un pari avant le match)
+reglages.ajouterLigne({ apres: "nba_decalage", groupe: "Box score NBA", el: nba.ligneReglages });
 
 function ongletsDisponibles() {
   const f = ctrl.fonctions;

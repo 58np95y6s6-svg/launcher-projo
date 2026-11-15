@@ -8,7 +8,7 @@ import {
   bandeauVisible, matchDe, equipeMenee, ligneStatut, nomsMatch, texteMatch, annonceAffichage,
   AFFICHAGES, NOMS_AFFICHAGE, ERREURS, MAX_MATCHS, affichagesProposes,
   normaliserParis, normaliserPari, texteAEnvoyer, nombreFr, valeurPari, avancementPari, matchPari, textePari,
-  bilanAjout, messageAjout, ETATS_PARI, NOMS_ETAT_PARI, MAX_PARIS, MAX_TEXTE_PARI,
+  bilanAjout, messageAjout, resumeParis, ETATS_PARI, NOMS_ETAT_PARI, MAX_PARIS, MAX_TEXTE_PARI,
 } from "../../remote-pwa/js/nba.js";
 import { decoder } from "../../remote-pwa/js/codec.js";
 import { lireFonctions } from "../../remote-pwa/js/pilotage.js";
@@ -255,6 +255,18 @@ test("paris : bilan d'un ajout (lignes nouvelles, suivies ou non)", () => {
   assert.equal(messageAjout({ suivies: 4, nonSuivies: 0 }), "4 lignes suivies");
   assert.equal(messageAjout({ suivies: 0, nonSuivies: 2 }), "Aucune ligne suivie · 2 non suivies");
   assert.equal(messageAjout({ suivies: 0, nonSuivies: 0 }), "Aucune nouvelle ligne");
+});
+
+test("paris : résumé des lignes (bandeau sans match, Réglages)", () => {
+  const l = (...etats) => etats.map((etat, i) => ligne({ id: `p${i}`, etat }));
+  assert.equal(resumeParis([]), "");
+  assert.equal(resumeParis(l("attente", "attente", "attente", "attente", "non_suivi")), "4 lignes en attente");
+  assert.equal(resumeParis(l("attente")), "1 ligne en attente");
+  assert.equal(resumeParis(l("gagne")), "1 ligne gagnée");
+  assert.equal(resumeParis(l("perdu", "perdu")), "2 lignes perdues");
+  assert.equal(resumeParis(l("en_cours", "gagne", "attente", "gagne", "perdu")), "2 gagnées · 1 perdue · 1 en cours · 1 en attente");
+  assert.equal(resumeParis(l("non_suivi")), "1 ligne non suivie");
+  assert.equal(resumeParis(l("non_suivi", "non_suivi")), "2 lignes non suivies");
 });
 
 test("paris : journal sans texte de pari", () => {

@@ -706,10 +706,13 @@ point en cours), libellé, barre d'avancement vers le seuil et valeur actuelle (
 Aucune ligne pour ce match : « Aucune ligne de ton pari dans ce match ». Touches : aucune gardée
 (comme le résumé).
 
-**PWA** : 4e segment **Pari** dans le bandeau (si `nba_paris` est annoncé) ; un bouton « Mon pari »
-ouvre une feuille : les lignes (`paris`) avec leur état, un champ « Colle ton pari », « Ajouter »,
-« Tout effacer », et une aide (« Sur la capture du ticket : appui long sur le texte → Tout
-sélectionner → Copier »). Après un ajout : « N lignes suivies » (et celles non suivies, grisées).
+**PWA** (si `nba_paris` est annoncé) : 4e segment **Pari** dans le bandeau (sans ligne suivie, il
+ouvre aussi la feuille) ; « Mon pari » (dans le bandeau, et à tout moment dans Réglages → « Box score
+NBA », pour coller un pari avant le match) ouvre une feuille : les lignes (`paris`) avec leur état,
+un champ « Colle ton pari », « Ajouter », « Tout effacer », et une aide (« Sur la capture du ticket :
+appui long sur le texte → Tout sélectionner → Copier »). Après un ajout : « N lignes suivies » (et
+celles non suivies, grisées). Des lignes suivies sans match à montrer : le bandeau reste, réduit à
+« Aucun match NBA en cours », leur résumé (« Mon pari · 4 lignes en attente ») et « Mon pari ».
 
 ### Réglage (groupe « Box score NBA »)
 
@@ -801,7 +804,8 @@ Maquettes de référence : `tv-resume.png` (résumé) et `tv-boxscore.png` (dét
 
 - Si `fonctions` contient `nba` : `nba_etat` après l'authentification (et à chaque reconnexion).
 - Bandeau en haut de l'onglet Télécommande (sous la puce de la TV), visible si `matchs` n'est pas
-  vide ou si `affichage` n'est pas `"cache"` : badges et scores (`ext` à gauche, `dom` à droite,
+  vide ou si `affichage` n'est pas `"cache"` (ou réduit à « Mon pari » si des paris sont suivis, voir
+  « Paris suivis ») : badges et scores (`ext` à gauche, `dom` à droite,
   l'équipe menée en retrait), « DIRECT » + `statut` (ou « TERMINÉ ») ; s'il y a plusieurs matchs,
   un bouton « Changer de match » ouvre la liste (feuille) ; puis un sélecteur à trois segments
   **Caché · Résumé · Détails** (`nba_afficher`). `erreur` : « Active l'accessibilité d'iBiTV sur la

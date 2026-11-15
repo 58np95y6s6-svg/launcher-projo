@@ -192,6 +192,25 @@ export function textePari(p) {
   return `${p.libelle} : ${NOMS_ETAT_PARI[p.etat].toLowerCase()}${v ? `, ${v}` : ""}`;
 }
 
+/**
+ * Résumé des lignes (bandeau sans match, Réglages) : « 4 lignes en attente », « 1 ligne gagnée »,
+ * « 2 gagnées · 1 perdue · 1 en cours » ; les lignes non suivies ne comptent que si elles sont seules
+ * (« 2 lignes non suivies ») ; "" sans ligne.
+ */
+export function resumeParis(paris) {
+  if (!paris.length) return "";
+  const lignes = (k) => (k === 1 ? "1 ligne" : `${k} lignes`);
+  const parts = [["gagne", "gagnée", "gagnées"], ["perdu", "perdue", "perdues"], ["en_cours", "en cours", "en cours"], ["attente", "en attente", "en attente"]]
+    .map(([etat, un, plusieurs]) => {
+      const k = paris.filter((p) => p.etat === etat).length;
+      return { k, mot: k === 1 ? un : plusieurs };
+    })
+    .filter((x) => x.k);
+  if (!parts.length) return `${lignes(paris.length)} ${paris.length === 1 ? "non suivie" : "non suivies"}`;
+  if (parts.length === 1) return `${lignes(parts[0].k)} ${parts[0].mot}`;
+  return parts.map((x) => `${x.k} ${x.mot}`).join(" · ");
+}
+
 /** Lignes apparues depuis un ajout (ids absents de `avant`) : {suivies, nonSuivies}. */
 export function bilanAjout(avant, paris) {
   const b = { suivies: 0, nonSuivies: 0 };
@@ -220,7 +239,7 @@ export function champsNbaAfficher(affichage, id = null) {
 
 // ---------- Affichage ----------
 
-/** Bandeau visible : au moins un match, ou un box score affiché sur la TV. */
+/** Box score dans le bandeau (score et formats) : au moins un match, ou un box score affiché sur la TV. */
 export const bandeauVisible = (etat) => !!etat && (etat.matchs.length > 0 || etat.affichage !== "cache");
 
 /** Match à afficher (celui de `choisi`), ou null. */

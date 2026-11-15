@@ -6,7 +6,8 @@
 // thème qui suit le design de la TV ; versions incompatibles ; TV injoignable ;
 // mise à jour (bannière) ; pilotage (onglets Applis et Réglages, TV ancienne sans onglets) ;
 // Envoyer sur la TV (liens, VPN coupé, raccourci iOS) ; box score NBA (bandeau, format, choix du match)
-// et ses paris suivis (segment Pari, « Mon pari » : collage, lignes, bilan, tout effacer) ;
+// et ses paris suivis (segment Pari, « Mon pari » : collage, lignes, bilan, tout effacer ; avant le
+// match depuis Réglages, bandeau réduit) ;
 // aucun texte saisi, secret, nom d'appli, valeur de réglage, lien, score ni pari dans les journaux.
 
 import { test, before, after } from "node:test";
@@ -1515,7 +1516,102 @@ test("paris suivis : toutes les valeurs reçues (attente, écart négatif), autr
   assert.equal(await coche(page), null);
   assert.ok(await page.isHidden("#btn-nba-pari"));
   assert.ok(await page.isHidden("#feuille-pari"));
+  // … ni « Mon pari… » dans Réglages
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="nba_decalage"]').waitFor();
+  assert.ok(await page.isHidden("#reglage-pari"));
   await tel.fermer();
   await salon.fermer();
   await chambre.fermer();
+});
+
+test("paris suivis : pari collé avant le match depuis Réglages, bandeau réduit, puis le match commence", async () => {
+  const tv = await banc.tv({ nom: "Salon", fonctions: AVEC_PARIS, design: "galerie" });
+  const tel = await banc.telephone("iphone");
+  journaux.push(tel.journal);
+  const page = await tel.ouvrir();
+  await page.locator("#ecran-accueil").waitFor();
+  await appairerParQR(page, tv);
+  // Aucun match en cours, aucune ligne : pas de bandeau
+  await tv.attendreRecu((r) => r.t === "nba_etat");
+  await pause(400);
+  assert.ok(await page.isHidden("#bandeau-nba"));
+
+  // Réglages, groupe « Box score NBA » : « Mon pari… » juste après le décalage
+  await page.click("#onglet-reglages");
+  await page.locator('.reglage[data-cle="nba_decalage"]').waitFor();
+  assert.ok(await page.isVisible("#reglage-pari"));
+  assert.equal(await page.$eval("#reglage-pari", (e) => e.previousElementSibling?.dataset.cle), "nba_decalage");
+  assert.equal(await page.$eval("#reglage-pari", (e) => e.closest(".groupe").querySelector(".groupe-titre").textContent), "Box score NBA");
+  assert.equal(await page.textContent("#reglage-pari .reglage-titre"), "Paris suivis");
+  assert.equal(await page.textContent("#reglage-pari-detail"), "Colle ton pari, même avant le match : la TV suit ses lignes en direct");
+  assert.equal(await page.textContent("#btn-reglages-pari"), "Mon pari…");
+  const r = await page.locator("#btn-reglages-pari").boundingBox();
+  assert.ok(r.height >= 47.5 && r.width >= 47.5);
+
+  // Collage sans match : les lignes sont « en attente »
+  await page.click("#btn-reglages-pari");
+  await page.locator("#feuille-pari:not([hidden])").waitFor();
+  await page.fill("#champ-pari", PARI);
+  await page.click("#btn-pari-ajouter");
+  await tv.attendreRecu((x) => x.t === "nba_paris_ajouter");
+  assert.deepEqual((await recusDe(tv, "nba_paris_ajouter")).map((x) => x.texte), [PARI]);
+  await page.locator("#pari-retour", { hasText: "4 lignes suivies" }).waitFor();
+  assert.deepEqual((await lignesPari(page)).map(([etat]) => etat), ["attente", "attente", "attente", "attente"]);
+  assert.deepEqual(await page.locator("#liste-pari .pari-detail").allTextContents(), ["En attente", "En attente", "En attente", "En attente"]);
+  // Fermer : focus rendu au bouton de Réglages, qui résume les lignes
+  await page.keyboard.press("Escape");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "btn-reglages-pari");
+  assert.equal(await page.textContent("#reglage-pari-detail"), "Mon pari : 4 lignes en attente");
+  assert.equal((await recusDe(tv, "nba_afficher")).length, 0, "Réglages : aucun format envoyé");
+
+  // Télécommande : bandeau réduit (aucun match, le résumé et « Mon pari »), sans formats
+  await page.click("#onglet-telecommande");
+  await page.locator("#bandeau-nba:not([hidden])").waitFor();
+  assert.ok(await page.locator("#bandeau-nba.reduit").count() === 1);
+  assert.equal(await page.textContent("#nba-aucun"), "Aucun match NBA en cours");
+  assert.equal(await page.textContent("#nba-pari-resume"), "Mon pari · 4 lignes en attente");
+  assert.ok(await page.isHidden("#nba-segments"));
+  assert.ok(await page.isHidden("#btn-nba-matchs"));
+  assert.ok(await page.isHidden(".nba-score"));
+  assert.ok(await page.isVisible("#btn-nba-pari"));
+  assert.equal(await page.textContent("#nba-pari-compte"), "4");
+  const reduit = await page.evaluate(() => {
+    const p = document.querySelector("#panneau-telecommande");
+    return { defile: p.scrollHeight - p.clientHeight, large: p.scrollWidth <= innerWidth };
+  });
+  assert.ok(reduit.defile === 0 && reduit.large, JSON.stringify(reduit));
+  // « Mon pari » du bandeau : la même feuille
+  await page.click("#btn-nba-pari");
+  await page.locator("#feuille-pari:not([hidden])").waitFor();
+  assert.equal((await lignesPari(page)).length, 4);
+  await page.click("#btn-pari-fermer");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "btn-nba-pari");
+
+  // Le match commence : bandeau complet (score, formats), lignes en cours
+  await tv.nba({ scenario: "paris" });
+  await page.locator("#nba-segments:not([hidden])").waitFor();
+  assert.ok(await page.locator("#bandeau-nba.reduit").count() === 0);
+  assert.ok(await page.isHidden("#nba-pari-resume"));
+  assert.ok(await page.isHidden("#nba-aucun"));
+  assert.deepEqual(await page.locator(".nba-score > span").allTextContents(), ["PHI", "61", "–", "57", "IND"]);
+  assert.deepEqual(await page.locator(".segment:not([hidden])").allTextContents(), ["Caché", "Résumé", "Détails", "Pari"]);
+  await page.click('.segment:has-text("Pari")');
+  await tv.attendreRecu((x) => x.t === "nba_afficher" && x.affichage === "pari" && x.id === "PHI-IND");
+  assert.ok(await page.isHidden("#feuille-pari"), "des lignes : la feuille ne s'ouvre pas");
+
+  // Fin des matchs, box score caché : le bandeau réduit revient ; lignes effacées : plus de bandeau
+  await tv.nba({ scenario: "aucun", affichage: "cache" });
+  await page.locator("#bandeau-nba.reduit").waitFor();
+  await page.click("#btn-nba-pari");
+  await page.click("#btn-pari-effacer");
+  await page.click("#alerte-ok");
+  await tv.attendreRecu((x) => x.t === "nba_paris_effacer");
+  await page.locator("#bandeau-nba").waitFor({ state: "hidden" });
+  await page.locator("#feuille-pari").waitFor({ state: "visible" });
+  await page.click("#btn-pari-fermer");
+  await page.click("#onglet-reglages");
+  assert.equal(await page.textContent("#reglage-pari-detail"), "Colle ton pari, même avant le match : la TV suit ses lignes en direct");
+  await tel.fermer();
+  await tv.fermer();
 });

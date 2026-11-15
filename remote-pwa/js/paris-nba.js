@@ -22,10 +22,11 @@ export class FeuilleParis {
    * @param {import("./controleur.js").Controleur} o.ctrl
    * @param {(ms?:number|number[]) => void} o.vibrer
    * @param {(o:{titre:string, texte:string, ok?:string, annuler?:string}) => Promise<boolean>} o.confirmer
-   * @param {HTMLElement} o.bouton « Mon pari » (focus rendu à la fermeture)
+   * @param {HTMLElement} o.bouton « Mon pari » du bandeau (focus rendu à la fermeture, par défaut)
    */
   constructor({ ctrl, vibrer, confirmer, bouton }) {
     Object.assign(this, { ctrl, vibrer, confirmer, bouton });
+    this.retour = bouton;     // bouton qui a ouvert la feuille (bandeau ou Réglages)
     const $ = (id) => document.getElementById(id);
     this.el = {
       voile: $("feuille-pari"), titre: $("titre-pari"), fermer: $("btn-pari-fermer"),
@@ -83,7 +84,10 @@ export class FeuilleParis {
 
   // ---------- Feuille ----------
 
-  ouvrir() {
+  /** @param {HTMLElement} [retour] bouton qui ouvre la feuille (focus rendu à la fermeture) */
+  ouvrir(retour = this.bouton) {
+    this.retour = retour;
+    if (!this.bilan) this.dire(""); // bilan d'un ajout précédent : plus d'actualité
     this.rendre();
     this.majAjouter();
     this.el.voile.hidden = false;
@@ -96,7 +100,7 @@ export class FeuilleParis {
     if (document.activeElement === this.el.champ) this.el.champ.blur();
     this.el.voile.hidden = true;
     this.el.voile.style.setProperty("--clavier-bas", "0px");
-    if (rendreFocus && this.bouton.offsetParent) this.bouton.focus({ preventScroll: true });
+    if (rendreFocus && this.retour.offsetParent) this.retour.focus({ preventScroll: true });
   }
 
   /** Feuille au-dessus du clavier du téléphone (zone visible du visualViewport). */

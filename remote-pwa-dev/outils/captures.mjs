@@ -291,17 +291,35 @@ async function serie(modele) {
   await salon.design("galerie");
   await theme("galerie");
 
-  // Paris suivis : Pari sans ligne (la feuille s'ouvre), collage, lignes suivies et bilan
-  await salon.nba({ scenario: "paris", affichage: "cache" });
-  await page.locator("#nba-badge-ext", { hasText: "PHI" }).waitFor();
-  await nbaAffichage("Pari", "pari");
+  // Paris suivis, avant le match : Réglages → « Mon pari… », collage, lignes en attente, bandeau réduit
+  await salon.nba({ scenario: "aucun", affichage: "cache" });
+  await page.locator("#bandeau-nba").waitFor({ state: "hidden" });
+  await page.click("#onglet-reglages");
+  await page.locator("#reglage-pari:not([hidden])").waitFor();
+  await page.locator("#reglage-pari").evaluate((e) => e.scrollIntoView({ block: "center" }));
+  await capture("reglages-mon-pari");
+  await page.click("#btn-reglages-pari");
   await page.locator("#feuille-pari:not([hidden])").waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
   await capture("nba-pari-feuille-vide");
   await page.fill("#champ-pari", PARI);
   await page.evaluate(() => document.activeElement?.blur());
   await capture("nba-pari-collage");
   await page.click("#btn-pari-ajouter");
   await page.locator("#pari-retour", { hasText: "suivies" }).waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await capture("nba-pari-avant-match");
+  await page.click("#btn-pari-fermer");
+  await capture("reglages-mon-pari-lignes");
+  await page.click("#onglet-telecommande");
+  await page.locator("#bandeau-nba.reduit").waitFor();
+  await capture("nba-pari-bandeau-reduit");
+  // Le match commence : lignes en cours, format Pari sur la TV
+  await salon.nba({ scenario: "paris" });
+  await page.locator("#nba-badge-ext", { hasText: "PHI" }).waitFor();
+  await nbaAffichage("Pari", "pari");
+  await page.click("#btn-nba-pari");
+  await page.locator("#feuille-pari:not([hidden])").waitFor();
   await page.evaluate(() => document.activeElement?.blur());
   await capture("nba-pari-lignes");
   await page.click("#btn-pari-fermer");

@@ -479,6 +479,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .nba-direct.termine::before { animation: none; }
 .nba-statut-texte { min-width: 0; color: var(--texte); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nba-aucun { font-size: .9375rem; font-weight: 800; color: var(--texte-2); }
+/* Paris suivis sans match à montrer (collés avant le match) : bandeau réduit au résumé et à « Mon pari » */
+.nba-match .nba-pari-resume { margin-top: .1875rem; font-size: .875rem; font-weight: 800; line-height: 1.3; color: var(--texte); }
 
 /* « Changer de match » : à droite du score, libellé sur deux lignes (« Changer / de match ») */
 .btn-nba-matchs {
@@ -1222,7 +1224,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 :root[data-theme="nba"] :where(
   .puce-etat, .pastille-tv, .pave-indice, .touche, .vol-milieu, .segment, .onglet, .groupe-titre, .saisie-aide,
   .btn-principal, .btn-secondaire, .btn-petit, .btn-reglage, .btn-nba-matchs, .btn-texte, .btn-titre,
-  .options-pastilles .option, .options-designs .option, .nba-direct, .nba-aucun, .etiquette, .pari-detail
+  .options-pastilles .option, .options-designs .option, .nba-direct, .nba-aucun, .etiquette, .pari-detail,
+  .nba-pari-resume
 ) {
   font-family: var(--condensee); font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
 }
@@ -1269,6 +1272,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 :root[data-theme="nba"] .bandeau-nba.avec-paris .segment { font-size: min(1rem, 5.6cqi); }
 :root[data-theme="nba"] .nba-pari-compte { font-size: .8125rem; font-weight: 700; letter-spacing: 0; }
 :root[data-theme="nba"] .pari-detail { font-size: .875rem; letter-spacing: .1em; }
+:root[data-theme="nba"] .nba-match .nba-pari-resume { font-size: 1rem; letter-spacing: .06em; }
 :root[data-theme="nba"] .pari-valeur { font-size: 1.25rem; letter-spacing: .01em; }
 
 .noscript { padding: 24px; text-align: center; }

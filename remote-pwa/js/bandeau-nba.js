@@ -2,14 +2,16 @@
 // Score du match choisi (badges aux couleurs des équipes, équipe menée en retrait), « DIRECT » +
 // statut (ou « TERMINÉ »), erreur de la TV, « Changer de match » (feuille) s'il y en a plusieurs,
 // puis le sélecteur Caché · Résumé · Détails (`nba_afficher`). Si la TV annonce « nba_paris » :
-// 4e segment Pari et « Mon pari » (feuille des paris suivis, voir paris-nba.js).
+// 4e segment Pari et « Mon pari » (feuille des paris suivis, voir paris-nba.js) ; le bandeau reste
+// aussi, réduit à « Mon pari », tant que des lignes sont suivies sans match à montrer (pari collé
+// avant le match), et « Mon pari… » est dans Réglages, groupe « Box score NBA » (à tout moment).
 // `nba_etat` part après chaque authentification si la TV annonce « nba » (abonnement par connexion).
 // Lecteurs d'écran : le format et le match choisis sont annoncés, jamais chaque point marqué.
 // Journaux : `nba_afficher <format>` ; jamais de score, d'équipe, de match ni de pari.
 
 import {
   ERREURS, affichagesProposes, bandeauVisible, matchDe, equipeMenee, ligneStatut, nomsMatch, texteMatch,
-  champsNbaAfficher, annonceAffichage, couleurValable,
+  champsNbaAfficher, annonceAffichage, couleurValable, resumeParis,
 } from "./nba.js";
 import { FeuilleParis } from "./paris-nba.js";
 import { Attentes } from "./pilotage.js";
@@ -58,9 +60,10 @@ export class BandeauNba {
       segments: $("nba-segments"), radios: [...bandeau.querySelectorAll('input[name="nba-affichage"]')],
       annonce: $("nba-annonce"),
       feuille: $("feuille-nba"), liste: $("liste-nba"), fermer: $("btn-nba-fermer"),
-      pari: $("btn-nba-pari"), compte: $("nba-pari-compte"),
+      pari: $("btn-nba-pari"), compte: $("nba-pari-compte"), pariResume: $("nba-pari-resume"),
     };
     this.feuilleParis = new FeuilleParis({ ctrl, vibrer, confirmer, bouton: this.el.pari });
+    this.construireLigneReglages();
     this.etat = null;               // dernier `nba` de la TV active
     this.attentes = new Attentes(); // format et match envoyés, affichés tout de suite jusqu'à la réponse
     this.affichageTV = undefined;   // derniers format et match de la TV (annonces)
@@ -187,6 +190,36 @@ export class BandeauNba {
     this._recalage = setTimeout(() => this.rendre(), d + 20);
   }
 
+  // ---------- Réglages : « Mon pari… » (à tout moment, même sans match) ----------
+
+  /**
+   * Ligne de l'onglet Réglages, groupe « Box score NBA », placée par l'onglet après `nba_decalage`
+   * (voir OngletReglages.ajouterLigne) ; montrée si la TV annonce « nba_paris ».
+   */
+  construireLigneReglages() {
+    const titre = h("span", { class: "reglage-titre", id: "reglage-pari-titre" }, "Paris suivis");
+    const detail = h("span", { class: "reglage-detail", id: "reglage-pari-detail" });
+    const bouton = h("button", {
+      type: "button", id: "btn-reglages-pari", class: "btn-reglage", "aria-haspopup": "dialog",
+      "aria-describedby": "reglage-pari-titre reglage-pari-detail",
+    }, "Mon pari…");
+    bouton.addEventListener("click", () => { this.vibrer(); this.feuilleParis.ouvrir(bouton); });
+    this.ligneReglages = h("div", { id: "reglage-pari", class: "reglage reglage-pari", hidden: true },
+      h("div", { class: "reglage-tete" }, h("span", { class: "reglage-textes" }, titre, detail)),
+      h("div", { class: "boutons-reglage" }, bouton));
+    this.detailReglages = detail;
+  }
+
+  majLigneReglages() {
+    const paris = this.parisDisponibles;
+    this.ligneReglages.hidden = !paris;
+    if (!paris) return;
+    const resume = resumeParis(this.feuilleParis.paris);
+    this.detailReglages.textContent = resume
+      ? `Mon pari : ${resume}`
+      : "Colle ton pari, même avant le match : la TV suit ses lignes en direct";
+  }
+
   // ---------- Affichage ----------
 
   /** Format affiché : celui envoyé tant que la TV ne l'a pas confirmé (1,5 s au plus), sinon celui de la TV. */
@@ -205,24 +238,34 @@ export class BandeauNba {
 
   rendre() {
     const e = this.el;
-    const visible = this.disponible && bandeauVisible(this.etat);
+    this.majLigneReglages();
+    // Box score (score et formats) selon la règle du bandeau ; sinon, des paris suivis sans match
+    // à montrer (collés avant le match) : bandeau réduit au résumé et à « Mon pari »
+    const boxScore = this.disponible && bandeauVisible(this.etat);
+    const parisSansMatch = this.parisDisponibles && this.feuilleParis.paris.length > 0;
+    const visible = boxScore || parisSansMatch;
     e.bandeau.hidden = !visible;
     if (!visible) {
       this.fermerFeuille();
       return;
     }
-    const match = this.matchAffiche();
+    e.bandeau.classList.toggle("reduit", !boxScore);
+    e.segments.hidden = !boxScore;
+    const match = boxScore ? this.matchAffiche() : null;
     e.score.hidden = e.statut.hidden = !match;
     e.aucun.hidden = !!match;
     e.lecteur.textContent = match ? texteMatch(match) : "";
     if (match) this.rendreMatch(match);
+    const resume = !match && parisSansMatch ? resumeParis(this.feuilleParis.paris) : "";
+    e.pariResume.hidden = !resume;
+    e.pariResume.textContent = resume ? `Mon pari · ${resume}` : "";
 
-    const plusieurs = this.etat.matchs.length > 1;
+    const plusieurs = boxScore && this.etat.matchs.length > 1;
     e.matchs.hidden = !plusieurs;
     if (!plusieurs) this.fermerFeuille();
     else if (!e.feuille.hidden) this.rendreListe();
 
-    const erreur = this.etat.erreur ? ERREURS[this.etat.erreur] : "";
+    const erreur = this.etat?.erreur ? ERREURS[this.etat.erreur] : "";
     e.erreur.hidden = !erreur;
     e.erreurTexte.textContent = erreur;
 
