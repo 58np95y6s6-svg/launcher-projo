@@ -291,7 +291,7 @@ class NbaProtocoleTest {
                 PariEtat("p2", "T. Maxey · + de 19,5 pts", EtatPari.GAGNE, "PHI-IND", 23, 19.5),
                 PariEtat("p3", "Total du match · - de 221,5 pts", EtatPari.ATTENTE, null, null, 221.5),
                 PariEtat("p4", "Philadelphie 76ers (-4,5) · Handicap", EtatPari.NON_SUIVI),
-                PariEtat("p5", "J. Embiid · - de 10 reb", EtatPari.PERDU, "PHI-IND", 11, 10.0),
+                PariEtat("p5", "J. Embiid · - de 10 rebonds", EtatPari.PERDU, "PHI-IND", 11, 10.0),
             ),
         )
         val m = JSONObject(Protocole.nba(e))

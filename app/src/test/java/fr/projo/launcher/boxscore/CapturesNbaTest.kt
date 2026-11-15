@@ -40,7 +40,7 @@ import java.io.File
  * Captures du box score NBA (1920 × 1080) sur un faux fond de vidéo sombre, avec les exemples de
  * flux de app/src/test/resources/nba/ : résumé, détails (deux équipes, et source ESPN sans point
  * « sur le terrain »), attente « Synchronisation avec la vidéo… », pari suivi (ticket de
- * l'utilisateur en plein match, et match sans ligne du pari). Résultats dans
+ * l'utilisateur en plein match, au coup d'envoi, et match sans ligne du pari). Résultats dans
  * app/build/captures/nba_*.png.
  *
  * SDK 35 : un bac à sable Robolectric à part, pour ne pas partager l'état de Compose (répartiteur
@@ -178,8 +178,8 @@ class CapturesNbaTest {
         compose.onNodeWithText("23").assertIsDisplayed()
         compose.onNodeWithText("K. Caldwell-Pope · + de 9,5 pts").assertIsDisplayed()
         compose.onNodeWithText(" / 9,5").assertIsDisplayed()
-        compose.onNodeWithText("I. Zubac · + de 2,5 pd").assertIsDisplayed()
-        compose.onNodeWithText("J. Embiid · - de 8,5 reb").assertIsDisplayed()
+        compose.onNodeWithText("I. Zubac · + de 2,5 passes").assertIsDisplayed()
+        compose.onNodeWithText("J. Embiid · - de 8,5 rebonds").assertIsDisplayed()
         compose.onNodeWithText(" / 8,5").assertIsDisplayed()
         compose.onAllNodesWithText("Turquie", substring = true).assertCountEquals(0)
         val carte = compose.onNodeWithTag("nba_pari").fetchSemanticsNode().boundsInRoot
@@ -188,6 +188,19 @@ class CapturesNbaTest {
         assertEquals(1920f - 56f, carte.right, 2f)
         assertEquals(56f, carte.top, 2f)
         assertTrue("carte trop haute : ${carte.bottom}", carte.bottom < 1080f - 24f)
+    }
+
+    @Test
+    fun pariAuCoupDEnvoi() {
+        // Pari collé avant le match ; box score pas encore publié : joueurs en attente, vainqueur en cours
+        val debut = matchPhiInd(2, 0, EtatMatch.EN_COURS, 1, 700.0)
+        val vue = vuePari(TICKET_BETCLIC, BoxScore.depuisMatch(debut))
+        assertEquals(listOf(EtatPari.EN_COURS, EtatPari.ATTENTE, EtatPari.ATTENTE, EtatPari.ATTENTE), vue.paris.map { it.etat })
+        capturer("pari_avant", vue)
+        compose.onAllNodesWithTag("nba_pari_ligne").assertCountEquals(4)
+        compose.onNodeWithText("I. Zubac · + de 2,5 passes").assertIsDisplayed()
+        compose.onNodeWithText("+2").assertIsDisplayed()
+        compose.onAllNodesWithText("–").assertCountEquals(3)
     }
 
     @Test

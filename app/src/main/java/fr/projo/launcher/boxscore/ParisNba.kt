@@ -10,16 +10,19 @@ import java.util.Locale
  * direct de l'iPhone), en lignes que la TV sait suivre. Sans Android, testé sur la JVM.
  */
 
-/** Statistique d'un joueur suivie par une ligne ; [unite] : fin du libellé (« + de 19,5 pts »). */
+/**
+ * Statistique d'un joueur suivie par une ligne ; [unite] : fin du libellé (« + de 19,5 pts »,
+ * « + de 2,5 passes ») : mots entiers sauf « pts » et « reb. » dans les cumuls, jamais « pd ».
+ */
 enum class StatPari(val unite: String) {
     POINTS("pts"),
-    REBONDS("reb"),
-    PASSES("pd"),
+    REBONDS("rebonds"),
+    PASSES("passes"),
     TROIS("paniers à 3 pts"),
-    POINTS_REBONDS_PASSES("pts + reb + pd"),
-    POINTS_REBONDS("pts + reb"),
-    POINTS_PASSES("pts + pd"),
-    REBONDS_PASSES("reb + pd");
+    POINTS_REBONDS_PASSES("pts + reb. + passes"),
+    POINTS_REBONDS("pts + reb."),
+    POINTS_PASSES("pts + passes"),
+    REBONDS_PASSES("reb. + passes");
 
     /** Valeur de la statistique pour [j]. */
     fun de(j: JoueurNba): Int = when (this) {

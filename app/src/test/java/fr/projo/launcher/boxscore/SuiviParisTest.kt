@@ -37,7 +37,7 @@ class SuiviParisTest {
                 // Seuil franchi avant la fin : gagné tout de suite
                 PariEtat("p2", "T. Maxey · + de 19,5 pts", GAGNE, "PHI-IND", 23, 19.5),
                 PariEtat("p3", "K. Caldwell-Pope · + de 9,5 pts", EN_COURS, "PHI-IND", 6, 9.5),
-                PariEtat("p4", "I. Zubac · + de 2,5 pd", EN_COURS, "PHI-IND", 2, 2.5),
+                PariEtat("p4", "I. Zubac · + de 2,5 passes", EN_COURS, "PHI-IND", 2, 2.5),
             ),
             etats(TICKET_BETCLIC, donnees(boxPhiInd())),
         )
@@ -52,7 +52,7 @@ class SuiviParisTest {
                 PariEtat("p2", "T. Maxey · + de 19,5 pts", GAGNE, "PHI-IND", 31, 19.5),
                 // 9 points pour « plus de 9,5 » : perdu à la fin
                 PariEtat("p3", "K. Caldwell-Pope · + de 9,5 pts", PERDU, "PHI-IND", 9, 9.5),
-                PariEtat("p4", "I. Zubac · + de 2,5 pd", GAGNE, "PHI-IND", 4, 2.5),
+                PariEtat("p4", "I. Zubac · + de 2,5 passes", GAGNE, "PHI-IND", 4, 2.5),
             ),
             etats(TICKET_BETCLIC, donnees(fin)),
         )
@@ -65,7 +65,7 @@ class SuiviParisTest {
     fun moinsDe() {
         val texte = "Joel Embiid Moins de 9,5 rebonds"
         // Seuil dépassé en cours de match : perdu pour de bon
-        assertEquals(PariEtat("p1", "J. Embiid · - de 9,5 reb", PERDU, "PHI-IND", 10, 9.5), une(texte, donnees(boxPhiInd(embiidReb = 10))))
+        assertEquals(PariEtat("p1", "J. Embiid · - de 9,5 rebonds", PERDU, "PHI-IND", 10, 9.5), une(texte, donnees(boxPhiInd(embiidReb = 10))))
         assertEquals(EN_COURS, une(texte, donnees(boxPhiInd(embiidReb = 8))).etat)
         // Pas dépassé à la fin : gagné
         val fin = boxPhiInd(matchPhiInd(etat = EtatMatch.TERMINE, periode = 4), embiidReb = 8)
@@ -141,7 +141,7 @@ class SuiviParisTest {
         assertEquals(EN_COURS, une(texte, donnees(boxPhiInd(embiidReb = 0, embiidJoue = false))).etat)
         // Fin du match sans avoir joué : en attente (pari remboursé), sans valeur
         val fin = boxPhiInd(matchPhiInd(etat = EtatMatch.TERMINE, periode = 4), embiidReb = 0, embiidJoue = false)
-        assertEquals(PariEtat("p1", "J. Embiid · - de 9,5 reb", ATTENTE, "PHI-IND", null, 9.5), une(texte, donnees(fin)))
+        assertEquals(PariEtat("p1", "J. Embiid · - de 9,5 rebonds", ATTENTE, "PHI-IND", null, 9.5), une(texte, donnees(fin)))
     }
 
     @Test
@@ -150,6 +150,25 @@ class SuiviParisTest {
             PariEtat("p1", "Philadelphie 76ers (-4,5) · Handicap (prolongations incluses)", NON_SUIVI),
             une("Philadelphie 76ers (-4,5)\nHandicap (prolongations incluses)", donnees(boxPhiInd())),
         )
+    }
+
+    @Test
+    fun libellesEnMotsEntiers() {
+        val texte = listOf(
+            "Plus de 19,5 points", "Plus de 5,5 rebonds", "Plus de 4,5 passes décisives", "Plus de 2,5 paniers à 3 points",
+            "Plus de 30,5 points + rebonds + passes", "Plus de 25,5 points + rebonds", "Plus de 24,5 points + passes",
+            "Plus de 9,5 rebonds + passes",
+        ).joinToString("\n") { "Tyrese Maxey $it" }
+        assertEquals(
+            listOf(
+                "T. Maxey · + de 19,5 pts", "T. Maxey · + de 5,5 rebonds", "T. Maxey · + de 4,5 passes",
+                "T. Maxey · + de 2,5 paniers à 3 pts", "T. Maxey · + de 30,5 pts + reb. + passes", "T. Maxey · + de 25,5 pts + reb.",
+                "T. Maxey · + de 24,5 pts + passes", "T. Maxey · + de 9,5 reb. + passes",
+            ),
+            etats(texte, DonneesParis(emptyList(), emptyList())).map { it.libelle },
+        )
+        // Jamais « pd »
+        assertTrue(StatPari.entries.none { Regex("""\bpd\b""").containsMatchIn(it.unite) })
     }
 
     // ------------------------------------------------------------------ lignes gardées
@@ -189,7 +208,7 @@ class SuiviParisTest {
         p.ajouter("Joel Embiid Plus de 9,5 rebonds", 3_600_000)
         assertFalse(p.expirer(SuiviParis.DUREE_MS - 1))
         assertTrue(p.expirer(SuiviParis.DUREE_MS))
-        assertEquals(listOf("J. Embiid · + de 9,5 reb"), p.etats(DonneesParis(emptyList(), emptyList())).map { it.libelle })
+        assertEquals(listOf("J. Embiid · + de 9,5 rebonds"), p.etats(DonneesParis(emptyList(), emptyList())).map { it.libelle })
         // Ajouté de nouveau : nouvelle ligne
         p.ajouter("Tyrese Maxey Plus de 19,5 points", SuiviParis.DUREE_MS)
         assertEquals(2, p.nombre)
@@ -202,16 +221,19 @@ class SuiviParisTest {
     private val lalBos = matchNba("LAL", "BOS", 2_000)
 
     /** Exécute les requêtes dues à [t] avec les réponses données (une étape « Attendre » arrête). */
-    private fun SuiviNba.servir(t: Long, tableau: List<MatchNba>, box: (MatchNba) -> BoxScore) {
+    private fun SuiviNba.servirAvec(t: Long, tableau: List<MatchNba>, box: (MatchNba) -> Reponse<BoxScore>) {
         repeat(10) {
             when (val e = prochaine(t)) {
                 is Etape.Tableau -> tableauRecu(t, e.source, Reponse.Ok(tableau))
-                is Etape.Box -> boxRecu(t, e, Reponse.Ok(box(e.match)))
+                is Etape.Box -> boxRecu(t, e, box(e.match))
                 else -> return
             }
         }
         throw AssertionError("requêtes sans fin")
     }
+
+    private fun SuiviNba.servir(t: Long, tableau: List<MatchNba>, box: (MatchNba) -> BoxScore) =
+        servirAvec(t, tableau) { Reponse.Ok(box(it)) }
 
     private fun maxey(s: SuiviNba): PariEtat = s.etat().paris.first { it.libelle.startsWith("T. Maxey") }
 
@@ -242,6 +264,40 @@ class SuiviParisTest {
         assertEquals(15, maxey(s).valeur)
         s.avancer(95_000)
         assertEquals(PariEtat("p2", "T. Maxey · + de 19,5 pts", GAGNE, "PHI-IND", 21, 19.5), maxey(s))
+    }
+
+    @Test
+    fun pariCollEAvantLeCoupDEnvoi() {
+        val s = SuiviNba().apply { accessibilite = true }
+        // Collé avant tout : ni tableau du jour, ni box score, ni match en cours
+        assertEquals(SuiviParis.Ajout(4, 4, 0), s.ajouterParis(TICKET_BETCLIC, 0))
+        val avant = s.etat().paris
+        assertTrue(avant.all { it.etat == ATTENTE && it.match == null && it.valeur == null })
+        assertEquals(listOf(null, 19.5, 9.5, 2.5), avant.map { it.seuil })
+        assertEquals(
+            listOf("76ers vainqueurs", "T. Maxey · + de 19,5 pts", "K. Caldwell-Pope · + de 9,5 pts", "I. Zubac · + de 2,5 passes"),
+            avant.map { it.libelle },
+        )
+        // Tableau du jour : match à venir, en attente avec le match du ticket ; pas de format pari possible
+        val aVenir = matchPhiInd(0, 0, EtatMatch.A_VENIR, 0, null)
+        s.abonnement(true, 1_000)
+        s.servirAvec(1_000, listOf(aVenir)) { Reponse.PasCommence }
+        assertTrue(s.etat().paris.all { it.etat == ATTENTE && it.match == "PHI-IND" && it.valeur == null })
+        assertEquals(Affichage.CACHE, s.afficher(Affichage.PARI, "PHI-IND", 1_000))
+        // Coup d'envoi deux heures plus tard, box score pas encore publié : joueurs en attente, vainqueur en cours
+        val t = 2 * 3_600_000L
+        val debut = matchPhiInd(2, 0, EtatMatch.EN_COURS, 1, 700.0)
+        s.servirAvec(t, listOf(debut)) { Reponse.PasCommence }
+        assertEquals(Affichage.PARI, s.afficher(Affichage.PARI, "PHI-IND", t))
+        s.servirAvec(t, listOf(debut)) { Reponse.PasCommence }
+        val vue = s.vueTv(t)
+        assertEquals(listOf("p1", "p2", "p3", "p4"), vue.paris.map { it.id })
+        assertEquals(PariEtat("p1", "76ers vainqueurs", EN_COURS, "PHI-IND", 2), vue.paris[0])
+        assertTrue(vue.paris.drop(1).all { it.etat == ATTENTE && it.match == "PHI-IND" })
+        // Box score publié : les joueurs sont trouvés
+        s.servirAvec(t + 5_000, listOf(debut)) { Reponse.Ok(boxPhiInd(debut, maxey = 2, kcp = 0, zubacPd = 0)) }
+        assertEquals(listOf(EN_COURS, EN_COURS, EN_COURS, EN_COURS), s.vueTv(t + 5_000).paris.map { it.etat })
+        assertEquals(PariEtat("p2", "T. Maxey · + de 19,5 pts", EN_COURS, "PHI-IND", 2, 19.5), maxey(s))
     }
 
     @Test

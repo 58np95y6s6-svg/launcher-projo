@@ -673,8 +673,9 @@ et aux abonnés), même si aucune ligne n'a été reconnue. `nba` gagne un champ
 - `paris` (tableau, 20 lignes au plus, dans l'ordre d'ajout ; au-delà, les plus anciennes sont
   retirées) : `{id, libelle, etat, match?, valeur?, seuil?}`
   - `id` (chaîne) : identifiant de la ligne sur cette TV (`"p1"`, `"p2"`…, jamais réutilisé) ;
-  - `libelle` (chaîne, en français) : « T. Maxey · + de 19,5 pts » (unités : `pts`, `reb`, `pd`,
-    `paniers à 3 pts`, `pts + reb + pd`, `pts + reb`, `pts + pd`, `reb + pd`), « 76ers vainqueurs »
+  - `libelle` (chaîne, en français) : « T. Maxey · + de 19,5 pts », « I. Zubac · + de 2,5 passes »
+    (unités : `pts`, `rebonds`, `passes`, `paniers à 3 pts`, `pts + reb. + passes`, `pts + reb.`,
+    `pts + passes`, `reb. + passes` ; jamais « pd »), « 76ers vainqueurs »
     (« 76ers vainqueurs (temps régl.) » pour le résultat en temps réglementaire),
     « Total du match · - de 221,5 pts », « 76ers · + de 115,5 pts » ; nom du joueur tel que le box
     score l'écrit une fois trouvé (« T. Maxey »), sinon initiale et nom du ticket ; pour une ligne
