@@ -167,8 +167,10 @@ object ModuleTelecommande : Module(
             }
         }
         if (dialogue) {
+            val diagnostic by Telecommande.diagnostic.collectAsState()
             AppairageDialog(
                 etat = etat,
+                diagnostic = diagnostic,
                 onNouveauCode = { source.nouveauCode() },
                 onFermer = {
                     dialogue = false

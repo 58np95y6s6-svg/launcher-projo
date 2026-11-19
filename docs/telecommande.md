@@ -57,6 +57,16 @@ Téléphone (PWA, GitHub Pages, HTTPS)          TV (iBiTV, Android)
 6. Si l'utilisateur autorise : la TV enregistre l'appareil (identifiant, nom, clé publique, date) et répond `paired`. Le secret est consommé.
 7. Le téléphone enregistre la TV : identifiant, nom, clé publique, empreinte.
 
+**Diagnostic sur l'écran d'appairage (TV)** : une ligne d'état sous le code dit où en est la mise
+en relation : « Connexion au serveur de mise en relation… », « ● Prête : en attente du
+téléphone. », « ⚠ Serveur de mise en relation injoignable » (2 tentatives ratées de suite : Internet
+de la TV), « ⚠ La TV se croit en veille » ; puis, pour une tentative faite depuis l'ouverture de
+l'écran : « Téléphone détecté, connexion en cours… », « ⚠ Le téléphone a été vu mais n'a pas pu
+joindre la TV en direct » (offre reçue, canal jamais ouvert : réseau local), « ⚠ Connexion directe
+impossible sur cet appareil (WebRTC indisponible) ». **Écran allumé** : la TV ne compte pas que
+sur `SCREEN_ON` (que certains boîtiers oublient au sortir de la veille) : une activité d'iBiTV au
+premier plan, ou `PowerManager.isInteractive` vérifié avant de rester coupée, suffisent.
+
 ### Module « Télécommande » : QR code permanent sur l'accueil
 
 Le module (Réglages → Modules → « Télécommande », `modules/telecommande/ModuleTelecommande.kt`) affiche le même QR code que le dialogue (même URL), le code de secours `XXXX-XXXX`, « Scannez avec votre téléphone » et, en MOYEN / GRAND, les téléphones appairés (pastille verte : connecté). OK sur le module ouvre le dialogue d'appairage en grand.

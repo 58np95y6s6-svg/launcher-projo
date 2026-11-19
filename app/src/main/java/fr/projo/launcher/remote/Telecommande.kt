@@ -81,6 +81,19 @@ object Telecommande : HoteSession {
     private val _confirmation = MutableStateFlow<DemandeConfirmation?>(null)
     val confirmation: StateFlow<DemandeConfirmation?> = _confirmation.asStateFlow()
 
+    /** Où en est la mise en relation (affiché sur l'écran d'appairage). */
+    private val _diagnostic = MutableStateFlow(DiagnosticTelecommande())
+    val diagnostic: StateFlow<DiagnosticTelecommande> = _diagnostic.asStateFlow()
+    private var echecsServeur = 0
+
+    private fun majServeur(e: EtatServeur) {
+        if (_diagnostic.value.serveur != e) _diagnostic.value = _diagnostic.value.copy(serveur = e)
+    }
+
+    private fun majTentative(t: EtatTentative) {
+        _diagnostic.value = _diagnostic.value.copy(tentative = t, depuis = SystemClock.uptimeMillis())
+    }
+
     private val _telephones = MutableStateFlow<List<TelephoneAppaire>>(emptyList())
     val telephones: StateFlow<List<TelephoneAppaire>> = _telephones.asStateFlow()
 
@@ -239,7 +252,12 @@ object Telecommande : HoteSession {
     }
 
     private val suiviActivites = object : Application.ActivityLifecycleCallbacks {
-        override fun onActivityResumed(activity: Activity) { activite = WeakReference(activity) }
+        override fun onActivityResumed(activity: Activity) {
+            activite = WeakReference(activity)
+            // Une activité au premier plan : l'écran est allumé, même si le boîtier n'a pas envoyé
+            // SCREEN_ON (certains boîtiers Android l'oublient au sortir de la veille)
+            if (::fil.isInitialized) fil.post { confirmerEcranAllume("activité au premier plan") }
+        }
         override fun onActivityPaused(activity: Activity) { if (activite?.get() === activity) activite = null }
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
         override fun onActivityStarted(activity: Activity) {}
@@ -248,19 +266,50 @@ object Telecommande : HoteSession {
         override fun onActivityDestroyed(activity: Activity) {}
     }
 
+    /** L'écran est allumé (vérifié autrement que par SCREEN_ON) : reprise si on le croyait éteint. Fil de la télécommande. */
+    private fun confirmerEcranAllume(pourquoi: String) {
+        if (ecranAllume) return
+        ecranAllume = true
+        qr.ecranAllume = true
+        Log.i(TAG, "Écran allumé ($pourquoi) : reprise")
+        evaluer()
+        maintenirQr()
+    }
+
     /** Ouvre ou ferme les connexions selon l'écran, les téléphones appairés et l'appairage. */
     private fun evaluer() {
         if (!pret) return
+        // SCREEN_ON parfois jamais reçu après une veille : on revérifie l'écran avant de rester coupé
+        if (!ecranAllume && (contexte?.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive == true) {
+            ecranAllume = true
+            qr.ecranAllume = true
+            Log.i(TAG, "Écran allumé (vérifié) : reprise")
+        }
         val secret = appairage.actif()
         val voulu = ecranAllume && (registre.telephones().isNotEmpty() || secret != null)
         if (voulu) {
-            val p = principal ?: ClientPeerJs(http, fil, registre.idTv(), registre.jetonPeerJs(), { t, s, pl -> surSignal(principal, t, s, pl) })
-                .also { principal = it }
+            val p = principal ?: ClientPeerJs(
+                http, fil, registre.idTv(), registre.jetonPeerJs(), { t, s, pl -> surSignal(principal, t, s, pl) },
+                surEtat = { ouvert ->
+                    if (ouvert) echecsServeur = 0
+                    majServeur(if (ouvert) EtatServeur.CONNECTE else EtatServeur.CONNEXION)
+                },
+                surEchec = {
+                    echecsServeur++
+                    if (echecsServeur == RemoteConfig.ECHECS_SERVEUR_INJOIGNABLE) Log.w(TAG, "Serveur de mise en relation injoignable")
+                    majServeur(if (echecsServeur >= RemoteConfig.ECHECS_SERVEUR_INJOIGNABLE) EtatServeur.INJOIGNABLE else EtatServeur.CONNEXION)
+                },
+            ).also {
+                principal = it
+                echecsServeur = 0
+                majServeur(EtatServeur.CONNEXION)
+            }
             p.demarrer()
         } else {
             principal?.arreter()
             principal = null
             connexions.toList().forEach { it.terminer() }
+            majServeur(if (ecranAllume) EtatServeur.ARRET else EtatServeur.ECRAN_ETEINT)
         }
         // Code de secours : l'identifiant temporaire « ibiprojo-c-ABCD », seulement pendant l'appairage
         val idTemp = if (ecranAllume) secret?.idTemporaire else null
@@ -290,9 +339,11 @@ object Telecommande : HoteSession {
                 val usine = try {
                     UsineWebRtc.obtenir(contexte!!)
                 } catch (e: Throwable) {
-                    Log.w(TAG, "WebRTC indisponible sur cet appareil")
+                    Log.w(TAG, "WebRTC indisponible sur cet appareil", e)
+                    majTentative(EtatTentative.WEBRTC)
                     return
                 }
+                majTentative(EtatTentative.EN_COURS)
                 fil.removeCallbacks(liberationUsine)
                 val c = ConnexionWebRtc(usine, fil, client, src, cid, ::creerSession, ::surFin)
                 connexions += c
@@ -321,6 +372,11 @@ object Telecommande : HoteSession {
 
     private fun surFin(c: ConnexionWebRtc) {
         connexions.remove(c)
+        // Canal jamais ouvert : le téléphone n'a pas pu joindre la TV en direct (réseau local)
+        if (c.session == null && _diagnostic.value.tentative == EtatTentative.EN_COURS) {
+            Log.i(TAG, "Téléphone injoignable en direct (canal jamais ouvert)")
+            majTentative(EtatTentative.RESEAU)
+        }
         majConnectes()
         // Plus de téléphone abonné : le tableau du jour NBA n'est plus chargé (sauf box score affiché)
         _nba?.majAbonnement()
@@ -357,6 +413,7 @@ object Telecommande : HoteSession {
 
     override fun surAuthentifiee(session: SessionTelecommande) {
         majConnectes()
+        majTentative(EtatTentative.REUSSIE)
         champ?.let { session.envoyerSiAuthentifiee(Protocole.focusText(it.type, it.texte, it.action)) }
         contexte?.let { ctx -> fil.post { ClavierTelecommande.reprendreSiPossible(ctx) } }
     }
@@ -626,3 +683,39 @@ object Telecommande : HoteSession {
         return (nom?.takeIf { it.isNotBlank() } ?: Build.MODEL ?: "iBiTV").take(40)
     }
 }
+
+/** Serveur de mise en relation, vu de la TV. */
+enum class EtatServeur {
+    /** Rien à faire (aucun téléphone appairé, pas d'appairage). */
+    ARRET,
+
+    /** Écran éteint : la TV ne se rend pas joignable. */
+    ECRAN_ETEINT,
+    CONNEXION,
+    CONNECTE,
+
+    /** Plusieurs tentatives ratées de suite (Internet de la TV ?). */
+    INJOIGNABLE,
+}
+
+/** Dernière tentative d'un téléphone. */
+enum class EtatTentative {
+    AUCUNE,
+
+    /** Offre reçue, connexion directe en cours. */
+    EN_COURS,
+
+    /** Le canal ne s'est jamais ouvert : le téléphone n'a pas pu joindre la TV sur le réseau local. */
+    RESEAU,
+
+    /** WebRTC n'a pas pu démarrer sur cet appareil. */
+    WEBRTC,
+    REUSSIE,
+}
+
+/** Diagnostic de la télécommande ; [depuis] : instant de la dernière tentative (horloge depuis le démarrage, ms). */
+data class DiagnosticTelecommande(
+    val serveur: EtatServeur = EtatServeur.ARRET,
+    val tentative: EtatTentative = EtatTentative.AUCUNE,
+    val depuis: Long = 0L,
+)

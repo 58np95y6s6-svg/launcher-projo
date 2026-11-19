@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -584,10 +585,12 @@ class MainActivity : ComponentActivity() {
 
         // ---------------- Télécommande smartphone
         if (montrerAppairage) {
+            val diagnostic by Telecommande.diagnostic.collectAsState()
             AppairageDialog(
                 etat = etatAppairage,
                 onNouveauCode = { Telecommande.commencerAppairage() },
                 onFermer = { montrerAppairage = false; Telecommande.arreterAppairage() },
+                diagnostic = diagnostic,
             )
         }
         if (montrerTelephones) {

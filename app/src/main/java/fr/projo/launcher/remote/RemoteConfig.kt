@@ -58,6 +58,8 @@ object RemoteConfig {
 
     /** Connexion WebRTC qui n'aboutit pas (canal non ouvert ou `hello` absent) : abandon. */
     const val DELAI_AUTHENTIFICATION_MS = 20_000L
+    /** Tentatives ratées de suite avant d'afficher « serveur injoignable » sur l'écran d'appairage. */
+    const val ECHECS_SERVEUR_INJOIGNABLE = 2
 
     /** Pilotage : `reglages` renvoyé de lui-même aux téléphones abonnés au plus à cette cadence. */
     const val REGLAGES_INTERVALLE_MS = 300L

@@ -10,7 +10,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import fr.projo.launcher.remote.DiagnosticTelecommande
 import fr.projo.launcher.remote.EtatAppairage
+import fr.projo.launcher.remote.EtatServeur
+import fr.projo.launcher.remote.EtatTentative
 import fr.projo.launcher.remote.QrCode
 import fr.projo.launcher.remote.RemoteConfig
 import fr.projo.launcher.remote.TelephoneAppaire
@@ -56,6 +59,17 @@ class CapturesTelecommandeTest : BancAccueil("VERRE") {
         compose.onNodeWithText("K7QM-3XPA").assertIsDisplayed()
         compose.onNodeWithText("Valable encore 4:32").assertIsDisplayed()
         compose.onNodeWithText(RemoteConfig.URL_PWA_COURTE).assertIsDisplayed()
+    }
+
+    /** Diagnostic : le téléphone a été vu mais n'a pas pu joindre la TV en direct. */
+    @Test
+    fun appairageTelephoneInjoignable() {
+        val d = DiagnosticTelecommande(EtatServeur.CONNECTE, EtatTentative.RESEAU, depuis = Long.MAX_VALUE)
+        dialogue("1b_appairage_reseau") {
+            AppairageDialog(EtatAppairage.EnCours(url, "K7QM-3XPA", t0 + 272_000), onNouveauCode = {}, onFermer = {}, horloge = { t0 }, diagnostic = d)
+        }
+        compose.onNodeWithTag("diagnostic").assertIsDisplayed()
+        compose.onNodeWithText(texteDiagnostic(d, 0L).first).assertIsDisplayed()
     }
 
     @Test

@@ -1,5 +1,6 @@
 package fr.projo.launcher.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
@@ -47,11 +48,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import fr.projo.launcher.remote.DiagnosticTelecommande
 import fr.projo.launcher.remote.EtatAppairage
+import fr.projo.launcher.remote.EtatServeur
+import fr.projo.launcher.remote.EtatTentative
 import fr.projo.launcher.remote.QrCode
 import fr.projo.launcher.remote.RemoteConfig
 import fr.projo.launcher.remote.TelephoneAppaire
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -141,8 +145,11 @@ fun AppairageDialog(
     onNouveauCode: () -> Unit,
     onFermer: () -> Unit,
     horloge: () -> Long = { System.currentTimeMillis() },
+    diagnostic: DiagnosticTelecommande = DiagnosticTelecommande(),
 ) {
     val h = habillageDialogue()
+    // Tentatives d'un téléphone : seulement celles faites depuis l'ouverture de l'écran
+    val ouvertLe = remember { SystemClock.uptimeMillis() }
     Dialog(onDismissRequest = onFermer, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val focus = remember { FocusRequester() }
         FocusInitial(focus, etat::class)
@@ -203,6 +210,15 @@ fun AppairageDialog(
                         }
                         Spacer(Modifier.height(10.u))
                         Text("Le téléphone et la TV doivent être sur le même Wi-Fi.", color = h.discret, fontSize = 11.us)
+                        val (texteEtat, alerte) = texteDiagnostic(diagnostic, ouvertLe)
+                        Spacer(Modifier.height(6.u))
+                        Text(
+                            texteEtat,
+                            color = if (alerte) Color(0xFFE5484D) else h.texte.copy(alpha = 0.75f),
+                            fontSize = 12.us,
+                            fontWeight = if (alerte) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier.testTag("diagnostic"),
+                        )
                         Spacer(Modifier.height(16.u))
                         BoutonDialogue("Fermer", Modifier.focusRequester(focus), onClick = onFermer)
                     }
@@ -228,6 +244,26 @@ fun AppairageDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Ligne d'état de l'écran d'appairage : où en est la mise en relation (serveur, puis tentative
+ * d'un téléphone depuis l'ouverture de l'écran). Second : true pour un problème à signaler.
+ */
+fun texteDiagnostic(d: DiagnosticTelecommande, ouvertLe: Long): Pair<String, Boolean> {
+    val tentative = if (d.depuis >= ouvertLe) d.tentative else EtatTentative.AUCUNE
+    return when (tentative) {
+        EtatTentative.WEBRTC -> "⚠ Connexion directe impossible sur cet appareil (WebRTC indisponible)." to true
+        EtatTentative.RESEAU -> "⚠ Le téléphone a été vu mais n'a pas pu joindre la TV en direct : même réseau ? Données cellulaires du téléphone coupées ?" to true
+        EtatTentative.EN_COURS -> "Téléphone détecté, connexion en cours…" to false
+        EtatTentative.REUSSIE -> "Téléphone connecté." to false
+        EtatTentative.AUCUNE -> when (d.serveur) {
+            EtatServeur.CONNECTE -> "● Prête : en attente du téléphone." to false
+            EtatServeur.INJOIGNABLE -> "⚠ Serveur de mise en relation injoignable : vérifie la connexion Internet de la TV." to true
+            EtatServeur.ECRAN_ETEINT -> "⚠ La TV se croit en veille : télécommande en pause." to true
+            EtatServeur.CONNEXION, EtatServeur.ARRET -> "Connexion au serveur de mise en relation…" to false
         }
     }
 }

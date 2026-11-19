@@ -28,6 +28,8 @@ class ClientPeerJs(
     private val jeton: String,
     private val surMessage: (type: String, src: String, payload: JSONObject?) -> Unit,
     private val surEtat: (connecte: Boolean) -> Unit = {},
+    /** Une tentative de connexion au serveur a échoué (jamais ouverte, ou refusée). */
+    private val surEchec: () -> Unit = {},
 ) {
     private var socket: WebSocket? = null
     private var actif = false
@@ -140,7 +142,7 @@ class ClientPeerJs(
         generation++
         socket = null
         fil.removeCallbacks(battement)
-        if (etaitOuvert) surEtat(false)
+        if (etaitOuvert) surEtat(false) else if (actif) surEchec()
         if (!actif) return
         fil.removeCallbacks(reconnexion)
         fil.postDelayed(reconnexion, delai)
