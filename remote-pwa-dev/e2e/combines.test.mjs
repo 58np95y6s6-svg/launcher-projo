@@ -449,6 +449,9 @@ test("combinés : avant le match (Réglages, bandeau réduit « Mon pari · 3 co
       tetes: tetes.filter((t) => t.scrollWidth > t.clientWidth + 1 || t.getBoundingClientRect().right > innerWidth).length,
       petits: boutons.filter((b) => { const r = b.getBoundingClientRect(); return r.width < 47.5 || r.height < 47.5; }).map((b) => b.className || b.id),
       noms: tetes.map((t) => getComputedStyle(t.querySelector(".combine-nom")).fontSize),
+      // « Combiné 3 » sur une ligne : « 2/5 » passe sous le nom quand l'en-tête est étroit
+      lignesNom: tetes.map((t) => { const n = t.querySelector(".combine-nom"); return Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)); }),
+      compteSousNom: tetes.every((t) => t.querySelector(".combine-compte").getBoundingClientRect().top >= t.querySelector(".combine-nom").getBoundingClientRect().bottom),
     };
   });
   await finAnimations(page);
@@ -456,6 +459,10 @@ test("combinés : avant le match (Réglages, bandeau réduit « Mon pari · 3 co
   assert.ok(m.large && m.tetes === 0, JSON.stringify(m));
   assert.deepEqual(m.petits, []);
   assert.ok(m.noms.every((t) => parseFloat(t) >= 23.5), `texte agrandi : ${m.noms}`);
+  assert.ok(m.lignesNom.every((n) => n === 1) && m.compteSousNom, JSON.stringify(m));
+  // Taille normale, même écran : « 2/5 » à côté du nom
+  await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
+  assert.equal((await mesures()).compteSousNom, false);
 
   // Zones sûres de l'iPhone (encoche, barre d'accueil) : la feuille reste dedans, jusqu'en bas
   await page.evaluate(() => {

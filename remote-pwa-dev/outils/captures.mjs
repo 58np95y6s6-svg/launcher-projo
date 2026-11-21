@@ -308,7 +308,11 @@ async function serie(modele) {
   // Combinés, avant le match : Réglages → « Mon pari… », un combiné par collage, bilan de l'ajout,
   // lignes en attente, bandeau réduit « Mon pari · 3 combinés »
   const sansFocus = () => page.evaluate(() => document.activeElement?.blur());
-  const hautDeFeuille = () => page.locator(".feuille-pari").evaluate((f) => { f.scrollTop = 0; });
+  // Le champ touché ramène la feuille vers lui 300 ms plus tard : la feuille remonte ensuite
+  const hautDeFeuille = async () => {
+    await pause(400);
+    await page.locator(".feuille-pari").evaluate((f) => { f.scrollTop = 0; });
+  };
   const ajouterPari = async (texte, retour) => {
     await page.fill("#champ-pari", texte);
     await page.click("#btn-pari-ajouter");
