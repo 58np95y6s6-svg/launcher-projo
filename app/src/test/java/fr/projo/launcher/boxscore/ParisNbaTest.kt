@@ -1,5 +1,7 @@
 package fr.projo.launcher.boxscore
 
+import fr.projo.launcher.boxscore.LignePari.DoubleDouble
+import fr.projo.launcher.boxscore.LignePari.Handicap
 import fr.projo.launcher.boxscore.LignePari.Joueur
 import fr.projo.launcher.boxscore.LignePari.NonSuivie
 import fr.projo.launcher.boxscore.LignePari.TotalEquipe
@@ -327,6 +329,50 @@ class ParisNbaTest {
         assertEquals(listOf(Joueur("Joel Embiid", INTERCEPTIONS_CONTRES, MOINS, 2.5)), lire("Joel Embiid - Interceptions + contres : Moins de 2,5"))
     }
 
+    /** Ticket Winamax de l'utilisateur, texte en direct : lignes coupées comme à l'écran, parfois dans le nom. */
+    @Test
+    fun ticketWinamaxCoupeDansLeNom() {
+        assertEquals(
+            listOf(
+                Joueur("Tyrese Maxey", POINTS, PLUS, 24.5),
+                Joueur("Tyrese Maxey", REBONDS, PLUS, 2.5),
+                Joueur("Tyrese Maxey", PASSES, PLUS, 4.5),
+                Joueur("Tyrese Maxey", TROIS, PLUS, 1.5),
+                Joueur("Tyrese Maxey", INTERCEPTIONS, PLUS, 0.5),
+            ),
+            lire(
+                "Nombre de points du joueur (paliers) - Tyrese Maxey :", "Plus de 24,5",
+                "Nombre de rebonds du joueur (paliers) - Tyrese Maxey :", "Plus de 2,5",
+                "Nombre de passes décisives du joueur (paliers) - Tyrese", "Maxey : Plus de 4,5",
+                "Nombre de paniers à 3 points du joueur (paliers) - Tyrese", "Maxey : Plus de 1,5",
+                "Nombre d'interceptions du joueur (paliers) - Tyrese Maxey :", "Plus de 0,5",
+            ),
+        )
+        // Coupé ailleurs
+        val passes = listOf(Joueur("Tyrese Maxey", PASSES, PLUS, 4.5))
+        assertEquals(passes, lire("Nombre de passes décisives du joueur (paliers) -", "Tyrese Maxey : Plus de 4,5"))
+        assertEquals(passes, lire("Nombre de passes décisives du joueur (paliers) - Tyrese", "Maxey : Plus de 4,5"))
+        assertEquals(passes, lire("Nombre de passes décisives du joueur (paliers) - Tyrese Maxey", ": Plus de 4,5"))
+        assertEquals(
+            listOf(Joueur("Kentavious Caldwell-Pope", POINTS, PLUS, 9.5)),
+            lire("Nombre de points du joueur (paliers) - Kentavious", "Caldwell-Pope : Plus de 9,5"),
+        )
+    }
+
+    /** « (paliers) » dans le type de pari ne gêne jamais ; sélections « 25+ », « 25 ou plus ». */
+    @Test
+    fun paliersWinamaxEtBetclic() {
+        val maxey25 = listOf(Joueur("Tyrese Maxey", POINTS, PLUS, 24.5))
+        assertEquals(maxey25, lire("Nombre de points du joueur (paliers) - Tyrese Maxey : Plus de 24,5"))
+        assertEquals(maxey25, lire("Nombre de points du joueur (paliers) - Tyrese Maxey : 25+"))
+        assertEquals(maxey25, lire("Nombre de points du joueur (paliers) - Tyrese Maxey : 25 ou plus"))
+        assertEquals(maxey25, lire("Nombre de points du joueur (paliers) - Tyrese Maxey :", "25+"))
+        assertEquals(maxey25, lire("Nombre de points du joueur paliers - Tyrese Maxey : Plus de 24,5"))
+        assertEquals(maxey25, lire("Tyrese Maxey 25+", "Nombre de points du joueur (paliers)"))
+        assertEquals(maxey25, lire("Tyrese Maxey + de 24,5", "Nombre de points du joueur (paliers)"))
+        assertEquals(maxey25, lire("Tyrese Maxey : 25 ou plus", "Nombre de points du joueur (paliers)"))
+    }
+
     /** Ligne non suivie lue sur deux lignes : pas de « : · » dans le libellé. */
     @Test
     fun libelleNonSuiviSansPonctuationEnTrop() {
@@ -336,20 +382,108 @@ class ParisNbaTest {
         )
     }
 
+    // ------------------------------------------------------------------ handicap
+
+    /** Lignes Winamax de l'utilisateur : une ligne, point décimal ; « 76ers » et « Écart de points » ne trompent pas. */
+    @Test
+    fun handicapWinamax() {
+        assertEquals(listOf(Handicap("PHI", -15.5)), lire("Écart de points (handicap) Philadelphia 76ers -15.5"))
+        assertEquals(listOf(Handicap("PHI", -12.5)), lire("Écart de points (handicap) Philadelphia 76ers -12.5"))
+        assertEquals(listOf(Handicap("PHI", -6.5)), lire("Écart de points (handicap) Philadelphia 76ers -6.5"))
+        assertEquals(listOf(Handicap("IND", 6.5)), lire("Écart de points (handicap) Indiana Pacers +6,5"))
+        // Signe moins typographique
+        assertEquals(listOf(Handicap("PHI", -6.5)), lire("Écart de points (handicap) Philadelphia 76ers −6,5"))
+    }
+
+    @Test
+    fun handicapBetclicSurDeuxLignes() {
+        assertEquals(listOf(Handicap("PHI", -4.5)), lire("Philadelphie 76ers (-4,5)", "Handicap (prolongations incluses)"))
+        assertEquals(listOf(Handicap("PHI", 6.5)), lire("Philadelphie 76ers (+6,5)", "Handicap (prolongations incluses)"))
+        // Type de pari puis sélection
+        assertEquals(listOf(Handicap("PHI", -4.5)), lire("Handicap (prolongations incluses)", "Philadelphia 76ers -4.5"))
+        // Avec la ligne du match et le reste du ticket
+        assertEquals(
+            listOf(Handicap("PHI", -4.5), Joueur("Tyrese Maxey", POINTS, PLUS, 19.5, phiInd)),
+            lire(
+                "Combiné (2)", "Philadelphie 76ers (-4,5)", "Handicap (prolongations incluses)", "1,90",
+                "Tyrese Maxey + de 19,5", "Nombre de points du joueur (paliers)", "Philadelphie 76ers - Indiana Pacers", "Mise 2,00 €",
+            ),
+        )
+    }
+
+    @Test
+    fun handicapMiTempsOuQuartTempsNonSuivi() {
+        assertEquals(listOf(NonSuivie("Philadelphie 76ers (-2,5) · Handicap 1re mi-temps")), lire("Philadelphie 76ers (-2,5)", "Handicap 1re mi-temps"))
+        assertEquals(
+            listOf(NonSuivie("Écart de points (handicap) 1er quart-temps Philadelphia 76ers -1.5")),
+            lire("Écart de points (handicap) 1er quart-temps Philadelphia 76ers -1.5"),
+        )
+        // Sans handicap lisible : non suivi
+        assertEquals(listOf(NonSuivie("Philadelphie 76ers · Handicap (prolongations incluses)")), lire("Philadelphie 76ers", "Handicap (prolongations incluses)"))
+    }
+
+    // ------------------------------------------------------------------ double-double, triple-double
+
+    @Test
+    fun doubleDoubleEtTripleDouble() {
+        // Winamax : une ligne, avec ou sans « Oui »
+        assertEquals(listOf(DoubleDouble("LeBron James", 3)), lire("Triple-double LeBron James"))
+        assertEquals(listOf(DoubleDouble("LeBron James", 3)), lire("Triple-double LeBron James Oui"))
+        assertEquals(listOf(DoubleDouble("Joel Embiid", 2)), lire("Double-double Joel Embiid"))
+        assertEquals(listOf(DoubleDouble("LeBron James", 3, non = true)), lire("Triple-double - LeBron James", "Non"))
+        // Betclic : sélection puis type de pari
+        assertEquals(listOf(DoubleDouble("Joel Embiid", 2)), lire("Joel Embiid Oui", "Double-double"))
+        assertEquals(listOf(DoubleDouble("Joel Embiid", 2, non = true)), lire("Joel Embiid Non", "Double-double"))
+        assertEquals(listOf(DoubleDouble("Joel Embiid", 3)), lire("Joel Embiid Oui", "Triple-double"))
+        // Match du ticket
+        assertEquals(
+            listOf(DoubleDouble("Joel Embiid", 2, contexte = phiInd)),
+            lire("Joel Embiid Oui", "Double-double", "Philadelphie 76ers - Indiana Pacers"),
+        )
+    }
+
+    // ------------------------------------------------------------------ ticket Winamax de l'utilisateur
+
+    @Test
+    fun ticketWinamaxDeLUtilisateur() {
+        assertEquals(
+            listOf(
+                DoubleDouble("LeBron James", 3),
+                Handicap("PHI", -15.5),
+                TotalEquipe("PHI", PLUS, 120.5),
+                Joueur("Joel Embiid", POINTS, PLUS, 19.5),
+                Joueur("Tyrese Maxey", POINTS, PLUS, 29.5),
+                Joueur("Tyler Herro", POINTS, PLUS, 14.5),
+                Joueur("VJ Edgecombe", POINTS, PLUS, 14.5),
+                Handicap("PHI", -12.5),
+                // Pas de ligne de match : le match des 76ers, seule équipe du ticket
+                TotalMatch(PLUS, 229.5, setOf("PHI")),
+                Handicap("PHI", -6.5),
+                TotalMatch(PLUS, 224.5, setOf("PHI")),
+                Vainqueur("PHI"),
+                TotalMatch(MOINS, 243.5, setOf("PHI")),
+            ),
+            ParisNba.lire(TICKET_WINAMAX),
+        )
+        assertEquals(listOf(TotalMatch(PLUS, 229.5)), lire("Nombre de points Plus de 229,5"))
+        assertEquals(listOf(TotalEquipe("PHI", PLUS, 120.5)), lire("Nombre de points de Philadelphia 76ers Plus de 120,5"))
+        assertEquals(listOf(Vainqueur("PHI")), lire("Résultat Philadelphia 76ers"))
+    }
+
     // ------------------------------------------------------------------ non suivis
 
     @Test
     fun parisNbaNonSuivis() {
         assertEquals(
             listOf(
-                NonSuivie("Philadelphie 76ers (-4,5) · Handicap (prolongations incluses)"),
-                NonSuivie("Joel Embiid Oui · Double-double"),
+                NonSuivie("Philadelphie 76ers (-2,5) · Handicap 1re mi-temps"),
+                NonSuivie("Joel Embiid + de 2,5 · Nombre de lancers francs réussis du joueur"),
                 NonSuivie("Tyrese Maxey + de 1,5 · Nombre de fautes du joueur"),
                 NonSuivie("Philadelphie 76ers · Vainqueur de la 1re mi-temps"),
             ),
             lire(
-                "Philadelphie 76ers (-4,5)", "Handicap (prolongations incluses)",
-                "Joel Embiid Oui", "Double-double",
+                "Philadelphie 76ers (-2,5)", "Handicap 1re mi-temps",
+                "Joel Embiid + de 2,5", "Nombre de lancers francs réussis du joueur",
                 "Tyrese Maxey + de 1,5", "Nombre de fautes du joueur",
                 "Philadelphie 76ers", "Vainqueur de la 1re mi-temps",
                 "Philadelphie 76ers - Indiana Pacers",

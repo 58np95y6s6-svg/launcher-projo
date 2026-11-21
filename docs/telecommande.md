@@ -687,8 +687,10 @@ et aux abonnés), même si aucune ligne n'a été reconnue. `nba` gagne un champ
     (unités : `pts`, `rebonds`, `passes`, `paniers à 3 pts`, `pts + reb. + passes`, `pts + reb.`,
     `pts + passes`, `reb. + passes` ; jamais « pd »), « 76ers vainqueurs »
     (« 76ers vainqueurs (temps régl.) » pour le résultat en temps réglementaire),
-    « Total du match · - de 221,5 pts », « 76ers · + de 115,5 pts » ; nom du joueur tel que le box
-    score l'écrit une fois trouvé (« T. Maxey »), sinon initiale et nom du ticket ; pour une ligne
+    « Total du match · - de 221,5 pts », « 76ers · + de 115,5 pts », « 76ers · handicap −15,5 »
+    (« Pacers · handicap +6,5 » ; vrai signe moins), « J. Embiid · double-double »,
+    « L. James · triple-double » (« (non) » ajouté pour la sélection « Non ») ; nom du joueur tel
+    que le box score l'écrit une fois trouvé (« T. Maxey »), sinon initiale et nom du ticket ; pour une ligne
     que la TV ne sait pas suivre, le texte lu (90 caractères au plus) ;
   - `etat` : `"attente"` (joueur ou équipe pas encore trouvé dans un match en cours, ou box score pas
     encore chargé, match pas commencé ; joueur qui n'a pas joué, match terminé : pari remboursé par
@@ -697,10 +699,12 @@ et aux abonnés), même si aucune ligne n'a été reconnue. `nba` gagne un champ
   - `match` : `id` du match de la ligne (`"PHI-IND"`), absent si inconnu ; avant que le box score
     ne compte le joueur, c'est le match nommé par le ticket (« Sixers 29 8 37 / Pacers 35 4 39 »,
     « Philadelphia 76ers - Indiana Pacers ») s'il est dans le tableau du jour ;
-  - `valeur` (entier) : valeur actuelle (points du joueur, écart de l'équipe, total du match) ;
-    absente en attente et pour une ligne non suivie ;
-  - `seuil` (nombre) : seuil du pari (19,5 ; « 20+ » donne 19,5) ; absent pour « vainqueur » et
-    pour une ligne non suivie.
+  - `valeur` (entier) : valeur actuelle (points du joueur, écart de l'équipe pour « vainqueur » et
+    le handicap, total du match, nombre de catégories à 10 ou plus pour double-double et
+    triple-double) ; absente en attente et pour une ligne non suivie ;
+  - `seuil` (nombre) : seuil du pari (19,5 ; « 20+ » donne 19,5) ; handicap h : écart à dépasser,
+    −h (15,5 pour −15,5 ; −6,5 pour +6,5) ; 2 (double-double) ou 3 (triple-double) ; absent pour
+    « vainqueur » et pour une ligne non suivie.
 
 Les valeurs suivent le **décalage**, comme le reste de `nba`. Le box score n'étant chargé que
 pendant l'affichage, une ligne de joueur garde les valeurs du dernier box score montré de son
@@ -722,28 +726,46 @@ ou deux lignes ; le reste du ticket — cotes, mises, gains, autres sports — e
   passes, points + rebonds, points + passes, rebonds + passes, interceptions + contres (libellés :
   `interceptions`, `contres`, `interceptions + contres`) ; joueur reconnu dans les effectifs du box score (« Tyrese
   Maxey » ↔ « T. Maxey », accents et tirets ignorés) ;
-- total de points du match, plus de / moins de (le match est celui nommé par le ticket) ;
-- total de points d'une équipe, plus de / moins de.
+- total de points du match, plus de / moins de (le match est celui nommé par le ticket ; sans
+  ligne de match, celui de la ou des deux équipes NBA nommées par le ticket : « Nombre de points
+  Plus de 229,5 » chez Winamax) ;
+- total de points d'une équipe, plus de / moins de (« Nombre de points de Philadelphia 76ers Plus
+  de 120,5 ») ;
+- handicap d'une équipe sur tout le match, prolongations comprises : « Écart de points (handicap)
+  Philadelphia 76ers -15.5 » (Winamax, point ou virgule décimale), « Philadelphie 76ers (-4,5) /
+  Handicap (prolongations incluses) » (Betclic), handicaps positifs (« +6,5 ») ; handicap d'une
+  mi-temps ou d'un quart-temps : non suivi ;
+- double-double et triple-double d'un joueur (catégories à 10 ou plus parmi points, rebonds,
+  passes, interceptions, contres) : « Triple-double LeBron James » (Winamax, « Oui » facultatif),
+  « Joel Embiid Oui / Double-double » (Betclic) ; « Non » : le pari inverse.
 
 Type de pari et sélection sur la même ligne (« Tyrese Maxey - Points : Plus de 19,5 ») ou sur
 deux lignes, dans un sens (Betclic : sélection puis type de pari) ou dans l'autre (type de pari
-puis sélection). Un pari NBA d'un type non suivi (handicap, mi-temps, fautes, lancers francs,
-double-double…) donne une ligne `non_suivi` (libellé : le texte lu, lignes jointes par « · », sans
-ponctuation de fin en trop) ; un pari d'un autre sport (sans équipe NBA, ou dont
-la ligne de match n'est pas un match NBA) est ignoré.
+puis sélection). Texte en direct coupé comme à l'écran, même dans le nom du joueur (« … du joueur
+(paliers) - Tyrese » / « Maxey : Plus de 4,5 ») : les morceaux sont recollés. Un pari NBA d'un
+type non suivi (mi-temps, quart-temps, fautes, lancers francs, balles perdues…) donne une ligne
+`non_suivi` (libellé : le texte lu, lignes jointes par « · », sans ponctuation de fin en trop) ; un
+pari d'un autre sport (sans équipe NBA, ou dont la ligne de match n'est pas un match NBA) est
+ignoré.
 
 Une ligne « plus de N » est **gagnée** dès que la valeur dépasse N, **perdue** si le match se
 termine sans ; « moins de N » est **perdue** dès que la valeur atteint N (dépasse N,5), **gagnée**
 à la fin sinon ; « vainqueur » : gagné ou perdu à la fin du match, en cours avant (`valeur` : écart
-actuel, positif si l'équipe mène).
+actuel, positif si l'équipe mène). Handicap h : en cours pendant tout le match (jamais conclu avant
+la fin), puis gagné si écart final + h > 0 (−15,5 : gagner de 16 ou plus), perdu si < 0, en
+attente si nul (handicap entier : remboursé). Double-double (triple-double) : gagné dès 2 (3)
+catégories à 10 ou plus, perdu à la fin sinon ; « Non » : perdu dès qu'il est atteint, gagné à la
+fin sinon.
 
 **Format `pari` sur la TV** : carte de 600 px en haut à droite (comme le résumé) : en-tête du
 match (équipes, score, statut, horloge qui défile), puis « MON PARI » et les lignes de ce match
 (8 au plus, dans l'ordre d'ajout) : état (✓ sur vert gagné, ✗ sur rouge perdu, point blanc en
 cours, cercle en attente), libellé, valeur actuelle et seuil (« 12 / 19,5 », virgule décimale ;
-vainqueur : écart « +2 » / « −2 ») et barre d'avancement vers le seuil (vainqueur : barre partagée
-au milieu, vers la droite si l'équipe mène). Aucune ligne pour ce match : « Aucune ligne de ton
-pari dans ce match ». Touches : aucune gardée (comme le résumé).
+vainqueur : écart « +2 » / « −2 » ; handicap : écart et écart à dépasser « −3 / 15,5 »,
+« +3 / −6,5 ») et barre d'avancement vers le seuil (vainqueur et handicap : barre partagée au
+milieu, vers la droite si l'équipe mène ; handicap en cours : verte s'il est couvert, rouge
+sinon). Aucune ligne pour ce match : « Aucune ligne de ton pari dans ce match ». Touches : aucune
+gardée (comme le résumé).
 
 **PWA** (si `nba_paris` est annoncé) : 4e segment **Pari** dans le bandeau (sans ligne suivie, il
 ouvre aussi la feuille) ; « Mon pari » (dans le bandeau, et à tout moment dans Réglages → « Box score

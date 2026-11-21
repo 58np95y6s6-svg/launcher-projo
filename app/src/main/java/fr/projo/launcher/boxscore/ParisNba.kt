@@ -75,6 +75,24 @@ sealed class LignePari {
         override val cle: String get() = "equipe|$equipe|$sens|$seuil"
     }
 
+    /**
+     * Handicap d'une équipe sur tout le match, prolongations comprises (« Philadelphia 76ers
+     * -15.5 ») : gagné si l'écart final de l'équipe plus [handicap] est positif (-15,5 : gagner de
+     * 16 points ou plus ; +6,5 : perdre de 6 points au plus).
+     */
+    data class Handicap(val equipe: String, val handicap: Double) : LignePari() {
+        override val cle: String get() = "handicap|$equipe|$handicap"
+    }
+
+    /**
+     * Double-double ([categories] = 2) ou triple-double (3) d'un joueur : catégories à 10 ou plus
+     * parmi points, rebonds, passes, interceptions et contres. [non] : sélection « Non ».
+     * [contexte] : codes des équipes du match d'après le ticket, comme pour [Joueur].
+     */
+    data class DoubleDouble(val nom: String, val categories: Int, val non: Boolean = false, val contexte: Set<String> = emptySet()) : LignePari() {
+        override val cle: String get() = "doubles|${NomsJoueurs.forme(nom)}|$categories|$non"
+    }
+
     /** Pari reconnu que la TV ne sait pas suivre : le texte lu. */
     data class NonSuivie(val texte: String) : LignePari() {
         override val cle: String get() = "non_suivi|" + sansAccents(texte).replace(Regex("[^a-z0-9]+"), " ").trim()
@@ -192,9 +210,11 @@ object ParisNba {
         val apres = apparier(an, Orientation.APRES)
         // Le sens qui associe le plus de lignes (à égalité : sélection puis type de pari, comme Betclic)
         val (orientation, choisi) = if (apres.score > avant.score) Orientation.APRES to apres else Orientation.AVANT to avant
+        // Équipes NBA nommées par le ticket : match d'un total sans ligne de match (Winamax)
+        val equipesTicket = an.flatMap { it.equipes }.distinct().takeIf { it.size in 1..2 }?.toSet().orEmpty()
         val sortie = choisi.jambes(an)
             .sortedBy { it.lignes.min() }
-            .mapNotNull { contextualiser(it, an, indications, orientation) }
+            .mapNotNull { contextualiser(it, an, indications, orientation, equipesTicket) }
             .distinctBy { it.cle }
         return sortie.take(LIGNES_MAX)
     }
@@ -224,12 +244,26 @@ object ParisNba {
     private val FIN_SENS = Regex("""(?:[+-]\s*(?:de|d')|\bplus(?:\s+(?:de|d'))?|\bmoins(?:\s+(?:de|d'))?)\s*$""")
     private val DEBUT_NOMBRE = Regex("""^\d""")
 
-    /** Texte en direct coupé après « + de » : la ligne suivante (le nombre) est rattachée. */
+    /** Fin d'une ligne de type de pari coupée dans le nom du joueur : « … (paliers) - Tyrese ». */
+    private val FIN_NOM_COUPE = Regex("""\s-\s+(\p{Lu}[\p{L}'.\-]*(?:\s+\p{Lu}[\p{L}'.\-]*){0,2})$""")
+
+    /** Suite du nom puis « : » : « Maxey : Plus de 4,5 », « Caldwell-Pope : Plus de 9,5 ». */
+    private val DEBUT_SUITE_NOM = Regex("""^\p{Lu}[\p{L}'.\-]*(?:\s+\p{Lu}[\p{L}'.\-]*){0,2}\s*:""")
+
+    /**
+     * Texte en direct (lignes coupées comme à l'écran) : nom du joueur coupé (« … du joueur
+     * (paliers) - Tyrese » puis « Maxey : Plus de 4,5 ») recollé ; ligne coupée après « + de » :
+     * la ligne suivante (le nombre) est rattachée.
+     */
     private fun joindre(lignes: List<String>): List<String> {
         val r = ArrayList<String>()
         var i = 0
         while (i < lignes.size) {
             var l = lignes[i]
+            if (i + 1 < lignes.size && nomCoupe(l, lignes[i + 1])) {
+                l = l + " " + lignes[i + 1]
+                i++
+            }
             if (i + 1 < lignes.size && FIN_SENS.containsMatchIn(sansAccents(l)) && DEBUT_NOMBRE.containsMatchIn(lignes[i + 1])) {
                 l = l + " " + lignes[i + 1]
                 i++
@@ -238,6 +272,16 @@ object ParisNba {
             i++
         }
         return r
+    }
+
+    /** [l] (type de pari d'un joueur) finit par le début d'un nom que [suivante] termine avant « : ». */
+    private fun nomCoupe(l: String, suivante: String): Boolean {
+        val fin = FIN_NOM_COUPE.find(l) ?: return false
+        if (!DEBUT_SUITE_NOM.containsMatchIn(suivante)) return false
+        val type = sansAccents(l.substring(0, fin.range.first)).replace('\'', ' ')
+        if (!R_JOUEUR.containsMatchIn(type) && !R_MARCHE.containsMatchIn(type)) return false
+        val mots = (fin.groupValues[1] + " " + suivante.substringBefore(':')).split(' ').filter { it.isNotEmpty() }
+        return mots.none { sansAccents(it).replace(Regex("[^a-z0-9]"), "") in MOTS_CONNUS }
     }
 
     // ------------------------------------------------------------------ analyse d'une ligne
@@ -256,6 +300,15 @@ object ParisNba {
         val motEquipe: Boolean,
         val motJoueur: Boolean,
         val inconnu: Boolean,
+        /** Type de pari « handicap » (match entier ; mi-temps et quarts-temps : [inconnu]). */
+        val handicap: Boolean,
+        /** Handicap signé lu sur la ligne (« -15.5 », « (+6,5) »), null sinon. */
+        val ecart: Double?,
+        /** 2 : double-double, 3 : triple-double, null sinon. */
+        val doubles: Int?,
+        /** « Oui » (true) ou « Non » (false) sur la ligne, null sinon ; [ouiNonSeul] : la ligne ne dit que ça. */
+        val reponse: Boolean?,
+        val ouiNonSeul: Boolean,
         val basket: Boolean,
         val marche: Boolean,
         val equipes: List<String>,
@@ -295,9 +348,21 @@ object ParisNba {
     private val R_EQUIPE = Regex("""\bequipe\b""")
     private val R_JOUEUR = Regex("""\bjoueur|\bjoueuse""")
     private val R_INCONNU = Regex(
-        """handicap|\bmi[- ]?temps|\bquart[- ]?temps|\b(?:1er|1re|2e|3e|4e|premier|premiere|deuxieme|troisieme|quatrieme)\s+(?:qt|quart|periode)|\bperiode\b|\bballes? perdues?|double[- ]double|triple[- ]double|\bpremier (?:panier|marqueur)|\bpremiere equipe|\blancers?[- ]francs?|\becart\b|\bmarge\b|\bfautes?\b|\bminutes\b|\bexact|\bentre\b|\btranche|\bimpair\b|\bpair\b|\bmvp\b|\bmeilleur marqueur|\bcourse a\b|\bdunks?\b|\bnul\b""",
+        """\bmi[- ]?temps|\bquart[- ]?temps|\b(?:1er|1re|2e|3e|4e|premier|premiere|deuxieme|troisieme|quatrieme)\s+(?:qt|quart|periode)|\bperiode\b|\bballes? perdues?|\bpremier (?:panier|marqueur)|\bpremiere equipe|\blancers?[- ]francs?|\becart\b|\bmarge\b|\bfautes?\b|\bminutes\b|\bexact|\bentre\b|\btranche|\bimpair\b|\bpair\b|\bmvp\b|\bmeilleur marqueur|\bcourse a\b|\bdunks?\b|\bnul\b""",
     )
-    private val R_BASKET = Regex("""\bpoints?\b|\bpts\b|\brebonds?\b|\bpasses?\b|\bpanier|\binterceptions?\b|\bcontres\b|double[- ]double|triple[- ]double|lancers?[- ]francs?|\bquart[- ]?temps|\bnba\b|\bbasket""")
+    private val R_BASKET = Regex("""\bpoints?\b|\bpts\b|\brebonds?\b|\bpasses?\b|\bpanier|\binterceptions?\b|\bcontres\b|\bballes? perdues?|\bfautes?\b|double[- ]double|triple[- ]double|lancers?[- ]francs?|\bquart[- ]?temps|\bnba\b|\bbasket""")
+    /** Handicap : « Handicap », « Écart de points (handicap) » (les mots retirés avant [R_INCONNU] et les statistiques). */
+    private val R_HANDICAP = Regex("""\bhandicaps?\b""")
+    private val R_MOTS_HANDICAP = Regex("""\becart de points\b|\bhandicaps?\b""")
+
+    /** Handicap signé collé à son signe (« -15.5 », « (+6,5) ») ; jamais « 76ers » ni « - de 24,5 ». */
+    private val R_ECART = Regex("""(?:^|(?<=[\s(\[]))([+-])(\d{1,2}(?:[.,]\d{1,2})?)(?![\d.,]*\d)(?![\p{L}])""")
+    private val R_DOUBLE = Regex("""\bdouble[- ]double\b""")
+    private val R_TRIPLE = Regex("""\btriple[- ]double\b""")
+    private val R_OUI = Regex("""\boui\b|\byes\b""")
+    private val R_NON = Regex("""\bnon\b""")
+    private val R_OUI_NON_SEUL = Regex("""^\W*(?:oui|non|yes)\W*$""")
+
     private val R_MARCHE = Regex("""\bnombre\b|\bpaliers?\b|\bprolongations?\b|\bcumul""")
     private val R_AUTRE_SPORT = Regex("""\bbuts?\b|\bbuteur|\bjeux\b|\bsets?\b|\bcorners?\b|\bcartons?\b|\bessais?\b|\baces?\b|\btie[- ]?break""")
 
@@ -322,6 +387,7 @@ object ParisNba {
         "gagnant", "ecart", "marge", "score", "scores", "periode", "buteur", "buts", "but", "vs", "contre", "simple", "pari",
         "paris", "nba", "basket", "basketball", "selection", "selections", "termine", "fin", "cumul", "type", "statistique",
         "statistiques", "the", "of", "at", "va", "qui", "gagner", "marques", "inscrits", "lancers", "francs", "fautes", "minutes",
+        "doubledouble", "tripledouble", "yes",
     )
 
     private enum class Orientation { AVANT, APRES }
@@ -351,9 +417,25 @@ object ParisNba {
             prendre(R_MOINS, Sens.MOINS, 0.0, false) ||
             prendre(R_PALIER, Sens.PLUS, -0.5, true)
 
+        // Handicap : « Écart de points (handicap) » n'est ni une ligne de points ni un pari inconnu
+        val handicap = R_HANDICAP.containsMatchIn(bas)
+        val texte = if (handicap) R_MOTS_HANDICAP.replace(bas, " ") else bas
+        val ecart = R_ECART.find(bas)?.let { m ->
+            val v = m.groupValues[2].replace(',', '.').toDoubleOrNull()
+            if (v == null || v <= 0.0 || v >= 60.0) null else if (m.groupValues[1] == "-") -v else v
+        }
+        val doubles = when {
+            R_TRIPLE.containsMatchIn(bas) -> 3
+            R_DOUBLE.containsMatchIn(bas) -> 2
+            else -> null
+        }
+        val oui = R_OUI.containsMatchIn(bas)
+        val non = R_NON.containsMatchIn(bas)
+        val reponse = if (oui == non) null else oui
+
         // Statistique (paniers à 3 points d'abord : « 3 points » n'est pas une ligne de points)
-        val trois = R_TROIS.containsMatchIn(bas)
-        val reste = R_TROIS.replace(bas, " ")
+        val trois = R_TROIS.containsMatchIn(texte)
+        val reste = R_TROIS.replace(texte, " ")
         val p = R_POINTS.containsMatchIn(reste)
         val r = R_REBONDS.containsMatchIn(reste)
         val a = R_PASSES.containsMatchIn(reste)
@@ -375,9 +457,9 @@ object ParisNba {
         }
         val vainqueur = R_VAINQUEUR.containsMatchIn(bas)
         val total = R_TOTAL.containsMatchIn(bas)
-        val inconnu = R_INCONNU.containsMatchIn(bas)
+        val inconnu = R_INCONNU.containsMatchIn(texte)
         val motJoueur = R_JOUEUR.containsMatchIn(bas)
-        val marche = stat != null || vainqueur || total || inconnu || motJoueur || R_MARCHE.containsMatchIn(bas)
+        val marche = stat != null || vainqueur || total || inconnu || handicap || doubles != null || motJoueur || R_MARCHE.containsMatchIn(bas)
 
         // Bruit : cotes, mises, en-têtes, heure et statut du match, nom du sport
         val bruit = when {
@@ -417,6 +499,11 @@ object ParisNba {
             motEquipe = R_EQUIPE.containsMatchIn(bas),
             motJoueur = motJoueur,
             inconnu = inconnu,
+            handicap = handicap,
+            ecart = if (bruit) null else ecart,
+            doubles = doubles,
+            reponse = reponse,
+            ouiNonSeul = R_OUI_NON_SEUL.matches(bas),
             basket = R_BASKET.containsMatchIn(bas),
             marche = marche,
             equipes = eq.codes,
@@ -592,7 +679,7 @@ object ParisNba {
             val seule = fusion(a, emptyList(), solo = true)
             if (seule is Fusion.Ligne && seule.ligne !is LignePari.NonSuivie) {
                 pris[a.index] = true
-                jambes += Jambe(listOf(a.index), seule.ligne)
+                jambes += reponseSuivante(an, pris, a, seule.ligne)
                 score += 2
                 continue
             }
@@ -628,7 +715,7 @@ object ParisNba {
                     // Type de pari NBA sans sélection lisible : non suivi, s'il nomme un joueur ou une équipe
                     val sel = j?.let { an[it] }
                     val pertinent = (a.nom != null || sel?.nom != null) && (a.basket || sel?.basket == true) ||
-                        a.equipes.isNotEmpty() || (sel?.equipes?.isNotEmpty() == true && sel.sens != null)
+                        a.equipes.isNotEmpty() || (sel?.equipes?.isNotEmpty() == true && (sel.sens != null || a.handicap))
                     if (pertinent) {
                         lignes.forEach { pris[it] = true }
                         jambes += Jambe(lignes, nonSuivie(lignes.sorted().map { an[it] }))
@@ -674,6 +761,19 @@ object ParisNba {
         }
         val restes = an.filter { !pris[it.index] && !it.bruit && !it.contexteSeul }.map { it.index }
         return Appariement(jambes, score, restes)
+    }
+
+    /**
+     * « Triple-double - LeBron James » puis « Non » seul à la ligne suivante : la réponse est
+     * prise avec la ligne (sinon « Oui »).
+     */
+    private fun reponseSuivante(an: List<Analyse>, pris: BooleanArray, a: Analyse, l: LignePari): Jambe {
+        if (l !is LignePari.DoubleDouble || a.reponse != null) return Jambe(listOf(a.index), l)
+        val k = voisine(an, pris, a.index, Orientation.APRES, null) ?: return Jambe(listOf(a.index), l)
+        val b = an[k]
+        if (!b.ouiNonSeul || b.reponse == null) return Jambe(listOf(a.index), l)
+        pris[k] = true
+        return Jambe(listOf(a.index, k), l.copy(non = !b.reponse))
     }
 
     /** Ligne voisine qui peut être la sélection (ni bruit, ni ligne de match, ni autre type de pari, ni déjà prise). */
@@ -722,6 +822,27 @@ object ParisNba {
         val autreSport = toutes.any { R_AUTRE_SPORT.containsMatchIn(sansAccents(it.brut)) }
 
         if (toutes.any { it.inconnu }) return if (nba && !autreSport) Fusion.Ligne(nonSuivie(parts)) else Fusion.Ignoree
+        if (toutes.any { it.handicap }) {
+            // L'équipe : celle de la ligne qui porte le handicap, sinon la seule nommée
+            val valeurs = toutes.mapNotNull { it.ecart }.distinct()
+            val porteuses = toutes.filter { it.ecart != null }.flatMap { it.equipes }.distinct()
+            val choix = if (porteuses.size == 1) porteuses else equipes
+            return when {
+                autreSport -> Fusion.Ignoree
+                sens == null && nom == null && valeurs.size == 1 && choix.size == 1 -> Fusion.Ligne(LignePari.Handicap(choix[0], valeurs[0]))
+                else -> Fusion.Incomplete
+            }
+        }
+        val doubles = toutes.firstNotNullOfOrNull { it.doubles }
+        if (doubles != null) {
+            val reponses = toutes.mapNotNull { it.reponse }.distinct()
+            return when {
+                autreSport -> Fusion.Ignoree
+                sens == null && nom != null && reponses.size <= 1 && toutes.none { it.doubles != null && it.doubles != doubles } ->
+                    Fusion.Ligne(LignePari.DoubleDouble(nom, doubles, non = reponses.singleOrNull() == false, contexte = equipes.toSet()))
+                else -> Fusion.Incomplete
+            }
+        }
         if (m.vainqueur && sens == null) {
             // L'équipe choisie : celle de la sélection, sinon celle de la ligne du type de pari
             val choix = autres.map { it.equipes }.firstOrNull { it.isNotEmpty() } ?: m.equipes
@@ -748,7 +869,9 @@ object ParisNba {
         }
         if (equipes.size <= 2 && !motEquipe) {
             val explicite = total || duMatch || equipes.size == 2
-            if (explicite || (!solo && seuil >= 150.0)) return Fusion.Ligne(LignePari.TotalMatch(sens, seuil, equipes.toSet()))
+            // « Nombre de points Plus de 229,5 » (Winamax) : ni joueur ni équipe, seuil d'un match
+            val grand = seuil >= 150.0 && (!solo || stat == StatPari.POINTS)
+            if (explicite || grand) return Fusion.Ligne(LignePari.TotalMatch(sens, seuil, equipes.toSet()))
         }
         return Fusion.Incomplete
     }
@@ -783,9 +906,16 @@ object ParisNba {
      * Match d'une ligne de joueur ou d'un total : ses propres équipes, sinon la ligne de match la
      * plus proche du côté attendu (après la jambe quand la sélection précède le type de pari, comme
      * chez Betclic ; avant sinon), à défaut de l'autre côté. Ligne de match d'un autre sport du côté
-     * attendu : la ligne est écartée (null) ; de l'autre côté : match inconnu.
+     * attendu : la ligne est écartée (null) ; de l'autre côté : match inconnu. Total du match sans
+     * ligne de match ni équipe : le match des équipes du ticket ([equipesTicket], une ou deux).
      */
-    private fun contextualiser(j: Jambe, an: List<Analyse>, indications: List<Pair<Int, Set<String>>>, o: Orientation): LignePari? {
+    private fun contextualiser(
+        j: Jambe,
+        an: List<Analyse>,
+        indications: List<Pair<Int, Set<String>>>,
+        o: Orientation,
+        equipesTicket: Set<String>,
+    ): LignePari? {
         val l = j.ligne ?: return null
         val propres = j.lignes.flatMap { an[it].equipes }.distinct()
         val debut = j.lignes.min()
@@ -799,7 +929,9 @@ object ParisNba {
         if (c != null && c.isEmpty() && propres.isEmpty()) return null
         return when (l) {
             is LignePari.Joueur -> if (propres.isEmpty() && !c.isNullOrEmpty()) l.copy(contexte = c) else l
+            is LignePari.DoubleDouble -> if (propres.isEmpty() && !c.isNullOrEmpty()) l.copy(contexte = c) else l
             is LignePari.TotalMatch -> when {
+                c == null && propres.isEmpty() && l.contexte.isEmpty() && equipesTicket.isNotEmpty() -> l.copy(contexte = equipesTicket)
                 propres.size >= 2 || c.isNullOrEmpty() -> l
                 propres.isEmpty() || propres.all { it in c } -> l.copy(contexte = c)
                 else -> l

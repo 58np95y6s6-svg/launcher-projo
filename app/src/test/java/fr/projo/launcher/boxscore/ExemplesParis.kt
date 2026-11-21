@@ -23,6 +23,21 @@ Cote totale 10,06
 Mise 1,50 €
 Gains possibles 13,59 €"""
 
+/** Ticket Winamax réel de l'utilisateur (une ligne par pari), tel que copié depuis l'appli. */
+const val TICKET_WINAMAX = """Triple-double LeBron James
+Écart de points (handicap) Philadelphia 76ers -15.5
+Nombre de points de Philadelphia 76ers Plus de 120,5
+Nombre de points du joueur (paliers) - Joel Embiid Plus de 19,5
+Nombre de points du joueur (paliers) - Tyrese Maxey Plus de 29,5
+Nombre de points du joueur (paliers) - Tyler Herro Plus de 14,5
+Nombre de points du joueur (paliers) - VJ Edgecombe Plus de 14,5
+Écart de points (handicap) Philadelphia 76ers -12.5
+Nombre de points Plus de 229,5
+Écart de points (handicap) Philadelphia 76ers -6.5
+Nombre de points Plus de 224,5
+Résultat Philadelphia 76ers
+Nombre de points Moins de 243,5"""
+
 /** Joueur de test (stats données, le reste à zéro). */
 fun joueurPari(
     nom: String,
@@ -31,6 +46,8 @@ fun joueurPari(
     reb: Int = 0,
     pd: Int = 0,
     trois: Int = 0,
+    int: Int = 0,
+    ctr: Int = 0,
     titulaire: Boolean = true,
     aJoue: Boolean = true,
     surTerrain: Boolean? = false,
@@ -49,6 +66,8 @@ fun joueurPari(
     troisTentes = trois * 2,
     plusMoins = 0,
     nomComplet = complet,
+    interceptions = int,
+    contres = ctr,
 )
 
 /** Philadelphie (extérieur) à Indiana : 3e QT · 5:48, 71 à 74 par défaut. */

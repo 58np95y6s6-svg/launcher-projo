@@ -40,7 +40,8 @@ import java.io.File
  * Captures du box score NBA (1920 × 1080) sur un faux fond de vidéo sombre, avec les exemples de
  * flux de app/src/test/resources/nba/ : résumé, détails (deux équipes, et source ESPN sans point
  * « sur le terrain »), attente « Synchronisation avec la vidéo… », pari suivi (ticket de
- * l'utilisateur en plein match, au coup d'envoi, et match sans ligne du pari). Résultats dans
+ * l'utilisateur en plein match, au coup d'envoi, match sans ligne du pari, handicaps et
+ * double-double / triple-double). Résultats dans
  * app/build/captures/nba_*.png.
  *
  * SDK 35 : un bac à sable Robolectric à part, pour ne pas partager l'état de Compose (répartiteur
@@ -187,6 +188,34 @@ class CapturesNbaTest {
         assertEquals(600f, carte.width, 2f)
         assertEquals(1920f - 56f, carte.right, 2f)
         assertEquals(56f, carte.top, 2f)
+        assertTrue("carte trop haute : ${carte.bottom}", carte.bottom < 1080f - 24f)
+    }
+
+    @Test
+    fun pariHandicap() {
+        // Lignes Winamax : handicaps (écart −3 pour PHI, +3 pour IND) ; Embiid 16 pts, 10 rebonds : double-double, pas encore triple
+        val texte = listOf(
+            "Écart de points (handicap) Philadelphia 76ers -15.5",
+            "Écart de points (handicap) Indiana Pacers +6.5",
+            "Triple-double Joel Embiid",
+            "Double-double Joel Embiid",
+        ).joinToString("\n")
+        val vue = vuePari(texte, boxPhiInd())
+        assertEquals(listOf(EtatPari.EN_COURS, EtatPari.EN_COURS, EtatPari.EN_COURS, EtatPari.GAGNE), vue.paris.map { it.etat })
+        capturer("pari_handicap", vue)
+        compose.onAllNodesWithTag("nba_pari_ligne").assertCountEquals(4)
+        compose.onNodeWithText("76ers · handicap \u221215,5").assertIsDisplayed()
+        compose.onNodeWithText("\u22123").assertIsDisplayed()
+        compose.onNodeWithText(" / 15,5").assertIsDisplayed()
+        compose.onNodeWithText("Pacers · handicap +6,5").assertIsDisplayed()
+        compose.onNodeWithText("+3").assertIsDisplayed()
+        compose.onNodeWithText(" / \u22126,5").assertIsDisplayed()
+        compose.onNodeWithText("J. Embiid · triple-double").assertIsDisplayed()
+        compose.onNodeWithText(" / 3").assertIsDisplayed()
+        compose.onNodeWithText("J. Embiid · double-double").assertIsDisplayed()
+        compose.onNodeWithText(" / 2").assertIsDisplayed()
+        val carte = compose.onNodeWithTag("nba_pari").fetchSemanticsNode().boundsInRoot
+        assertEquals(600f, carte.width, 2f)
         assertTrue("carte trop haute : ${carte.bottom}", carte.bottom < 1080f - 24f)
     }
 

@@ -16,7 +16,9 @@ enum class EtatPari(val id: String) {
 
 /**
  * Une ligne dans `nba.paris` : `{id, libelle, etat, match?, valeur?, seuil?}`. [valeur] : points du
- * joueur, écart de l'équipe (vainqueur) ou total ; [seuil] : absent pour « vainqueur ».
+ * joueur, écart de l'équipe (vainqueur, handicap), total, ou catégories à 10 ou plus
+ * (double-double) ; [seuil] : absent pour « vainqueur ». [handicap] (TV seulement, jamais envoyé) :
+ * [valeur] est l'écart signé et [seuil] l'écart à dépasser (montrés « +3 / 15,5 »).
  */
 data class PariEtat(
     val id: String,
@@ -25,6 +27,7 @@ data class PariEtat(
     val match: String? = null,
     val valeur: Int? = null,
     val seuil: Double? = null,
+    val handicap: Boolean = false,
 )
 
 /**
@@ -93,6 +96,11 @@ class SuiviParis {
  * - « moins de N » : perdue dès que la valeur atteint N (dépasse N,5), gagnée à la fin sinon ;
  * - « vainqueur » : en cours pendant le match (valeur : écart, positif si l'équipe mène), gagnée
  *   ou perdue à la fin ; « temps réglementaire » : perdue dès la prolongation ;
+ * - handicap : en cours pendant le match (valeur : écart ; seuil : écart à dépasser, -h), gagné
+ *   si l'écart final plus le handicap est positif, perdu s'il est négatif, en attente s'il est
+ *   nul (handicap entier, remboursé) ; jamais conclu avant la fin ;
+ * - double-double, triple-double : gagné dès 2 (3) catégories à 10 ou plus, perdu à la fin sinon ;
+ *   « Non » : l'inverse ;
  * - joueur ou équipe pas encore trouvé dans un match, match pas commencé : en attente ;
  * - joueur qui n'a pas joué, match terminé : en attente (pari remboursé par les applis).
  */
@@ -104,17 +112,27 @@ object EvaluationParis {
         is LignePari.Vainqueur -> vainqueur(id, l, d)
         is LignePari.TotalEquipe -> totalEquipe(id, l, d)
         is LignePari.TotalMatch -> totalMatch(id, l, d)
+        is LignePari.Handicap -> handicap(id, l, d)
+        is LignePari.DoubleDouble -> doubles(id, l, d)
+    }
+
+    /** Joueur [nom] dans les box scores montrés (celui du match du ticket d'abord) ; null : pas encore trouvé. */
+    private fun trouver(nom: String, contexte: Set<String>, d: DonneesParis): Pair<BoxScore, JoueurNba>? {
+        val match = matchDuContexte(contexte, d.matchs)
+        val trouves = d.boxs.mapNotNull { b -> NomsJoueurs.trouver(nom, b.ext.joueurs + b.dom.joueurs)?.let { b to it } }
+        return trouves.firstOrNull { it.first.match.id == match?.id } ?: trouves.firstOrNull()
+    }
+
+    /** Match d'un joueur pas encore trouvé : celui du ticket, sauf si son box score (chargé) ne le compte pas. */
+    private fun matchEnAttente(contexte: Set<String>, d: DonneesParis): String? {
+        val match = matchDuContexte(contexte, d.matchs) ?: return null
+        val charge = d.boxs.any { it.match.id == match.id && (it.ext.joueurs.isNotEmpty() || it.dom.joueurs.isNotEmpty()) }
+        return match.id.takeUnless { charge }
     }
 
     private fun joueur(id: String, l: LignePari.Joueur, d: DonneesParis): PariEtat {
-        val contexte = matchDuContexte(l.contexte, d.matchs)
-        val trouves = d.boxs.mapNotNull { b -> NomsJoueurs.trouver(l.nom, b.ext.joueurs + b.dom.joueurs)?.let { b to it } }
-        val (b, j) = trouves.firstOrNull { it.first.match.id == contexte?.id } ?: trouves.firstOrNull() ?: run {
-            // Pas encore trouvé : le match du ticket, sauf si son box score (chargé) ne le compte pas
-            val charge = contexte != null && d.boxs.any { it.match.id == contexte.id && (it.ext.joueurs.isNotEmpty() || it.dom.joueurs.isNotEmpty()) }
-            val match = contexte?.id?.takeUnless { charge }
-            return PariEtat(id, libelleJoueur(NomsJoueurs.court(l.nom), l), EtatPari.ATTENTE, match, null, l.seuil)
-        }
+        val (b, j) = trouver(l.nom, l.contexte, d)
+            ?: return PariEtat(id, libelleJoueur(NomsJoueurs.court(l.nom), l), EtatPari.ATTENTE, matchEnAttente(l.contexte, d), null, l.seuil)
         val libelle = libelleJoueur(j.nom, l)
         val fini = b.match.etat == EtatMatch.TERMINE
         if (fini && !j.aJoue) return PariEtat(id, libelle, EtatPari.ATTENTE, b.match.id, null, l.seuil)
@@ -152,6 +170,42 @@ object EvaluationParis {
         return PariEtat(id, libelle, issue(v, l.sens, l.seuil, m.etat == EtatMatch.TERMINE), m.id, v, l.seuil)
     }
 
+    private fun handicap(id: String, l: LignePari.Handicap, d: DonneesParis): PariEtat {
+        val libelle = nomEquipe(l.equipe) + " · handicap " + texteSigne(l.handicap)
+        val seuil = -l.handicap
+        val m = matchDe(l.equipe, d.matchs) ?: return PariEtat(id, libelle, EtatPari.ATTENTE, null, null, seuil, handicap = true)
+        if (m.etat == EtatMatch.A_VENIR) return PariEtat(id, libelle, EtatPari.ATTENTE, m.id, null, seuil, handicap = true)
+        val ecart = if (m.ext.code == l.equipe) m.ext.score - m.dom.score else m.dom.score - m.ext.score
+        val couvert = ecart + l.handicap
+        val etat = when {
+            m.etat != EtatMatch.TERMINE -> EtatPari.EN_COURS
+            couvert > 0.0 -> EtatPari.GAGNE
+            couvert < 0.0 -> EtatPari.PERDU
+            else -> EtatPari.ATTENTE
+        }
+        return PariEtat(id, libelle, etat, m.id, ecart, seuil, handicap = true)
+    }
+
+    private fun doubles(id: String, l: LignePari.DoubleDouble, d: DonneesParis): PariEtat {
+        val seuil = l.categories.toDouble()
+        val (b, j) = trouver(l.nom, l.contexte, d)
+            ?: return PariEtat(id, libelleDoubles(NomsJoueurs.court(l.nom), l), EtatPari.ATTENTE, matchEnAttente(l.contexte, d), null, seuil)
+        val libelle = libelleDoubles(j.nom, l)
+        val fini = b.match.etat == EtatMatch.TERMINE
+        if (fini && !j.aJoue) return PariEtat(id, libelle, EtatPari.ATTENTE, b.match.id, null, seuil)
+        val v = categoriesADix(j)
+        val atteint = v >= l.categories
+        val etat = when {
+            atteint -> if (l.non) EtatPari.PERDU else EtatPari.GAGNE
+            fini -> if (l.non) EtatPari.GAGNE else EtatPari.PERDU
+            else -> EtatPari.EN_COURS
+        }
+        return PariEtat(id, libelle, etat, b.match.id, v, seuil)
+    }
+
+    /** Catégories à 10 ou plus : points, rebonds, passes, interceptions, contres. */
+    fun categoriesADix(j: JoueurNba): Int = listOf(j.points, j.rebonds, j.passes, j.interceptions, j.contres).count { it >= 10 }
+
     /** « plus de N » gagnée dès que la valeur dépasse N ; « moins de N » perdue dès qu'elle l'atteint. */
     private fun issue(v: Int, sens: Sens, seuil: Double, fini: Boolean): EtatPari = when (sens) {
         Sens.PLUS -> when {
@@ -185,6 +239,12 @@ object EvaluationParis {
 
     private fun libelleJoueur(nom: String, l: LignePari.Joueur) =
         nom + " · " + l.sens.texte + " " + texteNombre(l.seuil) + " " + l.stat.unite
+
+    private fun libelleDoubles(nom: String, l: LignePari.DoubleDouble) =
+        nom + " · " + (if (l.categories >= 3) "triple-double" else "double-double") + if (l.non) " (non)" else ""
+
+    /** Handicap avec son signe : « −15,5 » (vrai signe moins), « +6,5 ». */
+    private fun texteSigne(h: Double): String = if (h < 0) "\u2212" + texteNombre(-h) else "+" + texteNombre(h)
 
     private fun nomEquipe(code: String): String = EquipesNba.de(code).nom.ifEmpty { code }
 }

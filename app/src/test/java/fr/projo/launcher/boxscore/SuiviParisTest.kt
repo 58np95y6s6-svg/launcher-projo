@@ -147,9 +147,142 @@ class SuiviParisTest {
     @Test
     fun nonSuivi() {
         assertEquals(
-            PariEtat("p1", "Philadelphie 76ers (-4,5) · Handicap (prolongations incluses)", NON_SUIVI),
-            une("Philadelphie 76ers (-4,5)\nHandicap (prolongations incluses)", donnees(boxPhiInd())),
+            PariEtat("p1", "Philadelphie 76ers (-2,5) · Handicap 1re mi-temps", NON_SUIVI),
+            une("Philadelphie 76ers (-2,5)\nHandicap 1re mi-temps", donnees(boxPhiInd())),
         )
+    }
+
+    // ------------------------------------------------------------------ handicap
+
+    @Test
+    fun handicapEnCoursPuisALaFin() {
+        val texte = "Écart de points (handicap) Philadelphia 76ers -15.5"
+        // 71-74 : écart −3, il faut gagner de 16 ; jamais conclu avant la fin
+        assertEquals(
+            PariEtat("p1", "76ers · handicap \u221215,5", EN_COURS, "PHI-IND", -3, 15.5, handicap = true),
+            une(texte, donnees(boxPhiInd())),
+        )
+        assertEquals(EN_COURS, une(texte, donnees(boxPhiInd(matchPhiInd(120, 90)))).etat)
+        // Victoire de 16 : gagné ; de 15 : perdu
+        assertEquals(
+            PariEtat("p1", "76ers · handicap \u221215,5", GAGNE, "PHI-IND", 16, 15.5, handicap = true),
+            une(texte, donnees(boxPhiInd(matchPhiInd(116, 100, EtatMatch.TERMINE, 4, 0.0)))),
+        )
+        assertEquals(PERDU, une(texte, donnees(boxPhiInd(matchPhiInd(115, 100, EtatMatch.TERMINE, 4, 0.0)))).etat)
+        // Prolongations comprises : écart final après la prolongation
+        assertEquals(GAGNE, une(texte, donnees(boxPhiInd(matchPhiInd(130, 110, EtatMatch.TERMINE, 5, 0.0)))).etat)
+    }
+
+    @Test
+    fun handicapPositifEtEquipeADomicile() {
+        // Pacers (domicile) +6,5 : perdre de 6 au plus
+        val texte = "Indiana Pacers (+6,5)\nHandicap (prolongations incluses)"
+        assertEquals(
+            PariEtat("p1", "Pacers · handicap +6,5", EN_COURS, "PHI-IND", 3, -6.5, handicap = true),
+            une(texte, donnees(boxPhiInd())),
+        )
+        assertEquals(GAGNE, une(texte, donnees(boxPhiInd(matchPhiInd(106, 100, EtatMatch.TERMINE, 4, 0.0)))).etat)
+        assertEquals(PERDU, une(texte, donnees(boxPhiInd(matchPhiInd(107, 100, EtatMatch.TERMINE, 4, 0.0)))).etat)
+        // Handicap entier, égalité : remboursé (en attente)
+        assertEquals(ATTENTE, une("Indiana Pacers (+7)\nHandicap (prolongations incluses)", donnees(boxPhiInd(matchPhiInd(107, 100, EtatMatch.TERMINE, 4, 0.0)))).etat)
+        // Avant le match, ou match inconnu : en attente
+        assertEquals(
+            PariEtat("p1", "Pacers · handicap +6,5", ATTENTE, "PHI-IND", null, -6.5, handicap = true),
+            une(texte, DonneesParis(listOf(matchPhiInd(0, 0, EtatMatch.A_VENIR, 0, null)), emptyList())),
+        )
+        assertEquals(PariEtat("p1", "Pacers · handicap +6,5", ATTENTE, null, null, -6.5, handicap = true), une(texte, DonneesParis(emptyList(), emptyList())))
+    }
+
+    // ------------------------------------------------------------------ double-double, triple-double
+
+    /** Embiid : 16 pts, 10 rebonds, 3 passes (2 catégories à 10 ou plus) ; interceptions et contres comptent. */
+    private fun boxEmbiid(pts: Int, reb: Int, pd: Int, int: Int = 0, ctr: Int = 0, match: MatchNba = matchPhiInd(), joue: Boolean = true) = BoxScore(
+        match,
+        EquipeBox(listOf(joueurPari("J. Embiid", "Joel Embiid", pts = pts, reb = reb, pd = pd, int = int, ctr = ctr, aJoue = joue)), null),
+        EquipeBox(listOf(joueurPari("P. Siakam", "Pascal Siakam", pts = 18)), null),
+        surTerrainConnu = true,
+    )
+
+    @Test
+    fun doubleDouble() {
+        val texte = "Joel Embiid Oui\nDouble-double"
+        assertEquals(PariEtat("p1", "J. Embiid · double-double", EN_COURS, "PHI-IND", 1, 2.0), une(texte, donnees(boxEmbiid(16, 9, 3))))
+        // Atteint avant la fin : gagné tout de suite
+        assertEquals(PariEtat("p1", "J. Embiid · double-double", GAGNE, "PHI-IND", 2, 2.0), une(texte, donnees(boxEmbiid(16, 10, 3))))
+        // Pas atteint à la fin : perdu
+        assertEquals(PERDU, une(texte, donnees(boxEmbiid(16, 9, 3, match = matchPhiInd(etat = EtatMatch.TERMINE, periode = 4)))).etat)
+        // Interceptions et contres comptent
+        assertEquals(GAGNE, une(texte, donnees(boxEmbiid(16, 4, 3, ctr = 10))).etat)
+        // Pas joué, match terminé : en attente (remboursé)
+        assertEquals(ATTENTE, une(texte, donnees(boxEmbiid(0, 0, 0, match = matchPhiInd(etat = EtatMatch.TERMINE, periode = 4), joue = false))).etat)
+    }
+
+    @Test
+    fun doubleDoubleNon() {
+        val texte = "Joel Embiid Non\nDouble-double"
+        assertEquals(PariEtat("p1", "J. Embiid · double-double (non)", EN_COURS, "PHI-IND", 1, 2.0), une(texte, donnees(boxEmbiid(16, 9, 3))))
+        // Atteint : perdu tout de suite ; pas atteint à la fin : gagné
+        assertEquals(PERDU, une(texte, donnees(boxEmbiid(16, 10, 3))).etat)
+        assertEquals(GAGNE, une(texte, donnees(boxEmbiid(16, 9, 3, match = matchPhiInd(etat = EtatMatch.TERMINE, periode = 4)))).etat)
+    }
+
+    @Test
+    fun tripleDouble() {
+        val texte = "Triple-double LeBron James"
+        // Pas encore trouvé : en attente, seuil 3
+        assertEquals(PariEtat("p1", "L. James · triple-double", ATTENTE, null, null, 3.0), une(texte, donnees(boxPhiInd())))
+        val lal = { pts: Int, reb: Int, pd: Int, etat: EtatMatch ->
+            BoxScore(
+                matchNba("LAL", "BOS", 2_000).copy(etat = etat),
+                EquipeBox(listOf(joueurPari("L. James", "LeBron James", pts = pts, reb = reb, pd = pd)), null),
+                EquipeBox(emptyList(), null),
+                true,
+            )
+        }
+        assertEquals(PariEtat("p1", "L. James · triple-double", EN_COURS, "LAL-BOS", 2, 3.0), une(texte, donnees(lal(24, 10, 9, EtatMatch.EN_COURS))))
+        assertEquals(PariEtat("p1", "L. James · triple-double", GAGNE, "LAL-BOS", 3, 3.0), une(texte, donnees(lal(24, 10, 10, EtatMatch.EN_COURS))))
+        assertEquals(PERDU, une(texte, donnees(lal(24, 10, 9, EtatMatch.TERMINE))).etat)
+    }
+
+    /** Ticket Winamax de l'utilisateur, en plein match PHI-MIA. */
+    @Test
+    fun ticketWinamaxEnCoursDeMatch() {
+        val m = MatchNba("PHI-MIA", "0022600200", 1_000, EquipeMatch("PHI", "76ers", 70, emptyList()), EquipeMatch("MIA", "Heat", 61, emptyList()), EtatMatch.EN_COURS, 3, 300.0, false)
+        val box = BoxScore(
+            m,
+            EquipeBox(
+                listOf(
+                    joueurPari("J. Embiid", "Joel Embiid", pts = 21, reb = 8, pd = 4),
+                    joueurPari("T. Maxey", "Tyrese Maxey", pts = 18),
+                    joueurPari("V. Edgecombe", "VJ Edgecombe", pts = 9),
+                ),
+                null,
+            ),
+            EquipeBox(listOf(joueurPari("T. Herro", "Tyler Herro", pts = 15)), null),
+            true,
+        )
+        val e = etats(TICKET_WINAMAX, donnees(box))
+        assertEquals(
+            listOf(
+                "L. James · triple-double" to ATTENTE,
+                "76ers · handicap \u221215,5" to EN_COURS,
+                "76ers · + de 120,5 pts" to EN_COURS,
+                "J. Embiid · + de 19,5 pts" to GAGNE,
+                "T. Maxey · + de 29,5 pts" to EN_COURS,
+                "T. Herro · + de 14,5 pts" to GAGNE,
+                "V. Edgecombe · + de 14,5 pts" to EN_COURS,
+                "76ers · handicap \u221212,5" to EN_COURS,
+                "Total du match · + de 229,5 pts" to EN_COURS,
+                "76ers · handicap \u22126,5" to EN_COURS,
+                "Total du match · + de 224,5 pts" to EN_COURS,
+                "76ers vainqueurs" to EN_COURS,
+                "Total du match · - de 243,5 pts" to EN_COURS,
+            ),
+            e.map { it.libelle to it.etat },
+        )
+        // Les totaux du match suivent PHI-MIA ; handicap : écart +9, seuil 15,5
+        assertEquals(PariEtat("p9", "Total du match · + de 229,5 pts", EN_COURS, "PHI-MIA", 131, 229.5), e[8])
+        assertEquals(PariEtat("p2", "76ers · handicap \u221215,5", EN_COURS, "PHI-MIA", 9, 15.5, handicap = true), e[1])
     }
 
     @Test

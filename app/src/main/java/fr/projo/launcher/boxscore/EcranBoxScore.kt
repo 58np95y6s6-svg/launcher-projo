@@ -138,7 +138,8 @@ private fun PanneauDetails(b: BoxScore, equipe: Int) {
 /**
  * Pari suivi : en-tête du match comme le résumé, puis « MON PARI » et les lignes de ce match
  * (8 au plus) : état (✓ gagné, ✗ perdu, point en cours, cercle en attente), libellé, valeur
- * actuelle et seuil (« 12 / 19,5 ») ou écart du vainqueur (« +2 »), barre d'avancement.
+ * actuelle et seuil (« 12 / 19,5 »), écart du vainqueur (« +2 ») ou écart et écart à dépasser
+ * du handicap (« +3 / 15,5 »), barre d'avancement.
  */
 @Composable
 private fun CartePari(b: BoxScore, paris: List<PariEtat>) {
@@ -172,7 +173,7 @@ private fun LignePariTv(p: PariEtat) {
         }
         Row(Modifier.fillMaxWidth().padding(top = 8.mq)) {
             Spacer(Modifier.width(34.mq))
-            if (p.seuil == null) {
+            if (p.seuil == null || p.handicap) {
                 BarreEcart(p, Modifier.weight(1f))
             } else {
                 val part = if (p.valeur == null || p.seuil <= 0.0) 0f else (p.valeur / p.seuil).toFloat()
@@ -182,11 +183,15 @@ private fun LignePariTv(p: PariEtat) {
     }
 }
 
-/** Couleur d'une ligne : verte gagnée, rouge perdue, blanche en cours ; pour le vainqueur en cours, selon l'écart. */
+/**
+ * Couleur d'une ligne : verte gagnée, rouge perdue, blanche en cours ; pour le vainqueur en cours,
+ * selon l'écart ; pour le handicap en cours, selon qu'il est couvert (écart au-delà du seuil).
+ */
 private fun couleurPari(p: PariEtat): Color = when (p.etat) {
     EtatPari.GAGNE -> VertGagne
     EtatPari.PERDU -> RougePerdu
     EtatPari.EN_COURS -> when {
+        p.handicap && p.seuil != null && p.valeur != null -> if (p.valeur > p.seuil) VertGagne.copy(alpha = 0.8f) else RougePerdu.copy(alpha = 0.8f)
         p.seuil != null -> Color.White.copy(alpha = 0.85f)
         (p.valeur ?: 0) > 0 -> VertGagne.copy(alpha = 0.8f)
         (p.valeur ?: 0) < 0 -> RougePerdu.copy(alpha = 0.8f)
@@ -195,7 +200,7 @@ private fun couleurPari(p: PariEtat): Color = when (p.etat) {
     else -> Color.White.copy(alpha = 0.35f)
 }
 
-/** « 12 / 19,5 » (valeur colorée selon l'état) ; vainqueur : écart « +2 », « −2 ». */
+/** « 12 / 19,5 » (valeur colorée selon l'état) ; vainqueur : écart « +2 », « −2 » ; handicap : « +3 / 15,5 », « −3 / −6,5 ». */
 @Composable
 private fun ValeurPari(p: PariEtat) {
     val couleurValeur = when (p.etat) {
@@ -207,6 +212,10 @@ private fun ValeurPari(p: PariEtat) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (p.seuil == null) {
             Texte(ecart(p.valeur), 19f, gras = true, couleur = couleurValeur)
+        } else if (p.handicap) {
+            Texte(ecart(p.valeur), 19f, gras = true, couleur = couleurValeur, modifier = Modifier.alignByBaseline())
+            val seuil = if (p.seuil < 0) "\u2212" + texteNombre(-p.seuil) else texteNombre(p.seuil)
+            Texte(" / $seuil", 16f, gras = false, couleur = Color.White.copy(alpha = 0.55f), modifier = Modifier.alignByBaseline())
         } else {
             Texte(p.valeur?.toString() ?: "–", 19f, gras = true, couleur = couleurValeur, modifier = Modifier.alignByBaseline())
             Texte(" / " + texteNombre(p.seuil), 16f, gras = false, couleur = Color.White.copy(alpha = 0.55f), modifier = Modifier.alignByBaseline())
@@ -222,7 +231,7 @@ private fun ecart(v: Int?): String = when {
     else -> "0"
 }
 
-/** Vainqueur : barre partagée au milieu, remplie vers la droite si l'équipe mène, vers la gauche sinon. */
+/** Vainqueur et handicap : barre partagée au milieu, remplie vers la droite si l'équipe mène, vers la gauche sinon. */
 @Composable
 private fun BarreEcart(p: PariEtat, modifier: Modifier) {
     val v = p.valeur ?: 0
