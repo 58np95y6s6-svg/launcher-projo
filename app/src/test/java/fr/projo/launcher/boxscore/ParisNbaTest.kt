@@ -331,8 +331,8 @@ class ParisNbaTest {
     @Test
     fun libelleNonSuiviSansPonctuationEnTrop() {
         assertEquals(
-            listOf(NonSuivie("Nombre de balles perdues du joueur - Tyrese Maxey · Plus de 0,5")),
-            lire("Nombre de balles perdues du joueur - Tyrese Maxey :", "Plus de 0,5"),
+            listOf(NonSuivie("Nombre de fautes du joueur - Tyrese Maxey · Plus de 0,5")),
+            lire("Nombre de fautes du joueur - Tyrese Maxey :", "Plus de 0,5"),
         )
     }
 
@@ -344,13 +344,13 @@ class ParisNbaTest {
             listOf(
                 NonSuivie("Philadelphie 76ers (-4,5) · Handicap (prolongations incluses)"),
                 NonSuivie("Joel Embiid Oui · Double-double"),
-                NonSuivie("Tyrese Maxey + de 1,5 · Nombre de balles perdues du joueur"),
+                NonSuivie("Tyrese Maxey + de 1,5 · Nombre de fautes du joueur"),
                 NonSuivie("Philadelphie 76ers · Vainqueur de la 1re mi-temps"),
             ),
             lire(
                 "Philadelphie 76ers (-4,5)", "Handicap (prolongations incluses)",
                 "Joel Embiid Oui", "Double-double",
-                "Tyrese Maxey + de 1,5", "Nombre de balles perdues du joueur",
+                "Tyrese Maxey + de 1,5", "Nombre de fautes du joueur",
                 "Philadelphie 76ers", "Vainqueur de la 1re mi-temps",
                 "Philadelphie 76ers - Indiana Pacers",
             ),
@@ -358,7 +358,7 @@ class ParisNbaTest {
         // Sélection d'un joueur sans type de pari : non suivie
         assertEquals(listOf(NonSuivie("Tyrese Maxey + de 19,5")), lire("Tyrese Maxey + de 19,5"))
         // Libellé coupé
-        val long = lire("Tyrese Maxey + de 1,5 et encore beaucoup de texte qui ne veut rien dire du tout", "Nombre de balles perdues du joueur (prolongations incluses)")
+        val long = lire("Tyrese Maxey + de 1,5 et encore beaucoup de texte qui ne veut rien dire du tout", "Nombre de fautes du joueur (prolongations incluses)")
         assertTrue((long.single() as NonSuivie).texte.length <= ParisNba.NON_SUIVIE_MAX)
     }
 

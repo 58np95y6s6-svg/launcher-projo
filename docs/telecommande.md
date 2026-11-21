@@ -727,7 +727,7 @@ ou deux lignes ; le reste du ticket — cotes, mises, gains, autres sports — e
 
 Type de pari et sélection sur la même ligne (« Tyrese Maxey - Points : Plus de 19,5 ») ou sur
 deux lignes, dans un sens (Betclic : sélection puis type de pari) ou dans l'autre (type de pari
-puis sélection). Un pari NBA d'un type non suivi (handicap, mi-temps, balles perdues,
+puis sélection). Un pari NBA d'un type non suivi (handicap, mi-temps, fautes, lancers francs,
 double-double…) donne une ligne `non_suivi` (libellé : le texte lu, lignes jointes par « · », sans
 ponctuation de fin en trop) ; un pari d'un autre sport (sans équipe NBA, ou dont
 la ligne de match n'est pas un match NBA) est ignoré.

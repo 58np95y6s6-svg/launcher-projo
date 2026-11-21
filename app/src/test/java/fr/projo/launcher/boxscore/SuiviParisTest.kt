@@ -179,10 +179,10 @@ class SuiviParisTest {
         assertEquals(SuiviParis.Ajout(4, 4, 0), p.ajouter(TICKET_BETCLIC, 0))
         // Même ticket : rien de nouveau
         assertEquals(SuiviParis.Ajout(4, 0, 0), p.ajouter(TICKET_BETCLIC, 1_000))
-        assertEquals(SuiviParis.Ajout(2, 1, 1), p.ajouter("Tyrese Maxey Plus de 19,5 points\nJoel Embiid + de 1,5\nNombre de balles perdues du joueur", 2_000))
+        assertEquals(SuiviParis.Ajout(2, 1, 1), p.ajouter("Tyrese Maxey Plus de 19,5 points\nJoel Embiid + de 1,5\nNombre de fautes du joueur", 2_000))
         val e = p.etats(DonneesParis(emptyList(), emptyList()))
         assertEquals(listOf("p1", "p2", "p3", "p4", "p5"), e.map { it.id })
-        assertEquals("Joel Embiid + de 1,5 · Nombre de balles perdues du joueur", e.last().libelle)
+        assertEquals("Joel Embiid + de 1,5 · Nombre de fautes du joueur", e.last().libelle)
         assertTrue(p.effacer())
         assertFalse(p.effacer())
         assertEquals(0, p.nombre)
