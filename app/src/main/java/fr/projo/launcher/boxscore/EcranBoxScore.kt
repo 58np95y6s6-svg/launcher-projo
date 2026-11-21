@@ -89,7 +89,7 @@ fun EcranBoxScore(vue: VueTv, modifier: Modifier = Modifier) {
         when {
             box == null -> CarteAttente(vue.attente.orEmpty(), details = vue.affichage == Affichage.DETAILS)
             vue.affichage == Affichage.RESUME -> CarteResume(box)
-            vue.affichage == Affichage.PARI -> CartePari(box, vue.paris)
+            vue.affichage == Affichage.PARI -> CartePari(box, vue.combines)
             else -> PanneauDetails(box, vue.equipe)
         }
     }
@@ -136,23 +136,77 @@ private fun PanneauDetails(b: BoxScore, equipe: Int) {
 }
 
 /**
- * Pari suivi : en-tête du match comme le résumé, puis « MON PARI » et les lignes de ce match
- * (8 au plus) : état (✓ gagné, ✗ perdu, point en cours, cercle en attente), libellé, valeur
- * actuelle et seuil (« 12 / 19,5 »), écart du vainqueur (« +2 ») ou écart et écart à dépasser
- * du handicap (« +3 / 15,5 »), barre d'avancement.
+ * Pari suivi : en-tête du match comme le résumé, puis « MON PARI » et les combinés concernés par
+ * ce match en accordéon : une ligne de résumé par combiné (état, nom, cote, « 2/5 ») ; sous
+ * l'ouvert, ses lignes de ce match (8 au plus) : état (✓ gagné, ✗ perdu, point en cours, cercle
+ * en attente), libellé, valeur actuelle et seuil (« 12 / 19,5 »), écart du vainqueur (« +2 ») ou
+ * écart et écart à dépasser du handicap (« +3 / 15,5 »), barre d'avancement ; ses lignes
+ * d'autres matchs en une ligne discrète. Avec au moins deux combinés : aide « ◀ ▶ Combiné ».
  */
 @Composable
-private fun CartePari(b: BoxScore, paris: List<PariEtat>) {
+private fun CartePari(b: BoxScore, combines: List<CombineTv>) {
     Verre(largeur = 600, rayon = 28, haut = 22, cotes = 26, bas = 22, flou = 70, dy = 24, modifier = Modifier.testTag("nba_pari")) {
         Tete(b.match, MesuresResume)
         TitreSection("MON PARI")
-        if (paris.isEmpty()) {
+        if (combines.isEmpty()) {
             Texte(
                 "Aucune ligne de ton pari dans ce match", 17f, gras = false, couleur = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.fillMaxWidth().padding(top = 4.mq, bottom = 6.mq), alignement = TextAlign.Center,
             )
         }
-        for (p in paris) LignePariTv(p)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.mq)) {
+            for (c in combines) CombinePariTv(c)
+        }
+        if (combines.size >= 2) Aide("Combiné", haut = 14)
+    }
+}
+
+/** Un combiné : sa ligne de résumé ; ouvert, ses lignes de ce match et le résumé de ses autres lignes. */
+@Composable
+private fun CombinePariTv(c: CombineTv) {
+    val forme = RoundedCornerShape(14.mq)
+    val cadre = if (c.ouvert) {
+        Modifier.background(Color.White.copy(alpha = 0.07f), forme).border(1.5f.mq, Color.White.copy(alpha = 0.16f), forme)
+    } else {
+        Modifier.background(Color.White.copy(alpha = 0.035f), forme)
+    }
+    Column(Modifier.fillMaxWidth().then(cadre).padding(horizontal = 14.mq, vertical = 8.mq)) {
+        ResumeCombine(c.groupe, c.ouvert)
+        if (c.ouvert) {
+            for (p in c.lignes) LignePariTv(p)
+            if (c.autres > 0) {
+                Texte(
+                    c.texteAutres, 15f, gras = false, couleur = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth().padding(start = 34.mq, top = 4.mq, bottom = 2.mq).testTag("nba_pari_autres"),
+                )
+            }
+        }
+    }
+}
+
+/** Résumé d'un combiné : pastille d'état, nom, cote s'il y en a une, lignes gagnées / suivies (« 2/5 »). */
+@Composable
+private fun ResumeCombine(g: GroupeEtat, ouvert: Boolean) {
+    val couleurCompte = when (g.etat) {
+        EtatPari.GAGNE -> VertGagne
+        EtatPari.PERDU -> RougePerdu
+        else -> Color.White.copy(alpha = 0.85f)
+    }
+    Row(
+        Modifier.fillMaxWidth().height(32.mq).testTag(if (ouvert) "nba_pari_combine_ouvert" else "nba_pari_combine"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Pastille(g.etat)
+        Spacer(Modifier.width(12.mq))
+        Row(Modifier.weight(1f)) {
+            Texte(g.nom, 18f, gras = true, couleur = Color.White.copy(alpha = if (ouvert) 1f else 0.8f), modifier = Modifier.alignByBaseline())
+            if (g.cote != null) {
+                Spacer(Modifier.width(10.mq))
+                Texte("cote ${g.cote}", 15f, gras = false, couleur = Color.White.copy(alpha = 0.55f), modifier = Modifier.alignByBaseline())
+            }
+        }
+        Spacer(Modifier.width(12.mq))
+        Texte("${g.gagnees}/${g.suivies}", 18f, gras = true, couleur = couleurCompte)
     }
 }
 
@@ -613,12 +667,12 @@ private fun Cellule(texte: String, colonne: Int, gras: Boolean = false, couleur:
 
 private fun tirs(reussis: Int?, tentes: Int?): String = if (reussis == null || tentes == null) "–" else "$reussis-$tentes"
 
-/** « ◀ ▶ Équipe   Retour Masquer » : touches de la télécommande de la TV. */
+/** « ◀ ▶ Équipe   Retour Masquer » (« Combiné » au format pari) : touches de la télécommande de la TV. */
 @Composable
-private fun Aide() {
+private fun Aide(fleches: String = "Équipe", haut: Int = 18) {
     val texte = Color.White.copy(alpha = 0.62f)
     Row(
-        Modifier.fillMaxWidth().padding(top = 18.mq),
+        Modifier.fillMaxWidth().padding(top = haut.mq),
         horizontalArrangement = Arrangement.spacedBy(28.mq, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -634,7 +688,7 @@ private fun Aide() {
                     drawPath(droite, texte)
                 }
             }
-            Texte("Équipe", 16f, gras = false, couleur = texte)
+            Texte(fleches, 16f, gras = false, couleur = texte)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Touche { Texte("Retour", 14f, gras = true, couleur = texte) }

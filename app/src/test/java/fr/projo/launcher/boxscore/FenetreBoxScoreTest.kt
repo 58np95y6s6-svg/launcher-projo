@@ -32,8 +32,9 @@ import java.util.concurrent.TimeUnit
 /**
  * Le box score porté par le service d'accessibilité (RedirectionAccueil, comme le néon) : une
  * seule fenêtre ni focalisable ni touchable, retirée quand il est caché ; ◀ ▶ et Retour gardés
- * seulement en format détails ; caché au retour sur l'accueil d'iBiTV ; sans service, erreur
- * « accessibilite ». Réseau remplacé par un faux (exemples de flux).
+ * seulement en format détails, et en format pari avec au moins deux combinés concernés ; caché
+ * au retour sur l'accueil d'iBiTV ; sans service, erreur « accessibilite ». Réseau remplacé par
+ * un faux (exemples de flux).
  *
  * SDK 35 : un bac à sable Robolectric à part (fenêtre Compose hors activité), sans état partagé
  * avec les tests de l'accueil et du néon en SDK 33.
@@ -204,6 +205,70 @@ class FenetreBoxScoreTest {
         assertTrue(journal.toString(), "nba : affichage pari" in journal)
         assertTrue(journal.toString(), "nba : paris effacés" in journal)
         assertTrue(journal.toString(), journal.none { it.contains("Don") || it.contains("30,5") || it.contains("1,85") || it.contains("2,00") })
+    }
+
+    @Test
+    fun formatPariDeuxCombinesFlechesGardees() {
+        ShadowLog.clear()
+        val s = Robolectric.setupService(RedirectionAccueil::class.java)
+        BoxScoreNba.attacher(s)
+        BoxScoreNba.abonnement(true)
+        attendre()
+        BoxScoreNba.ajouterParis("Luka Dončić Plus de 30,5 points\nCote 1,85")
+        BoxScoreNba.afficher(Affichage.PARI, "LAL-BOS")
+        attendre()
+        // Un seul combiné concerné : aucune touche gardée
+        assertFalse(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN))
+        assertFalse(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_UP))
+        assertFalse(s.touche(KeyEvent.KEYCODE_BACK, KeyEvent.ACTION_DOWN))
+        assertFalse(s.touche(KeyEvent.KEYCODE_BACK, KeyEvent.ACTION_UP))
+        // Deuxième combiné (même ligne, plus une) : ouvert ; la fenêtre montre les deux
+        BoxScoreNba.ajouterParis("Luka Dončić Plus de 30,5 points\nJaylen Brown Plus de 20,5 points")
+        attendre()
+        fun ouvert() = BoxScoreNba.etat().groupes.single { it.ouvert }.id
+        assertEquals(listOf("g1", "g2"), BoxScoreNba.etat().groupes.map { it.id })
+        assertEquals("g2", ouvert())
+        assertEquals(listOf("g1", "g2"), BoxScoreNba.vue.value.combines.map { it.groupe.id })
+        assertEquals(listOf("p2", "p3"), BoxScoreNba.vue.value.paris.map { it.id })
+        // ◀ : combiné précédent, appui et relâchement gardés ; les téléphones sont prévenus
+        var changements = 0
+        BoxScoreNba.surChangement = { changements++ }
+        assertTrue(s.touche(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_DOWN))
+        assertTrue(s.touche(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_UP))
+        assertEquals("g1", ouvert())
+        assertTrue(changements > 0)
+        assertEquals(listOf("p1"), BoxScoreNba.vue.value.paris.map { it.id })
+        // ▶ : suivant (en boucle) ; les autres touches passent
+        assertTrue(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN))
+        assertTrue(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_UP))
+        assertEquals("g2", ouvert())
+        assertTrue(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN))
+        assertTrue(s.touche(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_UP))
+        assertEquals("g1", ouvert())
+        assertFalse(s.touche(KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.ACTION_DOWN))
+        assertFalse(s.touche(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.ACTION_DOWN))
+        // `nba_paris_ouvrir` (inconnu : ignoré)
+        BoxScoreNba.ouvrirParis("g2")
+        assertEquals("g2", ouvert())
+        BoxScoreNba.ouvrirParis("g9")
+        assertEquals("g2", ouvert())
+        // Retour cache toujours le box score
+        assertTrue(s.touche(KeyEvent.KEYCODE_BACK, KeyEvent.ACTION_DOWN))
+        attendre()
+        assertTrue(s.fenetres().isEmpty())
+        assertEquals(Affichage.CACHE, BoxScoreNba.etat().affichage)
+        assertTrue(s.touche(KeyEvent.KEYCODE_BACK, KeyEvent.ACTION_UP))
+        // `nba_paris_effacer {groupe}` : ce combiné seulement
+        BoxScoreNba.effacerParis("g1")
+        assertEquals(listOf("g2"), BoxScoreNba.etat().groupes.map { it.id })
+        assertEquals(listOf("p2", "p3"), BoxScoreNba.etat().paris.map { it.id })
+        // Journal : des événements, jamais le texte ni une cote
+        val journal = ShadowLog.getLogsForTag("Projo.Nba").map { it.msg }
+        assertTrue(journal.toString(), "nba : pari ajouté (2 lignes)" in journal)
+        assertTrue(journal.toString(), "nba : combiné ouvert (télécommande de la TV)" in journal)
+        assertTrue(journal.toString(), "nba : combiné ouvert" in journal)
+        assertTrue(journal.toString(), "nba : combiné effacé" in journal)
+        assertTrue(journal.toString(), journal.none { it.contains("Don") || it.contains("Brown") || it.contains("30,5") || it.contains("1,85") })
     }
 
     @Test

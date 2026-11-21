@@ -29,6 +29,8 @@ data class EtatNba(
     val erreur: String?,
     /** Lignes des paris suivis (`nba.paris`), dans l'ordre d'ajout. */
     val paris: List<PariEtat> = emptyList(),
+    /** Combinés (`nba.groupes`), dans l'ordre d'ajout. */
+    val groupes: List<GroupeEtat> = emptyList(),
 ) {
     companion object {
         const val ERREUR_ACCESSIBILITE = "accessibilite"
@@ -37,18 +39,39 @@ data class EtatNba(
 }
 
 /**
+ * Un combiné dans le format pari de la TV : son résumé ([groupe]) ; s'il est ouvert ([ouvert]),
+ * ses lignes du match affiché ([lignes], 8 au plus) et le nombre de ses lignes suivies d'autres
+ * matchs ([autres], résumées en une ligne ; [unAutreMatch] : toutes du même match).
+ */
+data class CombineTv(
+    val groupe: GroupeEtat,
+    val ouvert: Boolean,
+    val lignes: List<PariEtat> = emptyList(),
+    val autres: Int = 0,
+    val unAutreMatch: Boolean = true,
+) {
+    /** « + 1 ligne d'un autre match », « + 3 lignes d'autres matchs » ; vide sans autre ligne. */
+    val texteAutres: String
+        get() = if (autres <= 0) "" else
+            "+ $autres " + (if (autres > 1) "lignes" else "ligne") + if (unAutreMatch) " d'un autre match" else " d'autres matchs"
+}
+
+/**
  * Ce que montre la fenêtre de la TV : rien ([affichage] = CACHE), le box score du match choisi
  * ([box]), ou un texte d'attente ([attente] : « Synchronisation avec la vidéo… »…).
- * [equipe] : onglet des détails (0 : extérieur, 1 : domicile). [paris] : format pari, lignes du
- * match affiché (8 au plus).
+ * [equipe] : onglet des détails (0 : extérieur, 1 : domicile). [combines] : format pari, combinés
+ * concernés par le match affiché, en accordéon (un ouvert, 5 repliés au plus autour de lui).
  */
 data class VueTv(
     val affichage: Affichage,
     val box: BoxScore?,
     val attente: String?,
     val equipe: Int,
-    val paris: List<PariEtat> = emptyList(),
+    val combines: List<CombineTv> = emptyList(),
 ) {
+    /** Lignes du pari montrées (celles du combiné ouvert). */
+    val paris: List<PariEtat> get() = combines.firstOrNull { it.ouvert }?.lignes.orEmpty()
+
     companion object {
         val CACHEE = VueTv(Affichage.CACHE, null, null, 0)
     }
@@ -112,8 +135,11 @@ class SuiviNba {
         const val ESSAI_NBA_MS = 10 * 60_000L
         const val MATCHS_MAX = 15
 
-        /** Lignes de pari montrées au plus dans le format pari. */
+        /** Lignes de pari montrées au plus dans le format pari (celles du combiné ouvert). */
         const val PARIS_TV_MAX = 8
+
+        /** Combinés repliés montrés au plus autour de l'ouvert dans le format pari. */
+        const val REPLIES_TV_MAX = 5
 
         const val SYNCHRONISATION = "Synchronisation avec la vidéo…"
         const val CHARGEMENT = "Chargement…"
@@ -226,17 +252,43 @@ class SuiviNba {
         equipe = e.coerceIn(0, 1)
     }
 
-    /** `nba_paris_ajouter` : lignes reconnues dans [texte], ajoutées si elles ne sont pas déjà là. */
+    /** `nba_paris_ajouter` : nouveau combiné des lignes reconnues dans [texte] (rien s'il est déjà là). */
     fun ajouterParis(texte: String, t: Long): SuiviParis.Ajout {
         avancer(t)
         return paris.ajouter(texte, t)
     }
 
-    /** `nba_paris_effacer` : plus aucune ligne. */
-    fun effacerParis(): Boolean = paris.effacer()
+    /** `nba_paris_effacer` : retire le combiné [groupe], ou tous sans [groupe]. */
+    fun effacerParis(groupe: String? = null): Boolean = paris.effacer(groupe)
+
+    /** `nba_paris_ouvrir` : [groupe] devient le combiné ouvert ; false s'il est inconnu. */
+    fun ouvrirParis(groupe: String): Boolean = paris.ouvrir(groupe)
 
     /** Nombre de lignes de pari gardées. */
     val nombreParis: Int get() = paris.nombre
+
+    /**
+     * ◀ ▶ dans le format pari : ouvre le combiné concerné précédent ([sens] -1) ou suivant (+1),
+     * en boucle ; false s'il y a moins de deux combinés concernés par le match affiché.
+     */
+    fun parcourirCombines(sens: Int): Boolean {
+        val match = matchPari() ?: return false
+        val e = paris.etats(donneesParis())
+        val concernes = concernes(e, match)
+        if (concernes.size < 2) return false
+        val i = indexOuvert(concernes)
+        return paris.ouvrir(concernes[Math.floorMod(i + sens, concernes.size)].id)
+    }
+
+    /**
+     * Touches de la télécommande de la TV gardées (◀ ▶ Retour) : en détails ; en format pari s'il
+     * y a au moins deux combinés concernés par le match affiché. Sinon, rien n'est gardé.
+     */
+    fun touchesGardees(): Boolean = when (affichage) {
+        Affichage.DETAILS -> true
+        Affichage.PARI -> matchPari()?.let { concernes(paris.etats(donneesParis()), it).size >= 2 } ?: false
+        else -> false
+    }
 
     // ------------------------------------------------------------------ requêtes
 
@@ -466,7 +518,8 @@ class SuiviNba {
             erreurSource -> EtatNba.ERREUR_SOURCE
             else -> null
         }
-        return EtatNba(matchs, choisi, affichage, decalage, erreur, paris.etats(donneesParis()))
+        val e = paris.etats(donneesParis())
+        return EtatNba(matchs, choisi, affichage, decalage, erreur, e.lignes, e.groupes)
     }
 
     private fun equipeEtat(e: EquipeMatch): EquipeEtat {
@@ -491,10 +544,46 @@ class SuiviNba {
             decalage > 0 -> SYNCHRONISATION
             else -> CHARGEMENT
         }
-        // Format pari : les lignes du match affiché seulement
-        val lignes = if (affichage != Affichage.PARI || box == null) emptyList() else
-            paris.etats(donneesParis()).filter { it.match == box.match.id }.take(PARIS_TV_MAX)
-        return VueTv(affichage, box, attente, equipe, lignes)
+        val combines = if (affichage != Affichage.PARI || box == null) emptyList() else combinesTv(box.match.id)
+        return VueTv(affichage, box, attente, equipe, combines)
+    }
+
+    /** Match du box score montré en format pari (null : autre format, ou rien de montré). */
+    private fun matchPari(): String? = if (affichage == Affichage.PARI) vueBox?.donnees?.match?.id else null
+
+    /** Combinés concernés par [match] (au moins une ligne de ce match), dans l'ordre d'ajout. */
+    private fun concernes(e: EtatParis, match: String): List<GroupeEtat> {
+        val ids = e.lignes.filter { it.match == match }.mapNotNullTo(HashSet()) { it.groupe }
+        return e.groupes.filter { it.id in ids }
+    }
+
+    /** Combiné ouvert sur la TV : le combiné ouvert s'il est concerné, sinon le plus récent des concernés. */
+    private fun indexOuvert(concernes: List<GroupeEtat>): Int = concernes.indexOfFirst { it.ouvert }.takeIf { it >= 0 } ?: concernes.lastIndex
+
+    /**
+     * Format pari : les combinés concernés par le match affiché, en accordéon. L'ouvert montre ses
+     * lignes de ce match (8 au plus) et compte ses lignes suivies d'autres matchs ; au plus 5
+     * combinés repliés autour de lui (2 avant, 3 après, plus d'un côté au bord de la liste).
+     */
+    private fun combinesTv(match: String): List<CombineTv> {
+        val e = paris.etats(donneesParis())
+        val concernes = concernes(e, match)
+        if (concernes.isEmpty()) return emptyList()
+        val i = indexOuvert(concernes)
+        val n = REPLIES_TV_MAX + 1
+        val debut = (i - REPLIES_TV_MAX / 2).coerceIn(0, maxOf(0, concernes.size - n))
+        return concernes.subList(debut, minOf(concernes.size, debut + n)).map { g ->
+            if (g.id != concernes[i].id) return@map CombineTv(g, ouvert = false)
+            val siennes = e.lignes.filter { it.groupe == g.id }
+            val autres = siennes.filter { it.match != match && it.etat != EtatPari.NON_SUIVI }
+            CombineTv(
+                groupe = g,
+                ouvert = true,
+                lignes = siennes.filter { it.match == match }.take(PARIS_TV_MAX),
+                autres = autres.size,
+                unAutreMatch = autres.map { it.match }.distinct().size <= 1,
+            )
+        }
     }
 
     /** L'horloge a baissé d'une réponse à l'autre, même période, match en cours (pas une fin de période). */

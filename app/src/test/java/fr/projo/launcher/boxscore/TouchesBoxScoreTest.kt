@@ -8,8 +8,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Touches de la télécommande de la TV : gardées seulement en format détails (◀ ▶ Retour),
- * appui et relâchement ensemble ; tout le reste passe à l'appli.
+ * Touches de la télécommande de la TV : gardées seulement quand le format les active (détails ;
+ * pari avec au moins deux combinés concernés, voir CombinesTest) : ◀ ▶ Retour, appui et
+ * relâchement ensemble ; tout le reste passe à l'appli.
  */
 class TouchesBoxScoreTest {
 
@@ -32,7 +33,7 @@ class TouchesBoxScoreTest {
         assertTrue(appui(KeyEvent.KEYCODE_BACK, details = true))
         // Le box score vient d'être caché : le relâchement de Retour est gardé quand même
         assertTrue(relache(KeyEvent.KEYCODE_BACK, details = false))
-        assertEquals(listOf(Commande.EQUIPE_DOM, Commande.EQUIPE_EXT, Commande.CACHER), commandes)
+        assertEquals(listOf(Commande.DROITE, Commande.GAUCHE, Commande.CACHER), commandes)
     }
 
     @Test
@@ -52,6 +53,16 @@ class TouchesBoxScoreTest {
             assertFalse(relache(code, details = false))
         }
         assertTrue(commandes.isEmpty())
+    }
+
+    @Test
+    fun activeesPuisDesactiveesEntreDeuxAppuis() {
+        // Format pari : deux combinés concernés, ▶ gardé ; plus qu'un seul combiné : ▶ passe
+        assertTrue(appui(KeyEvent.KEYCODE_DPAD_RIGHT, details = true))
+        assertTrue(relache(KeyEvent.KEYCODE_DPAD_RIGHT, details = true))
+        assertFalse(appui(KeyEvent.KEYCODE_DPAD_RIGHT, details = false))
+        assertFalse(relache(KeyEvent.KEYCODE_DPAD_RIGHT, details = false))
+        assertEquals(listOf(Commande.DROITE), commandes)
     }
 
     @Test

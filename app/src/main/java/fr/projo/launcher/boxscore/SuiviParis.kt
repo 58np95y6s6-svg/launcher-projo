@@ -1,11 +1,12 @@
 package fr.projo.launcher.boxscore
 
 /*
- * Paris suivis (docs/telecommande.md, « Paris suivis ») : lignes gardées en mémoire sur la TV et
- * leur état d'après les scores montrés (décalés). Sans Android, testé sur la JVM.
+ * Paris suivis (docs/telecommande.md, « Paris suivis » et « Combinés ») : combinés et leurs lignes
+ * gardés en mémoire sur la TV, et leur état d'après les scores montrés (décalés). Sans Android,
+ * testé sur la JVM.
  */
 
-/** État d'une ligne (`nba.paris[].etat`). */
+/** État d'une ligne (`nba.paris[].etat`) ou d'un combiné (`nba.groupes[].etat`, jamais `non_suivi`). */
 enum class EtatPari(val id: String) {
     ATTENTE("attente"),
     EN_COURS("en_cours"),
@@ -15,10 +16,11 @@ enum class EtatPari(val id: String) {
 }
 
 /**
- * Une ligne dans `nba.paris` : `{id, libelle, etat, match?, valeur?, seuil?}`. [valeur] : points du
- * joueur, écart de l'équipe (vainqueur, handicap), total, ou catégories à 10 ou plus
+ * Une ligne dans `nba.paris` : `{id, libelle, etat, match?, valeur?, seuil?, groupe}`. [valeur] :
+ * points du joueur, écart de l'équipe (vainqueur, handicap), total, ou catégories à 10 ou plus
  * (double-double) ; [seuil] : absent pour « vainqueur ». [handicap] (TV seulement, jamais envoyé) :
- * [valeur] est l'écart signé et [seuil] l'écart à dépasser (montrés « +3 / 15,5 »).
+ * [valeur] est l'écart signé et [seuil] l'écart à dépasser (montrés « +3 / 15,5 »). [groupe] :
+ * identifiant du combiné de la ligne (« g1 »).
  */
 data class PariEtat(
     val id: String,
@@ -28,66 +30,177 @@ data class PariEtat(
     val valeur: Int? = null,
     val seuil: Double? = null,
     val handicap: Boolean = false,
+    val groupe: String? = null,
 )
+
+/**
+ * Un combiné dans `nba.groupes` : `{id, nom, cote?, etat, gagnees, suivies, nonSuivies, ouvert}`.
+ * [cote] : cote totale telle que lue sur le ticket (« 5,10 »), null sinon ; [gagnees] / [suivies] :
+ * lignes gagnées / lignes suivies (« 2/5 ») ; [ouvert] : le combiné ouvert (un seul).
+ */
+data class GroupeEtat(
+    val id: String,
+    val nom: String,
+    val cote: String?,
+    val etat: EtatPari,
+    val gagnees: Int,
+    val suivies: Int,
+    val nonSuivies: Int,
+    val ouvert: Boolean,
+)
+
+/** Lignes de pari (ordre d'ajout, combiné par combiné) et combinés (ordre d'ajout), évalués ensemble. */
+data class EtatParis(val lignes: List<PariEtat>, val groupes: List<GroupeEtat>) {
+    companion object {
+        val VIDE = EtatParis(emptyList(), emptyList())
+    }
+}
 
 /**
  * Ce que la TV montre (décalé) pour juger les lignes : [matchs] du jour (le match affiché avec
  * le score de son box score s'il est plus récent), [boxs] derniers box scores montrés, le plus
  * récent d'abord.
  */
-class DonneesParis(val matchs: List<MatchNba>, val boxs: List<BoxScore>)
+class DonneesParis(val matchs: List<MatchNba>, val boxs: List<BoxScore>) {
+    /** Le match [id] est terminé, d'après le tableau du jour ou un box score gardé. */
+    fun termine(id: String): Boolean =
+        matchs.any { it.id == id && it.etat == EtatMatch.TERMINE } || boxs.any { it.match.id == id && it.match.etat == EtatMatch.TERMINE }
+}
 
 /**
- * Lignes de pari de la TV : en mémoire seulement (jamais sur disque), 20 au plus dans l'ordre
- * d'ajout (au-delà, les plus anciennes partent), sans doublon, retirées 12 h après leur ajout.
- * Horloge monotone en ms, un seul fil.
+ * Paris de la TV (docs/telecommande.md, « Combinés ») : chaque collage est un combiné, ses lignes
+ * restent groupées. En mémoire seulement (jamais sur disque) : 10 combinés et 40 lignes au plus
+ * dans l'ordre d'ajout (au-delà, le plus ancien combiné part), retirés 12 h après leur ajout. Un
+ * seul combiné ouvert (le dernier ajouté, ou celui choisi par [ouvrir]). Identifiants « p1 »…
+ * (lignes) et « g1 »… (combinés, nommés « Combiné 1 »…) jamais réutilisés. Horloge monotone en
+ * ms, un seul fil.
  */
 class SuiviParis {
 
     companion object {
-        const val LIGNES_MAX = 20
+        const val GROUPES_MAX = 10
+        const val LIGNES_MAX = 40
         const val DUREE_MS = 12 * 60 * 60_000L
     }
 
-    /** Résultat d'un ajout (journal : nombres seulement) : lignes lues, ajoutées, dont non suivies. */
-    data class Ajout(val lues: Int, val ajoutees: Int, val nonSuivies: Int)
+    /**
+     * Résultat d'un ajout (journal : nombres seulement) : lignes lues, ajoutées, dont non suivies ;
+     * [groupe] : le combiné créé, null si rien n'est ajouté (aucune ligne lue, ou combiné identique
+     * déjà présent).
+     */
+    data class Ajout(val lues: Int, val ajoutees: Int, val nonSuivies: Int, val groupe: String? = null)
 
-    private class Suivie(val id: String, val ligne: LignePari, val ajout: Long)
+    private class Suivie(val id: String, val ligne: LignePari)
 
-    private val lignes = ArrayList<Suivie>()
-    private var numero = 0
+    private class Combine(val id: String, val nom: String, val cote: String?, val lignes: List<Suivie>, val ajout: Long) {
+        val cles: Set<String> = lignes.map { it.ligne.cle }.toSet()
+    }
 
-    val nombre: Int get() = lignes.size
+    private val combines = ArrayList<Combine>()
+    private var numeroLigne = 0
+    private var numeroCombine = 0
 
-    /** Lit [texte] et ajoute les lignes reconnues qui ne sont pas déjà là. */
+    /** Identifiant du combiné ouvert ; null sans combiné. */
+    var ouvert: String? = null
+        private set
+
+    /** Nombre de lignes gardées (tous combinés). */
+    val nombre: Int get() = combines.sumOf { it.lignes.size }
+
+    /** Nombre de combinés gardés. */
+    val nombreCombines: Int get() = combines.size
+
+    /**
+     * Lit [texte] et en fait un nouveau combiné, qui devient le combiné ouvert : lignes reconnues
+     * sans doublon dans ce combiné (une même ligne peut être dans deux combinés). Rien n'est ajouté
+     * sans ligne reconnue, ni si un combiné a déjà exactement ces lignes.
+     */
     fun ajouter(texte: String, t: Long): Ajout {
         expirer(t)
-        val lues = ParisNba.lire(texte)
-        var ajoutees = 0
-        var nonSuivies = 0
-        for (l in lues) {
-            if (lignes.any { it.ligne.cle == l.cle }) continue
-            numero++
-            lignes += Suivie("p$numero", l, t)
-            ajoutees++
-            if (l is LignePari.NonSuivie) nonSuivies++
+        val lues = ParisNba.lire(texte).distinctBy { it.cle }
+        if (lues.isEmpty()) return Ajout(0, 0, 0)
+        val cles = lues.map { it.cle }.toSet()
+        if (combines.any { it.cles == cles }) return Ajout(lues.size, 0, 0)
+        numeroCombine++
+        val lignes = lues.map { l ->
+            numeroLigne++
+            Suivie("p$numeroLigne", l)
         }
-        while (lignes.size > LIGNES_MAX) lignes.removeAt(0)
-        return Ajout(lues.size, ajoutees, nonSuivies)
+        val c = Combine("g$numeroCombine", "Combiné $numeroCombine", ParisNba.cote(texte), lignes, t)
+        combines += c
+        ouvert = c.id
+        // Au-delà des limites, les plus anciens partent (jamais celui-ci : 20 lignes au plus)
+        while (combines.size > 1 && (combines.size > GROUPES_MAX || nombre > LIGNES_MAX)) combines.removeAt(0)
+        return Ajout(lues.size, lignes.size, lues.count { it is LignePari.NonSuivie }, c.id)
     }
 
-    /** Retire toutes les lignes ; true s'il y en avait. */
-    fun effacer(): Boolean {
-        val avant = lignes.isNotEmpty()
-        lignes.clear()
-        return avant
+    /** Retire le combiné [groupe] (inconnu : rien), ou tous sans [groupe] ; true si un combiné est parti. */
+    fun effacer(groupe: String? = null): Boolean {
+        val avant = combines.size
+        if (groupe == null) combines.clear() else combines.removeAll { it.id == groupe }
+        majOuvert()
+        return combines.size != avant
     }
 
-    /** Retire les lignes ajoutées il y a 12 h ou plus ; true si une ligne est partie. */
-    fun expirer(t: Long): Boolean = lignes.removeAll { t - it.ajout >= DUREE_MS }
+    /** [groupe] devient le combiné ouvert ; false s'il est inconnu (rien ne change). */
+    fun ouvrir(groupe: String): Boolean {
+        if (combines.none { it.id == groupe }) return false
+        ouvert = groupe
+        return true
+    }
 
-    /** Lignes de pari pour la TV et pour `nba` (ordre d'ajout). */
-    fun etats(d: DonneesParis): List<PariEtat> = lignes.map { EvaluationParis.evaluer(it.id, it.ligne, d) }
+    /** Retire les combinés ajoutés il y a 12 h ou plus ; true si un combiné est parti. */
+    fun expirer(t: Long): Boolean {
+        val parti = combines.removeAll { t - it.ajout >= DUREE_MS }
+        majOuvert()
+        return parti
+    }
+
+    /** Le combiné ouvert a été retiré : le plus récent devient le combiné ouvert. */
+    private fun majOuvert() {
+        if (combines.none { it.id == ouvert }) ouvert = combines.lastOrNull()?.id
+    }
+
+    /** Lignes (ordre d'ajout) et combinés pour la TV et pour `nba`. */
+    fun etats(d: DonneesParis): EtatParis {
+        if (combines.isEmpty()) return EtatParis.VIDE
+        val lignes = ArrayList<PariEtat>(nombre)
+        val groupes = ArrayList<GroupeEtat>(combines.size)
+        for (c in combines) {
+            val e = c.lignes.map { EvaluationParis.evaluer(it.id, it.ligne, d).copy(groupe = c.id) }
+            lignes += e
+            groupes += GroupeEtat(
+                id = c.id,
+                nom = c.nom,
+                cote = c.cote,
+                etat = etatCombine(e, d),
+                gagnees = e.count { it.etat == EtatPari.GAGNE },
+                suivies = e.count { it.etat != EtatPari.NON_SUIVI },
+                nonSuivies = e.count { it.etat == EtatPari.NON_SUIVI },
+                ouvert = c.id == ouvert,
+            )
+        }
+        return EtatParis(lignes, groupes)
+    }
+
+    /**
+     * État d'un combiné d'après ses lignes suivies (les lignes `non_suivi` ne comptent pas) :
+     * perdu dès qu'une ligne est perdue ; gagné quand toutes sont gagnées ; en attente si toutes
+     * sont en attente (ou sans ligne suivie) ; en cours sinon. Une ligne remboursée (en attente,
+     * son match terminé : joueur qui n'a pas joué, handicap nul) ne compte pas, comme dans les
+     * applis de paris ; toutes remboursées : en attente.
+     */
+    private fun etatCombine(lignes: List<PariEtat>, d: DonneesParis): EtatPari {
+        val suivies = lignes.filter { it.etat != EtatPari.NON_SUIVI }
+        if (suivies.any { it.etat == EtatPari.PERDU }) return EtatPari.PERDU
+        val comptees = suivies.filterNot { it.etat == EtatPari.ATTENTE && it.match != null && d.termine(it.match) }
+        return when {
+            comptees.isEmpty() -> EtatPari.ATTENTE
+            comptees.all { it.etat == EtatPari.GAGNE } -> EtatPari.GAGNE
+            comptees.all { it.etat == EtatPari.ATTENTE } -> EtatPari.ATTENTE
+            else -> EtatPari.EN_COURS
+        }
+    }
 }
 
 /**

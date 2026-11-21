@@ -672,8 +672,8 @@ Téléphone → TV :
 
 | `t` | Champs | Rôle |
 |---|---|---|
-| `nba_paris_ajouter` | `texte` (chaîne, 4000 caractères au plus) | lit le texte, ajoute les lignes reconnues (une ligne identique déjà présente n'est pas ajoutée deux fois) |
-| `nba_paris_effacer` | — | retire toutes les lignes |
+| `nba_paris_ajouter` | `texte` (chaîne, 4000 caractères au plus) | lit le texte, ajoute les lignes reconnues (une ligne identique déjà présente n'est pas ajoutée deux fois ; avec les combinés : dans ce combiné seulement, voir « Combinés ») |
+| `nba_paris_effacer` | — | retire toutes les lignes (avec les combinés : `groupe` facultatif, voir « Combinés ») |
 
 `texte` plus long : seuls les 4000 premiers caractères sont lus (sans la dernière ligne entamée) ;
 `texte` absent, vide ou pas une chaîne : rien n'est ajouté. La TV répond par `nba` (à ce téléphone,
@@ -681,7 +681,8 @@ et aux abonnés), même si aucune ligne n'a été reconnue. `nba` gagne un champ
 `[]` sans ligne) :
 
 - `paris` (tableau, 20 lignes au plus, dans l'ordre d'ajout ; au-delà, les plus anciennes sont
-  retirées) : `{id, libelle, etat, match?, valeur?, seuil?}`
+  retirées ; avec les combinés : 40 lignes au plus, et `groupe`, voir « Combinés ») :
+  `{id, libelle, etat, match?, valeur?, seuil?}`
   - `id` (chaîne) : identifiant de la ligne sur cette TV (`"p1"`, `"p2"`…, jamais réutilisé) ;
   - `libelle` (chaîne, en français) : « T. Maxey · + de 19,5 pts », « I. Zubac · + de 2,5 passes »
     (unités : `pts`, `rebonds`, `passes`, `paniers à 3 pts`, `pts + reb. + passes`, `pts + reb.`,
@@ -765,7 +766,8 @@ vainqueur : écart « +2 » / « −2 » ; handicap : écart et écart à dépas
 « +3 / −6,5 ») et barre d'avancement vers le seuil (vainqueur et handicap : barre partagée au
 milieu, vers la droite si l'équipe mène ; handicap en cours : verte s'il est couvert, rouge
 sinon). Aucune ligne pour ce match : « Aucune ligne de ton pari dans ce match ». Touches : aucune
-gardée (comme le résumé).
+gardée (comme le résumé), sauf ◀ ▶ et Retour avec au moins deux combinés concernés (voir
+« Combinés »).
 
 **PWA** (si `nba_paris` est annoncé) : 4e segment **Pari** dans le bandeau (sans ligne suivie, il
 ouvre aussi la feuille) ; « Mon pari » (dans le bandeau, et à tout moment dans Réglages → « Box score
@@ -784,40 +786,57 @@ avec un **accordéon** (un seul combiné ouvert à la fois).
   à plat).
 - `nba_paris_ajouter {texte}` : crée un nouveau combiné avec les lignes lues (dédoublonnées dans ce
   combiné seulement : une même ligne peut appartenir à deux combinés). Un texte dont les lignes
-  sont exactement celles d'un combiné déjà présent n'ajoute rien. Le nouveau combiné devient le
-  combiné ouvert.
-- `nba_paris_effacer {groupe?}` : retire ce combiné ; sans `groupe`, tous.
+  sont exactement celles d'un combiné déjà présent (dans n'importe quel ordre) n'ajoute rien et ne
+  change pas le combiné ouvert ; un texte sans ligne reconnue ne crée aucun combiné. Le nouveau
+  combiné devient le combiné ouvert.
+- `nba_paris_effacer {groupe?}` : retire ce combiné ; sans `groupe` (absent ou `null`), tous.
+  `groupe` inconnu : rien n'est retiré ; `groupe` qui n'est pas une chaîne de 1 à 20 caractères :
+  ignoré (rien n'est retiré). Le combiné ouvert retiré : le plus récent devient le combiné ouvert.
 - `nba_paris_ouvrir {groupe}` : ce combiné devient le combiné ouvert (sur la TV et dans `nba`) ;
-  `groupe` inconnu → ignoré.
-- Limites : 10 combinés et 40 lignes au plus ; au-delà, le plus ancien combiné part.
+  `groupe` inconnu ou illisible → ignoré. La TV répond par `nba` à chacun de ces messages.
+- Limites : 10 combinés et 40 lignes au plus ; au-delà, le plus ancien combiné part. Chaque
+  combiné part 12 h après son ajout (comme ses lignes).
 
 `nba` gagne :
 
 - dans chaque ligne de `paris` : `groupe` (identifiant du combiné : `"g1"`, `"g2"`…, jamais
   réutilisé) ;
-- `groupes` (tableau, dans l'ordre d'ajout) : `{id, nom, cote?, etat, gagnees, suivies, nonSuivies,
-  ouvert}`
+- `groupes` (tableau, toujours présent, `[]` sans combiné, dans l'ordre d'ajout) : `{id, nom, cote?,
+  etat, gagnees, suivies, nonSuivies, ouvert}`
   - `nom` : « Combiné 1 », « Combiné 2 »… (numéro jamais réutilisé) ;
-  - `cote` (chaîne, telle que lue, « 5,10 ») : cote totale si le ticket la donne (« Cote totale
-    10,06 », « COTE » puis « 5,10 », « cote 3,10 ») ; absente sinon ;
+  - `cote` (chaîne, telle que lue, virgule décimale, « 5,10 ») : cote totale si le ticket la donne
+    (« Cote totale 10,06 », « COTE » puis « 5,10 » à la ligne suivante, « cote 3,10 », « Cote
+    combinée : 4,20 ») ; une cote dite totale (« totale », « combinée », « globale ») l'emporte,
+    sinon la dernière lue ; pas un montant (« Cote 2,00 € ») ; absente sinon. Jamais dans les
+    journaux ;
   - `etat` : `"perdu"` dès qu'une ligne suivie est perdue ; `"gagne"` quand toutes les lignes
-    suivies sont gagnées ; `"attente"` si toutes les lignes suivies sont en attente ; `"en_cours"`
-    sinon. Les lignes `non_suivi` ne comptent pas (`nonSuivies` le dit) ;
+    suivies sont gagnées ; `"attente"` si toutes les lignes suivies sont en attente (ou sans ligne
+    suivie) ; `"en_cours"` sinon. Les lignes `non_suivi` ne comptent pas (`nonSuivies` le dit) ; une
+    ligne remboursée (en attente, son match terminé : joueur qui n'a pas joué, handicap nul) non
+    plus, comme dans les applis de paris (toutes remboursées : `"attente"`) ;
   - `gagnees` / `suivies` : lignes gagnées / lignes suivies (« 2/5 ») ;
   - `ouvert` (booléen) : le combiné ouvert (un seul à `true` s'il y a des combinés).
 
-**Format `pari` sur la TV** : en-tête du match, puis les combinés **concernés par le match
-affiché** (au moins une ligne de ce match) en accordéon :
+**Format `pari` sur la TV** : en-tête du match, puis « MON PARI » et les combinés **concernés par
+le match affiché** (au moins une ligne de ce match), dans l'ordre d'ajout, en accordéon :
 
 - combiné replié : une ligne de résumé : état (✓ gagné, ✗ perdu, point en cours, cercle en
-  attente), nom, cote s'il y en a une, « 2/5 » ;
+  attente), nom, cote s'il y en a une (« cote 5,10 »), « 2/5 » (vert gagné, rouge perdu) ;
 - combiné ouvert : le même résumé, puis ses lignes de ce match (8 au plus), comme avant ; ses
-  lignes d'autres matchs sont résumées en une ligne discrète (« + 2 lignes d'un autre match ») ;
+  lignes suivies d'autres matchs (ou de match pas encore connu) sont résumées en une ligne
+  discrète (« + 2 lignes d'un autre match », « + 3 lignes d'autres matchs ») ; ses lignes
+  `non_suivi` ne sont pas montrées. Si le combiné ouvert n'est pas concerné par ce match, la TV
+  ouvre le plus récent des combinés concernés (sans changer `ouvert`) ;
 - **◀ ▶** (télécommande de la TV, seulement en format pari et s'il y a au moins deux combinés
-  concernés) : ouvre le combiné précédent / suivant (appui et relâchement gardés, comme en
-  détails) ; Retour cache toujours le box score. Avec un seul combiné : aucune touche gardée ;
-- au plus 5 combinés repliés visibles autour de l'ouvert ; aucun combiné concerné : « Aucune ligne
-  de ton pari dans ce match ».
+  concernés) : ouvre le combiné concerné précédent / suivant, en boucle (il devient le combiné
+  ouvert, les téléphones abonnés reçoivent `nba`) ; appui et relâchement gardés, comme en
+  détails ; Retour cache toujours le box score ; aide « ◀ ▶ Combiné · Retour Masquer » en bas de
+  la carte. Avec un seul combiné concerné : aucune touche gardée ;
+- au plus 5 combinés repliés visibles autour de l'ouvert (2 avant et 3 après, davantage d'un côté
+  au bord de la liste) ; aucun combiné concerné : « Aucune ligne de ton pari dans ce match ».
+
+Journal de la TV : le nombre de lignes seulement (« nba : pari ajouté (5 lignes) »), « nba : combiné
+ouvert », « nba : combiné effacé » ; jamais de texte de pari, de cote ni de mise.
 
 **PWA** (si `nba_paris_groupes` est annoncé) : la feuille « Mon pari » range les lignes par combiné
 en accordéon : en-tête (état, nom, cote, « 2/5 », « non suivies » s'il y en a) ; toucher un en-tête
@@ -908,8 +927,10 @@ Maquettes de référence : `tv-resume.png` (résumé) et `tv-boxscore.png` (dét
   point de couleur pour ceux sur le terrain ; meilleur marqueur coloré), ligne « Équipe ».
   Touches de la télécommande de la TV, **seulement dans ce format** : ◀ ▶ changent d'équipe,
   Retour cache le box score ; les autres passent à l'appli.
-- **Pari** : carte de 600 px comme le résumé, en-tête identique, puis « MON PARI » et les lignes
-  du pari pour ce match (voir « Paris suivis »). Aucune touche n'est interceptée.
+- **Pari** : carte de 600 px comme le résumé, en-tête identique, puis « MON PARI » et les combinés
+  de ce match en accordéon avec les lignes du combiné ouvert (voir « Paris suivis » et
+  « Combinés »). Touches interceptées seulement avec au moins deux combinés concernés : ◀ ▶
+  changent de combiné, Retour cache le box score ; sinon aucune.
 - Le box score se cache de lui-même quand on revient sur l'accueil d'iBiTV.
 - Badges : cercle de la couleur de l'équipe avec son code (aucun logo). Table des 30 couleurs dans
   le code de la TV.

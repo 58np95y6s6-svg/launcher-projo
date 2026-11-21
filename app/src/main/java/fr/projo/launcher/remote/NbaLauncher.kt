@@ -76,12 +76,23 @@ class NbaLauncher(
         }
     }
 
-    override fun effacerParis(rappel: (EtatNba) -> Unit) {
+    override fun effacerParis(groupe: String?, rappel: (EtatNba) -> Unit) {
         principal.post {
             try {
-                BoxScoreNba.effacerParis()
+                BoxScoreNba.effacerParis(groupe)
             } catch (e: Exception) {
                 Log.w(TAG, "nba : paris impossibles à effacer")
+            }
+            repondre(rappel)
+        }
+    }
+
+    override fun ouvrirParis(groupe: String, rappel: (EtatNba) -> Unit) {
+        principal.post {
+            try {
+                BoxScoreNba.ouvrirParis(groupe)
+            } catch (e: Exception) {
+                Log.w(TAG, "nba : combiné impossible à ouvrir")
             }
             repondre(rappel)
         }

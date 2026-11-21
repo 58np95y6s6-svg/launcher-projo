@@ -20,9 +20,12 @@ interface NbaTv {
     /** `nba_choisir` : ignoré si [id] n'est pas dans la liste. */
     fun choisir(id: String, rappel: (EtatNba) -> Unit)
 
-    /** `nba_paris_ajouter` : [texte] du pari collé (déjà limité à 4000 caractères). */
+    /** `nba_paris_ajouter` : [texte] du pari collé (déjà limité à 4000 caractères), un nouveau combiné. */
     fun ajouterParis(texte: String, rappel: (EtatNba) -> Unit)
 
-    /** `nba_paris_effacer` : retire toutes les lignes. */
-    fun effacerParis(rappel: (EtatNba) -> Unit)
+    /** `nba_paris_effacer` : retire le combiné [groupe] (inconnu : rien), ou tous sans [groupe]. */
+    fun effacerParis(groupe: String?, rappel: (EtatNba) -> Unit)
+
+    /** `nba_paris_ouvrir` : [groupe] devient le combiné ouvert (ignoré s'il est inconnu). */
+    fun ouvrirParis(groupe: String, rappel: (EtatNba) -> Unit)
 }

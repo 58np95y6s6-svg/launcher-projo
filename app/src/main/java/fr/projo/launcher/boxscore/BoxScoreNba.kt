@@ -113,7 +113,7 @@ object BoxScoreNba {
         relancer()
     }
 
-    /** `nba_paris_ajouter` : lignes du pari collé (journal : leur nombre seulement). */
+    /** `nba_paris_ajouter` : nouveau combiné des lignes du pari collé (journal : leur nombre seulement). */
     fun ajouterParis(texte: String) {
         val a = suivi.ajouterParis(texte, horloge())
         val n = a.ajoutees
@@ -131,9 +131,15 @@ object BoxScoreNba {
         publier()
     }
 
-    /** `nba_paris_effacer` : plus aucune ligne. */
-    fun effacerParis() {
-        if (suivi.effacerParis()) journal("nba : paris effacés")
+    /** `nba_paris_effacer` : retire le combiné [groupe], ou tous sans [groupe]. */
+    fun effacerParis(groupe: String? = null) {
+        if (suivi.effacerParis(groupe)) journal(if (groupe == null) "nba : paris effacés" else "nba : combiné effacé")
+        publier()
+    }
+
+    /** `nba_paris_ouvrir` : [groupe] devient le combiné ouvert (ignoré s'il est inconnu). */
+    fun ouvrirParis(groupe: String) {
+        if (suivi.ouvrirParis(groupe)) journal("nba : combiné ouvert")
         publier()
     }
 
@@ -174,14 +180,21 @@ object BoxScoreNba {
     }
 
     /**
-     * Touche de la télécommande de la TV (avant l'appli). Seulement en format détails : ◀ ▶
-     * changent d'équipe, Retour cache le box score (appui et relâchement gardés).
+     * Touche de la télécommande de la TV (avant l'appli). En format détails : ◀ ▶ changent
+     * d'équipe ; en format pari avec au moins deux combinés concernés : ◀ ▶ ouvrent le combiné
+     * précédent ou suivant ; Retour cache alors le box score (appui et relâchement gardés).
      */
     fun touche(event: KeyEvent): Boolean = try {
-        touches.touche(event.keyCode, event.action, event.repeatCount, suivi.affichage == Affichage.DETAILS) { c ->
+        touches.touche(event.keyCode, event.action, event.repeatCount, suivi.touchesGardees()) { c ->
             when (c) {
-                TouchesBoxScore.Commande.EQUIPE_EXT -> suivi.changerEquipe(0)
-                TouchesBoxScore.Commande.EQUIPE_DOM -> suivi.changerEquipe(1)
+                TouchesBoxScore.Commande.GAUCHE, TouchesBoxScore.Commande.DROITE -> {
+                    val droite = c == TouchesBoxScore.Commande.DROITE
+                    if (suivi.affichage == Affichage.PARI) {
+                        if (suivi.parcourirCombines(if (droite) 1 else -1)) journal("nba : combiné ouvert (télécommande de la TV)")
+                    } else {
+                        suivi.changerEquipe(if (droite) 1 else 0)
+                    }
+                }
                 TouchesBoxScore.Commande.CACHER -> {
                     suivi.cacher(horloge())
                     journal("nba : affichage caché (Retour)")

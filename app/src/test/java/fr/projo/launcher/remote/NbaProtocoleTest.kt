@@ -4,6 +4,7 @@ import fr.projo.launcher.boxscore.Affichage
 import fr.projo.launcher.boxscore.EquipeEtat
 import fr.projo.launcher.boxscore.EtatNba
 import fr.projo.launcher.boxscore.EtatPari
+import fr.projo.launcher.boxscore.GroupeEtat
 import fr.projo.launcher.boxscore.MatchEtat
 import fr.projo.launcher.boxscore.PariEtat
 import fr.projo.launcher.boxscore.ParisNba
@@ -49,17 +50,31 @@ class NbaFactice : NbaTv {
     /** Textes de pari reçus. */
     val textes = mutableListOf<String>()
 
+    private var combines = 0
+
     override fun ajouterParis(texte: String, rappel: (EtatNba) -> Unit) {
         textes += texte
         demandes += "paris ajouter"
-        val lignes = ParisNba.lire(texte).mapIndexed { i, _ -> PariEtat("p${etat.paris.size + i + 1}", "ligne", EtatPari.ATTENTE) }
-        etat = etat.copy(paris = etat.paris + lignes)
+        val g = "g${++combines}"
+        val lignes = ParisNba.lire(texte).mapIndexed { i, _ -> PariEtat("p${etat.paris.size + i + 1}", "ligne", EtatPari.ATTENTE, groupe = g) }
+        val groupe = GroupeEtat(g, "Combiné $combines", ParisNba.cote(texte), EtatPari.ATTENTE, 0, lignes.size, 0, true)
+        etat = etat.copy(paris = etat.paris + lignes, groupes = etat.groupes.map { it.copy(ouvert = false) } + groupe)
         rappel(etat)
     }
 
-    override fun effacerParis(rappel: (EtatNba) -> Unit) {
-        demandes += "paris effacer"
-        etat = etat.copy(paris = emptyList())
+    override fun effacerParis(groupe: String?, rappel: (EtatNba) -> Unit) {
+        demandes += "paris effacer $groupe"
+        etat = if (groupe == null) {
+            etat.copy(paris = emptyList(), groupes = emptyList())
+        } else {
+            etat.copy(paris = etat.paris.filter { it.groupe != groupe }, groupes = etat.groupes.filter { it.id != groupe })
+        }
+        rappel(etat)
+    }
+
+    override fun ouvrirParis(groupe: String, rappel: (EtatNba) -> Unit) {
+        demandes += "paris ouvrir $groupe"
+        if (etat.groupes.any { it.id == groupe }) etat = etat.copy(groupes = etat.groupes.map { it.copy(ouvert = it.id == groupe) })
         rappel(etat)
     }
 }
@@ -120,10 +135,10 @@ class NbaProtocoleTest {
     fun nbaAnnonceDansFonctions() {
         val (s, _) = session()
         s.recevoir(hello())
-        assertEquals(listOf("nba", "nba_paris"), fonctions(envoyes.single()))
+        assertEquals(listOf("nba", "nba_paris", "nba_paris_groupes"), fonctions(envoyes.single()))
         val (s2, _) = session(pilotage = PilotageFactice())
         s2.recevoir(hello())
-        assertEquals(listOf("apps", "reglages", "nba", "nba_paris"), fonctions(envoyes.single()))
+        assertEquals(listOf("apps", "reglages", "nba", "nba_paris", "nba_paris_groupes"), fonctions(envoyes.single()))
         // Sans box score : ni annonce ni réponse
         val (s3, _) = session(avecNba = false)
         s3.recevoir(hello())
@@ -132,6 +147,7 @@ class NbaProtocoleTest {
         s3.recevoir(msg("nba_afficher", "affichage" to "resume"))
         s3.recevoir(msg("nba_paris_ajouter", "texte" to "Tyrese Maxey Plus de 19,5 points"))
         s3.recevoir(msg("nba_paris_effacer"))
+        s3.recevoir(msg("nba_paris_ouvrir", "groupe" to "g1"))
         assertEquals(1, envoyes.size)
         assertFalse(s3.abonneNba)
     }
@@ -144,6 +160,8 @@ class NbaProtocoleTest {
         s.recevoir(msg("nba_choisir", "id" to "LAL-BOS"))
         s.recevoir(msg("nba_paris_ajouter", "texte" to "Tyrese Maxey Plus de 19,5 points"))
         s.recevoir(msg("nba_paris_effacer"))
+        s.recevoir(msg("nba_paris_effacer", "groupe" to "g1"))
+        s.recevoir(msg("nba_paris_ouvrir", "groupe" to "g1"))
         assertTrue(envoyes.isEmpty())
         assertTrue(nba.demandes.isEmpty())
         assertFalse(s.abonneNba)
@@ -160,8 +178,9 @@ class NbaProtocoleTest {
         val m = envoyes.single()
         assertEquals("nba", m.getString("t"))
         assertEquals(1, m.getInt("v"))
-        assertEquals(setOf("v", "t", "matchs", "choisi", "affichage", "decalage", "paris"), m.keys().asSequence().toSet())
+        assertEquals(setOf("v", "t", "matchs", "choisi", "affichage", "decalage", "paris", "groupes"), m.keys().asSequence().toSet())
         assertEquals(0, m.getJSONArray("paris").length())
+        assertEquals(0, m.getJSONArray("groupes").length())
         val match = m.getJSONArray("matchs").getJSONObject(0)
         assertEquals(setOf("id", "ext", "dom", "statut", "direct"), match.keys().asSequence().toSet())
         assertEquals("LAL-BOS", match.getString("id"))
@@ -258,7 +277,7 @@ class NbaProtocoleTest {
         assertEquals("nba", m.getString("t"))
         assertEquals(2, m.getJSONArray("paris").length())
         s.recevoir(msg("nba_paris_effacer"))
-        assertEquals("paris effacer", nba.demandes.last())
+        assertEquals("paris effacer null", nba.demandes.last())
         assertEquals(0, envoyes.last().getJSONArray("paris").length())
         // Journal : jamais le texte, une cote ni une mise
         assertTrue(hote.journaux.contains("nba : pari reçu"))
@@ -317,6 +336,97 @@ class NbaProtocoleTest {
         assertEquals("non_suivi", p.getJSONObject(3).getString("etat"))
         assertEquals("perdu", p.getJSONObject(4).getString("etat"))
         assertEquals(10.0, p.getJSONObject(4).getDouble("seuil"), 0.0)
+    }
+
+    // ------------------------------------------------------------------ combinés
+
+    @Test
+    fun combinesDansLEtatNba() {
+        val e = nba.etat.copy(
+            paris = listOf(
+                PariEtat("p1", "76ers vainqueurs", EtatPari.EN_COURS, "PHI-MIL", 7, null, groupe = "g1"),
+                PariEtat("p2", "76ers · handicap \u22124,5", EtatPari.EN_COURS, "PHI-MIL", 7, 4.5, handicap = true, groupe = "g2"),
+                PariEtat("p3", "Joel Embiid + de 1,5 · Nombre de fautes du joueur", EtatPari.NON_SUIVI, groupe = "g2"),
+            ),
+            groupes = listOf(
+                GroupeEtat("g1", "Combiné 1", null, EtatPari.EN_COURS, 0, 1, 0, false),
+                GroupeEtat("g2", "Combiné 2", "5,10", EtatPari.GAGNE, 1, 1, 1, true),
+            ),
+        )
+        val m = JSONObject(Protocole.nba(e))
+        val p = m.getJSONArray("paris")
+        assertEquals(setOf("id", "libelle", "etat", "match", "valeur", "groupe"), p.getJSONObject(0).keys().asSequence().toSet())
+        assertEquals("g1", p.getJSONObject(0).getString("groupe"))
+        // Le handicap reste une donnée de la TV
+        assertEquals(setOf("id", "libelle", "etat", "match", "valeur", "seuil", "groupe"), p.getJSONObject(1).keys().asSequence().toSet())
+        assertEquals(setOf("id", "libelle", "etat", "groupe"), p.getJSONObject(2).keys().asSequence().toSet())
+        assertEquals("g2", p.getJSONObject(2).getString("groupe"))
+        val g = m.getJSONArray("groupes")
+        assertEquals(2, g.length())
+        val g1 = g.getJSONObject(0)
+        // Sans cote : champ absent
+        assertEquals(setOf("id", "nom", "etat", "gagnees", "suivies", "nonSuivies", "ouvert"), g1.keys().asSequence().toSet())
+        assertEquals("g1", g1.getString("id"))
+        assertEquals("Combiné 1", g1.getString("nom"))
+        assertEquals("en_cours", g1.getString("etat"))
+        assertEquals(0, g1.get("gagnees"))
+        assertEquals(1, g1.get("suivies"))
+        assertEquals(0, g1.get("nonSuivies"))
+        assertEquals(false, g1.get("ouvert"))
+        val g2 = g.getJSONObject(1)
+        assertEquals(setOf("id", "nom", "cote", "etat", "gagnees", "suivies", "nonSuivies", "ouvert"), g2.keys().asSequence().toSet())
+        assertEquals("5,10", g2.getString("cote"))
+        assertEquals("gagne", g2.getString("etat"))
+        assertEquals(1, g2.get("gagnees"))
+        assertEquals(1, g2.get("nonSuivies"))
+        assertEquals(true, g2.get("ouvert"))
+    }
+
+    @Test
+    fun combinesOuvrirEtEffacer() {
+        val (s, hote) = connectee()
+        s.recevoir(msg("nba_paris_ajouter", "texte" to TICKET))
+        s.recevoir(msg("nba_paris_ajouter", "texte" to "Joel Embiid Plus de 9,5 rebonds"))
+        var m = envoyes.last()
+        assertEquals(listOf("g1", "g2"), (0 until m.getJSONArray("groupes").length()).map { m.getJSONArray("groupes").getJSONObject(it).getString("id") })
+        assertEquals("8,75", m.getJSONArray("groupes").getJSONObject(0).getString("cote"))
+        assertTrue(m.getJSONArray("groupes").getJSONObject(1).getBoolean("ouvert"))
+        assertEquals(listOf("g1", "g1", "g2"), (0 until m.getJSONArray("paris").length()).map { m.getJSONArray("paris").getJSONObject(it).getString("groupe") })
+        // `nba_paris_ouvrir` : la TV répond par `nba`
+        envoyes.clear()
+        s.recevoir(msg("nba_paris_ouvrir", "groupe" to "g1"))
+        assertEquals("paris ouvrir g1", nba.demandes.last())
+        m = envoyes.single()
+        assertTrue(m.getJSONArray("groupes").getJSONObject(0).getBoolean("ouvert"))
+        assertTrue(hote.journaux.contains("nba : combiné demandé"))
+        // Inconnu : transmis (la TV l'ignore) ; illisible : rien de demandé, l'état actuel est renvoyé
+        s.recevoir(msg("nba_paris_ouvrir", "groupe" to "g9"))
+        assertEquals("paris ouvrir g9", nba.demandes.last())
+        val n = nba.demandes.size
+        for (g in listOf(3, "", "x".repeat(21), null, JSONObject())) {
+            envoyes.clear()
+            s.recevoir(msg("nba_paris_ouvrir", "groupe" to g))
+            assertEquals("nba", envoyes.single().getString("t"))
+        }
+        // `nba_paris_effacer {groupe}` : ce combiné ; `groupe` illisible : rien n'est retiré
+        for (g in listOf(3, "", "x".repeat(21), JSONObject())) {
+            envoyes.clear()
+            s.recevoir(msg("nba_paris_effacer", "groupe" to g))
+            assertEquals(2, envoyes.single().getJSONArray("groupes").length())
+        }
+        assertEquals(n, nba.demandes.size)
+        s.recevoir(msg("nba_paris_effacer", "groupe" to "g1"))
+        assertEquals("paris effacer g1", nba.demandes.last())
+        m = envoyes.last()
+        assertEquals(1, m.getJSONArray("groupes").length())
+        assertEquals(1, m.getJSONArray("paris").length())
+        assertTrue(hote.journaux.contains("nba : effacement d'un combiné demandé"))
+        // `groupe` null : tous
+        s.recevoir(msg("nba_paris_effacer", "groupe" to JSONObject.NULL))
+        assertEquals("paris effacer null", nba.demandes.last())
+        assertEquals(0, envoyes.last().getJSONArray("groupes").length())
+        // Journal : jamais le texte ni une cote
+        assertTrue(hote.journaux.none { it.contains("Maxey") || it.contains("Embiid") || it.contains("8,75") })
     }
 
     @Test

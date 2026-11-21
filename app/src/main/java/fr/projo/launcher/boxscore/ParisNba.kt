@@ -219,6 +219,51 @@ object ParisNba {
         return sortie.take(LIGNES_MAX)
     }
 
+    /** Mot « cote » d'une ligne (sans accents) ; la suite dit si elle est totale et donne le nombre. */
+    private val R_COTE = Regex("""\bcotes?\b""")
+
+    /** Après « cote » : « totale 10,06 », « : 3,10 », « combinée @ 5.10 » (pas une mise : « 2 € »). */
+    private val R_COTE_NOMBRE = Regex("""^\s*(totale?|combinee|globale)?\s*[:=@]?\s*(\d{1,5}(?:[.,]\d{1,3})?)(?![\d.,]*\s*(?:€|eur|%))""")
+
+    /** Après « cote » : rien qu'un qualificatif (« COTE », « Cote totale : ») : le nombre est à la ligne suivante. */
+    private val R_COTE_SEULE = Regex("""^\s*(totale?|combinee|globale)?\s*:?\s*$""")
+
+    /** Ligne qui n'est qu'une cote : « 5,10 », « @ 5.10 ». */
+    private val R_NOMBRE_SEUL = Regex("""^@?\s*(\d{1,5}(?:[.,]\d{1,3})?)$""")
+
+    /**
+     * Cote totale du ticket (`nba.groupes[].cote`), telle que lue, virgule décimale : « Cote totale
+     * 10,06 », « COTE » puis « 5,10 » à la ligne suivante (Winamax), « cote 3,10 ». Une cote dite
+     * totale (« totale », « combinée », « globale ») l'emporte, sinon la dernière lue ; null si le
+     * ticket n'en donne pas. Jamais journalisée.
+     */
+    fun cote(texte: String): String? {
+        val lignes = nettoyer(limiter(texte))
+        var totale: String? = null
+        var derniere: String? = null
+        for ((i, l) in lignes.withIndex()) {
+            val bas = sansAccents(l)
+            for (mot in R_COTE.findAll(bas)) {
+                val suite = bas.substring(mot.range.last + 1)
+                val m = R_COTE_NOMBRE.find(suite)
+                val (qualifiee, nombre) = when {
+                    m != null -> m.groupValues[1].isNotEmpty() to m.groupValues[2]
+                    else -> {
+                        val seule = R_COTE_SEULE.matchEntire(suite) ?: continue
+                        val n = lignes.getOrNull(i + 1)?.let { R_NOMBRE_SEUL.matchEntire(it.trim()) }?.groupValues?.get(1) ?: continue
+                        seule.groupValues[1].isNotEmpty() to n
+                    }
+                }
+                val v = nombre.replace(',', '.').toDoubleOrNull() ?: continue
+                if (v <= 1.0) continue
+                val lue = nombre.replace('.', ',')
+                derniere = lue
+                if (qualifiee) totale = lue
+            }
+        }
+        return totale ?: derniere
+    }
+
     /** Texte trop long : coupé à [TEXTE_MAX] caractères, sans garder la dernière ligne entamée. */
     fun limiter(texte: String): String {
         if (texte.length <= TEXTE_MAX) return texte

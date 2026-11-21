@@ -580,4 +580,35 @@ class ParisNbaTest {
         assertTrue(Joueur("Luka Dončić", POINTS, PLUS, 30.5).cle != Joueur("Luka Dončić", POINTS, PLUS, 31.5).cle)
         assertTrue(TotalMatch(PLUS, 221.5, phiInd).cle != TotalMatch(PLUS, 221.5, setOf("LAL", "BOS")).cle)
     }
+
+    // ------------------------------------------------------------------ cote totale (combinés)
+
+    @Test
+    fun coteTotaleDuTicket() {
+        // Betclic : « Cote totale 10,06 » l'emporte sur la cote du MyCombi (8,75) et celles des sélections
+        assertEquals("10,06", ParisNba.cote(TICKET_BETCLIC))
+        // Winamax (capture du ticket) : « COTE » puis la cote à la ligne suivante, entre la mise et les gains
+        assertEquals("5,10", ParisNba.cote(TICKET_WINAMAX + "\nMISE\n10,00 €\nCOTE\n5,10\nGAINS POTENTIELS\n51,00 €"))
+        assertEquals("5,10", ParisNba.cote(COMBINE_WINAMAX_PHI_MIL))
+        // Sur la même ligne, en minuscules, avec deux-points, point décimal
+        assertEquals("3,10", ParisNba.cote("Tyrese Maxey Plus de 19,5 points\ncote 3,10"))
+        assertEquals("1,85", ParisNba.cote("Cote : 1,85\nMise 2,00 €"))
+        assertEquals("10,06", ParisNba.cote("Cote totale : 10.06"))
+        assertEquals("4,20", ParisNba.cote("Cote combinée @ 4,20"))
+        assertEquals("5,10", ParisNba.cote("Cote totale\n5,10"))
+        // Une cote totale l'emporte, sinon la dernière lue
+        assertEquals("6,40", ParisNba.cote("Cote 1,60\nCote totale 6,40\nCote 4,00"))
+        assertEquals("4,00", ParisNba.cote("Cote 1,60\nCote 4,00"))
+        // Pas de cote : un montant, un pourcentage, rien après « COTE », une cote de 1 ou moins, un autre mot
+        assertNull(ParisNba.cote(TICKET_WINAMAX))
+        assertNull(ParisNba.cote("Cote 2,00 €"))
+        assertNull(ParisNba.cote("Cote boostée de 10 %"))
+        assertNull(ParisNba.cote("COTE\nGains potentiels 51,00 €"))
+        assertNull(ParisNba.cote("Cote 1,00"))
+        assertNull(ParisNba.cote("Côte d'Ivoire 2 - 1 Sénégal"))
+        assertNull(ParisNba.cote("Profitez des cotes boostées"))
+        assertNull(ParisNba.cote(""))
+        // La cote ne change pas les lignes lues
+        assertEquals(ParisNba.lire(TICKET_WINAMAX), ParisNba.lire(TICKET_WINAMAX + "\nMISE\n10,00 €\nCOTE\n5,10\nGAINS POTENTIELS\n51,00 €"))
+    }
 }

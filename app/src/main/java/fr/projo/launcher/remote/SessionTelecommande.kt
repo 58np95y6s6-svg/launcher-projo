@@ -48,8 +48,8 @@ interface HoteSession {
 
     /**
      * Box score NBA par-dessus la vidéo (et paris suivis). null : non proposé, `fonctions`
-     * n'annonce ni `nba` ni `nba_paris`, et `nba_etat` / `nba_afficher` / `nba_choisir` /
-     * `nba_paris_ajouter` / `nba_paris_effacer` sont ignorés.
+     * n'annonce ni `nba` ni `nba_paris` ni `nba_paris_groupes`, et `nba_etat` / `nba_afficher` /
+     * `nba_choisir` / `nba_paris_ajouter` / `nba_paris_effacer` / `nba_paris_ouvrir` sont ignorés.
      */
     val nba: NbaTv? get() = null
 
@@ -258,7 +258,7 @@ class SessionTelecommande(
 
     /**
      * Fonctions annoncées : `apps` et `reglages` avec le pilotage, `liens` avec l'envoi de liens,
-     * `nba` et `nba_paris` avec le box score ; null si aucune.
+     * `nba`, `nba_paris` et `nba_paris_groupes` avec le box score ; null si aucune.
      */
     private fun fonctions(): List<String>? {
         val f = buildList {
@@ -267,6 +267,7 @@ class SessionTelecommande(
             if (hote.nba != null) {
                 add(Protocole.FONCTION_NBA)
                 add(Protocole.FONCTION_NBA_PARIS)
+                add(Protocole.FONCTION_NBA_PARIS_GROUPES)
             }
         }
         return f.ifEmpty { null }
@@ -350,7 +351,8 @@ class SessionTelecommande(
             "pair_request" -> envoyer(Protocole.paired(hote.nomTv, hote.registre.idTv(), Base64Url.encoder(hote.identite.spki)))
             "apps_liste", "apps_images", "app_ouvrir", "reglages_liste", "reglage" -> hote.pilotage?.let { pilotage(it, t, m) }
             "liens_etat", "lien_ouvrir" -> hote.liens?.let { liens(it, t, m) }
-            "nba_etat", "nba_afficher", "nba_choisir", "nba_paris_ajouter", "nba_paris_effacer" -> hote.nba?.let { nba(it, t, m) }
+            "nba_etat", "nba_afficher", "nba_choisir", "nba_paris_ajouter", "nba_paris_effacer", "nba_paris_ouvrir" ->
+                hote.nba?.let { nba(it, t, m) }
         }
     }
 
@@ -358,9 +360,10 @@ class SessionTelecommande(
 
     /**
      * `nba_etat` (état, et abonnement de cette connexion), `nba_afficher`, `nba_choisir`,
-     * `nba_paris_ajouter` et `nba_paris_effacer` (docs/telecommande.md, « Box score NBA »). Format,
-     * identifiant ou texte illisible : ignoré ; le téléphone reçoit quand même l'état actuel pour se
-     * recaler. Journal : types d'événements seulement, jamais de score ni de texte de pari.
+     * `nba_paris_ajouter`, `nba_paris_effacer` et `nba_paris_ouvrir` (docs/telecommande.md, « Box
+     * score NBA », « Paris suivis », « Combinés »). Format, identifiant ou texte illisible : ignoré ;
+     * le téléphone reçoit quand même l'état actuel pour se recaler. Journal : types d'événements
+     * seulement, jamais de score ni de texte de pari.
      */
     private fun nba(n: NbaTv, t: String, m: JSONObject) {
         val repondre: (EtatNba) -> Unit = { envoyerSiAuthentifiee(Protocole.nba(it)) }
@@ -399,11 +402,35 @@ class SessionTelecommande(
                 n.ajouterParis(ParisNba.limiter(texte), repondre)
             }
             "nba_paris_effacer" -> {
-                hote.journal("nba : effacement des paris demandé")
-                n.effacerParis(repondre)
+                // Sans `groupe` (absent ou null) : tous ; `groupe` illisible : rien n'est retiré
+                val brut = m.opt("groupe")
+                if (brut == null || brut == JSONObject.NULL) {
+                    hote.journal("nba : effacement des paris demandé")
+                    n.effacerParis(null, repondre)
+                    return
+                }
+                val groupe = idGroupe(brut)
+                if (groupe == null) {
+                    n.etat(repondre)
+                    return
+                }
+                hote.journal("nba : effacement d'un combiné demandé")
+                n.effacerParis(groupe, repondre)
+            }
+            "nba_paris_ouvrir" -> {
+                val groupe = idGroupe(m.opt("groupe"))
+                if (groupe == null) {
+                    n.etat(repondre)
+                    return
+                }
+                hote.journal("nba : combiné demandé")
+                n.ouvrirParis(groupe, repondre)
             }
         }
     }
+
+    /** `groupe` d'un combiné (« g3 ») : chaîne non vide de 20 caractères au plus, sinon null. */
+    private fun idGroupe(v: Any?): String? = (v as? String)?.takeIf { it.isNotEmpty() && it.length <= Protocole.ID_GROUPE_MAX }
 
     /** `id` d'un match (« LAL-BOS ») : chaîne non vide de 20 caractères au plus, sinon null. */
     private fun idMatch(v: Any?): String? = (v as? String)?.takeIf { it.isNotEmpty() && it.length <= Protocole.ID_MATCH_MAX }

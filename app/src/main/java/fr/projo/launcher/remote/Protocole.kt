@@ -54,8 +54,14 @@ object Protocole {
     /** Fonction annoncée avec le box score : paris suivis (format « pari », `nba_paris_*`). */
     const val FONCTION_NBA_PARIS = "nba_paris"
 
+    /** Fonction annoncée avec les paris : combinés (`nba.groupes`, `nba_paris_ouvrir`, `nba_paris_effacer.groupe`). */
+    const val FONCTION_NBA_PARIS_GROUPES = "nba_paris_groupes"
+
     /** `nba_afficher.id`, `nba_choisir.id` (« LAL-BOS ») : longueur maximale acceptée. */
     const val ID_MATCH_MAX = 20
+
+    /** `nba_paris_ouvrir.groupe`, `nba_paris_effacer.groupe` (« g3 ») : longueur maximale acceptée. */
+    const val ID_GROUPE_MAX = 20
 
     /** `lien_ouvert.url` : l'URL de la demande, coupée à cette longueur (message sous la limite de la PWA). */
     const val URL_REPONSE_MAX = 8_192
@@ -169,7 +175,9 @@ object Protocole {
 
     /**
      * `nba` : matchs (15 au plus), match choisi (null), format, décalage, erreur facultative, lignes
-     * des paris suivis (`paris`, 20 au plus : `{id, libelle, etat, match?, valeur?, seuil?}`).
+     * des paris suivis (`paris`, 40 au plus : `{id, libelle, etat, match?, valeur?, seuil?, groupe}`)
+     * et combinés (`groupes`, 10 au plus : `{id, nom, cote?, etat, gagnees, suivies, nonSuivies,
+     * ouvert}`), toujours présents.
      */
     fun nba(e: EtatNba): String {
         val matchs = JSONArray()
@@ -188,9 +196,18 @@ object Protocole {
             p.match?.let { o.put("match", it) }
             p.valeur?.let { o.put("valeur", it) }
             p.seuil?.let { o.put("seuil", it) }
+            p.groupe?.let { o.put("groupe", it) }
             paris.put(o)
         }
         m.put("paris", paris)
+        val groupes = JSONArray()
+        for (g in e.groupes) {
+            val o = JSONObject().put("id", g.id).put("nom", g.nom)
+            g.cote?.let { o.put("cote", it) }
+            o.put("etat", g.etat.id).put("gagnees", g.gagnees).put("suivies", g.suivies).put("nonSuivies", g.nonSuivies).put("ouvert", g.ouvert)
+            groupes.put(o)
+        }
+        m.put("groupes", groupes)
         return m.toString()
     }
 

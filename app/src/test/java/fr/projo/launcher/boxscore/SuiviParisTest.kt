@@ -23,7 +23,11 @@ class SuiviParisTest {
 
     private fun donnees(vararg b: BoxScore, matchs: List<MatchNba> = b.map { it.match }) = DonneesParis(matchs, b.toList())
 
-    private fun etats(texte: String, d: DonneesParis): List<PariEtat> = SuiviParis().apply { ajouter(texte, 0) }.etats(d)
+    /** Lignes d'un collage (un seul combiné, « g1 », retiré pour comparer). */
+    private fun etats(texte: String, d: DonneesParis): List<PariEtat> =
+        SuiviParis().apply { ajouter(texte, 0) }.etats(d).lignes.map { it.copy(groupe = null) }
+
+    private val rien = DonneesParis(emptyList(), emptyList())
 
     private fun une(texte: String, d: DonneesParis): PariEtat = etats(texte, d).single()
 
@@ -309,29 +313,33 @@ class SuiviParisTest {
     @Test
     fun doublonsIdentifiantsEtEffacement() {
         val p = SuiviParis()
-        assertEquals(SuiviParis.Ajout(4, 4, 0), p.ajouter(TICKET_BETCLIC, 0))
+        assertEquals(SuiviParis.Ajout(4, 4, 0, "g1"), p.ajouter(TICKET_BETCLIC, 0))
         // Même ticket : rien de nouveau
         assertEquals(SuiviParis.Ajout(4, 0, 0), p.ajouter(TICKET_BETCLIC, 1_000))
-        assertEquals(SuiviParis.Ajout(2, 1, 1), p.ajouter("Tyrese Maxey Plus de 19,5 points\nJoel Embiid + de 1,5\nNombre de fautes du joueur", 2_000))
-        val e = p.etats(DonneesParis(emptyList(), emptyList()))
-        assertEquals(listOf("p1", "p2", "p3", "p4", "p5"), e.map { it.id })
+        // Autre collage : un autre combiné, même avec une ligne déjà suivie dans le premier
+        assertEquals(SuiviParis.Ajout(2, 2, 1, "g2"), p.ajouter("Tyrese Maxey Plus de 19,5 points\nJoel Embiid + de 1,5\nNombre de fautes du joueur", 2_000))
+        val e = p.etats(rien).lignes
+        assertEquals(listOf("p1", "p2", "p3", "p4", "p5", "p6"), e.map { it.id })
+        assertEquals(listOf("g1", "g1", "g1", "g1", "g2", "g2"), e.map { it.groupe })
         assertEquals("Joel Embiid + de 1,5 · Nombre de fautes du joueur", e.last().libelle)
         assertTrue(p.effacer())
         assertFalse(p.effacer())
         assertEquals(0, p.nombre)
         // Les identifiants ne reviennent pas
         p.ajouter("Tyrese Maxey Plus de 19,5 points", 3_000)
-        assertEquals("p6", p.etats(DonneesParis(emptyList(), emptyList())).single().id)
+        assertEquals("p7", p.etats(rien).lignes.single().id)
+        assertEquals("g3", p.etats(rien).groupes.single().id)
     }
 
     @Test
-    fun vingtLignesAuPlusLesPlusAnciennesPartent() {
+    fun dixCombinesAuPlusLesPlusAnciensPartent() {
         val p = SuiviParis()
-        for (i in 1..25) p.ajouter("Tyrese Maxey Plus de $i,5 points", i.toLong())
-        val e = p.etats(DonneesParis(emptyList(), emptyList()))
-        assertEquals(SuiviParis.LIGNES_MAX, e.size)
-        assertEquals("T. Maxey · + de 6,5 pts", e.first().libelle)
-        assertEquals("T. Maxey · + de 25,5 pts", e.last().libelle)
+        for (i in 1..12) p.ajouter("Tyrese Maxey Plus de $i,5 points", i.toLong())
+        val e = p.etats(rien)
+        assertEquals(SuiviParis.GROUPES_MAX, e.groupes.size)
+        assertEquals("Combiné 3", e.groupes.first().nom)
+        assertEquals("T. Maxey · + de 3,5 pts", e.lignes.first().libelle)
+        assertEquals("T. Maxey · + de 12,5 pts", e.lignes.last().libelle)
     }
 
     @Test
@@ -341,7 +349,7 @@ class SuiviParisTest {
         p.ajouter("Joel Embiid Plus de 9,5 rebonds", 3_600_000)
         assertFalse(p.expirer(SuiviParis.DUREE_MS - 1))
         assertTrue(p.expirer(SuiviParis.DUREE_MS))
-        assertEquals(listOf("J. Embiid · + de 9,5 rebonds"), p.etats(DonneesParis(emptyList(), emptyList())).map { it.libelle })
+        assertEquals(listOf("J. Embiid · + de 9,5 rebonds"), p.etats(rien).lignes.map { it.libelle })
         // Ajouté de nouveau : nouvelle ligne
         p.ajouter("Tyrese Maxey Plus de 19,5 points", SuiviParis.DUREE_MS)
         assertEquals(2, p.nombre)
@@ -368,7 +376,7 @@ class SuiviParisTest {
     private fun SuiviNba.servir(t: Long, tableau: List<MatchNba>, box: (MatchNba) -> BoxScore) =
         servirAvec(t, tableau) { Reponse.Ok(box(it)) }
 
-    private fun maxey(s: SuiviNba): PariEtat = s.etat().paris.first { it.libelle.startsWith("T. Maxey") }
+    private fun maxey(s: SuiviNba): PariEtat = s.etat().paris.first { it.libelle.startsWith("T. Maxey") }.copy(groupe = null)
 
     @Test
     fun decalageRespecte() {
@@ -403,7 +411,7 @@ class SuiviParisTest {
     fun pariCollEAvantLeCoupDEnvoi() {
         val s = SuiviNba().apply { accessibilite = true }
         // Collé avant tout : ni tableau du jour, ni box score, ni match en cours
-        assertEquals(SuiviParis.Ajout(4, 4, 0), s.ajouterParis(TICKET_BETCLIC, 0))
+        assertEquals(SuiviParis.Ajout(4, 4, 0, "g1"), s.ajouterParis(TICKET_BETCLIC, 0))
         val avant = s.etat().paris
         assertTrue(avant.all { it.etat == ATTENTE && it.match == null && it.valeur == null })
         assertEquals(listOf(null, 19.5, 9.5, 2.5), avant.map { it.seuil })
@@ -425,7 +433,7 @@ class SuiviParisTest {
         s.servirAvec(t, listOf(debut)) { Reponse.PasCommence }
         val vue = s.vueTv(t)
         assertEquals(listOf("p1", "p2", "p3", "p4"), vue.paris.map { it.id })
-        assertEquals(PariEtat("p1", "76ers vainqueurs", EN_COURS, "PHI-IND", 2), vue.paris[0])
+        assertEquals(PariEtat("p1", "76ers vainqueurs", EN_COURS, "PHI-IND", 2, groupe = "g1"), vue.paris[0])
         assertTrue(vue.paris.drop(1).all { it.etat == ATTENTE && it.match == "PHI-IND" })
         // Box score publié : les joueurs sont trouvés
         s.servirAvec(t + 5_000, listOf(debut)) { Reponse.Ok(boxPhiInd(debut, maxey = 2, kcp = 0, zubacPd = 0)) }
