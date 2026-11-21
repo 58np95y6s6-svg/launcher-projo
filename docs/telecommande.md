@@ -775,6 +775,57 @@ appui long sur le texte → Tout sélectionner → Copier »). Après un ajout :
 celles non suivies, grisées). Des lignes suivies sans match à montrer : le bandeau reste, réduit à
 « Aucun match NBA en cours », leur résumé (« Mon pari · 4 lignes en attente ») et « Mon pari ».
 
+### Combinés (version 1, ajout compatible)
+
+Chaque collage est un **combiné** : ses lignes restent groupées, sur la TV comme sur le téléphone,
+avec un **accordéon** (un seul combiné ouvert à la fois).
+
+- `hello` de la TV : `fonctions` contient aussi `"nba_paris_groupes"` (sinon la PWA garde la liste
+  à plat).
+- `nba_paris_ajouter {texte}` : crée un nouveau combiné avec les lignes lues (dédoublonnées dans ce
+  combiné seulement : une même ligne peut appartenir à deux combinés). Un texte dont les lignes
+  sont exactement celles d'un combiné déjà présent n'ajoute rien. Le nouveau combiné devient le
+  combiné ouvert.
+- `nba_paris_effacer {groupe?}` : retire ce combiné ; sans `groupe`, tous.
+- `nba_paris_ouvrir {groupe}` : ce combiné devient le combiné ouvert (sur la TV et dans `nba`) ;
+  `groupe` inconnu → ignoré.
+- Limites : 10 combinés et 40 lignes au plus ; au-delà, le plus ancien combiné part.
+
+`nba` gagne :
+
+- dans chaque ligne de `paris` : `groupe` (identifiant du combiné : `"g1"`, `"g2"`…, jamais
+  réutilisé) ;
+- `groupes` (tableau, dans l'ordre d'ajout) : `{id, nom, cote?, etat, gagnees, suivies, nonSuivies,
+  ouvert}`
+  - `nom` : « Combiné 1 », « Combiné 2 »… (numéro jamais réutilisé) ;
+  - `cote` (chaîne, telle que lue, « 5,10 ») : cote totale si le ticket la donne (« Cote totale
+    10,06 », « COTE » puis « 5,10 », « cote 3,10 ») ; absente sinon ;
+  - `etat` : `"perdu"` dès qu'une ligne suivie est perdue ; `"gagne"` quand toutes les lignes
+    suivies sont gagnées ; `"attente"` si toutes les lignes suivies sont en attente ; `"en_cours"`
+    sinon. Les lignes `non_suivi` ne comptent pas (`nonSuivies` le dit) ;
+  - `gagnees` / `suivies` : lignes gagnées / lignes suivies (« 2/5 ») ;
+  - `ouvert` (booléen) : le combiné ouvert (un seul à `true` s'il y a des combinés).
+
+**Format `pari` sur la TV** : en-tête du match, puis les combinés **concernés par le match
+affiché** (au moins une ligne de ce match) en accordéon :
+
+- combiné replié : une ligne de résumé : état (✓ gagné, ✗ perdu, point en cours, cercle en
+  attente), nom, cote s'il y en a une, « 2/5 » ;
+- combiné ouvert : le même résumé, puis ses lignes de ce match (8 au plus), comme avant ; ses
+  lignes d'autres matchs sont résumées en une ligne discrète (« + 2 lignes d'un autre match ») ;
+- **◀ ▶** (télécommande de la TV, seulement en format pari et s'il y a au moins deux combinés
+  concernés) : ouvre le combiné précédent / suivant (appui et relâchement gardés, comme en
+  détails) ; Retour cache toujours le box score. Avec un seul combiné : aucune touche gardée ;
+- au plus 5 combinés repliés visibles autour de l'ouvert ; aucun combiné concerné : « Aucune ligne
+  de ton pari dans ce match ».
+
+**PWA** (si `nba_paris_groupes` est annoncé) : la feuille « Mon pari » range les lignes par combiné
+en accordéon : en-tête (état, nom, cote, « 2/5 », « non suivies » s'il y en a) ; toucher un en-tête
+ouvre ce combiné (`nba_paris_ouvrir`, la TV suit) et replie les autres ; dans le combiné ouvert, ses
+lignes puis « Effacer ce combiné » (confirmation, `nba_paris_effacer {groupe}`) ; en bas « Tout
+effacer ». Après un ajout : « Combiné 3 ajouté · 5 lignes suivies » (et non suivies), ou « Déjà
+ajouté » si rien de nouveau. Le résumé du bandeau compte les combinés (« Mon pari · 3 combinés »).
+
 ### Réglage (groupe « Box score NBA »)
 
 | Clé | Type | Rôle |
