@@ -336,9 +336,14 @@ class CapturesNbaTest {
         capturer("pari_combines_hauteur", vue).delete()
         compose.onAllNodesWithTag("nba_pari_combine").assertCountEquals(5)
         compose.onAllNodesWithTag("nba_pari_ligne").assertCountEquals(SuiviNba.PARIS_TV_MAX)
-        compose.onNodeWithText("+ 1 ligne d'un autre match").assertIsDisplayed()
         val carte = compose.onNodeWithTag("nba_pari").fetchSemanticsNode().boundsInRoot
         assertTrue("carte trop haute : ${carte.bottom}", carte.bottom < 1080f - 24f)
+        // Rien d'écrasé : le dernier élément (aide) a toute sa hauteur, dans la carte
+        val autres = compose.onNodeWithTag("nba_pari_autres").fetchSemanticsNode().boundsInRoot
+        val aide = compose.onNodeWithText("Combiné").fetchSemanticsNode().boundsInRoot
+        assertTrue("autres lignes écrasées : $autres (carte $carte)", autres.height > 15f)
+        assertTrue("aide écrasée : $aide (carte $carte)", aide.height > 15f && aide.bottom <= carte.bottom)
+        compose.onNodeWithText("+ 1 ligne d'un autre match").assertIsDisplayed()
     }
 
     @Test

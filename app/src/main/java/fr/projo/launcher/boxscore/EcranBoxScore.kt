@@ -78,13 +78,13 @@ private const val LIGNE = 37f
 
 /**
  * Contenu de la fenêtre : la carte (résumé, pari) ou le panneau (détails) en haut à droite, à
- * 56 px des bords, avec de la place à gauche et en bas pour l'ombre. Rien quand le box score est
- * caché.
+ * 56 px des bords, avec de la place à gauche et en bas pour l'ombre (100 px : flou de 70 décalé
+ * de 24 vers le bas). Rien quand le box score est caché.
  */
 @Composable
 fun EcranBoxScore(vue: VueTv, modifier: Modifier = Modifier) {
     if (vue.affichage == Affichage.CACHE) return
-    Box(modifier.padding(start = 96.mq, top = 56.mq, end = 56.mq, bottom = 120.mq)) {
+    Box(modifier.padding(start = 96.mq, top = 56.mq, end = 56.mq, bottom = 100.mq)) {
         val box = vue.box
         when {
             box == null -> CarteAttente(vue.attente.orEmpty(), details = vue.affichage == Affichage.DETAILS)
@@ -154,10 +154,11 @@ private fun CartePari(b: BoxScore, combines: List<CombineTv>) {
                 modifier = Modifier.fillMaxWidth().padding(top = 4.mq, bottom = 6.mq), alignement = TextAlign.Center,
             )
         }
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.mq)) {
+        // Au plus : 5 combinés repliés et un ouvert de 8 lignes, aide comprise, dans la hauteur de l'écran
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.mq)) {
             for (c in combines) CombinePariTv(c)
         }
-        if (combines.size >= 2) Aide("Combiné", haut = 14)
+        if (combines.size >= 2) Aide("Combiné", haut = 10)
     }
 }
 
@@ -170,14 +171,14 @@ private fun CombinePariTv(c: CombineTv) {
     } else {
         Modifier.background(Color.White.copy(alpha = 0.035f), forme)
     }
-    Column(Modifier.fillMaxWidth().then(cadre).padding(horizontal = 14.mq, vertical = 8.mq)) {
+    Column(Modifier.fillMaxWidth().then(cadre).padding(horizontal = 14.mq, vertical = 5.mq)) {
         ResumeCombine(c.groupe, c.ouvert)
         if (c.ouvert) {
             for (p in c.lignes) LignePariTv(p)
             if (c.autres > 0) {
                 Texte(
-                    c.texteAutres, 15f, gras = false, couleur = Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth().padding(start = 34.mq, top = 4.mq, bottom = 2.mq).testTag("nba_pari_autres"),
+                    c.texteAutres, 14f, gras = false, couleur = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth().padding(start = 34.mq, top = 2.mq).testTag("nba_pari_autres"),
                 )
             }
         }
@@ -193,7 +194,7 @@ private fun ResumeCombine(g: GroupeEtat, ouvert: Boolean) {
         else -> Color.White.copy(alpha = 0.85f)
     }
     Row(
-        Modifier.fillMaxWidth().height(32.mq).testTag(if (ouvert) "nba_pari_combine_ouvert" else "nba_pari_combine"),
+        Modifier.fillMaxWidth().height(28.mq).testTag(if (ouvert) "nba_pari_combine_ouvert" else "nba_pari_combine"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Pastille(g.etat)
@@ -214,7 +215,7 @@ private fun ResumeCombine(g: GroupeEtat, ouvert: Boolean) {
 @Composable
 private fun LignePariTv(p: PariEtat) {
     val attente = p.etat == EtatPari.ATTENTE || p.etat == EtatPari.NON_SUIVI
-    Column(Modifier.fillMaxWidth().padding(vertical = 7.mq).testTag("nba_pari_ligne")) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.mq).testTag("nba_pari_ligne")) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Pastille(p.etat)
             Spacer(Modifier.width(12.mq))
