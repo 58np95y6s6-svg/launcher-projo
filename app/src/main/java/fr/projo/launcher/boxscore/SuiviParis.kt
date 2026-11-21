@@ -81,6 +81,9 @@ class SuiviParis {
         const val GROUPES_MAX = 10
         const val LIGNES_MAX = 40
         const val DUREE_MS = 12 * 60 * 60_000L
+
+        /** Ligne qui commence un nouveau combiné dans un collage. */
+        private val R_SEPARATEUR = Regex("""^\s*(?:combin[éeÉ]e?\s*(?:n\s*°|no\.?|#)?\s*\d+\b|[-=_]{3,}\s*$)""", RegexOption.IGNORE_CASE)
     }
 
     /**
@@ -116,6 +119,39 @@ class SuiviParis {
      * sans ligne reconnue, ni si un combiné a déjà exactement ces lignes.
      */
     fun ajouter(texte: String, t: Long): Ajout {
+        // Plusieurs combinés collés d'un coup, séparés par « Combiné 1 », « Combiné 2 »… ou « --- » :
+        // un combiné par morceau, dans l'ordre
+        val morceaux = decouper(texte)
+        if (morceaux.size <= 1) return ajouterUn(texte, t)
+        var lues = 0
+        var ajoutees = 0
+        var nonSuivies = 0
+        var groupe: String? = null
+        for (m in morceaux) {
+            val a = ajouterUn(m, t)
+            lues += a.lues
+            ajoutees += a.ajoutees
+            nonSuivies += a.nonSuivies
+            if (a.groupe != null) groupe = a.groupe
+        }
+        return Ajout(lues, ajoutees, nonSuivies, groupe)
+    }
+
+    /**
+     * Morceaux d'un collage : une ligne « Combiné 2 » (« Combiné n°2 · cote 3,10 »…) ou « --- »
+     * commence un nouveau combiné (elle reste en tête de son morceau : sa cote est lue). Pas
+     * « Combiné (2) » de Betclic, qui est l'en-tête d'un seul ticket.
+     */
+    internal fun decouper(texte: String): List<String> {
+        val morceaux = mutableListOf<MutableList<String>>(mutableListOf())
+        for (ligne in texte.lines()) {
+            if (R_SEPARATEUR.containsMatchIn(ligne) && morceaux.last().any { it.isNotBlank() }) morceaux += mutableListOf<String>()
+            morceaux.last() += ligne
+        }
+        return morceaux.map { it.joinToString("\n") }.filter { it.isNotBlank() }
+    }
+
+    private fun ajouterUn(texte: String, t: Long): Ajout {
         expirer(t)
         val lues = ParisNba.lire(texte).distinctBy { it.cle }
         if (lues.isEmpty()) return Ajout(0, 0, 0)

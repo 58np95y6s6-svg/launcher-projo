@@ -784,7 +784,10 @@ avec un **accordéon** (un seul combiné ouvert à la fois).
 
 - `hello` de la TV : `fonctions` contient aussi `"nba_paris_groupes"` (sinon la PWA garde la liste
   à plat).
-- `nba_paris_ajouter {texte}` : crée un nouveau combiné avec les lignes lues (dédoublonnées dans ce
+- `nba_paris_ajouter {texte}` : un texte peut contenir plusieurs combinés, séparés par une ligne
+  « Combiné 2 » (« Combiné n°2 · cote 3,10 »…) ou « --- » : un combiné par morceau, dans l'ordre
+  (la ligne de séparation reste en tête de son morceau : sa cote est lue ; « Combiné (2) » de
+  Betclic, en-tête d'un seul ticket, ne sépare pas). Chaque morceau crée un nouveau combiné avec les lignes lues (dédoublonnées dans ce
   combiné seulement : une même ligne peut appartenir à deux combinés). Un texte dont les lignes
   sont exactement celles d'un combiné déjà présent (dans n'importe quel ordre) n'ajoute rien et ne
   change pas le combiné ouvert ; un texte sans ligne reconnue ne crée aucun combiné. Le nouveau

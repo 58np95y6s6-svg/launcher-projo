@@ -35,6 +35,43 @@ class CombinesTest {
 
     // ------------------------------------------------------------------ combinés gardés
 
+    /** Plusieurs combinés collés d'un coup, séparés par « Combiné N » ou « --- » : un combiné chacun, dans l'ordre. */
+    @Test
+    fun plusieursCombinesEnUnSeulCollage() {
+        val p = SuiviParis()
+        val a = p.ajouter(
+            listOf(
+                "Combiné 1 · cote 5,10",
+                "Tyrese Maxey - Points : Plus de 24,5",
+                "Tyrese Maxey - Rebonds : Plus de 2,5",
+                "COMBINÉ 2 · cote 3,10",
+                "Écart de points (handicap) Philadelphia 76ers -12.5",
+                "Nombre de points Plus de 229,5",
+                "---",
+                "Joel Embiid + de 19,5",
+                "Nombre de points du joueur (paliers)",
+            ).joinToString("\n"),
+            0,
+        )
+        val g = p.groupes()
+        assertEquals(listOf("Combiné 1", "Combiné 2", "Combiné 3"), g.map { it.nom })
+        assertEquals(listOf("5,10", "3,10", null), g.map { it.cote })
+        assertEquals(listOf(2, 2, 1), g.map { it.suivies + it.nonSuivies })
+        assertEquals(5, a.ajoutees)
+        assertEquals(g.last().id, a.groupe)
+        assertTrue(g.last().ouvert)
+        // Recollé : rien de nouveau
+        assertEquals(0, p.ajouter("Combiné 1 · cote 5,10\nTyrese Maxey - Points : Plus de 24,5\nTyrese Maxey - Rebonds : Plus de 2,5", 1).ajoutees)
+    }
+
+    /** « Combiné (2) » de Betclic est l'en-tête d'un seul ticket : pas de découpage. */
+    @Test
+    fun enTeteBetclicNeDecoupePas() {
+        assertEquals(1, SuiviParis().decouper("Combiné (2)\nMYCOMBI\n8,75\nPhiladelphie 76ers\nVainqueur du match").size)
+        assertEquals(2, SuiviParis().decouper("Combiné 1\nA\nCombiné 2\nB").size)
+        assertEquals(1, SuiviParis().decouper("Combiné 1\nA").size)
+    }
+
     @Test
     fun chaqueCollageEstUnCombine() {
         val p = SuiviParis()
