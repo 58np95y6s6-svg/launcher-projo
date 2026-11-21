@@ -22,7 +22,10 @@ enum class StatPari(val unite: String) {
     POINTS_REBONDS_PASSES("pts + reb. + passes"),
     POINTS_REBONDS("pts + reb."),
     POINTS_PASSES("pts + passes"),
-    REBONDS_PASSES("reb. + passes");
+    REBONDS_PASSES("reb. + passes"),
+    INTERCEPTIONS("interceptions"),
+    CONTRES("contres"),
+    INTERCEPTIONS_CONTRES("interceptions + contres");
 
     /** Valeur de la statistique pour [j]. */
     fun de(j: JoueurNba): Int = when (this) {
@@ -34,6 +37,9 @@ enum class StatPari(val unite: String) {
         POINTS_REBONDS -> j.points + j.rebonds
         POINTS_PASSES -> j.points + j.passes
         REBONDS_PASSES -> j.rebonds + j.passes
+        INTERCEPTIONS -> j.interceptions
+        CONTRES -> j.contres
+        INTERCEPTIONS_CONTRES -> j.interceptions + j.contres
     }
 }
 
@@ -279,6 +285,8 @@ object ParisNba {
     private val R_POINTS = Regex("""\bpoints?\b|\bpts\b""")
     private val R_REBONDS = Regex("""\brebonds?\b|\breb\b|\brbds?\b""")
     private val R_PASSES = Regex("""\bpasses?\b|\bpd\b|\bassists?\b""")
+    private val R_INTERCEPTIONS = Regex("""\binterceptions?\b|\bsteals?\b|\bballes? volees?\b""")
+    private val R_CONTRES = Regex("""\bcontres\b|\btirs? contres?\b|\bblocks?\b|\bnombre de contres?\b""")
 
     private val R_VAINQUEUR = Regex("""\bvainqueur|\bface a face\b|\bresultat\b|\bgagnant\b|\bvictoire\b|\bmoneyline\b|\bqui (?:va )?gagner""")
     private val R_REGLEMENTAIRE = Regex("""\bt\.?\s*reg\b|\btemps regl|\bsans (?:les )?prolongations?\b|\b90 ?min""")
@@ -287,7 +295,7 @@ object ParisNba {
     private val R_EQUIPE = Regex("""\bequipe\b""")
     private val R_JOUEUR = Regex("""\bjoueur|\bjoueuse""")
     private val R_INCONNU = Regex(
-        """handicap|\bmi[- ]?temps|\bquart[- ]?temps|\b(?:1er|1re|2e|3e|4e|premier|premiere|deuxieme|troisieme|quatrieme)\s+(?:qt|quart|periode)|\bperiode\b|\binterceptions?\b|\bcontres\b|\bballes? perdues?|double[- ]double|triple[- ]double|\bpremier (?:panier|marqueur)|\bpremiere equipe|\blancers?[- ]francs?|\becart\b|\bmarge\b|\bfautes?\b|\bminutes\b|\bexact|\bentre\b|\btranche|\bimpair\b|\bpair\b|\bmvp\b|\bmeilleur marqueur|\bcourse a\b|\bdunks?\b|\bnul\b""",
+        """handicap|\bmi[- ]?temps|\bquart[- ]?temps|\b(?:1er|1re|2e|3e|4e|premier|premiere|deuxieme|troisieme|quatrieme)\s+(?:qt|quart|periode)|\bperiode\b|\bballes? perdues?|double[- ]double|triple[- ]double|\bpremier (?:panier|marqueur)|\bpremiere equipe|\blancers?[- ]francs?|\becart\b|\bmarge\b|\bfautes?\b|\bminutes\b|\bexact|\bentre\b|\btranche|\bimpair\b|\bpair\b|\bmvp\b|\bmeilleur marqueur|\bcourse a\b|\bdunks?\b|\bnul\b""",
     )
     private val R_BASKET = Regex("""\bpoints?\b|\bpts\b|\brebonds?\b|\bpasses?\b|\bpanier|\binterceptions?\b|\bcontres\b|double[- ]double|triple[- ]double|lancers?[- ]francs?|\bquart[- ]?temps|\bnba\b|\bbasket""")
     private val R_MARCHE = Regex("""\bnombre\b|\bpaliers?\b|\bprolongations?\b|\bcumul""")
@@ -349,8 +357,13 @@ object ParisNba {
         val p = R_POINTS.containsMatchIn(reste)
         val r = R_REBONDS.containsMatchIn(reste)
         val a = R_PASSES.containsMatchIn(reste)
+        val ints = R_INTERCEPTIONS.containsMatchIn(reste)
+        val ctrs = R_CONTRES.containsMatchIn(reste)
         val stat = when {
             trois -> StatPari.TROIS
+            ints && ctrs -> StatPari.INTERCEPTIONS_CONTRES
+            ints -> StatPari.INTERCEPTIONS
+            ctrs -> StatPari.CONTRES
             p && r && a -> StatPari.POINTS_REBONDS_PASSES
             p && r -> StatPari.POINTS_REBONDS
             p && a -> StatPari.POINTS_PASSES
@@ -680,7 +693,8 @@ object ParisNba {
     }
 
     private fun nonSuivie(parts: List<Analyse>): LignePari.NonSuivie {
-        val t = parts.joinToString(" · ") { it.brut }
+        // « Nombre d'interceptions du joueur - X : » puis « Plus de 0,5 » : pas de « : · »
+        val t = parts.joinToString(" · ") { it.brut.trim().trimEnd(':', '-', '·').trim() }
         return LignePari.NonSuivie(if (t.length <= NON_SUIVIE_MAX) t else t.take(NON_SUIVIE_MAX - 1).trimEnd() + "…")
     }
 

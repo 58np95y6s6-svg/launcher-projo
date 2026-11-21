@@ -123,6 +123,8 @@ object LectureNba {
             troisTentes = entier(s, "threePointersAttempted") ?: 0,
             plusMoins = entier(s, "plusMinusPoints"),
             nomComplet = texte(p, "name") ?: listOfNotNull(texte(p, "firstName"), texte(p, "familyName")).joinToString(" "),
+            interceptions = entier(s, "steals") ?: 0,
+            contres = entier(s, "blocks") ?: 0,
         )
     }
 
@@ -244,6 +246,8 @@ object LectureNba {
         val iReb = colonne("REB", "rebounds")
         val iPd = colonne("AST", "assists")
         val iPm = colonne("+/-", "plusMinus")
+        val iInt = colonne("STL", "steals")
+        val iCtr = colonne("BLK", "blocks")
         val iPts = colonne("PTS", "points")
         return objets(s.optJSONArray("athletes")).mapNotNull { a ->
             sansErreur {
@@ -268,6 +272,8 @@ object LectureNba {
                     troisTentes = t3,
                     plusMoins = nombre(v(iPm)),
                     nomComplet = texte(ath, "displayName").orEmpty(),
+                    interceptions = nombre(v(iInt)) ?: 0,
+                    contres = nombre(v(iCtr)) ?: 0,
                 )
             }
         }.sortedBy { !it.titulaire }

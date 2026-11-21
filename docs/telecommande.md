@@ -718,16 +718,18 @@ ou deux lignes ; le reste du ticket — cotes, mises, gains, autres sports — e
   (« Philadelphie », « La Nouvelle-Orléans ») ; « Résultat du match (t. rég) » : vainqueur du temps
   réglementaire (perdu dès la prolongation) ;
 - statistique d'un joueur, plus de / moins de / paliers (« 20+ » = plus de 19,5) : points, rebonds,
-  passes décisives, paniers à 3 points, et les cumuls points + rebonds + passes, points + rebonds,
-  points + passes, rebonds + passes ; joueur reconnu dans les effectifs du box score (« Tyrese
+  passes décisives, paniers à 3 points, interceptions, contres, et les cumuls points + rebonds +
+  passes, points + rebonds, points + passes, rebonds + passes, interceptions + contres (libellés :
+  `interceptions`, `contres`, `interceptions + contres`) ; joueur reconnu dans les effectifs du box score (« Tyrese
   Maxey » ↔ « T. Maxey », accents et tirets ignorés) ;
 - total de points du match, plus de / moins de (le match est celui nommé par le ticket) ;
 - total de points d'une équipe, plus de / moins de.
 
 Type de pari et sélection sur la même ligne (« Tyrese Maxey - Points : Plus de 19,5 ») ou sur
 deux lignes, dans un sens (Betclic : sélection puis type de pari) ou dans l'autre (type de pari
-puis sélection). Un pari NBA d'un type non suivi (handicap, mi-temps, interceptions,
-double-double…) donne une ligne `non_suivi` ; un pari d'un autre sport (sans équipe NBA, ou dont
+puis sélection). Un pari NBA d'un type non suivi (handicap, mi-temps, balles perdues,
+double-double…) donne une ligne `non_suivi` (libellé : le texte lu, lignes jointes par « · », sans
+ponctuation de fin en trop) ; un pari d'un autre sport (sans équipe NBA, ou dont
 la ligne de match n'est pas un match NBA) est ignoré.
 
 Une ligne « plus de N » est **gagnée** dès que la valeur dépasse N, **perdue** si le match se

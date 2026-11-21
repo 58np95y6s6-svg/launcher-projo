@@ -66,6 +66,8 @@ data class JoueurNba(
     val troisTentes: Int,
     val plusMoins: Int?,
     val nomComplet: String = "",
+    val interceptions: Int = 0,
+    val contres: Int = 0,
 )
 
 /** Statistiques d'une équipe ; pourcentages entre 0 et 1, null si inconnus. */

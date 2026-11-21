@@ -7,6 +7,9 @@ import fr.projo.launcher.boxscore.LignePari.TotalMatch
 import fr.projo.launcher.boxscore.LignePari.Vainqueur
 import fr.projo.launcher.boxscore.Sens.MOINS
 import fr.projo.launcher.boxscore.Sens.PLUS
+import fr.projo.launcher.boxscore.StatPari.CONTRES
+import fr.projo.launcher.boxscore.StatPari.INTERCEPTIONS
+import fr.projo.launcher.boxscore.StatPari.INTERCEPTIONS_CONTRES
 import fr.projo.launcher.boxscore.StatPari.PASSES
 import fr.projo.launcher.boxscore.StatPari.POINTS
 import fr.projo.launcher.boxscore.StatPari.POINTS_PASSES
@@ -303,6 +306,36 @@ class ParisNbaTest {
         )
     }
 
+    // ------------------------------------------------------------------ interceptions et contres
+
+    /** Ticket de l'utilisateur (type de pari et joueur, puis « Plus de » à la ligne suivante). */
+    @Test
+    fun interceptionsEtContres() {
+        assertEquals(
+            listOf(
+                Joueur("Tyrese Maxey", POINTS, PLUS, 24.5),
+                Joueur("Tyrese Maxey", REBONDS, PLUS, 2.5),
+                Joueur("Tyrese Maxey", INTERCEPTIONS, PLUS, 0.5),
+            ),
+            lire(
+                "Nombre de points du joueur - Tyrese Maxey :", "Plus de 24,5",
+                "Nombre de rebonds du joueur - Tyrese Maxey :", "Plus de 2,5",
+                "Nombre d'interceptions du joueur - Tyrese Maxey :", "Plus de 0,5",
+            ),
+        )
+        assertEquals(listOf(Joueur("Joel Embiid", CONTRES, PLUS, 1.5)), lire("Joel Embiid + de 1,5", "Nombre de contres du joueur"))
+        assertEquals(listOf(Joueur("Joel Embiid", INTERCEPTIONS_CONTRES, MOINS, 2.5)), lire("Joel Embiid - Interceptions + contres : Moins de 2,5"))
+    }
+
+    /** Ligne non suivie lue sur deux lignes : pas de « : · » dans le libellé. */
+    @Test
+    fun libelleNonSuiviSansPonctuationEnTrop() {
+        assertEquals(
+            listOf(NonSuivie("Nombre de balles perdues du joueur - Tyrese Maxey · Plus de 0,5")),
+            lire("Nombre de balles perdues du joueur - Tyrese Maxey :", "Plus de 0,5"),
+        )
+    }
+
     // ------------------------------------------------------------------ non suivis
 
     @Test
@@ -311,13 +344,13 @@ class ParisNbaTest {
             listOf(
                 NonSuivie("Philadelphie 76ers (-4,5) · Handicap (prolongations incluses)"),
                 NonSuivie("Joel Embiid Oui · Double-double"),
-                NonSuivie("Tyrese Maxey + de 1,5 · Nombre d'interceptions du joueur"),
+                NonSuivie("Tyrese Maxey + de 1,5 · Nombre de balles perdues du joueur"),
                 NonSuivie("Philadelphie 76ers · Vainqueur de la 1re mi-temps"),
             ),
             lire(
                 "Philadelphie 76ers (-4,5)", "Handicap (prolongations incluses)",
                 "Joel Embiid Oui", "Double-double",
-                "Tyrese Maxey + de 1,5", "Nombre d'interceptions du joueur",
+                "Tyrese Maxey + de 1,5", "Nombre de balles perdues du joueur",
                 "Philadelphie 76ers", "Vainqueur de la 1re mi-temps",
                 "Philadelphie 76ers - Indiana Pacers",
             ),
@@ -325,7 +358,7 @@ class ParisNbaTest {
         // Sélection d'un joueur sans type de pari : non suivie
         assertEquals(listOf(NonSuivie("Tyrese Maxey + de 19,5")), lire("Tyrese Maxey + de 19,5"))
         // Libellé coupé
-        val long = lire("Tyrese Maxey + de 1,5 et encore beaucoup de texte qui ne veut rien dire du tout", "Nombre d'interceptions du joueur (prolongations incluses)")
+        val long = lire("Tyrese Maxey + de 1,5 et encore beaucoup de texte qui ne veut rien dire du tout", "Nombre de balles perdues du joueur (prolongations incluses)")
         assertTrue((long.single() as NonSuivie).texte.length <= ParisNba.NON_SUIVIE_MAX)
     }
 
