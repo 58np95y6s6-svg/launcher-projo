@@ -375,7 +375,8 @@
   </div>
 
   <!-- ============ Box score NBA : mon pari (si la TV annonce « nba_paris ») ============ -->
-  <!-- Les lignes suivies par la TV et leur état, puis le collage du texte d'un pari -->
+  <!-- Les lignes suivies par la TV et leur état (rangées par combiné, en accordéon, si la TV annonce
+       « nba_paris_groupes »), puis le collage du texte d'un pari -->
   <div id="feuille-pari" class="voile" hidden>
     <section class="feuille feuille-pari" role="dialog" aria-modal="true" aria-labelledby="titre-pari">
       <div class="poignee" aria-hidden="true"></div>
@@ -385,6 +386,7 @@
       </div>
       <p id="pari-retour" class="pari-retour" role="status" aria-live="polite" aria-atomic="true"></p>
       <ul id="liste-pari" class="liste-pari" aria-label="Lignes suivies" hidden></ul>
+      <ul id="combines-pari" class="combines-pari" aria-label="Combinés" hidden></ul>
       <p id="pari-vide" class="pari-vide">Aucune ligne suivie pour l'instant.</p>
       <button type="button" id="btn-pari-effacer" class="btn-effacer-tout" hidden><svg class="ic" aria-hidden="true"><use href="#i-croix"/></svg>Tout effacer</button>
       <form id="form-pari" class="form-pari" autocomplete="off" novalidate>

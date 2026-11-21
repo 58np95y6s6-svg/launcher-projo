@@ -3,7 +3,7 @@
 
 // « liens » : Envoyer sur la TV (voir liens.js) ; « nba » : box score NBA, « nba_paris » : ses paris
 // suivis (voir nba.js)
-export const FONCTIONS = Object.freeze(["apps", "reglages", "liens", "nba", "nba_paris"]);
+export const FONCTIONS = Object.freeze(["apps", "reglages", "liens", "nba", "nba_paris", "nba_paris_groupes"]);
 export const TYPES_REGLAGE = Object.freeze(["curseur", "interrupteur", "choix", "boutons"]);
 export const MAX_IDS_IMAGES = 100;
 export const INTERVALLE_CURSEUR_MS = 150;

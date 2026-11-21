@@ -1,6 +1,7 @@
 // Captures de chaque écran, en profil iPhone (390×844) et Android (412×915) :
 // télécommande dans les 8 thèmes (un par design de la TV), feuille du clavier, onglets, alertes,
-// box score NBA (bandeau, formats, choix du match, erreurs, petit écran), paris suivis (« Mon pari »)…
+// box score NBA (bandeau, formats, choix du match, erreurs, petit écran), paris suivis rangés par
+// combiné (« Mon pari » : accordéon, bilan d'un ajout, résumé du bandeau)…
 // Usage : node remote-pwa-dev/outils/captures.mjs [dossier de sortie] [iphone,android]
 
 import { mkdir } from "node:fs/promises";
@@ -11,8 +12,20 @@ const SORTIE = path.resolve(process.argv[2] || "captures-pwa");
 await mkdir(SORTIE, { recursive: true });
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 const DESIGNS = ["galerie", "verre", "pastel", "console", "une", "chaines", "studio", "nba"];
-// Paris suivis : texte d'un vrai ticket (copié depuis la capture), plus un type de pari non suivi
-const PARI = `Philadelphie 76ers
+// Paris suivis : textes de vrais tickets (copiés depuis la capture), un combiné par collage : deux
+// Winamax, et un Betclic avec un type de pari non suivi et la cote totale
+const MYMATCH = `MYMATCH (0/2)
+3,10
+Écart de points (handicap) Philadelphia 76ers -12.5
+Nombre de points Plus de 229,5`;
+const MAXEY = `PHILADELPHIA 76ERS - MILWAUKEE BUCKS
+COTE
+5,10
+Nombre de points du joueur (paliers) - Tyrese Maxey :
+Plus de 24,5
+Nombre de rebonds du joueur (paliers) - Tyrese Maxey :
+Plus de 2,5`;
+const BETCLIC = `Philadelphie 76ers
 Vainqueur du match
 Tyrese Maxey + de 19,5
 Nombre de points du joueur (paliers)
@@ -21,11 +34,12 @@ Nombre de points du joueur (paliers)
 Ivica Zubac + de 2,5
 Nombre de passes décisives du joueur (paliers)
 Victor Wembanyama
-Premier panier du match`;
+Premier panier du match
+Cote totale 7,85`;
 const banc = await demarrerBanc();
 
 async function serie(modele) {
-  const salon = await banc.tv({ nom: "Salon", design: "galerie", fonctions: ["apps", "reglages", "liens", "nba", "nba_paris"] });
+  const salon = await banc.tv({ nom: "Salon", design: "galerie", fonctions: ["apps", "reglages", "liens", "nba", "nba_paris", "nba_paris_groupes"] });
   const chambre = await banc.tv({ nom: "Chambre", design: "une" });
   const tel = await banc.telephone(modele);
   let page = await tel.ouvrir();
@@ -291,7 +305,32 @@ async function serie(modele) {
   await salon.design("galerie");
   await theme("galerie");
 
-  // Paris suivis, avant le match : Réglages → « Mon pari… », collage, lignes en attente, bandeau réduit
+  // Combinés, avant le match : Réglages → « Mon pari… », un combiné par collage, bilan de l'ajout,
+  // lignes en attente, bandeau réduit « Mon pari · 3 combinés »
+  const sansFocus = () => page.evaluate(() => document.activeElement?.blur());
+  // Le champ touché ramène la feuille vers lui 300 ms plus tard : la feuille remonte ensuite
+  const hautDeFeuille = async () => {
+    await pause(400);
+    await page.locator(".feuille-pari").evaluate((f) => { f.scrollTop = 0; });
+  };
+  const ajouterPari = async (texte, retour) => {
+    await page.fill("#champ-pari", texte);
+    await page.click("#btn-pari-ajouter");
+    await page.locator("#pari-retour", { hasText: retour }).waitFor({ timeout: 8000 });
+    await sansFocus();
+    await hautDeFeuille();
+  };
+  const ouvrirCombine = async (id) => {
+    await page.click(`.combine[data-id="${id}"] .combine-tete`);
+    await salon.page.waitForFunction((x) => window.tv.paris.ouvert === x, id);
+    await sansFocus();
+    await hautDeFeuille();
+  };
+  const ouvrirFeuillePari = async () => {
+    await page.click("#btn-nba-pari");
+    await page.locator("#feuille-pari:not([hidden])").waitFor();
+    await sansFocus();
+  };
   await salon.nba({ scenario: "aucun", affichage: "cache" });
   await page.locator("#bandeau-nba").waitFor({ state: "hidden" });
   await page.click("#onglet-reglages");
@@ -300,48 +339,74 @@ async function serie(modele) {
   await capture("reglages-mon-pari");
   await page.click("#btn-reglages-pari");
   await page.locator("#feuille-pari:not([hidden])").waitFor();
-  await page.evaluate(() => document.activeElement?.blur());
+  await sansFocus();
   await capture("nba-pari-feuille-vide");
-  await page.fill("#champ-pari", PARI);
-  await page.evaluate(() => document.activeElement?.blur());
+  await page.fill("#champ-pari", MYMATCH);
+  await sansFocus();
   await capture("nba-pari-collage");
-  await page.click("#btn-pari-ajouter");
-  await page.locator("#pari-retour", { hasText: "suivies" }).waitFor();
-  await page.evaluate(() => document.activeElement?.blur());
-  await capture("nba-pari-avant-match");
+  await ajouterPari(MYMATCH, "Combiné 1 ajouté");
+  await capture("nba-combine-ajoute-avant-match");
+  await ajouterPari(MAXEY, "Combiné 2 ajouté");
+  await ajouterPari(BETCLIC, "Combiné 3 ajouté");
+  await capture("nba-combines-avant-match");
   await page.click("#btn-pari-fermer");
-  await capture("reglages-mon-pari-lignes");
+  await capture("reglages-mon-pari-combines");
   await page.click("#onglet-telecommande");
   await page.locator("#bandeau-nba.reduit").waitFor();
-  await capture("nba-pari-bandeau-reduit");
-  // Le match commence : lignes en cours, format Pari sur la TV
-  await salon.nba({ scenario: "paris" });
+  await capture("nba-combines-bandeau-reduit");
+  // Le match commence : combinés en cours (le dernier ajouté ouvert), format Pari sur la TV ; un
+  // autre combiné touché s'ouvre et replie les autres
+  await salon.nba({ scenario: "combines" });
   await page.locator("#nba-badge-ext", { hasText: "PHI" }).waitFor();
   await nbaAffichage("Pari", "pari");
-  await page.click("#btn-nba-pari");
-  await page.locator("#feuille-pari:not([hidden])").waitFor();
-  await page.evaluate(() => document.activeElement?.blur());
-  await capture("nba-pari-lignes");
+  await salon.statNba("tyrese maxey", "rebonds", 3);
+  await ouvrirFeuillePari();
+  await capture("nba-combines");
+  await ouvrirCombine("g1");
+  await capture("nba-combines-ouvrir");
   await page.click("#btn-pari-fermer");
   await capture("nba-pari-bandeau");
-  await salon.statNba("tyrese maxey", "points", 21);
+  // Thème NBA : bandeau, combinés (le 2e ouvert), « Effacer ce combiné », nouveau combiné, « Déjà ajouté »
   await salon.design("nba");
   await theme("nba");
   await capture("nba-pari-bandeau-nba");
-  await page.click("#btn-nba-pari");
-  await page.locator("#feuille-pari:not([hidden])").waitFor();
-  await page.evaluate(() => document.activeElement?.blur());
-  await capture("nba-pari-lignes-nba");
+  await ouvrirFeuillePari();
+  await ouvrirCombine("g2");
+  await capture("nba-combines-nba");
+  await page.click('.combine[data-id="g2"] .btn-effacer-combine');
+  await page.locator("#alerte:not([hidden])").waitFor();
+  await capture("nba-combine-effacer-nba");
+  await page.click("#alerte-ok");
+  await page.locator('.combine[data-id="g2"]').waitFor({ state: "detached" });
+  await ajouterPari(MAXEY, "Combiné 4 ajouté");
+  await capture("nba-combine-ajoute-nba");
+  await ajouterPari(MAXEY, "Déjà ajouté");
+  await capture("nba-combine-deja-ajoute-nba");
+  await page.click("#btn-pari-fermer");
+  await salon.nba({ scenario: "aucun", affichage: "cache" });
+  await page.locator("#bandeau-nba.reduit").waitFor();
+  await capture("nba-combines-bandeau-reduit-nba");
+  // Petit écran (360 px), texte agrandi : la feuille des combinés en Galerie ; « Tout effacer »
+  await salon.nba({ scenario: "combines" });
+  await page.locator("#nba-segments:not([hidden])").waitFor();
+  await salon.design("galerie");
+  await theme("galerie");
+  const tailleTel = page.viewportSize();
+  await page.setViewportSize({ width: 360, height: 640 });
+  await ouvrirFeuillePari();
+  await capture("nba-combines-petit-ecran");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "23px"; });
+  await capture("nba-combines-texte-agrandi");
+  await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
+  await page.setViewportSize(tailleTel);
   await page.click("#btn-pari-effacer");
   await page.locator("#alerte:not([hidden])").waitFor();
-  await capture("nba-pari-tout-effacer-nba");
+  await capture("nba-pari-tout-effacer");
   await page.click("#alerte-ok");
   await page.locator("#pari-vide:not([hidden])").waitFor();
   await page.click("#btn-pari-fermer");
-  await salon.statNba("tyrese maxey", "points", 12);
+  await salon.statNba("tyrese maxey", "rebonds", 2);
   await salon.nba({ scenario: "deux", affichage: "resume" });
-  await salon.design("galerie");
-  await theme("galerie");
   // Petit écran (iPhone SE, 375 × 667) : le pavé rétrécit, les touches restent à l'écran
   const taille = page.viewportSize();
   await page.setViewportSize({ width: 375, height: 667 });

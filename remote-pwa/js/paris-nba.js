@@ -2,12 +2,18 @@
 // que la TV suit (`nba.paris` : état, valeur), le collage du texte d'un pari (`nba_paris_ajouter`),
 // « Tout effacer » (`nba_paris_effacer`, après confirmation) et le bilan d'un ajout
 // (« 3 lignes suivies · 1 non suivie », d'après les lignes nouvelles du `nba` suivant).
-// Journaux : `nba_paris_ajouter` / `nba_paris_effacer` seuls : jamais le texte collé, une ligne,
-// une cote ni une mise.
+// Combinés (si la TV annonce aussi « nba_paris_groupes ») : les lignes rangées par combiné en
+// accordéon (combines-nba.js), « Effacer ce combiné » (`nba_paris_effacer {groupe}`, après
+// confirmation), bilan « Combiné 3 ajouté · 5 lignes suivies » ou « Déjà ajouté » ; sinon la liste
+// à plat, comme avant.
+// Journaux : `nba_paris_ajouter` / `nba_paris_effacer` / `nba_paris_ouvrir` seuls : jamais le texte
+// collé, une ligne, une cote, une mise ni l'id d'un combiné.
 
 import {
   NOMS_ETAT_PARI, texteAEnvoyer, valeurPari, avancementPari, matchPari, textePari, bilanAjout, messageAjout,
+  nouveauCombine, messageAjoutCombine,
 } from "./nba.js";
+import { AccordeonCombines } from "./combines-nba.js";
 import { h, icone } from "./dom.js";
 import { journal } from "./journal.js";
 
@@ -15,6 +21,38 @@ import { journal } from "./journal.js";
 const ATTENTE_BILAN_MS = 4000;
 // Pastille d'état : ✓ gagné, ✗ perdu, – non suivi ; en cours (point plein) et en attente (anneau) en CSS
 const ICONES_ETAT = { gagne: "i-ok", perdu: "i-croix", non_suivi: "i-moins" };
+
+/** Ligne d'un pari (liste à plat, ou dans un combiné) : `li`, et `maj(p)` pour la mettre à jour sur place. */
+function construireLigne(p) {
+  const pastille = h("span", { class: "pari-etat", "aria-hidden": "true" });
+  const libelle = h("span", { class: "pari-libelle" });
+  const detail = h("span", { class: "pari-detail" });
+  const valeur = h("span", { class: "pari-valeur", "aria-hidden": "true" });
+  const remplissage = h("span", {});
+  const barre = h("span", { class: "pari-barre", "aria-hidden": "true" }, remplissage);
+  // Lecteurs d'écran : une phrase par ligne (« … : en cours, 12 sur 19,5 »)
+  const lecteur = h("span", { class: "invisible-lecteur" });
+  const li = h("li", { class: "pari", "data-id": p.id },
+    pastille, h("span", { class: "pari-textes", "aria-hidden": "true" }, libelle, detail), valeur, barre, lecteur);
+  let icn = null;
+  const maj = (l) => {
+    li.dataset.etat = l.etat;
+    if (icn !== l.etat) {
+      icn = l.etat;
+      pastille.replaceChildren(...(ICONES_ETAT[l.etat] ? [icone(ICONES_ETAT[l.etat])] : []));
+    }
+    libelle.textContent = l.libelle;
+    const m = matchPari(l);
+    detail.textContent = m ? `${NOMS_ETAT_PARI[l.etat]} · ${m}` : NOMS_ETAT_PARI[l.etat];
+    valeur.textContent = valeurPari(l);
+    valeur.hidden = !valeur.textContent;
+    const a = avancementPari(l);
+    barre.hidden = a === null;
+    if (a !== null) remplissage.style.setProperty("--p", String(a));
+    lecteur.textContent = textePari(l);
+  };
+  return { li, maj };
+}
 
 export class FeuilleParis {
   /**
@@ -30,19 +68,26 @@ export class FeuilleParis {
     const $ = (id) => document.getElementById(id);
     this.el = {
       voile: $("feuille-pari"), titre: $("titre-pari"), fermer: $("btn-pari-fermer"),
-      liste: $("liste-pari"), vide: $("pari-vide"), effacer: $("btn-pari-effacer"),
+      liste: $("liste-pari"), combines: $("combines-pari"), vide: $("pari-vide"), effacer: $("btn-pari-effacer"),
       form: $("form-pari"), champ: $("champ-pari"), ajouter: $("btn-pari-ajouter"), retour: $("pari-retour"),
     };
     this.paris = [];          // dernières lignes de la TV
-    this.bilan = null;        // ajout envoyé : { avant: Set des ids, minuterie }
-    this.lignes = new Map();  // id → { li, maj(p) }
+    this.groupes = null;      // combinés de la TV (« nba_paris_groupes ») ; null : liste à plat
+    this.bilan = null;        // ajout envoyé : { avant, avantGroupes : Set des ids, minuterie }
+    this.lignes = new Map();  // liste à plat : id → { li, maj(p) }
     this.sig = "";
+    this.accordeon = new AccordeonCombines({
+      liste: this.el.combines, construireLigne,
+      ouvrir: (id) => this.ouvrirCombine(id),
+      effacer: (g) => this.effacerCombine(g),
+      focusVide: () => this.el.titre.focus({ preventScroll: true }),
+    });
 
     const e = this.el;
     e.fermer.addEventListener("click", () => { this.vibrer(); this.fermer({ rendreFocus: true }); });
     e.voile.addEventListener("click", (ev) => { if (ev.target === e.voile) this.fermer({ rendreFocus: true }); });
     addEventListener("keydown", (ev) => {
-      // Échap ferme la feuille, sauf pendant la confirmation de « Tout effacer » (l'alerte passe devant)
+      // Échap ferme la feuille, sauf pendant une confirmation (« Tout effacer », « Effacer ce combiné » : l'alerte passe devant)
       if (ev.key === "Escape" && this.ouverte && !document.querySelector("#alerte:not([hidden])")) this.fermer({ rendreFocus: true });
     });
     e.champ.addEventListener("input", () => this.majAjouter());
@@ -59,22 +104,36 @@ export class FeuilleParis {
   }
 
   get ouverte() { return !this.el.voile.hidden; }
+  /** Ce qui est suivi, compté sur « Mon pari » : les combinés (« nba_paris_groupes »), sinon les lignes. */
+  get nombre() { return this.groupes ? this.groupes.length : this.paris.length; }
 
   // ---------- Cycle de vie ----------
 
   /** Autre TV, ou paris plus annoncés : rien n'est gardé (le texte en cours de collage reste dans le champ). */
   oublier() {
     this.paris = [];
+    this.groupes = null;
+    this.accordeon.vider();
     this.finBilan();
     this.dire("");
     this.fermer();
     this.rendre();
   }
 
-  /** Lignes reçues de la TV (`nba.paris`) : liste à jour, bilan d'un ajout dès que ses lignes arrivent. */
-  maj(paris) {
+  /**
+   * Lignes reçues de la TV (`nba.paris`) et combinés (`nba.groupes`, null sans « nba_paris_groupes ») :
+   * feuille à jour, bilan d'un ajout dès que ses lignes (ou son combiné) arrivent.
+   */
+  maj(paris, groupes = null) {
     this.paris = paris;
-    if (this.bilan && paris.some((p) => !this.bilan.avant.has(p.id))) {
+    this.groupes = groupes;
+    if (this.bilan && groupes) {
+      const g = nouveauCombine(this.bilan.avantGroupes, groupes);
+      if (g) {
+        this.finBilan();
+        this.dire(messageAjoutCombine(g));
+      }
+    } else if (this.bilan && paris.some((p) => !this.bilan.avant.has(p.id))) {
       const b = bilanAjout(this.bilan.avant, paris);
       this.finBilan();
       this.dire(messageAjout(b));
@@ -128,11 +187,14 @@ export class FeuilleParis {
     this.el.champ.value = "";
     this.majAjouter();
     this.finBilan();
+    // Combinés : le nouveau combiné sera ouvert par la TV ; rien de nouveau dans le délai : « Déjà ajouté »
+    this.accordeon.oublierOuverture();
     this.bilan = {
       avant: new Set(this.paris.map((p) => p.id)),
+      avantGroupes: new Set((this.groupes ?? []).map((g) => g.id)),
       minuterie: setTimeout(() => {
         this.finBilan();
-        this.dire(messageAjout({ suivies: 0, nonSuivies: 0 }));
+        this.dire(this.groupes ? messageAjoutCombine(null) : messageAjout({ suivies: 0, nonSuivies: 0 }));
       }, ATTENTE_BILAN_MS),
     };
     this.dire("Lecture du pari…");
@@ -144,16 +206,16 @@ export class FeuilleParis {
     this.bilan = null;
   }
 
-  /** « Tout effacer », après confirmation. */
+  /** « Tout effacer », après confirmation : toutes les lignes (et tous les combinés). */
   async effacerTout() {
     this.vibrer();
-    const n = this.paris.length;
+    const n = this.nombre;
     if (!n) return;
-    const ok = await this.confirmer({
-      titre: "Effacer ton pari ?",
-      texte: n === 1 ? "La ligne suivie sera retirée de la TV." : `Les ${n} lignes suivies seront retirées de la TV.`,
-      ok: "Effacer", annuler: "Annuler",
-    });
+    const combines = !!this.groupes;
+    let texte;
+    if (combines) texte = n === 1 ? "Le combiné sera retiré de la TV." : `Les ${n} combinés seront retirés de la TV.`;
+    else texte = n === 1 ? "La ligne suivie sera retirée de la TV." : `Les ${n} lignes suivies seront retirées de la TV.`;
+    const ok = await this.confirmer({ titre: "Effacer ton pari ?", texte, ok: "Effacer", annuler: "Annuler" });
     if (!ok) {
       if (this.ouverte) this.el.effacer.focus({ preventScroll: true });
       return;
@@ -164,8 +226,44 @@ export class FeuilleParis {
     }
     journal("nba_paris_effacer");
     this.finBilan();
-    this.dire("Lignes effacées");
+    this.dire(!combines ? "Lignes effacées" : n === 1 ? "Combiné effacé" : "Combinés effacés");
     if (this.ouverte) this.el.titre.focus({ preventScroll: true });
+  }
+
+  // ---------- Combinés ----------
+
+  /** En-tête d'un combiné touché : `nba_paris_ouvrir`, l'accordéon s'ouvre sur lui (la TV suit). */
+  ouvrirCombine(id) {
+    this.vibrer();
+    if (!this.ctrl.nbaParisOuvrir(id)) {
+      this.dire("La TV n'est pas connectée", { erreur: true });
+      return false;
+    }
+    journal("nba_paris_ouvrir");
+    this.accordeon.noterOuverture(id);
+    return true;
+  }
+
+  /** « Effacer ce combiné », après confirmation : `nba_paris_effacer {groupe}`. */
+  async effacerCombine(g) {
+    this.vibrer();
+    const n = g.suivies + g.nonSuivies;
+    const ok = await this.confirmer({
+      titre: "Effacer ce combiné ?",
+      texte: `${g.nom} (${n === 1 ? "1 ligne" : `${n} lignes`}) sera retiré de la TV.`,
+      ok: "Effacer", annuler: "Annuler",
+    });
+    // Focus rendu au combiné (« Effacer ce combiné », ou son en-tête) ; retiré par la TV : au voisin
+    const rendreFocus = (role) => { if (this.ouverte && !this.accordeon.focus(g.id, role)) this.el.titre.focus({ preventScroll: true }); };
+    if (!ok) return rendreFocus("effacer");
+    if (!this.ctrl.nbaParisEffacer(g.id)) {
+      this.dire("La TV n'est pas connectée", { erreur: true });
+      return rendreFocus("effacer");
+    }
+    journal("nba_paris_effacer");
+    this.finBilan();
+    this.dire(`${g.nom} effacé`);
+    rendreFocus("tete");
   }
 
   /** Retour sous le titre (région polie : lu par les lecteurs d'écran), ramené à l'écran avec les lignes. */
@@ -178,51 +276,41 @@ export class FeuilleParis {
 
   // ---------- Lignes ----------
 
-  /** Liste mise à jour sur place (focus gardé) ; reconstruite si les lignes changent. */
+  /**
+   * Liste à plat, ou combinés en accordéon : mise à jour sur place (focus gardé), reconstruite si
+   * les lignes changent.
+   */
   rendre() {
     const e = this.el;
     const paris = this.paris;
-    e.liste.hidden = !paris.length;
-    e.vide.hidden = !!paris.length;
-    e.effacer.hidden = !paris.length;
+    const combines = !!this.groupes;
+    const vide = !this.nombre;
+    e.liste.hidden = combines || vide;
+    e.combines.hidden = !combines || vide;
+    e.vide.hidden = !vide;
+    e.vide.textContent = combines ? "Aucun combiné pour l'instant." : "Aucune ligne suivie pour l'instant.";
+    e.effacer.hidden = vide;
+    if (combines) {
+      if (this.sig) {
+        this.sig = "";
+        this.lignes.clear();
+        e.liste.replaceChildren();
+      }
+      this.accordeon.maj(this.groupes, paris);
+      return;
+    }
+    if (this.accordeon.ordre.length) this.accordeon.vider();
     const sig = paris.map((p) => p.id).join("\n");
     if (sig !== this.sig) {
       this.sig = sig;
       this.lignes.clear();
-      e.liste.replaceChildren(...paris.map((p) => this.construireLigne(p)));
+      e.liste.replaceChildren(...paris.map((p) => {
+        const l = construireLigne(p);
+        this.lignes.set(p.id, l);
+        return l.li;
+      }));
     }
     for (const p of paris) this.lignes.get(p.id)?.maj(p);
   }
-
-  construireLigne(p) {
-    const pastille = h("span", { class: "pari-etat", "aria-hidden": "true" });
-    const libelle = h("span", { class: "pari-libelle" });
-    const detail = h("span", { class: "pari-detail" });
-    const valeur = h("span", { class: "pari-valeur", "aria-hidden": "true" });
-    const remplissage = h("span", {});
-    const barre = h("span", { class: "pari-barre", "aria-hidden": "true" }, remplissage);
-    // Lecteurs d'écran : une phrase par ligne (« … : en cours, 12 sur 19,5 »)
-    const lecteur = h("span", { class: "invisible-lecteur" });
-    const li = h("li", { class: "pari", "data-id": p.id },
-      pastille, h("span", { class: "pari-textes", "aria-hidden": "true" }, libelle, detail), valeur, barre, lecteur);
-    let icn = null;
-    const maj = (l) => {
-      li.dataset.etat = l.etat;
-      if (icn !== l.etat) {
-        icn = l.etat;
-        pastille.replaceChildren(...(ICONES_ETAT[l.etat] ? [icone(ICONES_ETAT[l.etat])] : []));
-      }
-      libelle.textContent = l.libelle;
-      const m = matchPari(l);
-      detail.textContent = m ? `${NOMS_ETAT_PARI[l.etat]} · ${m}` : NOMS_ETAT_PARI[l.etat];
-      valeur.textContent = valeurPari(l);
-      valeur.hidden = !valeur.textContent;
-      const a = avancementPari(l);
-      barre.hidden = a === null;
-      if (a !== null) remplissage.style.setProperty("--p", String(a));
-      lecteur.textContent = textePari(l);
-    };
-    this.lignes.set(p.id, { li, maj });
-    return li;
-  }
 }
+

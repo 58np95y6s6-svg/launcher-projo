@@ -9,7 +9,8 @@ const EVENEMENTS = new Set([
   "appli_ouverte", "appli_refusee", "reglage",
   "lien_envoye", "lien_refuse", // jamais l'URL : seulement la raison d'un refus
   "nba_afficher", // seulement le format (cache, resume, details, pari) : jamais de score, d'équipe ni de match
-  "nba_paris_ajouter", "nba_paris_effacer", // sans rien d'autre : jamais le texte collé, une ligne, une cote ni une mise
+  // sans rien d'autre : jamais le texte collé, une ligne, une cote, une mise ni l'id d'un combiné
+  "nba_paris_ajouter", "nba_paris_effacer", "nba_paris_ouvrir",
 ]);
 // Codes courts acceptés en complément (raisons, états) : lettres, chiffres et « _ » seulement.
 const RE_CODE = /^[a-z0-9_]{1,24}$/;

@@ -113,3 +113,46 @@ test("thème NBA : contrastes WCAG AA sur le fond, le verre sombre, les champs e
     assert.ok(c >= 4.5, `--${texte} sur --${fond} : ${c.toFixed(2)}:1`);
   }
 });
+
+test("combinés (feuille « Mon pari ») : contrastes WCAG AA dans les 8 thèmes", () => {
+  const css = readFileSync(new URL("../../remote-pwa/styles.css", import.meta.url), "utf8");
+  const racine = css.match(/:root \{([^}]*)\}/)[1];
+  const couleur = (c) => {
+    const h = c.replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i, "#$1$1$2$2$3$3").match(/^#([0-9a-f]{6})$/i);
+    if (h) return [0, 2, 4].map((i) => parseInt(h[1].slice(i, i + 2), 16)).concat(1);
+    const [r, g, b, a = 1] = c.match(/^rgba?\(([^)]+)\)$/)[1].split(",").map(Number);
+    return [r, g, b, a];
+  };
+  const sur = (c, f) => [0, 1, 2].map((i) => c[i] * c[3] + f[i] * (1 - c[3])).concat(1);
+  // color-mix(in srgb, a p%, b) avec b opaque
+  const melange = (a, p, b) => [0, 1, 2].map((i) => a[i] * p + b[i] * (1 - p)).concat(1);
+  const lum = (c) => c.slice(0, 3).map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+    .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const contraste = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  // Les fonds des combinés et du bouton « Effacer ce combiné » sont bien ceux vérifiés ici
+  assert.match(css, /\.combine \{[^}]*background: color-mix\(in srgb, var\(--texte\) 5%, var\(--feuille\)\)/);
+  assert.match(css, /\.btn-effacer-combine \{[^}]*background: color-mix\(in srgb, var\(--erreur\) 8%, var\(--feuille\)\)/);
+
+  for (const d of DESIGNS) {
+    const bloc = css.match(new RegExp(`\\[data-theme="${d}"\\][^{]*\\{([^}]*)\\}`))[1];
+    // Jeton du thème, sinon celui de :root (--gagne, --direct des thèmes clairs)
+    const jeton = (n) => couleur((bloc.match(new RegExp(`--${n}:\\s*([^;]+);`)) ?? racine.match(new RegExp(`--${n}:\\s*([^;]+);`)))[1].trim());
+    const feuille = jeton("feuille");
+    const fond = melange(sur(jeton("texte"), feuille), 0.05, feuille);
+    // En-tête et lignes : nom, détail (état, cote), « 2/5 », libellés
+    for (const t of ["texte", "texte-2", "lien", "erreur", "gagne"]) {
+      const c = contraste(sur(jeton(t), fond), fond);
+      assert.ok(c >= 4.5, `${d} : --${t} sur un combiné : ${c.toFixed(2)}:1`);
+    }
+    // « Effacer ce combiné »
+    const erreur = sur(jeton("erreur"), feuille);
+    const c = contraste(erreur, melange(erreur, 0.08, feuille));
+    assert.ok(c >= 4.5, `${d} : « Effacer ce combiné » : ${c.toFixed(2)}:1`);
+    // Éléments graphiques (≥ 3:1) : ✓ et ✗ sur leur pastille, anneau et point en cours, cadre de l'ouvert
+    for (const [nom, a, b] of [
+      ["✓", feuille, sur(jeton("gagne"), fond)], ["✗", feuille, erreur],
+      ["en cours", sur(jeton("lien"), fond), fond], ["attente", sur(jeton("texte-2"), fond), fond],
+      ["cadre de l'ouvert", sur(jeton("principal"), fond), fond],
+    ]) assert.ok(contraste(a, b) >= 3, `${d} : ${nom} : ${contraste(a, b).toFixed(2)}:1`);
+  }
+});
