@@ -3,10 +3,11 @@
 // comme le fera l'app Android : signalisation PeerJS brute, réponse WebRTC, hello signés,
 // appairage (QR et code de secours), commandes, révocation, pilotage (applis et réglages),
 // Envoyer sur la TV (liens : VPN, raccourci iOS), box score NBA (matchs factices, sans réseau) et
-// ses paris suivis (lecture simplifiée du texte collé, joueurs factices).
+// ses paris suivis (lecture simplifiée du texte collé, joueurs factices), rangés par combiné.
 //
 // Paramètres d'URL : ?ws=<port du faux serveur PeerJS>&nom=<nom de la TV>&vmax=<version max>
-//   &fonctions=apps,reglages,liens (défaut) | …,nba (box score NBA) | …,nba,nba_paris (paris suivis)
+//   &fonctions=apps,reglages,liens (défaut) | …,nba (box score NBA) | …,nba,nba_paris (paris suivis,
+//   liste à plat) | …,nba,nba_paris,nba_paris_groupes (combinés, en accordéon)
 //   | aucune (TV ancienne : pas de champ fonctions, messages ignorés)
 //   &design=verre (défaut) | galerie | pastel… | aucun (TV ancienne : ni `design` dans hello, ni message `design`)
 
@@ -20,6 +21,7 @@ const FONCTIONS = (params.get("fonctions") ?? "apps,reglages,liens").split(",").
 const AVEC_LIENS = FONCTIONS.includes("liens");
 const AVEC_NBA = FONCTIONS.includes("nba");
 const AVEC_PARIS = AVEC_NBA && FONCTIONS.includes("nba_paris");
+const AVEC_COMBINES = AVEC_PARIS && FONCTIONS.includes("nba_paris_groupes");
 const DESIGN = params.get("design") ?? "verre";
 const AVEC_DESIGN = DESIGN !== "aucun";
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -168,9 +170,9 @@ function session(pc, canal, viaId) {
       if (m.curseur !== undefined) r.curseur = m.curseur;
       tv.recus.push(r);
     } else if (PILOTAGE[m.t] && FONCTIONS.length && (AVEC_LIENS || !m.t.startsWith("lien")) && (AVEC_NBA || !m.t.startsWith("nba"))
-      && (AVEC_PARIS || !m.t.startsWith("nba_paris"))) {
+      && (AVEC_PARIS || !m.t.startsWith("nba_paris")) && (AVEC_COMBINES || m.t !== "nba_paris_ouvrir")) {
       const r = { appareil: ses.appareil, t: m.t };
-      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord", "affichage", "texte"]) if (m[c] !== undefined) r[c] = m[c];
+      for (const c of ["ids", "id", "cle", "valeur", "bouton", "url", "titre", "sansVpn", "vpnDabord", "affichage", "texte", "groupe"]) if (m[c] !== undefined) r[c] = m[c];
       tv.recus.push(r);
       PILOTAGE[m.t](ses, m);
     } else tv.ignores.push(m.t);
@@ -519,9 +521,26 @@ const PILOTAGE = {
     ses.envoyer(etatNba());
     pousserNba();
   },
-  nba_paris_effacer(ses) {
-    P.lignes = [];
-    log("nba-paris-effaces");
+  // Combinés : avec `groupe`, ce combiné seulement (inconnu : rien) ; sans, tous
+  nba_paris_effacer(ses, m) {
+    if (AVEC_COMBINES && typeof m.groupe === "string") {
+      retirerCombine(m.groupe);
+      log("nba-paris-combine-efface");
+    } else {
+      P.lignes = [];
+      P.groupes = [];
+      P.ouvert = null;
+      log("nba-paris-effaces");
+    }
+    ses.envoyer(etatNba());
+    pousserNba();
+  },
+  // Combinés : ce combiné devient l'ouvert (groupe inconnu : ignoré)
+  nba_paris_ouvrir(ses, m) {
+    if (tv.parisSourde) return; // tests : la TV ne répond pas (le téléphone revient à son combiné ouvert)
+    if (typeof m.groupe !== "string" || !P.groupes.some((g) => g.id === m.groupe)) return;
+    P.ouvert = m.groupe;
+    log("nba-paris-ouvert");
     ses.envoyer(etatNba());
     pousserNba();
   },
@@ -630,6 +649,7 @@ const EQUIPES_NBA = {
   GSW: { nom: "Warriors", couleur: "#1D428A", texte: "#FFC72C" },
   DEN: { nom: "Nuggets", couleur: "#0E2240", texte: "#FEC524" },
   PHI: { nom: "76ers", couleur: "#006BB6", texte: "#FFFFFF" },
+  MIL: { nom: "Bucks", couleur: "#00471B", texte: "#EEE1C6" },
   IND: { nom: "Pacers", couleur: "#002D62", texte: "#FDBB30" },
   MEM: { nom: "Grizzlies", couleur: "#5D76A9", texte: "#12173F" },
   LAC: { nom: "Clippers", couleur: "#C8102E", texte: "#FFFFFF" },
@@ -637,7 +657,8 @@ const EQUIPES_NBA = {
 const equipeNba = (code, score) => ({ code, ...EQUIPES_NBA[code], score });
 /**
  * Jeux de matchs : aucun, un (LAL-BOS), deux (LAL-BOS et GSW-DEN), termine (LAL-BOS fini),
- * paris (PHI-IND et MEM-LAC : les matchs du pari des tests).
+ * paris (PHI-IND et MEM-LAC : les matchs du pari des tests), combines (PHI-MIL et MEM-LAC : les
+ * matchs des tickets Winamax des captures).
  */
 const SCENARIOS_NBA = {
   aucun: () => [],
@@ -646,6 +667,10 @@ const SCENARIOS_NBA = {
   termine: () => [{ id: "LAL-BOS", ext: equipeNba("LAL", 112), dom: equipeNba("BOS", 109), statut: "Terminé", direct: false }],
   paris: () => [
     { id: "PHI-IND", ext: equipeNba("PHI", 61), dom: equipeNba("IND", 57), statut: "3e QT · 6:12", direct: true },
+    { id: "MEM-LAC", ext: equipeNba("MEM", 48), dom: equipeNba("LAC", 52), statut: "2e QT · 1:05", direct: true },
+  ],
+  combines: () => [
+    { id: "PHI-MIL", ext: equipeNba("PHI", 78), dom: equipeNba("MIL", 64), statut: "3e QT · 4:18", direct: true },
     { id: "MEM-LAC", ext: equipeNba("MEM", 48), dom: equipeNba("LAC", 52), statut: "2e QT · 1:05", direct: true },
   ],
 };
@@ -666,6 +691,7 @@ function etatNba() {
   const e = { t: "nba", matchs: N.matchs, choisi: choisiNba(), affichage: N.affichage, decalage: N.decalage };
   if (N.erreur) e.erreur = N.erreur;
   if (AVEC_PARIS) e.paris = lignesParis();
+  if (AVEC_COMBINES) e.groupes = combinesNba(e.paris);
   return e;
 }
 
@@ -680,7 +706,7 @@ function pousserNba() {
 }
 
 /**
- * Change l'état : {scenario: "aucun" | "un" | "deux" | "termine"}, {matchs}, {affichage}, {erreur},
+ * Change l'état : {scenario: "aucun" | "un" | "deux" | "termine" | "paris" | "combines"}, {matchs}, {affichage}, {erreur},
  * {decalage}… ; `nba` est poussé aux téléphones abonnés.
  */
 tv.changerNba = (champs) => {
@@ -700,73 +726,216 @@ tv.scoreNba = (id, ext, dom, statut) => {
   pousserNba();
 };
 
-// ---------- Paris suivis (docs/telecommande.md, « Paris suivis ») ----------
+// ---------- Paris suivis (docs/telecommande.md, « Paris suivis » et « Combinés ») ----------
 // Lecture simplifiée du texte collé, suffisante pour les tests : couples « sujet / type » sur deux
 // lignes (« Philadelphie 76ers / Vainqueur du match », « Tyrese Maxey + de 19,5 / Nombre de points du
-// joueur (paliers) ») ; un autre type de pari (« … du match », « Nombre de … ») est gardé « non suivi ».
+// joueur (paliers) ») ; tickets Winamax (« Écart de points (handicap) Philadelphia 76ers -12.5 »,
+// « Nombre de points Plus de 229,5 », « Nombre de points du joueur (paliers) - Tyrese Maxey : » puis
+// « Plus de 24,5 ») ; un autre type de pari (« … du match », « Nombre de … ») est gardé « non suivi ».
 // Le reste (cotes, mises) est ignoré. Joueurs et équipes factices ; valeurs tirées des matchs factices.
+// Combinés (« nba_paris_groupes ») : chaque collage est un combiné (« g1 », « Combiné 1 »…), ses
+// lignes dédoublonnées dans le combiné seulement ; un collage identique à un combiné n'ajoute rien ;
+// le nouveau combiné est l'ouvert ; 10 combinés et 40 lignes au plus (le plus ancien part) ; cote
+// totale lue au mieux (« Cote totale 10,06 », « COTE » puis « 5,10 », « cote 3,10 »).
 
 const MAX_TEXTE_PARI = 4000;
 const MAX_PARIS = 20;
-const P = { lignes: [], n: 0 }; // lignes : {id, cle, libelle, equipe? | joueur?, stat?, seuil?, suivi}
+const MAX_COMBINES = 10;
+const MAX_LIGNES_COMBINES = 40;
+// lignes : {id, cle, libelle, groupe?, equipe? | joueur? | total?, stat?, seuil?, handicap?, moins?, suivi}
+// groupes : {id, nom, cote, cles} ; ouvert : id du combiné ouvert
+const P = { lignes: [], n: 0, groupes: [], ng: 0, ouvert: null };
 tv.paris = P;
-/** Joueurs connus (nom en minuscules sans accents) : nom court, match, statistiques actuelles. */
+/** Joueurs connus (nom en minuscules sans accents) : nom court, équipe, statistiques actuelles. */
 const JOUEURS_NBA = {
-  "tyrese maxey": { nom: "T. Maxey", match: "PHI-IND", points: 12, passes: 4, rebonds: 2 },
-  "kentavious caldwell-pope": { nom: "K. Caldwell-Pope", match: "MEM-LAC", points: 11, passes: 1, rebonds: 3 },
-  "ivica zubac": { nom: "I. Zubac", match: "MEM-LAC", points: 8, passes: 1, rebonds: 9 },
+  "tyrese maxey": { nom: "T. Maxey", equipe: "PHI", points: 12, passes: 4, rebonds: 2 },
+  "kentavious caldwell-pope": { nom: "K. Caldwell-Pope", equipe: "MEM", points: 11, passes: 1, rebonds: 3 },
+  "ivica zubac": { nom: "I. Zubac", equipe: "LAC", points: 8, passes: 1, rebonds: 9 },
 };
 tv.joueursNba = JOUEURS_NBA;
-const EQUIPES_PARI = { "philadelphie 76ers": "PHI", "philadelphia 76ers": "PHI", "76ers": "PHI", sixers: "PHI", "los angeles lakers": "LAL", lakers: "LAL", celtics: "BOS", "boston celtics": "BOS" };
+const EQUIPES_PARI = {
+  "philadelphie 76ers": "PHI", "philadelphia 76ers": "PHI", "76ers": "PHI", sixers: "PHI",
+  "milwaukee bucks": "MIL", bucks: "MIL",
+  "los angeles lakers": "LAL", lakers: "LAL", celtics: "BOS", "boston celtics": "BOS",
+};
 const STATS_PARI = [[/^nombre de points/i, "points", "pts"], [/^nombre de passes/i, "passes", "passes"], [/^nombre de rebonds/i, "rebonds", "rebonds"]];
-const sansAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const sansAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 const seuilFr = (x) => String(x).replace(".", ",");
+const nombreLu = (s) => Number(s.replace(",", "."));
+// Tickets Winamax : handicap, total du match, statistique d'un joueur (titre puis « Plus de 24,5 »)
+const RE_HANDICAP = /^[ée]cart de points \(handicap\)\s+(.+?)\s+([+-]\d+(?:[.,]\d+)?)$/i;
+const RE_TOTAL = /^nombre de points (plus|moins) de (\d+(?:[.,]\d+)?)$/i;
+const RE_JOUEUR = /^nombre de (points|rebonds|passes) (?:d[ée]cisives )?du joueur \(paliers\)\s*-\s*(.+?)\s*:?$/i;
+const RE_PALIER = /^(plus|moins) de (\d+(?:[.,]\d+)?)$/i;
+const RE_NOMBRE = /^\d+(?:[.,]\d+)?$/;
+const RE_COTE = /^cote(?: totale)?\s*:?\s*(\d+(?:[.,]\d+)?)?$/i;
+/** Ligne d'un ticket Winamax, d'une cote ou d'un nombre seul : jamais lue comme « sujet / type ». */
+const special = (x) => [RE_HANDICAP, RE_TOTAL, RE_JOUEUR, RE_PALIER, RE_NOMBRE, RE_COTE].some((re) => re.test(x));
+const UNITES = { points: "pts", passes: "passes", rebonds: "rebonds" };
 
-/** Texte collé → lignes nouvelles ajoutées (une ligne identique n'est pas ajoutée deux fois) ; renvoie leur nombre. */
-function ajouterParis(texte) {
+/** Première équipe NBA nommée par le ticket (ligne de match, handicap…), ou null. */
+function equipeDuTicket(texte) {
+  const t = ` ${sansAccents(texte).replace(/[^a-z0-9]+/g, " ")} `;
+  const noms = Object.keys(EQUIPES_PARI).sort((a, b) => b.length - a.length);
+  let meilleure = null;
+  for (const n of noms) {
+    const i = t.indexOf(` ${n} `);
+    if (i >= 0 && (!meilleure || i < meilleure.i)) meilleure = { i, code: EQUIPES_PARI[n] };
+  }
+  return meilleure?.code ?? null;
+}
+
+/** Cote totale telle que lue (« 10,06 », « 5,10 »), ou null. */
+function coteDuTicket(l) {
+  for (let i = 0; i < l.length; i++) {
+    const m = l[i].match(RE_COTE);
+    if (m?.[1]) return m[1];
+    if (m && RE_NOMBRE.test(l[i + 1] ?? "")) return l[i + 1];
+  }
+  return null;
+}
+
+/** Texte collé → lignes lues (dédoublonnées dans ce texte), et cote totale. */
+function lireParis(texte) {
   const l = texte.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
-  let n = 0;
-  const ajouter = (ligne) => {
-    if (P.lignes.length >= MAX_PARIS || P.lignes.some((x) => x.cle === ligne.cle)) return;
-    P.lignes.push({ id: `p${++P.n}`, ...ligne });
-    n++;
-  };
-  for (let i = 0; i + 1 < l.length; i++) {
+  const lues = [];
+  const lire = (ligne) => { if (!lues.some((x) => x.cle === ligne.cle)) lues.push(ligne); };
+  const equipeTicket = equipeDuTicket(texte);
+  for (let i = 0; i < l.length; i++) {
+    let m, p;
+    if ((m = l[i].match(RE_HANDICAP)) && EQUIPES_PARI[sansAccents(m[1])]) {
+      const equipe = EQUIPES_PARI[sansAccents(m[1])];
+      const h = nombreLu(m[2]);
+      lire({ cle: `h|${equipe}|${h}`, libelle: `${EQUIPES_NBA[equipe].nom} · handicap ${h < 0 ? "−" : "+"}${seuilFr(Math.abs(h))}`, equipe, handicap: h, suivi: true });
+      continue;
+    }
+    if ((m = l[i].match(RE_TOTAL)) && equipeTicket) {
+      const moins = /moins/i.test(m[1]);
+      const seuil = nombreLu(m[2]);
+      lire({ cle: `t|${equipeTicket}|${moins ? "-" : "+"}|${seuil}`, libelle: `Total du match · ${moins ? "-" : "+"} de ${seuilFr(seuil)} pts`, total: equipeTicket, moins, seuil, suivi: true });
+      continue;
+    }
+    if ((m = l[i].match(RE_JOUEUR)) && (p = (l[i + 1] ?? "").match(RE_PALIER))) {
+      const stat = m[1].toLowerCase();
+      const joueur = sansAccents(m[2]);
+      const moins = /moins/i.test(p[1]);
+      const seuil = nombreLu(p[2]);
+      const nom = JOUEURS_NBA[joueur]?.nom ?? m[2];
+      lire({ cle: `j|${joueur}|${stat}|${seuil}${moins ? "|-" : ""}`, libelle: `${nom} · ${moins ? "-" : "+"} de ${seuilFr(seuil)} ${UNITES[stat]}`, joueur, stat, seuil, moins, suivi: true });
+      i++;
+      continue;
+    }
     const [sujet, type] = [l[i], l[i + 1]];
+    if (type === undefined || special(sujet) || special(type)) continue;
     const plus = sujet.match(/^(.+?)\s*\+\s*de\s+(\d+(?:[.,]\d+)?)$/i);
     const stat = STATS_PARI.find(([re]) => re.test(type));
     if (/^vainqueur du match$/i.test(type) && EQUIPES_PARI[sansAccents(sujet)]) {
       const equipe = EQUIPES_PARI[sansAccents(sujet)];
-      ajouter({ cle: `v|${equipe}`, libelle: `${EQUIPES_NBA[equipe].nom} vainqueurs`, equipe, suivi: true });
+      lire({ cle: `v|${equipe}`, libelle: `${EQUIPES_NBA[equipe].nom} vainqueurs`, equipe, suivi: true });
     } else if (plus && stat) {
       const joueur = sansAccents(plus[1]);
-      const seuil = Number(plus[2].replace(",", "."));
+      const seuil = nombreLu(plus[2]);
       const nom = JOUEURS_NBA[joueur]?.nom ?? plus[1];
-      ajouter({ cle: `j|${joueur}|${stat[1]}|${seuil}`, libelle: `${nom} · + de ${seuilFr(seuil)} ${stat[2]}`, joueur, stat: stat[1], seuil, suivi: true });
+      lire({ cle: `j|${joueur}|${stat[1]}|${seuil}`, libelle: `${nom} · + de ${seuilFr(seuil)} ${stat[2]}`, joueur, stat: stat[1], seuil, suivi: true });
     } else if (/ du match$|^nombre de /i.test(type)) {
-      ajouter({ cle: `n|${sansAccents(sujet)}|${sansAccents(type)}`, libelle: `${sujet} · ${type}`, suivi: false });
+      lire({ cle: `n|${sansAccents(sujet)}|${sansAccents(type)}`, libelle: `${sujet} · ${type}`, suivi: false });
     } else continue;
     i++; // le type est lu avec son sujet
   }
-  return n;
+  return { lues, cote: coteDuTicket(l) };
 }
 
-/** Lignes du message `nba` : état et valeur actuels (matchs factices). */
+/**
+ * Texte collé → lignes ajoutées ; renvoie leur nombre. Liste à plat : une ligne identique déjà
+ * présente n'est pas ajoutée deux fois (20 lignes au plus). Combinés : un nouveau combiné, ouvert.
+ */
+function ajouterParis(texte) {
+  const { lues, cote } = lireParis(texte);
+  if (!AVEC_COMBINES) {
+    let n = 0;
+    for (const ligne of lues) {
+      if (P.lignes.length >= MAX_PARIS || P.lignes.some((x) => x.cle === ligne.cle)) continue;
+      P.lignes.push({ id: `p${++P.n}`, ...ligne });
+      n++;
+    }
+    return n;
+  }
+  if (!lues.length) return 0;
+  const cles = lues.map((x) => x.cle).sort().join("\n");
+  if (P.groupes.some((g) => g.cles === cles)) return 0; // mêmes lignes qu'un combiné présent : rien
+  const g = { id: `g${++P.ng}`, nom: `Combiné ${P.ng}`, cote, cles };
+  P.groupes.push(g);
+  const ajoutees = lues.slice(0, MAX_LIGNES_COMBINES);
+  for (const ligne of ajoutees) P.lignes.push({ id: `p${++P.n}`, groupe: g.id, ...ligne });
+  P.ouvert = g.id;
+  while (P.groupes.length > 1 && (P.groupes.length > MAX_COMBINES || P.lignes.length > MAX_LIGNES_COMBINES)) retirerCombine(P.groupes[0].id);
+  return ajoutees.length;
+}
+
+/** Retire un combiné et ses lignes ; l'ouvert retiré : le plus récent s'ouvre. */
+function retirerCombine(id) {
+  P.groupes = P.groupes.filter((g) => g.id !== id);
+  P.lignes = P.lignes.filter((x) => x.groupe !== id);
+  if (P.ouvert === id || !P.groupes.some((g) => g.id === P.ouvert)) P.ouvert = P.groupes.at(-1)?.id ?? null;
+}
+
+const matchDeLEquipe = (code) => N.matchs.find((x) => x.ext.code === code || x.dom.code === code);
+/** Seuil « plus de » (ou « moins de ») : gagné dès qu'il est dépassé (perdu pour « moins de »), sinon à la fin. */
+const etatSeuil = (valeur, seuil, moins, direct) => (moins
+  ? (valeur > seuil ? "perdu" : direct ? "en_cours" : "gagne")
+  : (valeur > seuil ? "gagne" : direct ? "en_cours" : "perdu"));
+
+/** Lignes du message `nba` : état et valeur actuels (matchs factices) ; `groupe` avec les combinés. */
 function lignesParis() {
   return P.lignes.map((p) => {
-    const l = { id: p.id, libelle: p.libelle, etat: "non_suivi" };
+    const l = { id: p.id, libelle: p.libelle, etat: "non_suivi", ...(AVEC_COMBINES ? { groupe: p.groupe } : {}) };
     if (!p.suivi) return l;
+    if (p.handicap !== undefined) {
+      const m = matchDeLEquipe(p.equipe);
+      if (!m) return { ...l, etat: "attente", seuil: -p.handicap };
+      const ecart = m.ext.code === p.equipe ? m.ext.score - m.dom.score : m.dom.score - m.ext.score;
+      const couvert = ecart + p.handicap;
+      const etat = m.direct ? "en_cours" : couvert > 0 ? "gagne" : couvert < 0 ? "perdu" : "attente";
+      return { ...l, etat, match: m.id, valeur: ecart, seuil: -p.handicap };
+    }
+    if (p.total) {
+      const m = matchDeLEquipe(p.total);
+      if (!m) return { ...l, etat: "attente", seuil: p.seuil };
+      const valeur = m.ext.score + m.dom.score;
+      return { ...l, etat: etatSeuil(valeur, p.seuil, p.moins, m.direct), match: m.id, valeur, seuil: p.seuil };
+    }
     if (p.equipe) {
-      const m = N.matchs.find((x) => x.ext.code === p.equipe || x.dom.code === p.equipe);
+      const m = matchDeLEquipe(p.equipe);
       if (!m) return { ...l, etat: "attente" };
       const ecart = m.ext.code === p.equipe ? m.ext.score - m.dom.score : m.dom.score - m.ext.score;
       return { ...l, etat: m.direct ? "en_cours" : ecart > 0 ? "gagne" : "perdu", match: m.id, valeur: ecart };
     }
     const j = JOUEURS_NBA[p.joueur];
-    const m = j && N.matchs.find((x) => x.id === j.match);
+    const m = j && matchDeLEquipe(j.equipe);
     if (!m) return { ...l, etat: "attente", seuil: p.seuil };
     const valeur = j[p.stat];
-    return { ...l, etat: valeur > p.seuil ? "gagne" : m.direct ? "en_cours" : "perdu", match: m.id, valeur, seuil: p.seuil };
+    return { ...l, etat: etatSeuil(valeur, p.seuil, p.moins, m.direct), match: m.id, valeur, seuil: p.seuil };
+  });
+}
+
+/**
+ * Combinés du message `nba` : état d'après leurs lignes suivies (perdu dès qu'une est perdue, gagné
+ * quand toutes sont gagnées, en attente si toutes attendent, en cours sinon ; les non suivies ne
+ * comptent pas), « gagnées / suivies », non suivies, cote, ouvert.
+ */
+function combinesNba(lignes) {
+  return P.groupes.map((g) => {
+    const l = lignes.filter((x) => x.groupe === g.id);
+    const suivies = l.filter((x) => x.etat !== "non_suivi");
+    const gagnees = suivies.filter((x) => x.etat === "gagne").length;
+    let etat = "en_cours";
+    if (suivies.some((x) => x.etat === "perdu")) etat = "perdu";
+    else if (suivies.length && gagnees === suivies.length) etat = "gagne";
+    else if (suivies.every((x) => x.etat === "attente")) etat = "attente";
+    return {
+      id: g.id, nom: g.nom, ...(g.cote ? { cote: g.cote } : {}), etat,
+      gagnees, suivies: suivies.length, nonSuivies: l.length - suivies.length, ouvert: g.id === P.ouvert,
+    };
   });
 }
 

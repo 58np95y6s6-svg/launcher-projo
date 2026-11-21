@@ -9,7 +9,7 @@
 //   focus_text {type, s, action} | focus_lost
 //   apps {liste} | app_image {id, maj, forme, img} | app_ouverte {id, ok} | reglages {items}
 //   liens {vpn, seulementVpn, appliPages, appliVpn?, raccourci?} | lien_ouvert {url, ok, ouvertDans?, raison?}
-//   nba {matchs, choisi, affichage, decalage, erreur?, paris?}
+//   nba {matchs, choisi, affichage, decalage, erreur?, paris?, groupes?}
 //   version {verdict}
 //   revoquee {tv}
 
@@ -317,5 +317,8 @@ export class Controleur extends EventTarget {
   nbaChoisir(id) { return this.session?.envoyer("nba_choisir", { id }) ?? false; }
   /** Paris suivis : texte collé (4000 caractères au plus), lu par la TV. */
   nbaParisAjouter(texte) { return this.session?.envoyer("nba_paris_ajouter", { texte }) ?? false; }
-  nbaParisEffacer() { return this.session?.envoyer("nba_paris_effacer") ?? false; }
+  /** Sans `groupe` : toutes les lignes ; avec (« nba_paris_groupes ») : ce combiné seulement. */
+  nbaParisEffacer(groupe) { return this.session?.envoyer("nba_paris_effacer", groupe ? { groupe } : undefined) ?? false; }
+  /** Combinés : ce combiné devient le combiné ouvert, sur la TV et dans `nba`. */
+  nbaParisOuvrir(groupe) { return this.session?.envoyer("nba_paris_ouvrir", { groupe }) ?? false; }
 }

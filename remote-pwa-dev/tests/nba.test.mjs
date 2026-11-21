@@ -1,5 +1,6 @@
 // Box score NBA : décodage et validation du message `nba`, champs envoyés, affichage du bandeau ;
-// paris suivis (`nba.paris`, texte envoyé, valeurs affichées, bilan d'un ajout).
+// paris suivis (`nba.paris`, texte envoyé, valeurs affichées, bilan d'un ajout) ; combinés
+// (`nba.groupes`, `groupe` des lignes, en-têtes de l'accordéon, bilan, résumé, journal).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import "../../remote-pwa/config.js";
@@ -9,10 +10,13 @@ import {
   AFFICHAGES, NOMS_AFFICHAGE, ERREURS, MAX_MATCHS, affichagesProposes,
   normaliserParis, normaliserPari, texteAEnvoyer, nombreFr, valeurPari, avancementPari, matchPari, textePari,
   bilanAjout, messageAjout, resumeParis, ETATS_PARI, NOMS_ETAT_PARI, MAX_PARIS, MAX_TEXTE_PARI,
+  normaliserCombine, normaliserCombines, lignesCombine, combineOuvert, compteCombine, detailCombine, texteCombine,
+  resumeCombines, nouveauCombine, messageAjoutCombine, ETATS_COMBINE, MAX_COMBINES, MAX_LIGNES_COMBINES,
 } from "../../remote-pwa/js/nba.js";
 import { decoder } from "../../remote-pwa/js/codec.js";
-import { lireFonctions } from "../../remote-pwa/js/pilotage.js";
+import { lireFonctions, FONCTIONS } from "../../remote-pwa/js/pilotage.js";
 import { journal } from "../../remote-pwa/js/journal.js";
+import { readFileSync } from "node:fs";
 
 const equipe = (code, score, couleur = "#552583", texte = "#FDB927", nom = code === "LAL" ? "Lakers" : "Celtics") =>
   ({ code, nom, score, couleur, texte });
@@ -280,4 +284,114 @@ test("paris : journal sans texte de pari", () => {
     journal("nba_paris_effacer", "Tyrese Maxey");
   } finally { console.info = orig; }
   assert.deepEqual(lignes, ["[iBiTV] nba_paris_ajouter", "[iBiTV] nba_paris_ajouter", "[iBiTV] nba_paris_effacer", "[iBiTV] nba_paris_effacer"]);
+});
+
+// ---------- Combinés ----------
+
+const combine = (o = {}) => ({ id: "g1", nom: "Combiné 1", cote: "5,10", etat: "en_cours", gagnees: 2, suivies: 5, nonSuivies: 1, ouvert: true, ...o });
+
+test("combinés : fonction annoncée, `groupes` et `groupe` des lignes normalisés (absents : liste à plat)", () => {
+  assert.ok(FONCTIONS.includes("nba_paris_groupes"));
+  assert.deepEqual(lireFonctions(["nba_paris_groupes", "nba_paris", "nba"]), ["nba", "nba_paris", "nba_paris_groupes"]);
+  // Sans `groupes` : ni champ, ni groupe perdu sur les lignes
+  assert.equal(Object.hasOwn(normaliserNba(etat({ paris: [] })), "groupes"), false);
+  assert.equal(Object.hasOwn(normaliserNba(etat({ paris: [], groupes: "g1" })), "groupes"), false);
+  const e = normaliserNba(etat({
+    affichage: "pari",
+    paris: [ligne({ groupe: "g1" }), ligne({ id: "p2", groupe: "g2", etat: "gagne" }), ligne({ id: "p3", groupe: 7 })],
+    groupes: [combine(), combine({ id: "g2", nom: "Combiné 2", cote: undefined, etat: "gagne", gagnees: 1, suivies: 1, nonSuivies: 0, ouvert: false })],
+  }));
+  assert.deepEqual(e.paris.map((p) => p.groupe), ["g1", "g2", undefined]);
+  assert.deepEqual(e.groupes, [
+    { id: "g1", nom: "Combiné 1", cote: "5,10", etat: "en_cours", gagnees: 2, suivies: 5, nonSuivies: 1, ouvert: true },
+    { id: "g2", nom: "Combiné 2", etat: "gagne", gagnees: 1, suivies: 1, nonSuivies: 0, ouvert: false },
+  ]);
+  // Via le décodeur : champs en trop retirés (mise, texte du ticket)
+  const d = decoder(JSON.stringify({ v: 1, t: "nba", ...etat(), paris: [{ ...ligne(), groupe: "g1" }], groupes: [{ ...combine(), mise: 10, texte: "MYMATCH" }] }));
+  assert.deepEqual(d.groupes, [combine()]);
+  assert.equal(d.paris[0].groupe, "g1");
+});
+
+test("combinés : invalides écartés, valeurs par défaut, un seul ouvert, 10 combinés et 40 lignes au plus", () => {
+  for (const g of [null, "g1", {}, combine({ id: "" }), combine({ id: 3 }), combine({ id: "x".repeat(65) })]) assert.equal(normaliserCombine(g), null, JSON.stringify(g));
+  // Nom absent : « Combiné » ; état inconnu : attente ; cote illisible ignorée ; compteurs invalides : 0
+  assert.deepEqual(normaliserCombine({ id: "g9", etat: "rembourse", cote: "<b>5</b>", gagnees: 9, suivies: 3, nonSuivies: -1, ouvert: "oui" }),
+    { id: "g9", nom: "Combiné", etat: "attente", gagnees: 3, suivies: 3, nonSuivies: 0, ouvert: false });
+  assert.deepEqual(normaliserCombine(combine({ nom: "  Combiné\n3 ", cote: " 10,06 ", gagnees: 1.5, suivies: 41 })),
+    { id: "g1", nom: "Combiné 3", cote: "10,06", etat: "en_cours", gagnees: 0, suivies: 0, nonSuivies: 1, ouvert: true });
+  for (const c of ["5.10", "3,10", "12"]) assert.equal(normaliserCombine(combine({ cote: c })).cote, c);
+  for (const c of ["", "cote", "5,10 €", "1,2345", 5.1]) assert.equal(normaliserCombine(combine({ cote: c })).cote, undefined, String(c));
+  for (const x of ETATS_COMBINE) assert.equal(normaliserCombine(combine({ etat: x })).etat, x);
+  assert.equal(normaliserCombine(combine({ etat: "non_suivi" })).etat, "attente");
+  // Doublons écartés, un seul ouvert (le premier), 10 au plus
+  const liste = Array.from({ length: 12 }, (_, i) => combine({ id: `g${i}`, ouvert: i >= 3 }));
+  assert.equal(MAX_COMBINES, 10);
+  const n = normaliserCombines([combine({ id: "g0", ouvert: false }), ...liste]);
+  assert.deepEqual(n.map((g) => g.id), liste.slice(0, 10).map((g) => g.id));
+  assert.deepEqual(n.filter((g) => g.ouvert).map((g) => g.id), ["g3"]);
+  assert.equal(normaliserCombines(null), null);
+  assert.deepEqual(normaliserCombines([]), []);
+  // 40 lignes au plus avec des combinés ; 20 sans (liste à plat inchangée)
+  assert.equal(MAX_LIGNES_COMBINES, 40);
+  const lignes = Array.from({ length: 45 }, (_, i) => ligne({ id: `p${i}`, groupe: "g1" }));
+  assert.equal(normaliserNba(etat({ paris: lignes, groupes: [combine()] })).paris.length, 40);
+  assert.equal(normaliserNba(etat({ paris: lignes })).paris.length, 20);
+  assert.equal(normaliserNba(etat({ paris: lignes, groupes: "g1" })).paris.length, 20);
+});
+
+test("combinés : lignes d'un combiné, ouvert, en-tête (« 2/5 », cote, non suivies) et lecteur d'écran", () => {
+  const paris = [ligne({ groupe: "g1" }), ligne({ id: "p2", groupe: "g2" }), ligne({ id: "p3", groupe: "g1" }), ligne({ id: "p4" })];
+  assert.deepEqual(lignesCombine(paris, "g1").map((p) => p.id), ["p1", "p3"]);
+  assert.deepEqual(lignesCombine(paris, "g3"), []);
+  assert.equal(combineOuvert([combine({ ouvert: false }), combine({ id: "g2", ouvert: true })]), "g2");
+  assert.equal(combineOuvert([combine({ ouvert: false })]), null);
+  assert.equal(combineOuvert([]), null);
+  assert.equal(compteCombine(combine()), "2/5");
+  assert.equal(compteCombine(combine({ gagnees: 0, suivies: 0 })), "");
+  assert.equal(detailCombine(combine()), "En cours · cote 5,10 · 1 non suivie");
+  assert.equal(detailCombine(combine({ etat: "gagne", cote: undefined, nonSuivies: 0 })), "Gagné");
+  assert.equal(detailCombine(combine({ etat: "perdu", nonSuivies: 3 })), "Perdu · cote 5,10 · 3 non suivies");
+  assert.equal(detailCombine(combine({ etat: "attente", cote: undefined })), "En attente · 1 non suivie");
+  assert.equal(texteCombine(combine()), "Combiné 1, en cours, cote 5,10, 2 lignes gagnées sur 5, 1 non suivie");
+  assert.equal(texteCombine(combine({ gagnees: 1, suivies: 2, nonSuivies: 0, cote: undefined, etat: "attente" })), "Combiné 1, en attente, 1 ligne gagnée sur 2");
+  assert.equal(texteCombine(combine({ gagnees: 0, suivies: 4, nonSuivies: 0 })), "Combiné 1, en cours, cote 5,10, 0 ligne gagnée sur 4");
+  assert.equal(texteCombine(combine({ gagnees: 0, suivies: 0, nonSuivies: 2, etat: "attente" })), "Combiné 1, en attente, cote 5,10, 2 non suivies");
+});
+
+test("combinés : bilan d'un ajout (« Combiné 3 ajouté · … », « Déjà ajouté ») et résumé du bandeau", () => {
+  const groupes = [combine({ ouvert: false }), combine({ id: "g2", nom: "Combiné 2", ouvert: false }), combine({ id: "g3", nom: "Combiné 3", suivies: 5, nonSuivies: 0 })];
+  assert.equal(nouveauCombine(new Set(["g1", "g2"]), groupes).id, "g3");
+  assert.equal(nouveauCombine(new Set(["g1"]), groupes).id, "g3", "le plus récent");
+  assert.equal(nouveauCombine(new Set(["g1", "g2", "g3"]), groupes), null);
+  assert.equal(messageAjoutCombine(groupes[2]), "Combiné 3 ajouté · 5 lignes suivies");
+  assert.equal(messageAjoutCombine(combine({ nom: "Combiné 3", suivies: 4, nonSuivies: 1 })), "Combiné 3 ajouté · 4 lignes suivies · 1 non suivie");
+  assert.equal(messageAjoutCombine(combine({ nom: "Combiné 1", suivies: 1, nonSuivies: 2 })), "Combiné 1 ajouté · 1 ligne suivie · 2 non suivies");
+  assert.equal(messageAjoutCombine(combine({ nom: "Combiné 4", suivies: 0, nonSuivies: 2 })), "Combiné 4 ajouté · aucune ligne suivie · 2 non suivies");
+  assert.equal(messageAjoutCombine(null), "Déjà ajouté");
+  assert.equal(resumeCombines([]), "");
+  assert.equal(resumeCombines(groupes.slice(0, 1)), "1 combiné");
+  assert.equal(resumeCombines(groupes), "3 combinés");
+});
+
+test("combinés : journal sans id de combiné ni texte", () => {
+  const lignes = [];
+  const orig = console.info;
+  console.info = (l) => lignes.push(l);
+  try {
+    journal("nba_paris_ouvrir");
+    journal("nba_paris_effacer");
+    journal("nba_paris_ouvrir", "Combiné 2");
+    journal("nba_paris_combine", "g1");
+  } finally { console.info = orig; }
+  assert.deepEqual(lignes, ["[iBiTV] nba_paris_ouvrir", "[iBiTV] nba_paris_effacer", "[iBiTV] nba_paris_ouvrir"]);
+  // La PWA ne passe jamais d'id (« g1 » serait un code court accepté) : seuls les noms de messages
+  const sources = ["paris-nba.js", "combines-nba.js", "bandeau-nba.js"].map((f) => readFileSync(new URL(`../../remote-pwa/js/${f}`, import.meta.url), "utf8")).join("\n");
+  const appels = sources.match(/journal\([^)]*\)/g);
+  assert.deepEqual([...new Set(appels)].sort(), ['journal("nba_afficher", affichage)', 'journal("nba_paris_ajouter")', 'journal("nba_paris_effacer")', 'journal("nba_paris_ouvrir")']);
+});
+
+test("combinés : nouveau module dans le cache du service worker, version 1.7.0", () => {
+  const sw = readFileSync(new URL("../../remote-pwa/sw.js", import.meta.url), "utf8");
+  for (const f of ["js/combines-nba.js", "js/paris-nba.js", "js/bandeau-nba.js", "js/nba.js"]) assert.ok(sw.includes(`"${f}"`), f);
+  assert.equal(globalThis.IBITV_CONFIG.versionApp, "1.7.0");
 });

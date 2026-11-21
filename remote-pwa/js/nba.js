@@ -2,7 +2,8 @@
 // Messages : docs/telecommande.md, « Box score NBA ».
 // Le téléphone choisit le format du box score sur la TV (caché, résumé, détails, et pari si la TV
 // annonce « nba_paris ») et le match ; la TV envoie l'état (`nba`) : matchs en cours, match choisi,
-// format, décalage, erreur, et les lignes des paris suivis (`paris`).
+// format, décalage, erreur, les lignes des paris suivis (`paris`) et, si elle annonce
+// « nba_paris_groupes », les combinés qui les regroupent (`groupes`).
 
 export const AFFICHAGES = Object.freeze(["cache", "resume", "details", "pari"]);
 export const NOMS_AFFICHAGE = Object.freeze({ cache: "Caché", resume: "Résumé", details: "Détails", pari: "Pari" });
@@ -69,11 +70,12 @@ export function normaliserMatch(m) {
 }
 
 /**
- * Message `nba` → état normalisé {matchs, choisi, affichage, decalage, erreur?, paris?}, ou null
- * (`matchs` absent). Matchs invalides ou en double écartés, 15 au plus. `choisi` : un match de la
+ * Message `nba` → état normalisé {matchs, choisi, affichage, decalage, erreur?, paris?, groupes?}, ou
+ * null (`matchs` absent). Matchs invalides ou en double écartés, 15 au plus. `choisi` : un match de la
  * liste (sinon le premier en cours, comme la TV ; null sans match). `affichage` inconnu → null (aucun
  * segment coché : la TV montre un format que cette version ne connaît pas). Erreur inconnue ignorée.
- * `paris` : seulement si la TV l'envoie (tableau), voir normaliserParis.
+ * `paris` : seulement si la TV l'envoie (tableau), voir normaliserParis ; 40 lignes au plus avec des
+ * combinés (`groupes`, voir normaliserCombines), 20 sinon.
  */
 export function normaliserNba(m) {
   if (!m || typeof m !== "object" || !Array.isArray(m.matchs)) return null;
@@ -94,8 +96,10 @@ export function normaliserNba(m) {
     decalage: Number.isInteger(m.decalage) && m.decalage >= 0 && m.decalage <= MAX_DECALAGE ? m.decalage : 0,
   };
   if (str(m.erreur) && Object.hasOwn(ERREURS, m.erreur)) e.erreur = m.erreur;
-  const paris = normaliserParis(m.paris);
+  const groupes = normaliserCombines(m.groupes);
+  const paris = normaliserParis(m.paris, groupes ? MAX_LIGNES_COMBINES : MAX_PARIS);
   if (paris) e.paris = paris;
+  if (groupes) e.groupes = groupes;
   return e;
 }
 
@@ -112,16 +116,20 @@ export const MAX_TEXTE_PARI = 4000;
 const MAX_VALEUR = 100000;
 const nombre = (x) => (typeof x === "number" && Number.isFinite(x) && Math.abs(x) <= MAX_VALEUR ? x : undefined);
 
+/** Identifiant reçu de la TV (ligne « p1 », combiné « g1 ») : chaîne de 1 à 64 caractères, renvoyée telle quelle. */
+const idValable = (x) => str(x) && x.length > 0 && x.length <= 64;
+
 /**
- * Ligne `{id, libelle, etat, match?, valeur?, seuil?}` → forme normalisée, ou null (id ou libellé
- * absents). État inconnu → "attente" (ligne montrée, sans conclure) ; match, valeur, seuil invalides
- * ignorés.
+ * Ligne `{id, libelle, etat, groupe?, match?, valeur?, seuil?}` → forme normalisée, ou null (id ou
+ * libellé absents). État inconnu → "attente" (ligne montrée, sans conclure) ; groupe, match, valeur,
+ * seuil invalides ignorés.
  */
 export function normaliserPari(p) {
-  if (!p || typeof p !== "object" || !str(p.id) || !p.id || p.id.length > 64) return null;
+  if (!p || typeof p !== "object" || !idValable(p.id)) return null;
   const libelle = nettoyer(p.libelle, 160);
   if (!libelle) return null;
   const l = { id: p.id, libelle, etat: ETATS_PARI.includes(p.etat) ? p.etat : "attente" };
+  if (idValable(p.groupe)) l.groupe = p.groupe;
   if (str(p.match) && RE_ID.test(p.match)) l.match = p.match;
   const valeur = nombre(p.valeur), seuil = nombre(p.seuil);
   if (valeur !== undefined) l.valeur = valeur;
@@ -129,13 +137,16 @@ export function normaliserPari(p) {
   return l;
 }
 
-/** `paris` → lignes normalisées (invalides ou en double écartées, 20 au plus), ou null si ce n'est pas un tableau. */
-export function normaliserParis(liste) {
+/**
+ * `paris` → lignes normalisées (invalides ou en double écartées, 20 au plus, ou `max`), ou null si ce
+ * n'est pas un tableau.
+ */
+export function normaliserParis(liste, max = MAX_PARIS) {
   if (!Array.isArray(liste)) return null;
   const vus = new Set();
   const paris = [];
   for (const x of liste) {
-    if (paris.length >= MAX_PARIS) break;
+    if (paris.length >= max) break;
     const p = normaliserPari(x);
     if (!p || vus.has(p.id)) continue;
     vus.add(p.id);
@@ -226,6 +237,103 @@ export function messageAjout({ suivies, nonSuivies }) {
   if (suivies) return s;
   if (nonSuivies) return `Aucune ligne suivie · ${n}`;
   return "Aucune nouvelle ligne";
+}
+
+// ---------- Combinés (« nba_paris_groupes ») ----------
+// Chaque collage est un combiné : ses lignes (`groupe` de chaque ligne) restent groupées, en
+// accordéon : un seul combiné ouvert, celui de la TV (`ouvert`).
+
+export const ETATS_COMBINE = Object.freeze(["attente", "en_cours", "gagne", "perdu"]);
+export const MAX_COMBINES = 10;
+export const MAX_LIGNES_COMBINES = 40;
+// Cote totale telle que lue sur le ticket (« 5,10 », « 10.06 ») : chiffres seulement
+const RE_COTE = /^\d{1,5}(?:[.,]\d{1,3})?$/;
+const compteur = (x) => (Number.isInteger(x) && x >= 0 && x <= MAX_LIGNES_COMBINES ? x : 0);
+
+/**
+ * Combiné `{id, nom, cote?, etat, gagnees, suivies, nonSuivies, ouvert}` → forme normalisée, ou null
+ * (id absent). Nom absent → « Combiné » ; état inconnu → "attente" ; cote illisible ignorée ;
+ * compteurs invalides → 0 (gagnées bornées aux suivies).
+ */
+export function normaliserCombine(g) {
+  if (!g || typeof g !== "object" || !idValable(g.id)) return null;
+  const cote = nettoyer(g.cote, 12);
+  const suivies = compteur(g.suivies);
+  return {
+    id: g.id,
+    nom: nettoyer(g.nom, 40) || "Combiné",
+    ...(RE_COTE.test(cote) ? { cote } : {}),
+    etat: ETATS_COMBINE.includes(g.etat) ? g.etat : "attente",
+    gagnees: Math.min(compteur(g.gagnees), suivies),
+    suivies,
+    nonSuivies: compteur(g.nonSuivies),
+    ouvert: g.ouvert === true,
+  };
+}
+
+/**
+ * `groupes` → combinés normalisés (invalides ou en double écartés, 10 au plus, ordre d'ajout ; un
+ * seul ouvert : le premier marqué), ou null si ce n'est pas un tableau.
+ */
+export function normaliserCombines(liste) {
+  if (!Array.isArray(liste)) return null;
+  const vus = new Set();
+  const groupes = [];
+  let ouvert = false;
+  for (const x of liste) {
+    if (groupes.length >= MAX_COMBINES) break;
+    const g = normaliserCombine(x);
+    if (!g || vus.has(g.id)) continue;
+    vus.add(g.id);
+    if (g.ouvert && ouvert) g.ouvert = false;
+    ouvert ||= g.ouvert;
+    groupes.push(g);
+  }
+  return groupes;
+}
+
+/** Lignes d'un combiné, dans l'ordre d'ajout. */
+export const lignesCombine = (paris, id) => paris.filter((p) => p.groupe === id);
+
+/** Combiné ouvert sur la TV (son id), ou null. */
+export const combineOuvert = (groupes) => groupes.find((g) => g.ouvert)?.id ?? null;
+
+const texteNonSuivies = (n) => (n === 1 ? "1 non suivie" : `${n} non suivies`);
+const lignesSuivies = (n) => (n === 1 ? "1 ligne suivie" : `${n} lignes suivies`);
+
+/** « 2/5 » : lignes gagnées sur lignes suivies ; "" sans ligne suivie. */
+export const compteCombine = (g) => (g.suivies ? `${g.gagnees}/${g.suivies}` : "");
+
+/** Sous le nom : « En cours · cote 5,10 · 1 non suivie ». */
+export function detailCombine(g) {
+  return [NOMS_ETAT_PARI[g.etat], g.cote ? `cote ${g.cote}` : "", g.nonSuivies ? texteNonSuivies(g.nonSuivies) : ""]
+    .filter(Boolean).join(" · ");
+}
+
+/** Lecteur d'écran : « Combiné 2, en cours, cote 5,10, 2 lignes gagnées sur 5, 1 non suivie ». */
+export function texteCombine(g) {
+  const parts = [g.nom, NOMS_ETAT_PARI[g.etat].toLowerCase()];
+  if (g.cote) parts.push(`cote ${g.cote}`);
+  if (g.suivies) parts.push(`${g.gagnees} ${g.gagnees >= 2 ? "lignes gagnées" : "ligne gagnée"} sur ${g.suivies}`);
+  if (g.nonSuivies) parts.push(texteNonSuivies(g.nonSuivies));
+  return parts.join(", ");
+}
+
+/** Résumé du bandeau et de Réglages : « 3 combinés », « 1 combiné » ; "" sans combiné. */
+export const resumeCombines = (groupes) => (!groupes.length ? "" : groupes.length === 1 ? "1 combiné" : `${groupes.length} combinés`);
+
+/** Combiné apparu depuis un ajout (id absent de `avant`) : le plus récent, ou null. */
+export const nouveauCombine = (avant, groupes) => groupes.filter((g) => !avant.has(g.id)).at(-1) ?? null;
+
+/**
+ * Bilan d'un ajout : « Combiné 3 ajouté · 5 lignes suivies · 1 non suivie »,
+ * « Combiné 3 ajouté · aucune ligne suivie · 2 non suivies » ; rien de nouveau : « Déjà ajouté ».
+ */
+export function messageAjoutCombine(g) {
+  if (!g) return "Déjà ajouté";
+  const parts = [`${g.nom} ajouté`, g.suivies ? lignesSuivies(g.suivies) : "aucune ligne suivie"];
+  if (g.nonSuivies) parts.push(texteNonSuivies(g.nonSuivies));
+  return parts.join(" · ");
 }
 
 // ---------- Messages ----------

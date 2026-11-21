@@ -1125,16 +1125,17 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   padding: .75rem 1rem;
 }
 .pari + .pari { border-top: 1.5px solid var(--trait); }
-/* État : ✓ gagné, ✗ perdu (pastilles pleines), point en cours, anneau en attente, tiret non suivi */
+/* État (d'une ligne, ou d'un combiné dans son en-tête) : ✓ gagné, ✗ perdu (pastilles pleines),
+   point en cours, anneau en attente, tiret non suivi */
 .pari-etat {
   width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center; flex: none;
   color: var(--feuille); box-shadow: inset 0 0 0 2px var(--texte-2);
 }
 .pari-etat .ic { width: 16px; height: 16px; stroke-width: 2.8; }
-.pari[data-etat="gagne"] .pari-etat { background: var(--gagne); box-shadow: none; }
-.pari[data-etat="perdu"] .pari-etat { background: var(--erreur); box-shadow: none; }
-.pari[data-etat="en_cours"] .pari-etat { box-shadow: inset 0 0 0 2px var(--lien); }
-.pari[data-etat="en_cours"] .pari-etat::before { content: ""; width: .625rem; height: .625rem; border-radius: 50%; background: var(--lien); }
+:is(.pari, .combine-tete)[data-etat="gagne"] .pari-etat { background: var(--gagne); box-shadow: none; }
+:is(.pari, .combine-tete)[data-etat="perdu"] .pari-etat { background: var(--erreur); box-shadow: none; }
+:is(.pari, .combine-tete)[data-etat="en_cours"] .pari-etat { box-shadow: inset 0 0 0 2px var(--lien); }
+:is(.pari, .combine-tete)[data-etat="en_cours"] .pari-etat::before { content: ""; width: .625rem; height: .625rem; border-radius: 50%; background: var(--lien); }
 .pari[data-etat="non_suivi"] .pari-etat { box-shadow: none; border: 1.5px dashed var(--texte-2); color: var(--texte-2); }
 .pari[data-etat="non_suivi"] .pari-etat .ic { stroke-width: 2.2; }
 .pari-textes { display: flex; flex-direction: column; gap: .125rem; min-width: 0; }
@@ -1179,6 +1180,42 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .pari-retour:empty { margin-top: -.875rem; padding: 0; }
 .pari-retour.erreur { color: var(--erreur); background: color-mix(in srgb, var(--erreur) 10%, var(--feuille)); }
+
+/* Combinés (« nba_paris_groupes ») : accordéon, un seul ouvert (celui de la TV). En-tête : état,
+   nom, détail (état, cote, non suivies), « 2/5 », chevron. Ouvert : ses lignes, puis « Effacer ce
+   combiné ». Cadre plus marqué pour l'ouvert, sans changer d'épaisseur (rien ne bouge). */
+.combines-pari { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .625rem; }
+.combine {
+  border-radius: 20px; background: color-mix(in srgb, var(--texte) 5%, var(--feuille)); border: 1.5px solid var(--trait);
+}
+.combine.ouvert { border-color: var(--principal); box-shadow: inset 0 0 0 .5px var(--principal); }
+.combine-titre { margin: 0; font: inherit; }
+.combine-tete {
+  width: 100%; min-height: 4rem; padding: .625rem 1rem; border-radius: 18.5px; text-align: left;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: .75rem;
+}
+.combine-tete:focus-visible { outline-offset: -3px; }
+.combine-tete:not([aria-expanded="true"]):active { background: color-mix(in srgb, var(--texte) 6%, transparent); }
+.combine-tete[aria-expanded="true"] { cursor: default; }
+.combine-textes { display: flex; flex-direction: column; gap: .125rem; min-width: 0; }
+.combine-nom { font-weight: 800; font-size: 1rem; line-height: 1.25; overflow-wrap: anywhere; }
+.combine-detail { font-size: .8125rem; font-weight: 800; line-height: 1.3; color: var(--texte-2); overflow-wrap: anywhere; }
+.combine-tete[data-etat="gagne"] .combine-detail { color: var(--gagne); }
+.combine-tete[data-etat="perdu"] .combine-detail { color: var(--erreur); }
+.combine-tete[data-etat="en_cours"] .combine-detail { color: var(--lien); }
+.combine-compte { font-size: 1.125rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.combine-chevron { width: 20px; height: 20px; color: var(--texte-2); transition: transform .2s ease-out; }
+.combine-tete[aria-expanded="true"] .combine-chevron { transform: rotate(180deg); }
+.combine-corps { display: flex; flex-direction: column; gap: .25rem; padding: 0 0 .75rem; border-top: 1.5px solid var(--trait); }
+.combine-lignes { border: 0; border-radius: 0; background: none; }
+.btn-effacer-combine {
+  align-self: stretch; margin: .25rem .75rem 0; min-height: 3rem; padding: .25rem 1rem; border-radius: var(--rayon-champ);
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  font-size: .9375rem; font-weight: 800; color: var(--erreur);
+  background: color-mix(in srgb, var(--erreur) 8%, var(--feuille)); border: 1.5px solid color-mix(in srgb, var(--erreur) 35%, transparent);
+}
+.btn-effacer-combine:active { transform: scale(.98); }
+.btn-effacer-combine .ic { width: 18px; height: 18px; }
 
 /* Feuille « Le VPN de la TV est coupé » */
 .feuille-vpn { gap: .625rem; }
@@ -1274,6 +1311,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 :root[data-theme="nba"] .pari-detail { font-size: .875rem; letter-spacing: .1em; }
 :root[data-theme="nba"] .nba-match .nba-pari-resume { font-size: 1rem; letter-spacing: .06em; }
 :root[data-theme="nba"] .pari-valeur { font-size: 1.25rem; letter-spacing: .01em; }
+/* Combinés : nom en Oswald, détail en capitales condensées, « 2/5 » comme les valeurs */
+:root[data-theme="nba"] .combine-nom { font-family: var(--titre); font-weight: 600; font-size: 1.125rem; text-transform: uppercase; letter-spacing: .03em; }
+:root[data-theme="nba"] .combine-detail { font-family: var(--condensee); font-weight: 700; font-size: .875rem; text-transform: uppercase; letter-spacing: .1em; }
+:root[data-theme="nba"] .combine-compte { font-family: var(--titre); font-weight: 600; font-size: 1.25rem; letter-spacing: .01em; }
+:root[data-theme="nba"] .btn-effacer-combine { font-family: var(--condensee); font-weight: 700; font-size: 1rem; text-transform: uppercase; letter-spacing: .07em; }
 
 .noscript { padding: 24px; text-align: center; }
 

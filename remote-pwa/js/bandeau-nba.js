@@ -5,13 +5,15 @@
 // 4e segment Pari et « Mon pari » (feuille des paris suivis, voir paris-nba.js) ; le bandeau reste
 // aussi, réduit à « Mon pari », tant que des lignes sont suivies sans match à montrer (pari collé
 // avant le match), et « Mon pari… » est dans Réglages, groupe « Box score NBA » (à tout moment).
+// Si la TV annonce aussi « nba_paris_groupes » : la feuille range les lignes par combiné, et « Mon
+// pari » (pastille, résumé du bandeau réduit et de Réglages) compte les combinés.
 // `nba_etat` part après chaque authentification si la TV annonce « nba » (abonnement par connexion).
 // Lecteurs d'écran : le format et le match choisis sont annoncés, jamais chaque point marqué.
 // Journaux : `nba_afficher <format>` ; jamais de score, d'équipe, de match ni de pari.
 
 import {
   ERREURS, affichagesProposes, bandeauVisible, matchDe, equipeMenee, ligneStatut, nomsMatch, texteMatch,
-  champsNbaAfficher, annonceAffichage, couleurValable, resumeParis,
+  champsNbaAfficher, annonceAffichage, couleurValable, resumeParis, resumeCombines,
 } from "./nba.js";
 import { FeuilleParis } from "./paris-nba.js";
 import { Attentes } from "./pilotage.js";
@@ -87,6 +89,14 @@ export class BandeauNba {
   get disponible() { return this.ctrl.fonctions.includes("nba"); }
   /** … et les paris suivis (4e format, « Mon pari ») ? */
   get parisDisponibles() { return this.disponible && this.ctrl.fonctions.includes("nba_paris"); }
+  /** … et les combinés (lignes rangées par collage, en accordéon) ? */
+  get combinesDisponibles() { return this.parisDisponibles && this.ctrl.fonctions.includes("nba_paris_groupes"); }
+
+  /** Résumé de ce qui est suivi : « 3 combinés », sinon « 4 lignes en attente » (liste à plat) ; "" sans rien. */
+  resumeSuivi() {
+    const f = this.feuilleParis;
+    return f.groupes ? resumeCombines(f.groupes) : resumeParis(f.paris);
+  }
 
   // ---------- Cycle de vie ----------
 
@@ -98,6 +108,7 @@ export class BandeauNba {
     if (!this.disponible && this.etat) this.oublier();
     else {
       if (!this.parisDisponibles) this.feuilleParis.oublier();
+      else if (!this.combinesDisponibles && this.feuilleParis.groupes) this.feuilleParis.maj(this.feuilleParis.paris, null);
       this.rendre();
     }
   }
@@ -136,7 +147,8 @@ export class BandeauNba {
     if (etat.erreur && etat.erreur !== avant?.erreur) phrases.push(ERREURS[etat.erreur]);
     this.affichageTV = etat.affichage;
     this.choisiTV = etat.choisi;
-    if (this.parisDisponibles) this.feuilleParis.maj(etat.paris ?? []);
+    // Combinés : seulement s'ils sont annoncés (sinon la liste à plat, comme avant)
+    if (this.parisDisponibles) this.feuilleParis.maj(etat.paris ?? [], this.combinesDisponibles && etat.groupes ? etat.groupes : null);
     this.rendre();
     if (phrases.length && bandeauVisible(etat)) this.parler(phrases.join(". "));
   }
@@ -166,7 +178,7 @@ export class BandeauNba {
     this.attentes.noter("affichage", affichage);
     this.rendre();
     this.planifierRecalage();
-    if (affichage === "pari" && !this.feuilleParis.paris.length) this.feuilleParis.ouvrir();
+    if (affichage === "pari" && !this.feuilleParis.nombre) this.feuilleParis.ouvrir();
   }
 
   /** Match touché dans la feuille : `nba_choisir`. */
@@ -214,7 +226,7 @@ export class BandeauNba {
     const paris = this.parisDisponibles;
     this.ligneReglages.hidden = !paris;
     if (!paris) return;
-    const resume = resumeParis(this.feuilleParis.paris);
+    const resume = this.resumeSuivi();
     this.detailReglages.textContent = resume
       ? `Mon pari : ${resume}`
       : "Colle ton pari, même avant le match : la TV suit ses lignes en direct";
@@ -242,7 +254,7 @@ export class BandeauNba {
     // Box score (score et formats) selon la règle du bandeau ; sinon, des paris suivis sans match
     // à montrer (collés avant le match) : bandeau réduit au résumé et à « Mon pari »
     const boxScore = this.disponible && bandeauVisible(this.etat);
-    const parisSansMatch = this.parisDisponibles && this.feuilleParis.paris.length > 0;
+    const parisSansMatch = this.parisDisponibles && this.feuilleParis.nombre > 0;
     const visible = boxScore || parisSansMatch;
     e.bandeau.hidden = !visible;
     if (!visible) {
@@ -256,7 +268,7 @@ export class BandeauNba {
     e.aucun.hidden = !!match;
     e.lecteur.textContent = match ? texteMatch(match) : "";
     if (match) this.rendreMatch(match);
-    const resume = !match && parisSansMatch ? resumeParis(this.feuilleParis.paris) : "";
+    const resume = !match && parisSansMatch ? this.resumeSuivi() : "";
     e.pariResume.hidden = !resume;
     e.pariResume.textContent = resume ? `Mon pari · ${resume}` : "";
 
@@ -273,10 +285,12 @@ export class BandeauNba {
     const paris = this.parisDisponibles;
     e.bandeau.classList.toggle("avec-paris", paris);
     e.pari.hidden = !paris;
-    const n = paris ? this.feuilleParis.paris.length : 0;
+    // Pastille : nombre de combinés (« nba_paris_groupes »), sinon de lignes suivies
+    const n = paris ? this.feuilleParis.nombre : 0;
     e.compte.hidden = !n;
     e.compte.textContent = n ? String(n) : "";
-    e.pari.setAttribute("aria-label", n ? `Mon pari : ${n} ${n === 1 ? "ligne suivie" : "lignes suivies"}` : "Mon pari");
+    const quoi = this.feuilleParis.groupes ? resumeCombines(this.feuilleParis.groupes) : `${n} ${n === 1 ? "ligne suivie" : "lignes suivies"}`;
+    e.pari.setAttribute("aria-label", n ? `Mon pari : ${quoi}` : "Mon pari");
 
     const formats = affichagesProposes(paris);
     const i = formats.indexOf(this.affichageAffiche());
